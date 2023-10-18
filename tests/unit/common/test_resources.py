@@ -289,7 +289,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
         self.assertTrue(isinstance(ret[0][2], TermSetWrapper))
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    def test_add_ref_termset_data(self):
+    def test_add_ref_container_data(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
@@ -305,14 +305,14 @@ class TestHERD(H5RoundTripMixin, TestCase):
 
         species.parent = em
 
-        er.add_ref_term_set(root_container=em)
+        er.add_ref_container(root_container=em)
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
         self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    def test_add_ref_termset_attr(self):
+    def test_add_ref_container_attr(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
@@ -328,7 +328,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
 
         species.parent = em
 
-        er.add_ref_term_set(root_container=em)
+        er.add_ref_container(root_container=em)
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
         self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])

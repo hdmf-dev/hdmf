@@ -437,7 +437,7 @@ class HERD(Container):
 
     @docval({'name': 'root_container', 'type': HERDManager,
              'doc': 'The root container or file containing objects with a TermSet.'})
-    def add_ref_term_set(self, **kwargs):
+    def add_ref_container(self, **kwargs):
         """
         Method to search through the root_container for all instances of TermSet.
         Currently, only datasets are supported. By using a TermSet, the data comes validated
