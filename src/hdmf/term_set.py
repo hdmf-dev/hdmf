@@ -4,7 +4,7 @@ from collections import namedtuple
 from .utils import docval
 import warnings
 import numpy as np
-from .data_utils import append_data, extend_data
+from .data_utils import append_data, extend_data, DataChunkIterator
 
 
 class TermSet:
@@ -188,7 +188,7 @@ class TermSetWrapper:
              'type': TermSet,
              'doc': 'The TermSet to be used.'},
             {'name': 'value',
-             'type': (list, np.ndarray, dict, str, tuple),
+             'type': (list, np.ndarray, dict, str, tuple, DataChunkIterator),
              'doc': 'The target item that is wrapped, either data or attribute.'},
             )
     def __init__(self, **kwargs):
