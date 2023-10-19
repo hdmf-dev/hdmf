@@ -56,12 +56,12 @@ class TermSet:
         self.name = self.view.schema.name
         self.sources = self.view.schema.prefixes
 
-    def __repr__(self): # pragma: no cover
+    def __repr__(self):
         re = "Schema Path: %s\n" % self.term_schema_path
         re += "Sources: " + ", ".join(list(self.sources.keys()))
         return re
 
-    def _repr_html_(self): # pragma: no cover
+    def _repr_html_(self):
         re = "<p><b>" + "Schema Path: " + "</b>" + self.term_schema_path + "<br>" + "</p>"
         re += "<p><b>" + "Sources: " + "</b>" + ", ".join(list(self.sources.keys())) + "</p>"
         return re

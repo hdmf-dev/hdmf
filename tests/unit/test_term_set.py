@@ -29,6 +29,16 @@ class TestTermSet(TestCase):
         self.assertEqual(termset.name, 'Species')
         self.assertEqual(list(termset.sources), ['NCBI_TAXON'])
 
+    def test_repr(self):
+        termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        output = 'Schema Path: tests/unit/example_test_term_set.yaml\nSources: NCBI_TAXON'
+        self.assertEqual(repr(termset), output)
+
+    def test_repr_html(self):
+        termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        output = '<p><b>Schema Path: </b>tests/unit/example_test_term_set.yaml<br></p><p><b>Sources: </b>NCBI_TAXON</p>'
+        self.assertEqual(termset._repr_html_(), output)
+
     def test_view_set(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         expected = ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis', 'Myrmecophaga tridactyla']
