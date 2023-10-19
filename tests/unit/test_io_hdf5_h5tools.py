@@ -149,7 +149,7 @@ class H5IOTest(TestCase):
     ##########################################
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_write_dataset_TermSetWrapper(self):
-        terms = TermSet(name='example', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         a = TermSetWrapper(value=['Homo sapiens'], termset=terms)
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
         dset = self.f['test_dataset']
@@ -826,7 +826,7 @@ class TestRoundTrip(TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_roundtrip_TermSetWrapper_dataset(self):
-        terms = TermSet(name='example', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         foo = Foo(name="species", attr1='attr1', attr2=0,
                   my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
                                                          termset=terms))
@@ -845,7 +845,7 @@ class TestRoundTrip(TestCase):
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_roundtrip_TermSetWrapper_attribute(self):
-        terms = TermSet(name='example', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         foo = Foo(name="species", attr1=TermSetWrapper(value='Homo sapiens', termset=terms),
                   attr2=0, my_data=[1,2,3])
         foobucket = FooBucket('bucket1', [foo])
@@ -1076,7 +1076,7 @@ class TestHERDIO(TestCase):
         """
         Test the optional write of HERD with extending an existing HERD instance.
         """
-        terms = TermSet(name='example', term_schema_path='tests/unit/example_test_term_set.yaml')
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         foo = Foo(name="species", attr1='attr1', attr2=0,
                   my_data=TermSetWrapper(value=['Homo sapiens'],
                                                          termset=terms))
