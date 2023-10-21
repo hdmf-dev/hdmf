@@ -66,12 +66,12 @@ class TermSet:
         re = "<b>" + "Schema Path: " + "</b>" + self.term_schema_path + "<br>"
         re += "<b>" + "Sources: " + "</b>" + ", ".join(list(self.sources.keys())) + "<br>"
         re += "<b> Terms: </b>"
-        re += "<ul>"
+        # re += "<ul>"
         re += "<li> %s </li>" % terms[0]
         re += "<li> %s </li>" % terms[1]
         re += "<li> %s </li>" % terms[2]
         re += "<li> ... </li>"
-        re += "</ul>"
+        # re += "</ul>"
 
         return re
 
