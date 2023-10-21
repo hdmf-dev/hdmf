@@ -10,6 +10,7 @@ from glob import glob
 import os
 import zipfile
 from collections import namedtuple
+from warnings import warn
 
 
 class KeyTable(Table):
@@ -358,16 +359,17 @@ class HERD(Container):
         relative_path = kwargs['relative_path']
         field = kwargs['field']
         create = kwargs['create']
+
         file_object_id = file.object_id
         files_idx = self.files.which(file_object_id=file_object_id)
 
         if len(files_idx) > 1:
+            # It isn't possible for len(files_idx) > 1 without the user directly using _add_file
             raise ValueError("Found multiple instances of the same file.")
         elif len(files_idx) == 1:
             files_idx = files_idx[0]
         else:
-            self._add_file(file_object_id)
-            files_idx = self.files.which(file_object_id=file_object_id)[0]
+            files_idx = None
 
         objecttable_idx = self.objects.which(object_id=container.object_id)
 
@@ -378,10 +380,15 @@ class HERD(Container):
         if len(objecttable_idx) == 1:
             return self.objects.row[objecttable_idx[0]]
         elif len(objecttable_idx) == 0 and create:
-            return self._add_object(files_idx=files_idx, container=container, relative_path=relative_path, field=field)
+            return {'file_object_id': file_object_id,
+                    'files_idx': files_idx,
+                    'container': container,
+                    'relative_path': relative_path,
+                    'field': field}
         elif len(objecttable_idx) == 0 and not create:
             raise ValueError("Object not in Object Table.")
         else:
+            # It isn't possible for this to happen unless the user used _add_object.
             raise ValueError("Found multiple instances of the same object id, relative path, "
                              "and field in objects table.")
 
@@ -569,41 +576,15 @@ class HERD(Container):
         ##############
         add_key = False
         add_object_key = False
+        check_object_key = False
         if not isinstance(key, Key):
-            key_idx_matches = self.keys.which(key=key)
-        # if same key is used multiple times, determine
-        # which instance based on the Container
-        # """
-        # TODO: Resolve key if in same object
-        # """
-            for row_idx in self.object_keys.which(objects_idx=object_field.idx):
-                key_idx = self.object_keys['keys_idx', row_idx]
-                if key_idx in key_idx_matches:
-                    msg = "Use Key Object when referencing an existing (container, relative_path, key)"
-                    raise ValueError(msg)
-
-            # key = self._add_key(key) TODO
-            # self._add_object_key(object_field, key) TODO
             add_key = True
             add_object_key = True
         else:
             # Check to see that the existing key is being used with the object.
             # If true, do nothing. If false, create a new obj/key relationship
             # in the ObjectKeyTable
-            key_idx = key.idx
-            object_key_row_idx = self.object_keys.which(keys_idx=key_idx)
-            if len(object_key_row_idx)!=0:
-                obj_key_check = False
-                for row_idx in object_key_row_idx:
-                    obj_idx = self.object_keys['objects_idx', row_idx]
-                    if obj_idx == object_field.idx:
-                        obj_key_check = True
-                if not obj_key_check:
-                    # self._add_object_key(object_field, key) # TODO
-                    add_object_key = True
-            else:
-                msg = "Cannot find Key. Create new Key with string."
-                raise ValueError(msg)
+            check_object_key = True
 
         #################
         # Validate Entity
@@ -612,18 +593,108 @@ class HERD(Container):
         add_entity = False
 
         entity = self.get_entity(entity_id=entity_id)
+        check_entity_key = False
         if entity is None:
             if entity_uri is None:
                 msg = 'New entities must have an entity_uri.'
                 raise ValueError(msg)
-            # entity = self._add_entity(entity_id, entity_uri) TODO
-            # self._add_entity_key(entity, key) TODO
+
             add_entity = True
             add_entity_key = True
         else:
+            check_entity_key = True
+
+        #################
+        # Validate Object
+        #################
+        if attribute is None:  # Trivial Case
+            relative_path = ''
+            object_field = self._check_object_field(file=file,
+                                                    container=container,
+                                                    relative_path=relative_path,
+                                                    field=field)
+        else:  # DataType Attribute Case
+            attribute_object = getattr(container, attribute)  # returns attribute object
+            if isinstance(attribute_object, AbstractContainer):
+                relative_path = ''
+                object_field = self._check_object_field(file=file,
+                                                        container=attribute_object,
+                                                        relative_path=relative_path,
+                                                        field=field)
+            else:  # Non-DataType Attribute Case:
+                obj_mapper = self.type_map.get_map(container)
+                spec = obj_mapper.get_attr_spec(attr_name=attribute)
+                parent_spec = spec.parent  # return the parent spec of the attribute
+                if parent_spec.data_type is None:
+                    while parent_spec.data_type is None:
+                        parent_spec = parent_spec.parent  # find the closest parent with a data_type
+                    parent_cls = self.type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
+                    if isinstance(container, parent_cls):
+                        parent = container
+                        # We need to get the path of the spec for relative_path
+                        absolute_path = spec.path
+                        relative_path = absolute_path[absolute_path.find('/')+1:]
+                        object_field = self._check_object_field(file=file,
+                                                                container=parent,
+                                                                relative_path=relative_path,
+                                                                field=field)
+                    else:
+                        msg = 'Container not the nearest data_type'
+                        raise ValueError(msg)
+                else:
+                    parent = container  # container needs to be the parent
+                    absolute_path = spec.path
+                    relative_path = absolute_path[absolute_path.find('/')+1:]
+                    # this regex removes everything prior to the container on the absolute_path
+                    object_field = self._check_object_field(file=file,
+                                                            container=parent,
+                                                            relative_path=relative_path,
+                                                            field=field)
+
+        ###############
+        # Populate HERD
+        ###############
+        if isinstance(object_field, dict):
+            if object_field['files_idx'] is None:
+                self._add_file(object_field['file_object_id'])
+                object_field['files_idx'] = self.files.which(file_object_id=object_field['file_object_id'])[0]
+            object_field = self._add_object(files_idx=object_field['files_idx'],
+                                            container=object_field['container'],
+                                            relative_path=object_field['relative_path'],
+                                            field=object_field['field'])
+
+        # Since object_field is set, we need to check if
+        # the key has been associated with that object.
+        # If so, just reuse the key.
+        if add_key:
+            key_exists = False
+            key_idx_matches = self.keys.which(key=key)
+            for row_idx in self.object_keys.which(objects_idx=object_field.idx):
+                key_idx = self.object_keys['keys_idx', row_idx]
+                if key_idx in key_idx_matches:
+                    key_exists = True # Make sure we don't add the key
+                    key = self.keys.row[key_idx]
+            if not key_exists:
+                key = self._add_key(key)
+
+        if check_object_key:
+            key_idx = key.idx
+            object_key_row_idx = self.object_keys.which(keys_idx=key_idx)
+            obj_key_exists = False
+            for row_idx in object_key_row_idx:
+                obj_idx = self.object_keys['objects_idx', row_idx]
+                if obj_idx == object_field.idx:
+                    obj_key_exists = True
+            if not obj_key_exists:
+                add_object_key = True
+
+        if add_object_key:
+            self._add_object_key(object_field, key)
+
+        if check_entity_key:
             if entity_uri is not None:
-                msg = 'If you plan on reusing an entity, then entity_uri parameter must be None.'
-                raise ValueError(msg) # TODO: Change to Warn that the uri provided is being ignored
+                msg = 'This entity already exists. Ignoring new entity uri'
+                warn(msg) # TODO: Change to Warn that the uri provided is being ignored
 
             # check for entity-key relationship in EntityKeyTable
             key_idx = key.idx
@@ -647,15 +718,11 @@ class HERD(Container):
                 # self._add_entity_key(entity, key) TODO
                 add_entity_key = True
 
-        #################
-        # Validate Object
-        #################
+        if add_entity:
+            entity = self._add_entity(entity_id, entity_uri)
 
-
-        ###############
-        # Populate HERD
-        ###############
-
+        if add_entity_key:
+            self._add_entity_key(entity, key)
 
 
     @docval({'name': 'object_type', 'type': str,
