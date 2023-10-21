@@ -62,8 +62,17 @@ class TermSet:
         return re
 
     def _repr_html_(self):
-        re = "<p><b>" + "Schema Path: " + "</b>" + self.term_schema_path + "<br>" + "</p>"
-        re += "<p><b>" + "Sources: " + "</b>" + ", ".join(list(self.sources.keys())) + "</p>"
+        terms = list(self.view_set.keys())
+        re = "<b>" + "Schema Path: " + "</b>" + self.term_schema_path + "<br>"
+        re += "<b>" + "Sources: " + "</b>" + ", ".join(list(self.sources.keys())) + "<br>"
+        re += "<b> Terms: </b>"
+        re += "<ul>"
+        re += "<li> %s </li>" % terms[0]
+        re += "<li> %s </li>" % terms[1]
+        re += "<li> %s </li>" % terms[2]
+        re += "<li> ... </li>"
+        re += "</ul>"
+
         return re
 
     def __perm_value_key_info(self, perm_values_dict: dict, key: str):
