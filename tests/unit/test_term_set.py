@@ -31,12 +31,17 @@ class TestTermSet(TestCase):
 
     def test_repr(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        output = 'Schema Path: tests/unit/example_test_term_set.yaml\nSources: NCBI_TAXON'
+        output = ('Schema Path: tests/unit/example_test_term_set.yaml\nSources: NCBI_TAXON\nTerms: \n'+
+                  '   - Homo sapiens\n   - Mus musculus\n   ... ... \n   - Ursus arctos horribilis\n'+
+                  '   - Myrmecophaga tridactyla\nNumber of terms: 4')
         self.assertEqual(repr(termset), output)
 
     def test_repr_html(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        output = '<p><b>Schema Path: </b>tests/unit/example_test_term_set.yaml<br></p><p><b>Sources: </b>NCBI_TAXON</p>'
+        output = ('<b>Schema Path: </b>tests/unit/example_test_term_set.yaml<br><b>Sources:'+
+                  ' </b>NCBI_TAXON<br><b> Terms: </b><li> Homo sapiens </li><li> Mus musculus'+
+                  ' </li>... ...<li> Ursus arctos horribilis </li><li> Myrmecophaga tridactyla'+
+                  ' </li><i> Number of terms:</i> 4')
         self.assertEqual(termset._repr_html_(), output)
 
     def test_view_set(self):
