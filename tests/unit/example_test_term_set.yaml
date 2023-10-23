@@ -22,3 +22,6 @@ enums:
       Myrmecophaga tridactyla:
         description: the species is an anteater
         meaning: NCBI_TAXON:71006
+      Panda:
+        description: the species is panda
+        meaning: NCBI_TAXON:212257

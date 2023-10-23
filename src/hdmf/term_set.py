@@ -62,11 +62,11 @@ class TermSet:
         re = "Schema Path: %s\n" % self.term_schema_path
         re += "Sources: " + ", ".join(list(self.sources.keys()))+"\n"
         re += "Terms: \n"
-        i = 0
+        i = 1
         for term in terms:
             if i>4:
                 break
-            elif i==2:
+            elif i==3:
                 re += "   ... ... \n"
             re += "   - %s\n" % term
             i += 1
@@ -79,11 +79,11 @@ class TermSet:
         re = "<b>" + "Schema Path: " + "</b>" + self.term_schema_path + "<br>"
         re += "<b>" + "Sources: " + "</b>" + ", ".join(list(self.sources.keys())) + "<br>"
         re += "<b> Terms: </b>"
-        i = 0
+        i = 1
         for term in terms:
             if i>4:
                 break
-            elif i==2:
+            elif i==3:
                 re += "... ..."
             re += "<li> %s </li>" % term
             i += 1

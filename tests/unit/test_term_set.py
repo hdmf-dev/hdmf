@@ -33,7 +33,7 @@ class TestTermSet(TestCase):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         output = ('Schema Path: tests/unit/example_test_term_set.yaml\nSources: NCBI_TAXON\nTerms: \n'+
                   '   - Homo sapiens\n   - Mus musculus\n   ... ... \n   - Ursus arctos horribilis\n'+
-                  '   - Myrmecophaga tridactyla\nNumber of terms: 4')
+                  '   - Myrmecophaga tridactyla\nNumber of terms: 5')
         self.assertEqual(repr(termset), output)
 
     def test_repr_html(self):
@@ -41,12 +41,13 @@ class TestTermSet(TestCase):
         output = ('<b>Schema Path: </b>tests/unit/example_test_term_set.yaml<br><b>Sources:'+
                   ' </b>NCBI_TAXON<br><b> Terms: </b><li> Homo sapiens </li><li> Mus musculus'+
                   ' </li>... ...<li> Ursus arctos horribilis </li><li> Myrmecophaga tridactyla'+
-                  ' </li><i> Number of terms:</i> 4')
+                  ' </li><i> Number of terms:</i> 5')
         self.assertEqual(termset._repr_html_(), output)
 
     def test_view_set(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        expected = ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis', 'Myrmecophaga tridactyla']
+        expected = ['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis', 'Myrmecophaga tridactyla',
+                    'Panda']
         self.assertEqual(list(termset.view_set), expected)
         self.assertIsInstance(termset.view, SchemaView)
 
