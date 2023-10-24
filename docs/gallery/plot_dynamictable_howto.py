@@ -319,6 +319,34 @@ table3 = DynamicTable(
 )
 
 ###############################################################################
+# Setting the target table of a DynamicTableRegion column of a DynamicTable
+# -------------------------------------------------------------------------
+# A subclass of DynamicTable might have a pre-defined DynamicTableRegion column
+# that references rows of another table. The target table of this column might
+# not be initialized. In this case, the target table can be set using the
+# ``target_tables`` argument of the DynamicTable constructor. This argument
+# should be a dictionary mapping the name of the DynamicTableRegion column to
+# the target table. The target table can also be set after the DynamicTable
+# has been initialized using ``my_table.my_column.table = other_table``.
+
+class SubTable(DynamicTable):
+    __columns__ = (
+        {'name': 'dtr', 'description': 'required region', 'required': True, 'table': True},
+    )
+
+referenced_table = DynamicTable(
+    name='referenced_table',
+    description='an example table',
+)
+
+sub_table = SubTable(
+    name='sub_table',
+    description='an example table',
+    target_tables={'dtr': referenced_table},
+)
+# now the target table of the DynamicTableRegion column 'dtr' is set to `referenced_table`
+
+###############################################################################
 # Creating an expandable table
 # ----------------------------
 # When using the default HDF5 backend, each column of these tables is an HDF5 Dataset,
