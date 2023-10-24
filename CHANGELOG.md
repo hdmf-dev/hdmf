@@ -1,8 +1,10 @@
 # HDMF Changelog
 
-## HDMF 3.10.1 (Upcoming)
+## HDMF 3.11.0 (Upcoming)
 
 ### Enhancements
+- Added `target_tables` attribute to `DynamicTable` to allow users to specify the target table of any predefined
+`DynamicTableRegion` columns of a `DynamicTable` subclass. @rly [#971](https://github.com/hdmf-dev/hdmf/pull/971)
 - Updated `TermSet` to include `_repr_html_` for easy to read notebook representation. @mavaylon1 [967](https://github.com/hdmf-dev/hdmf/pull/967)
 
 ## HDMF 3.10.0 (October 3, 2023)
