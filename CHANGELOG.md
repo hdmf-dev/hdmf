@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 3.11.0 (Upcoming)
+
+### Enhancements
+- Added `target_tables` attribute to `DynamicTable` to allow users to specify the target table of any predefined
+`DynamicTableRegion` columns of a `DynamicTable` subclass. @rly [#971](https://github.com/hdmf-dev/hdmf/pull/971)
+
 ## HDMF 3.10.0 (October 3, 2023)
 
 Since version 3.9.1 should have been released as 3.10.0 but failed to release on PyPI and conda-forge, this release
