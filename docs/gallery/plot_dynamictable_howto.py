@@ -321,13 +321,20 @@ table3 = DynamicTable(
 ###############################################################################
 # Setting the target table of a DynamicTableRegion column of a DynamicTable
 # -------------------------------------------------------------------------
-# A subclass of DynamicTable might have a pre-defined DynamicTableRegion column
-# that references rows of another table. The target table of this column might
-# not be initialized. In this case, the target table can be set using the
-# ``target_tables`` argument of the DynamicTable constructor. This argument
-# should be a dictionary mapping the name of the DynamicTableRegion column to
-# the target table. The target table can also be set after the DynamicTable
-# has been initialized using ``my_table.my_column.table = other_table``.
+# A subclass of DynamicTable might have a pre-defined DynamicTableRegion column.
+# To write this column correctly, the "table" attribute of the column must be set so
+# that users know to what table the row index values reference. Because the target
+# table could be any table, the "table" attribute must be set explicitly. There are three
+# ways to do so. First, you can use the ``target_tables`` argument of the
+# DynamicTable constructor as shown below. This argument
+# is a dictionary mapping the name of the DynamicTableRegion column to
+# the target table. Secondly, the target table can be set after the DynamicTable
+# has been initialized using ``my_table.my_column.table = other_table``. Finally,
+# you can create the DynamicTableRegion column and pass the ``table``
+# attribute to `DynamicTableRegion.__init__` and then pass the column to
+# `DynamicTable.__init__` using the `columns` argument. However, this approach
+# is not recommended for columns defined in the schema, because it is up to
+# the user to ensure that the column is created in accordance with the schema.
 
 class SubTable(DynamicTable):
     __columns__ = (
