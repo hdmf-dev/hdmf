@@ -5,7 +5,7 @@
 ### Enhancements
 - Added `target_tables` attribute to `DynamicTable` to allow users to specify the target table of any predefined
 `DynamicTableRegion` columns of a `DynamicTable` subclass. @rly [#971](https://github.com/hdmf-dev/hdmf/pull/971)
-- Updated custom class generation to handle specs with fixed values. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
+- Updated custom class generation to handle specs with fixed values and required names. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
 
 ## HDMF 3.10.0 (October 3, 2023)
 
