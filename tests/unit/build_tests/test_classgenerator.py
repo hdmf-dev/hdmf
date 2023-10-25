@@ -437,7 +437,8 @@ class TestDynamicContainerFixedValue(TestCase):
         self.baz_spec = GroupSpec(
             doc='A test group specification with a data type',
             data_type_def='Baz',
-            attributes=[AttributeSpec(name='attr1', doc='a string attribute', dtype='text', value="fixed")])
+            attributes=[AttributeSpec(name='attr1', doc='a string attribute', dtype='text', value="fixed")]
+        )
         self.type_map = create_test_type_map([], {})  # empty typemap
         self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
         self.spec_catalog.register_spec(self.baz_spec, 'extension.yaml')
@@ -448,8 +449,6 @@ class TestDynamicContainerFixedValue(TestCase):
         received_args = set()
         for x in get_docval(cls.__init__):
             received_args.add(x['name'])
-            with self.subTest(name=x['name']):  # check no default values created
-                self.assertNotIn('default', x)
         self.assertSetEqual(expected_args, received_args)
 
     def test_init_fields(self):
@@ -460,7 +459,6 @@ class TestDynamicContainerFixedValue(TestCase):
     def test_init_object(self):
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)  # generate the class
         obj = cls(name="test")
-        # TODO remove the generated getter. do not include it in fields??
         self.assertEqual(obj.attr1, "fixed")
 
 

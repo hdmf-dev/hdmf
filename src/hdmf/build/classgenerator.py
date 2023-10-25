@@ -299,7 +299,9 @@ class CustomClassGenerator:
         for attr_name, field_spec in not_inherited_fields.items():
             # store arguments for fields that are not in the superclass and not in the superclass __init__ docval
             # so that they are set after calling base.__init__
-            if attr_name not in parent_docval_args:
+            # except for fields that have fixed values -- these are set at the class level
+            fixed_value = getattr(field_spec, 'value', None)
+            if attr_name not in parent_docval_args and fixed_value is None:
                 new_args.append(attr_name)
 
         @docval(*docval_args, allow_positional=AllowPositional.WARNING)
