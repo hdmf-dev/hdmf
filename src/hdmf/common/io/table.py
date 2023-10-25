@@ -111,3 +111,26 @@ class DynamicTableGenerator(CustomClassGenerator):
         columns = classdict.get('__columns__')
         if columns is not None:
             classdict['__columns__'] = tuple(columns)
+
+    @classmethod
+    def _get_attrs_to_set_init(cls, classdict, not_inherited_fields, parent_docval_args):
+        # get docval arg names from superclass
+        args_to_set = list()
+        fixed_value_args_to_set = list()
+        if "__columns__" in classdict:
+            column_names = [column_conf["name"] for column_conf in classdict["__columns__"]]
+        else:
+            column_names = list()
+        for attr_name, field_spec in not_inherited_fields.items():
+            # store arguments for fields that are not in the superclass and not in the superclass __init__ docval
+            # so that they are set after calling base.__init__
+            # except for fields that have fixed values -- these are set at the class level
+            fixed_value = getattr(field_spec, 'value', None)
+            if fixed_value is not None:
+                fixed_value_args_to_set.append(attr_name)
+            elif attr_name not in parent_docval_args and attr_name not in column_names:
+                # main difference with CustomClassGenerator._get_attrs_to_set_init is
+                # that columns are excluded from the args that are set in __init__
+                args_to_set.append(attr_name)
+
+        return args_to_set, fixed_value_args_to_set
