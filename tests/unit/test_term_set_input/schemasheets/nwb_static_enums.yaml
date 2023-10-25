@@ -1,0 +1,52 @@
+classes:
+  BrainSample:
+    slot_usage:
+      cell_type: {}
+    slots:
+    - cell_type
+default_prefix: TEMP
+default_range: string
+description: this schema demonstrates the use of static enums
+enums:
+  NeuronOrGlialCellTypeEnum:
+    description: Enumeration to capture various cell types found in the brain.
+    permissible_values:
+      ASTROCYTE:
+        description: Characteristic star-shaped glial cells in the brain and spinal
+          cord.
+        meaning: CL:0000127
+      INTERNEURON:
+        description: Neurons whose axons (and dendrites) are limited to a single brain
+          area.
+        meaning: CL:0000099
+      MICROGLIAL_CELL:
+        description: Microglia are the resident immune cells of the brain and constantly
+          patrol the cerebral microenvironment to respond to pathogens and damage.
+        meaning: CL:0000129
+      MOTOR_NEURON:
+        description: Neurons whose cell body is located in the motor cortex, brainstem
+          or the spinal cord, and whose axon (fiber) projects to the spinal cord or
+          outside of the spinal cord to directly or indirectly control effector organs,
+          mainly muscles and glands.
+        meaning: CL:0000100
+      OLIGODENDROCYTE:
+        description: Type of neuroglia whose main functions are to provide support
+          and insulation to axons within the central nervous system (CNS) of jawed
+          vertebrates.
+        meaning: CL:0000128
+      PYRAMIDAL_NEURON:
+        description: Neurons with a pyramidal shaped cell body (soma) and two distinct
+          dendritic trees.
+        meaning: CL:0000598
+id: https://w3id.org/linkml/examples/nwb_static_enums
+imports:
+- linkml:types
+name: nwb_static_enums
+prefixes:
+  CL: http://purl.obolibrary.org/obo/CL_
+  TEMP: https://example.org/TEMP/
+  linkml: https://w3id.org/linkml/
+slots:
+  cell_type:
+    required: true
+title: static enums example

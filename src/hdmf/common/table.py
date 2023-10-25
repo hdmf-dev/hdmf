@@ -16,6 +16,7 @@ from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional
+from ..term_set import TermSetWrapper
 
 
 @register_class('VectorData')
@@ -291,9 +292,15 @@ class DynamicTable(Container):
             {'name': 'colnames', 'type': 'array_data',
              'doc': 'the ordered names of the columns in this table. columns must also be provided.',
              'default': None},
+            {'name': 'target_tables',
+             'doc': ('dict mapping DynamicTableRegion column name to the table that the DTR points to. The column is '
+                     'added to the table if it is not already present (i.e., when it is optional).'),
+             'type': dict,
+             'default': None},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):  # noqa: C901
         id, columns, desc, colnames = popargs('id', 'columns', 'description', 'colnames', kwargs)
+        target_tables = popargs('target_tables', kwargs)
         super().__init__(**kwargs)
         self.description = desc
 
@@ -303,7 +310,8 @@ class DynamicTable(Container):
 
         # All tables must have ElementIdentifiers (i.e. a primary key column)
         # Here, we figure out what to do for that
-        if id is not None:
+        user_provided_ids = (id is not None)
+        if user_provided_ids:
             if not isinstance(id, ElementIdentifiers):
                 id = ElementIdentifiers(name='id', data=id)
         else:
@@ -346,13 +354,22 @@ class DynamicTable(Container):
                 if isinstance(_data, AbstractDataChunkIterator):
                     colset.pop(c.name, None)
             lens = [len(c) for c in colset.values()]
+            all_columns_are_iterators = (len(lens) == 0)
+
             if not all(i == lens[0] for i in lens):
-                raise ValueError("columns must be the same length")
-            if len(lens) > 0 and lens[0] != len(id):
-                # the first part of this conditional is needed in the
-                # event that all columns are AbstractDataChunkIterators
-                if len(id) > 0:
-                    raise ValueError("must provide same number of ids as length of columns")
+                raise ValueError("Columns must be the same length")
+            # If we have columns given, but all columns are AbstractDataChunkIterator's, then we
+            # cannot determine how many elements the id column will need. I.e., in this case the
+            # user needs to provide the id's as otherwise we may create an invalid table with an
+            # empty Id column but data in the rows. See: https://github.com/hdmf-dev/hdmf/issues/952
+            if all_columns_are_iterators and not user_provided_ids:
+                raise ValueError("Cannot determine row id's for table. Must provide ids with same length "
+                                 "as the columns when all columns are specified via DataChunkIterator objects.")
+            # If we have columns with a known length but the length (i.e., number of rows)
+            # does not match the number of id's then initialize the id's
+            if not all_columns_are_iterators and lens[0] != len(id):
+                if user_provided_ids and len(id) > 0:
+                    raise ValueError("Must provide same number of ids as length of columns")
                 else:  # set ids to: 0 to length of columns - 1
                     id.data.extend(range(lens[0]))
 
@@ -457,6 +474,10 @@ class DynamicTable(Container):
         self.__colids = {name: i + 1 for i, name in enumerate(self.colnames)}
         self._init_class_columns()
 
+        if target_tables:
+            self._set_dtr_targets(target_tables)
+
+
     def __set_table_attr(self, col):
         if hasattr(self, col.name) and col.name not in self.__uninit_cols:
             msg = ("An attribute '%s' already exists on %s '%s' so this column cannot be accessed as an attribute, "
@@ -504,6 +525,40 @@ class DynamicTable(Container):
                     if col.get('enum', False):
                         self.__uninit_cols[col['name'] + '_elements'] = col
                         setattr(self, col['name'] + '_elements', None)
+
+    def _set_dtr_targets(self, target_tables: dict):
+        """Set the target tables for DynamicTableRegion columns.
+
+        If a column is not yet initialized, it is initialized with the target table.
+        """
+        for colname, table in target_tables.items():
+            if colname not in self:  # column has not yet been added (it is optional)
+                column_conf = None
+                for conf in self.__columns__:
+                    if conf['name'] == colname:
+                        column_conf = conf
+                        break
+                if column_conf is None:
+                    raise ValueError("'%s' is not the name of a predefined column of table %s."
+                                        % (colname, self))
+                if not column_conf.get('table', False):
+                    raise ValueError("Column '%s' must be a DynamicTableRegion to have a target table."
+                                        % colname)
+                self.add_column(name=column_conf['name'],
+                                description=column_conf['description'],
+                                index=column_conf.get('index', False),
+                                table=True)
+            if isinstance(self[colname], VectorIndex):
+                col = self[colname].target
+            else:
+                col = self[colname]
+            if not isinstance(col, DynamicTableRegion):
+                raise ValueError("Column '%s' must be a DynamicTableRegion to have a target table." % colname)
+            # if columns are passed in, then the "table" attribute may have already been set
+            if col.table is not None and col.table is not table:
+                raise ValueError("Column '%s' already has a target table that is not the passed table." % colname)
+            if col.table is None:
+                col.table = table
 
     @staticmethod
     def __build_columns(columns, df=None):
@@ -572,8 +627,26 @@ class DynamicTable(Container):
         data, row_id, enforce_unique_id = popargs('data', 'id', 'enforce_unique_id', kwargs)
         data = data if data is not None else kwargs
 
+        bad_data = []
         extra_columns = set(list(data.keys())) - set(list(self.__colids.keys()))
         missing_columns = set(list(self.__colids.keys())) - set(list(data.keys()))
+
+        for colname, colnum in self.__colids.items():
+            if colname not in data:
+                raise ValueError("column '%s' missing" % colname)
+            col = self.__df_cols[colnum]
+            if isinstance(col, VectorIndex):
+                continue
+            else:
+                if isinstance(col.data, TermSetWrapper):
+                    if col.data.termset.validate(term=data[colname]):
+                        continue
+                    else:
+                        bad_data.append(data[colname])
+
+        if len(bad_data)!=0:
+            msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+            raise ValueError(msg)
 
         # check to see if any of the extra columns just need to be added
         if extra_columns:
@@ -667,7 +740,7 @@ class DynamicTable(Container):
         :raises ValueError: if the column has already been added to the table
         """
         name, data = getargs('name', 'data', kwargs)
-        index, table, enum, col_cls = popargs('index', 'table', 'enum', 'col_cls', kwargs)
+        index, table, enum, col_cls= popargs('index', 'table', 'enum', 'col_cls', kwargs)
 
         if isinstance(index, VectorIndex):
             warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
@@ -1377,6 +1450,26 @@ class DynamicTableRegion(VectorData):
                                                               self.table.__class__.__name__,
                                                               id(self.table))
         return template
+
+    def _validate_on_set_parent(self):
+        # when this DynamicTableRegion is added to a parent, check:
+        # 1) if the table was read from a written file, no need to validate further
+        p = self.table
+        while p is not None:
+            if p.container_source is not None:
+                return super()._validate_on_set_parent()
+            p = p.parent
+
+        # 2) if none of the ancestors are ancestors of the linked-to table, then when this is written, the table
+        # field will point to a table that is not in the file
+        table_ancestor_ids = [id(x) for x in self.table.get_ancestors()]
+        self_ancestor_ids = [id(x) for x in self.get_ancestors()]
+
+        if set(table_ancestor_ids).isdisjoint(self_ancestor_ids):
+            msg = (f"The linked table for DynamicTableRegion '{self.name}' does not share an ancestor with the "
+                   "DynamicTableRegion.")
+            warn(msg)
+        return super()._validate_on_set_parent()
 
 
 def _uint_precision(elements):

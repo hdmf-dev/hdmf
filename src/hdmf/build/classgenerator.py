@@ -1,5 +1,5 @@
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, date
 
 import numpy as np
 
@@ -126,8 +126,8 @@ class CustomClassGenerator:
         'ascii': bytes,
         'bytes': bytes,
         'bool': (bool, np.bool_),
-        'isodatetime': datetime,
-        'datetime': datetime
+        'isodatetime': (datetime, date),
+        'datetime': (datetime, date)
     }
 
     @classmethod

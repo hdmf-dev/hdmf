@@ -1,11 +1,9 @@
 import copy
 import math
-import functools  # TODO: remove when Python 3.7 support is dropped - see #785
-import operator  # TODO: remove when Python 3.7 support is dropped
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from warnings import warn
-from typing import Tuple
+from typing import Tuple, Callable
 from itertools import product, chain
 
 import h5py
@@ -16,6 +14,9 @@ from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
 def append_data(data, arg):
     if isinstance(data, (list, DataIO)):
+        data.append(arg)
+        return data
+    elif type(data).__name__ == 'TermSetWrapper': # circular import
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):
@@ -38,6 +39,9 @@ def extend_data(data, arg):
     :type data: list, DataIO, np.ndarray, h5py.Dataset
     """
     if isinstance(data, (list, DataIO)):
+        data.extend(arg)
+        return data
+    elif type(data).__name__ == 'TermSetWrapper':
         data.extend(arg)
         return data
     elif isinstance(data, np.ndarray):
@@ -156,7 +160,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             doc=(
                 "If chunk_shape is not specified, it will be inferred as the smallest chunk "
                 "below the chunk_mb threshold.",
-                "Defaults to 1MB.",
+                "Defaults to 10MB.",
             ),
             default=None,
         ),
@@ -189,18 +193,18 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         Advanced users are offered full control over the shape parameters for the buffer and the chunks; however,
         the chunk shape must perfectly divide the buffer shape along each axis.
 
-        HDF5 also recommends not setting chunk_mb greater than 1 MB for optimal caching speeds.
-        See https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
-        for more details.
+        HDF5 recommends chunk size in the range of 2 to 16 MB for optimal cloud performance.
+        https://youtu.be/rcS5vt-mKok?t=621
         """
-        buffer_gb, buffer_shape, chunk_mb, chunk_shape, self.display_progress, self.progress_bar_options = getargs(
+        buffer_gb, buffer_shape, chunk_mb, chunk_shape, self.display_progress, progress_bar_options = getargs(
             "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", "display_progress", "progress_bar_options", kwargs
         )
+        self.progress_bar_options = progress_bar_options or dict()
 
         if buffer_gb is None and buffer_shape is None:
             buffer_gb = 1.0
         if chunk_mb is None and chunk_shape is None:
-            chunk_mb = 1.0
+            chunk_mb = 10.0
         assert (buffer_gb is not None) != (
             buffer_shape is not None
         ), "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
@@ -237,15 +241,11 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             f"evenly divide the buffer shape ({self.buffer_shape})!"
         )
 
-        # TODO: replace with below when Python 3.7 support is dropped
-        # self.num_buffers = math.prod(
-        self.num_buffers = functools.reduce(
-            operator.mul,
+        self.num_buffers = math.prod(
             [
                 math.ceil(maxshape_axis / buffer_axis)
                 for buffer_axis, maxshape_axis in zip(self.buffer_shape, self.maxshape)
             ],
-            1,
         )
         self.buffer_selection_generator = (
             tuple(
@@ -271,15 +271,13 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         )
 
         if self.display_progress:
-            if self.progress_bar_options is None:
-                self.progress_bar_options = dict()
-
             try:
                 from tqdm import tqdm
 
                 if "total" in self.progress_bar_options:
                     warn("Option 'total' in 'progress_bar_options' is not allowed to be over-written! Ignoring.")
                     self.progress_bar_options.pop("total")
+
                 self.progress_bar = tqdm(total=self.num_buffers, **self.progress_bar_options)
             except ImportError:
                 warn(
@@ -311,15 +309,11 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
         min_maxshape = min(self.maxshape)
         v = tuple(math.floor(maxshape_axis / min_maxshape) for maxshape_axis in self.maxshape)
-        # TODO: replace with below when Python 3.7 support is dropped
-        # prod_v = math.prod(v)
-        prod_v = functools.reduce(operator.mul, v, 1)
+        prod_v = math.prod(v)
         while prod_v * itemsize > chunk_bytes and prod_v != 1:
             non_unit_min_v = min(x for x in v if x != 1)
             v = tuple(math.floor(x / non_unit_min_v) if x != 1 else x for x in v)
-            # TODO: replace with below when Python 3.7 support is dropped
-            # prod_v = math.prod(v)
-            prod_v = functools.reduce(operator.mul, v, 1)
+            prod_v = math.prod(v)
         k = math.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
         return tuple([min(k * x, self.maxshape[dim]) for dim, x in enumerate(v)])
 
@@ -346,9 +340,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
         k = math.floor(
             (
-                # TODO: replace with below when Python 3.7 support is dropped
-                # buffer_gb * 1e9 / (math.prod(self.chunk_shape) * self.dtype.itemsize)
-                buffer_gb * 1e9 / (functools.reduce(operator.mul, self.chunk_shape, 1) * self.dtype.itemsize)
+                buffer_gb * 1e9 / (math.prod(self.chunk_shape) * self.dtype.itemsize)
             ) ** (1 / len(self.chunk_shape))
         )
         return tuple(
@@ -357,12 +349,6 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 for j, x in enumerate(self.chunk_shape)
             ]
         )
-
-    def recommended_chunk_shape(self) -> Tuple[int, ...]:
-        return self.chunk_shape
-
-    def recommended_data_shape(self) -> Tuple[int, ...]:
-        return self.maxshape
 
     def __iter__(self):
         return self
@@ -384,6 +370,11 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 self.progress_bar.write("\n")  # Allows text to be written to new lines after completion
             raise StopIteration
 
+    def __reduce__(self) -> Tuple[Callable, Iterable]:
+        instance_constructor = self._from_dict
+        initialization_args = (self._to_dict(),)
+        return (instance_constructor, initialization_args)
+
     @abstractmethod
     def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
         """
@@ -404,23 +395,41 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         """
         raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
 
-    @property
-    def maxshape(self) -> Tuple[int, ...]:
-        return self._maxshape
-
     @abstractmethod
     def _get_maxshape(self) -> Tuple[int, ...]:
         """Retrieve the maximum bounds of the data shape using minimal I/O."""
         raise NotImplementedError("The setter for the maxshape property has not been built for this DataChunkIterator!")
 
-    @property
-    def dtype(self) -> np.dtype:
-        return self._dtype
-
     @abstractmethod
     def _get_dtype(self) -> np.dtype:
         """Retrieve the dtype of the data using minimal I/O."""
         raise NotImplementedError("The setter for the internal dtype has not been built for this DataChunkIterator!")
+
+    def _to_dict(self) -> dict:
+        """Optional method to add in child classes to enable pickling (required for multiprocessing)."""
+        raise NotImplementedError(
+            "The `._to_dict()` method for pickling has not been defined for this DataChunkIterator!"
+        )
+
+    @staticmethod
+    def _from_dict(self) -> Callable:
+        """Optional method to add in child classes to enable pickling (required for multiprocessing)."""
+        raise NotImplementedError(
+            "The `._from_dict()` method for pickling has not been defined for this DataChunkIterator!"
+        )
+
+    def recommended_chunk_shape(self) -> Tuple[int, ...]:
+        return self.chunk_shape
+
+    def recommended_data_shape(self) -> Tuple[int, ...]:
+        return self.maxshape
+
+    @property
+    def maxshape(self) -> Tuple[int, ...]:
+        return self._maxshape
+    @property
+    def dtype(self) -> np.dtype:
+        return self._dtype
 
 
 class DataChunkIterator(AbstractDataChunkIterator):

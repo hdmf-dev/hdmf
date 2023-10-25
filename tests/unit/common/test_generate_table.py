@@ -10,7 +10,7 @@ from hdmf.spec import GroupSpec, DatasetSpec, SpecCatalog, SpecNamespace, Namesp
 from hdmf.testing import TestCase
 from hdmf.validate import ValidatorMap
 
-from tests.unit.utils import CORE_NAMESPACE
+from tests.unit.helpers.utils import CORE_NAMESPACE
 
 
 class TestDynamicDynamicTable(TestCase):

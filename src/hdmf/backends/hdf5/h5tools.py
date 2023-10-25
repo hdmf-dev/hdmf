@@ -17,6 +17,7 @@ from ..warnings import BrokenLinkWarning
 from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
                       ReferenceBuilder, TypeMap, ObjectMapper)
 from ...container import Container
+from ...term_set import TermSetWrapper
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset
@@ -29,12 +30,25 @@ H5_BINARY = special_dtype(vlen=bytes)
 H5_REF = special_dtype(ref=Reference)
 H5_REGREF = special_dtype(ref=RegionReference)
 
+RDCC_NBYTES = 32*2**20  # set raw data chunk cache size = 32 MiB
+
 H5PY_3 = h5py.__version__.startswith('3')
 
 
 class HDF5IO(HDMFIO):
 
     __ns_spec_path = 'namespace'  # path to the namespace dataset within a namespace group
+
+    @staticmethod
+    def can_read(path):
+        """Determines whether a given path is readable by the HDF5IO class"""
+        if not os.path.isfile(path):
+            return False
+        try:
+            with h5py.File(path, "r"):
+                return True
+        except IOError:
+            return False
 
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'mode', 'type': str,
@@ -46,28 +60,24 @@ class HDF5IO(HDMFIO):
              'doc': 'the BuildManager or a TypeMap to construct a BuildManager to use for I/O', 'default': None},
             {'name': 'comm', 'type': 'Intracomm',
              'doc': 'the MPI communicator to use for parallel I/O', 'default': None},
-            {'name': 'file', 'type': [File, "S3File"], 'doc': 'a pre-existing h5py.File object', 'default': None},
-            {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None})
+            {'name': 'file', 'type': [File, "S3File", "RemFile"],
+             'doc': 'a pre-existing h5py.File, S3File, or RemFile object', 'default': None},
+            {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+            {'name': 'herd_path', 'type': str,
+             'doc': 'The path to read/write the HERD file', 'default': None},)
     def __init__(self, **kwargs):
         """Open an HDF5 file for IO.
         """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
-        path, manager, mode, comm, file_obj, driver = popargs('path', 'manager', 'mode', 'comm', 'file', 'driver',
-                                                              kwargs)
+        path, manager, mode, comm, file_obj, driver, herd_path = popargs('path', 'manager', 'mode',
+                                                                                       'comm', 'file', 'driver',
+                                                                                       'herd_path',
+                                                                                       kwargs)
 
         self.__open_links = []  # keep track of other files opened from links in this file
         self.__file = None  # This will be set below, but set to None first in case an error occurs and we need to close
 
-        if path is None and file_obj is None:
-            raise ValueError("You must supply either a path or a file.")
-
-        if isinstance(path, Path):
-            path = str(path)
-
-        if file_obj is not None and path is not None and os.path.abspath(file_obj.filename) != os.path.abspath(path):
-            msg = 'You argued %s as this object\'s path, ' % path
-            msg += 'but supplied a file with filename: %s' % file_obj.filename
-            raise ValueError(msg)
+        path = self.__check_path_file_obj(path, file_obj)
 
         if file_obj is None and not os.path.exists(path) and (mode == 'r' or mode == 'r+') and driver != 'ros3':
             msg = "Unable to open file %s in '%s' mode. File does not exist." % (path, mode)
@@ -85,9 +95,10 @@ class HDF5IO(HDMFIO):
         self.__comm = comm
         self.__mode = mode
         self.__file = file_obj
-        super().__init__(manager, source=path)
-        self.__built = dict()       # keep track of each builder for each dataset/group/link for each file
-        self.__read = dict()        # keep track of which files have been read. Key is the filename value is the builder
+        super().__init__(manager, source=path, herd_path=herd_path)
+        # NOTE: source is not set if path is None and file_obj is passed
+        self.__built = dict() # keep track of each builder for each dataset/group/link for each file
+        self.__read = dict() # keep track of which files have been read. Key is the filename value is the builder
         self.__ref_queue = deque()  # a queue of the references that need to be added
         self.__dci_queue = HDF5IODataChunkIteratorQueue()  # a queue of DataChunkIterators that need to be exhausted
         ObjectMapper.no_convert(Dataset)
@@ -106,8 +117,8 @@ class HDF5IO(HDMFIO):
     def driver(self):
         return self.__driver
 
-    @staticmethod
-    def __resolve_file_obj(path, file_obj, driver):
+    @classmethod
+    def __check_path_file_obj(cls, path, file_obj):
         if isinstance(path, Path):
             path = str(path)
 
@@ -119,6 +130,12 @@ class HDF5IO(HDMFIO):
                 msg = ("You argued '%s' as this object's path, but supplied a file with filename: %s"
                        % (path, file_obj.filename))
                 raise ValueError(msg)
+
+        return path
+
+    @classmethod
+    def __resolve_file_obj(cls, path, file_obj, driver):
+        path = cls.__check_path_file_obj(path, file_obj)
 
         if file_obj is None:
             file_kwargs = dict()
@@ -192,12 +209,7 @@ class HDF5IO(HDMFIO):
 
     @classmethod
     def __check_specloc(cls, file_obj):
-        if SPEC_LOC_ATTR not in file_obj.attrs:
-            # this occurs in legacy files
-            msg = "No cached namespaces found in %s" % file_obj.filename
-            warnings.warn(msg)
-            return False
-        return True
+        return SPEC_LOC_ATTR in file_obj.attrs
 
     @classmethod
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
@@ -348,7 +360,10 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'exhaust_dci', 'type': bool,
              'doc': 'If True (default), exhaust DataChunkIterators one at a time. If False, exhaust them concurrently.',
-             'default': True})
+             'default': True},
+            {'name': 'herd', 'type': 'HERD',
+             'doc': 'A HERD object to populate with references.',
+             'default': None})
     def write(self, **kwargs):
         """Write the container to an HDF5 file."""
         if self.__mode == 'r':
@@ -391,6 +406,8 @@ class HDF5IO(HDMFIO):
          'default': None},
         {'name': 'cache_spec', 'type': bool, 'doc': 'whether to cache the specification to file',
          'default': True}
+        # clear_cache is an arg on HDMFIO.export but it is intended for internal usage
+        # so it is not available on HDF5IO
     )
 
     @docval(*_export_args)
@@ -412,11 +429,20 @@ class HDF5IO(HDMFIO):
             raise UnsupportedOperation("Cannot export from non-HDF5 backend %s to HDF5 with write argument "
                                        "link_data=True." % src_io.__class__.__name__)
 
-        write_args['export_source'] = src_io.source  # pass export_source=src_io.source to write_builder
+        write_args['export_source'] = os.path.abspath(src_io.source) if src_io.source is not None else None
         ckwargs = kwargs.copy()
         ckwargs['write_args'] = write_args
+        if not write_args.get('link_data', True):
+            ckwargs['clear_cache'] = True
         super().export(**ckwargs)
         if cache_spec:
+            # add any namespaces from the src_io that have not yet been loaded
+            for namespace in src_io.manager.namespace_catalog.namespaces:
+                if namespace not in self.manager.namespace_catalog.namespaces:
+                    self.manager.namespace_catalog.add_namespace(
+                        name=namespace,
+                        namespace=src_io.manager.namespace_catalog.get_namespace(namespace)
+                    )
             self.__cache_spec()
 
     @classmethod
@@ -572,11 +598,11 @@ class HDF5IO(HDMFIO):
             name = str(os.path.basename(h5obj.name))
         for k in h5obj:
             sub_h5obj = h5obj.get(k)
-            if not (sub_h5obj is None):
+            if sub_h5obj is not None:
                 if sub_h5obj.name in ignore:
                     continue
                 link_type = h5obj.get(k, getlink=True)
-                if isinstance(link_type, SoftLink) or isinstance(link_type, ExternalLink):
+                if isinstance(link_type, (SoftLink, ExternalLink)):
                     # Reading links might be better suited in its own function
                     # get path of link (the key used for tracking what's been built)
                     target_path = link_type.path
@@ -590,8 +616,8 @@ class HDF5IO(HDMFIO):
                             builder = self.__read_dataset(target_obj, builder_name)
                         else:
                             builder = self.__read_group(target_obj, builder_name, ignore=ignore)
-                        self.__set_built(sub_h5obj.file.filename,  target_obj.id, builder)
-                    link_builder = LinkBuilder(builder=builder, name=k, source=h5obj.file.filename)
+                        self.__set_built(sub_h5obj.file.filename, target_obj.id, builder)
+                    link_builder = LinkBuilder(builder=builder, name=k, source=os.path.abspath(h5obj.file.filename))
                     link_builder.location = h5obj.name
                     self.__set_written(link_builder)
                     kwargs['links'][builder_name] = link_builder
@@ -615,7 +641,7 @@ class HDF5IO(HDMFIO):
                 warnings.warn('Path to Group altered/broken at ' + os.path.join(h5obj.name, k), BrokenLinkWarning)
                 kwargs['datasets'][k] = None
                 continue
-        kwargs['source'] = h5obj.file.filename
+        kwargs['source'] = os.path.abspath(h5obj.file.filename)
         ret = GroupBuilder(name, **kwargs)
         ret.location = os.path.dirname(h5obj.name)
         self.__set_written(ret)
@@ -633,9 +659,9 @@ class HDF5IO(HDMFIO):
 
         if name is None:
             name = str(os.path.basename(h5obj.name))
-        kwargs['source'] = h5obj.file.filename
+        kwargs['source'] = os.path.abspath(h5obj.file.filename)
         ndims = len(h5obj.shape)
-        if ndims == 0:                                       # read scalar
+        if ndims == 0:  # read scalar
             scalar = h5obj[()]
             if isinstance(scalar, bytes):
                 scalar = scalar.decode('UTF-8')
@@ -665,7 +691,7 @@ class HDF5IO(HDMFIO):
                 elif isinstance(elem1, Reference):
                     d = BuilderH5ReferenceDataset(h5obj, self)
                     kwargs['dtype'] = d.dtype
-            elif h5obj.dtype.kind == 'V':    # table / compound data type
+            elif h5obj.dtype.kind == 'V':  # table / compound data type
                 cpd_dt = h5obj.dtype
                 ref_cols = [check_dtype(ref=cpd_dt[i]) or check_dtype(vlen=cpd_dt[i]) for i in range(len(cpd_dt))]
                 d = BuilderH5TableDataset(h5obj, self, ref_cols)
@@ -695,7 +721,7 @@ class HDF5IO(HDMFIO):
     def __read_attrs(self, h5obj):
         ret = dict()
         for k, v in h5obj.attrs.items():
-            if k == SPEC_LOC_ATTR:     # ignore cached spec
+            if k == SPEC_LOC_ATTR:  # ignore cached spec
                 continue
             if isinstance(v, RegionReference):
                 raise ValueError("cannot read region reference attributes yet")
@@ -721,7 +747,7 @@ class HDF5IO(HDMFIO):
     def open(self):
         if self.__file is None:
             open_flag = self.__mode
-            kwargs = dict()
+            kwargs = dict(rdcc_nbytes=RDCC_NBYTES)
             if self.comm:
                 kwargs.update(driver='mpio', comm=self.comm)
 
@@ -912,14 +938,14 @@ class HDF5IO(HDMFIO):
                     self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                       % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                     obj.attrs[key] = value
-                elif isinstance(value, (Container, Builder, ReferenceBuilder)):           # a reference
+                elif isinstance(value, (Container, Builder, ReferenceBuilder)):  # a reference
                     self.__queue_ref(self._make_attr_ref_filler(obj, key, value))
                 else:
                     self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                       % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
                     if isinstance(value, np.ndarray) and value.dtype.kind == 'U':
                         value = np.array(value, dtype=H5_TEXT)
-                    obj.attrs[key] = value                   # a regular scalar
+                    obj.attrs[key] = value  # a regular scalar
             except Exception as e:
                 msg = "unable to write attribute '%s' on object '%s'" % (key, obj.name)
                 raise RuntimeError(msg) from e
@@ -1021,13 +1047,13 @@ class HDF5IO(HDMFIO):
         else:
             write_source = export_source
 
-        if write_source == target_builder.source:
+        parent_filename = os.path.abspath(parent.file.filename)
+        if target_builder.source in (write_source, parent_filename):
             link_obj = SoftLink(path)
             self.logger.debug("    Creating SoftLink '%s/%s' to '%s'"
                               % (parent.name, name, link_obj.path))
         elif target_builder.source is not None:
             target_filename = os.path.abspath(target_builder.source)
-            parent_filename = os.path.abspath(parent.file.filename)
             relative_path = os.path.relpath(target_filename, os.path.dirname(parent_filename))
             if target_builder.location is not None:
                 path = target_builder.location + "/" + target_builder.name
@@ -1066,7 +1092,7 @@ class HDF5IO(HDMFIO):
         name = builder.name
         data = builder.data
         dataio = None
-        options = dict()   # dict with additional
+        options = dict()  # dict with additional
         if isinstance(data, H5DataIO):
             options['io_settings'] = data.io_settings
             dataio = data
@@ -1074,6 +1100,10 @@ class HDF5IO(HDMFIO):
             data = data.data
         else:
             options['io_settings'] = {}
+        if isinstance(data, TermSetWrapper):
+            # This is for when the wrapped item is a dataset
+            # (refer to objectmapper.py for wrapped attributes)
+            data = data.value
         attributes = builder.attributes
         options['dtype'] = builder.dtype
         dset = None

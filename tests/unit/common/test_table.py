@@ -6,14 +6,22 @@ import pandas as pd
 import unittest
 
 from hdmf import Container
+from hdmf import TermSet, TermSetWrapper
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 from hdmf.backends.hdf5.h5tools import H5_TEXT, H5PY_3
 from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, EnumData,
                          DynamicTableRegion, get_manager, SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
+from hdmf.data_utils import DataChunkIterator
 
-from tests.unit.utils import get_temp_filepath
+from tests.unit.helpers.utils import get_temp_filepath
+
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 
 class TestDynamicTable(TestCase):
@@ -92,9 +100,113 @@ class TestDynamicTable(TestCase):
     def test_constructor_ids_bad_ids(self):
         columns = [VectorData(name=s['name'], description=s['description'], data=d)
                    for s, d in zip(self.spec, self.data)]
-        msg = "must provide same number of ids as length of columns"
+        msg = "Must provide same number of ids as length of columns"
         with self.assertRaisesWith(ValueError, msg):
             DynamicTable(name="with_columns", description='a test table', id=[0, 1], columns=columns)
+
+    def test_constructor_all_columns_are_iterators(self):
+        """
+        All columns are specified via AbstractDataChunkIterator but no id's are given.
+        Test that an error is being raised because we can't determine the id's.
+        """
+        data = np.array([1., 2., 3.])
+        column = VectorData(name="TestColumn", description="", data=DataChunkIterator(data))
+        msg = ("Cannot determine row id's for table. Must provide ids with same length "
+               "as the columns when all columns are specified via DataChunkIterator objects.")
+        with self.assertRaisesWith(ValueError, msg):
+            _ = DynamicTable(name="TestTable", description="", columns=[column])
+        # now test that when we supply id's that the error goes away
+        _ = DynamicTable(name="TestTable", description="", columns=[column], id=list(range(3)))
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_col_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1])
+        species.add_column(name='Species_2',
+                           description='Species data',
+                           data=TermSetWrapper(value=['Mus musculus'], termset=terms))
+        expected_df_data = \
+            {'Species_1': {0: 'Homo sapiens'},
+             'Species_2': {0: 'Mus musculus'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+        expected_df.index.name = 'id'
+        pd.testing.assert_frame_equal(species.to_dataframe(), expected_df)
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_col_validate_bad_data(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1])
+        with self.assertRaises(ValueError):
+            species.add_column(name='Species_2',
+                               description='Species data',
+                               data=TermSetWrapper(value=['bad data'],
+                                                   termset=terms))
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_row_validate(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
+        )
+        col2 = VectorData(
+            name='Species_2',
+            description='...',
+            data=TermSetWrapper(value=['Mus musculus'], termset=terms)
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1,col2])
+        species.add_row(Species_1='Myrmecophaga tridactyla', Species_2='Ursus arctos horribilis')
+        expected_df_data = \
+            {'Species_1': {0: 'Homo sapiens', 1: 'Myrmecophaga tridactyla'},
+             'Species_2': {0: 'Mus musculus', 1: 'Ursus arctos horribilis'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+        expected_df.index.name = 'id'
+        pd.testing.assert_frame_equal(species.to_dataframe(), expected_df)
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_row_validate_bad_data_one_col(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
+        )
+        col2 = VectorData(
+            name='Species_2',
+            description='...',
+            data=TermSetWrapper(value=['Mus musculus'], termset=terms)
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1,col2])
+        with self.assertRaises(ValueError):
+            species.add_row(Species_1='bad', Species_2='Ursus arctos horribilis')
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_row_validate_bad_data_all_col(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
+        )
+        col2 = VectorData(
+            name='Species_2',
+            description='...',
+            data=TermSetWrapper(value=['Mus musculus'], termset=terms)
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1,col2])
+        with self.assertRaises(ValueError):
+            species.add_row(Species_1='bad data', Species_2='bad data')
 
     def test_constructor_bad_columns(self):
         columns = ['bad_column']
@@ -105,7 +217,7 @@ class TestDynamicTable(TestCase):
     def test_constructor_unequal_length_columns(self):
         columns = [VectorData(name='col1', description='desc', data=[1, 2, 3]),
                    VectorData(name='col2', description='desc', data=[1, 2])]
-        msg = "columns must be the same length"
+        msg = "Columns must be the same length"
         with self.assertRaisesWith(ValueError, msg):
             DynamicTable(name="with_columns", description='a test table', columns=columns)
 
@@ -1018,7 +1130,7 @@ class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
         super().setUp()
 
     def setUpContainer(self):
-        multi_container = SimpleMultiContainer(name='multi', containers=[self.table, self.target_table])
+        multi_container = SimpleMultiContainer(name='multi', containers=[self.target_table, self.table])
         return multi_container
 
     def _get(self, arg):
@@ -1485,6 +1597,97 @@ class TestDynamicTableClassColumns(TestCase):
         msg = "'columns' contains columns with duplicate names: ['col1', 'col1']"
         with self.assertRaisesWith(ValueError, msg):
             SubTable(name='subtable', description='subtable description', columns=[col1_ind, col1])
+
+    def test_no_set_target_tables(self):
+        """Test that the target table of a predefined DTR column is None."""
+        table = SubTable(name='subtable', description='subtable description')
+        self.assertIsNone(table.col5.table)
+
+    def test_set_target_tables(self):
+        """Test setting target tables for predefined DTR columns."""
+        table1 = SubTable(name='subtable1', description='subtable description')
+        table2 = SubTable(
+            name='subtable2',
+            description='subtable description',
+            target_tables={
+                'col5': table1,
+                'col6': table1,
+                'col7': table1,
+                'col8': table1,
+            },
+        )
+        self.assertIs(table2.col5.table, table1)
+        self.assertIs(table2.col6.table, table1)
+        self.assertIs(table2.col7.table, table1)
+        self.assertIs(table2.col8.table, table1)
+
+    def test_set_target_tables_unknown_col(self):
+        """Test setting target tables for unknown columns."""
+        table1 = SubTable(name='subtable1', description='subtable description')
+        msg = r"'bad_col' is not the name of a predefined column of table subtable2 .*"
+        with self.assertRaisesRegex(ValueError, msg):
+            SubTable(
+                name='subtable2',
+                description='subtable description',
+                target_tables={
+                    'bad_col': table1,
+                },
+            )
+
+    def test_set_target_tables_bad_init_col(self):
+        """Test setting target tables for predefined, required non-DTR columns."""
+        table1 = SubTable(name='subtable1', description='subtable description')
+        msg = "Column 'col1' must be a DynamicTableRegion to have a target table."
+        with self.assertRaisesWith(ValueError, msg):
+            SubTable(
+                name='subtable2',
+                description='subtable description',
+                target_tables={
+                    'col1': table1,
+                },
+            )
+
+    def test_set_target_tables_bad_opt_col(self):
+        """Test setting target tables for predefined, optional non-DTR columns."""
+        table1 = SubTable(name='subtable1', description='subtable description')
+        msg = "Column 'col2' must be a DynamicTableRegion to have a target table."
+        with self.assertRaisesWith(ValueError, msg):
+            SubTable(
+                name='subtable2',
+                description='subtable description',
+                target_tables={
+                    'col2': table1,
+                },
+            )
+
+    def test_set_target_tables_existing_col_mismatch(self):
+        """Test setting target tables for an existing DTR column with a mismatched, existing target table."""
+        table1 = SubTable(name='subtable1', description='subtable description')
+        table2 = SubTable(name='subtable2', description='subtable description')
+        dtr = DynamicTableRegion(name='dtr', data=[], description='desc', table=table1)
+        msg = "Column 'dtr' already has a target table that is not the passed table."
+        with self.assertRaisesWith(ValueError, msg):
+            SubTable(
+                name='subtable3',
+                description='subtable description',
+                columns=[dtr],
+                target_tables={
+                    'dtr': table2,
+                },
+            )
+
+    def test_set_target_tables_existing_col_match(self):
+        """Test setting target tables for an existing DTR column with a matching, existing target table."""
+        table1 = SubTable(name='subtable1', description='subtable description')
+        dtr = DynamicTableRegion(name='dtr', data=[], description='desc', table=table1)
+        SubTable(
+            name='subtable2',
+            description='subtable description',
+            columns=[dtr],
+            target_tables={
+                'dtr': table1,
+            },
+        )
 
 
 class TestEnumData(TestCase):

@@ -6,7 +6,7 @@ from hdmf.spec.spec import ZERO_OR_MANY, ONE_OR_MANY, ZERO_OR_ONE, DEF_QUANTITY
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
-from tests.unit.utils import CORE_NAMESPACE
+from tests.unit.helpers.utils import CORE_NAMESPACE
 
 
 ##########################

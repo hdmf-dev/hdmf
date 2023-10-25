@@ -21,33 +21,32 @@ Latest Release
 Overall Health
 ==============
 
-.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20code%20coverage/badge.svg
+.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_coverage.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_coverage.yml
 
-.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20tests/badge.svg
+.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_tests.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_tests.yml
 
-.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20style%20check/badge.svg
-    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_flake8.yml
+.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/codespell.yml/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/codespell.yml
 
-.. image:: https://github.com/hdmf-dev/hdmf/workflows/Check%20Sphinx%20external%20links/badge.svg
+.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/ruff.yml/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/ruff.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/check_external_links.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/check_external_links.yml
 
-.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20PyNWB%20tests/badge.svg
+.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_pynwb_tests.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_pynwb_tests.yml
 
-.. image:: https://github.com/hdmf-dev/hdmf/workflows/Run%20all%20tests/badge.svg
+.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_all_tests.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_all_tests.yml
 
-.. image:: https://github.com/hdmf-dev/hdmf/workflows/Deploy%20release/badge.svg
+.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/deploy_release.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/deploy_release.yml
 
 .. image:: https://codecov.io/gh/hdmf-dev/hdmf/branch/dev/graph/badge.svg
     :target: https://codecov.io/gh/hdmf-dev/hdmf
-
-.. image:: https://requires.io/github/hdmf-dev/hdmf/requirements.svg?branch=dev
-     :target: https://requires.io/github/hdmf-dev/hdmf/requirements/?branch=dev
-     :alt: Requirements Status
 
 .. image:: https://readthedocs.org/projects/hdmf/badge/?version=stable
      :target: https://hdmf.readthedocs.io/en/stable/?badge=stable

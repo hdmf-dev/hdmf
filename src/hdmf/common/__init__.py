@@ -203,13 +203,13 @@ if os.path.exists(__resources['namespace_path']):
     load_namespaces(__resources['namespace_path'])
 
     # import these so the TypeMap gets populated
-    from . import io as __io  # noqa: F401,E402
+    from . import io as __io  # noqa: E402
 
-    from . import table  # noqa: F401,E402
-    from . import alignedtable  # noqa: F401,E402
-    from . import sparse  # noqa: F401,E402
-    from . import resources  # noqa: F401,E402
-    from . import multi  # noqa: F401,E402
+    from . import table  # noqa: E402
+    from . import alignedtable  # noqa: E402
+    from . import sparse  # noqa: E402
+    from . import resources  # noqa: E402
+    from . import multi  # noqa: E402
 
     # register custom class generators
     from .io.table import DynamicTableGenerator
@@ -230,6 +230,6 @@ ElementIdentifiers = get_class('ElementIdentifiers', CORE_NAMESPACE)
 DynamicTableRegion = get_class('DynamicTableRegion', CORE_NAMESPACE)
 EnumData = get_class('EnumData', EXP_NAMESPACE)
 CSRMatrix = get_class('CSRMatrix', CORE_NAMESPACE)
-ExternalResources = get_class('ExternalResources', EXP_NAMESPACE)
+HERD = get_class('HERD', EXP_NAMESPACE)
 SimpleMultiContainer = get_class('SimpleMultiContainer', CORE_NAMESPACE)
 AlignedDynamicTable = get_class('AlignedDynamicTable', CORE_NAMESPACE)

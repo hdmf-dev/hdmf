@@ -8,7 +8,7 @@ from hdmf.common import get_type_map
 from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecNamespace, NamespaceCatalog, NamespaceBuilder
 from hdmf.testing import TestCase, remove_test_file
 
-from tests.unit.utils import CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace
+from tests.unit.helpers.utils import CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace
 
 
 class TestSpecLoad(TestCase):

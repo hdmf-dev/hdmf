@@ -1,0 +1,42 @@
+id: https://w3id.org/linkml/examples/nwb_dynamic_enums
+title: dynamic enums example
+name: nwb_dynamic_enums
+description: this schema demonstrates the use of dynamic enums
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  CL: http://purl.obolibrary.org/obo/CL_
+
+imports:
+  - linkml:types
+
+default_range: string
+
+# ======================== #
+#         CLASSES          #
+# ======================== #
+classes:
+  BrainSample:
+    slots:
+      - cell_type
+
+# ======================== #
+#          SLOTS           #
+# ======================== #
+slots:
+  cell_type:
+    required: true
+    range: NeuronTypeEnum
+
+# ======================== #
+#          ENUMS           #
+# ======================== #
+enums:
+  NeuronTypeEnum:
+    reachable_from:
+      source_ontology: obo:cl
+      source_nodes:
+        - CL:0000540  ## neuron
+      include_self: false
+      relationship_types:
+        - rdfs:subClassOf

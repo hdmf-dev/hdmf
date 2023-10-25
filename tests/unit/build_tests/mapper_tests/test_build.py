@@ -8,7 +8,7 @@ from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNa
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
-from tests.unit.utils import CORE_NAMESPACE
+from tests.unit.helpers.utils import CORE_NAMESPACE
 
 
 # TODO: test build of extended group/dataset that modifies an attribute dtype (commented out below), shape, value, etc.

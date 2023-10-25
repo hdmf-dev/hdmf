@@ -28,6 +28,23 @@ def _exp_warn_msg(cls):
     return msg
 
 
+class HERDManager:
+    """
+    This class manages whether to set/attach an instance of HERD to the subclass.
+    """
+
+    @docval({'name': 'herd', 'type': 'HERD',
+             'doc': 'The external resources to be used for the container.'},)
+    def link_resources(self, **kwargs):
+        """
+        Method to attach an instance of HERD in order to auto-add terms/references to data.
+        """
+        self._herd = kwargs['herd']
+
+    def get_linked_resources(self):
+        return self._herd if hasattr(self, "_herd") else None
+
+
 class AbstractContainer(metaclass=ExtenderMeta):
     # The name of the class attribute that subclasses use to autogenerate properties
     # This parameterization is supplied in case users would like to configure
@@ -174,6 +191,14 @@ class AbstractContainer(metaclass=ExtenderMeta):
         cls._set_fields(tuple(field_conf['name'] for field_conf in all_fields_conf))
         cls.__fieldsconf = tuple(all_fields_conf)
 
+    def __del__(self):
+        # Make sure the reference counter for our read IO is being decremented
+        try:
+            del self.__read_io
+            self.__read_io = None
+        except AttributeError:
+            pass
+
     def __new__(cls, *args, **kwargs):
         """
         Static method of the object class called by Python to create the object first and then
@@ -203,6 +228,57 @@ class AbstractContainer(metaclass=ExtenderMeta):
             raise ValueError("name '" + name + "' cannot contain '/'")
         self.__name = name
         self.__field_values = dict()
+        self.__read_io = None
+        self.__obj = None
+
+    @property
+    def read_io(self):
+        """
+        The  :class:`~hdmf.backends.io.HDMFIO` object used for reading the container.
+
+        This property will typically be  None if this Container is not a root Container
+        (i.e., if `parent` is not None). Use `get_read_io` instead if you want to retrieve the
+        :class:`~hdmf.backends.io.HDMFIO` object used for reading from the parent container.
+        """
+        return self.__read_io
+
+    @read_io.setter
+    def read_io(self, value):
+        """
+        Set the io object used to read this container
+
+        :param value: The :class:`~hdmf.backends.io.HDMFIO` object to use
+        :raises ValueError: If io has already been set. We can't change the IO for a container.
+        :raises TypeError: If value is not an instance of :class:`~hdmf.backends.io.HDMFIO`
+        """
+        # We do not want to import HDMFIO on the module level to avoid circular imports. Since we only need
+        # it for type checking we import it here.
+        from hdmf.backends.io import HDMFIO
+        if not isinstance(value, HDMFIO):
+            raise TypeError("io must be an instance of HDMFIO")
+        if self.__read_io is not None and self.__read_io is not value:
+            raise ValueError("io has already been set for this container (name=%s, type=%s)" %
+                             (self.name, str(type(self))))
+        else:
+            self.__read_io = value
+
+    def get_read_io(self):
+        """
+        Get the io object used to read this container.
+
+        If `self.read_io` is None, this function will iterate through the parents and return the
+        first `io` object found on a parent container
+
+        :returns: The :class:`~hdmf.backends.io.HDMFIO`  object used to read this container.
+                  Returns None in case no io object is found, e.g., in case this container has
+                  not been read from file.
+        """
+        curr_obj = self
+        re_io = self.read_io
+        while re_io is None and curr_obj.parent is not None:
+            curr_obj = curr_obj.parent
+            re_io = curr_obj.read_io
+        return re_io
 
     @property
     def name(self):
@@ -225,6 +301,46 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 return p
             p = p.parent
         return None
+
+    def all_children(self):
+        """Get a list of all child objects and their child objects recursively.
+
+        If the object has an object_id, the object will be added to "ret" to be returned.
+        If that object has children, they will be added to the "stack" in order to be:
+        1) Checked to see if has an object_id, if so then add to "ret"
+        2) Have children that will also be checked
+        """
+        stack = [self] # list of containers, including self, to add and later parse for children
+        ret = list()
+        self.__obj = LabelledDict(label='all_objects', key_attr='object_id')
+        while len(stack): # search until there's nothing in the list
+            n = stack.pop()
+            ret.append(n)
+            if n.object_id is not None:
+                self.__obj[n.object_id] = n
+            else: # pragma: no cover
+                # warn that a child does not have an object_id, which is unusual
+                warn('%s "%s" does not have an object_id' % (type(n).__class__, n.name))
+            if hasattr(n, 'children'):
+                for c in n.children:
+                    stack.append(c)
+        return ret
+
+    @property
+    def all_objects(self):
+        """Get a LabelledDict that indexed all child objects and their children by object ID."""
+        if self.__obj is None:
+            self.all_children()
+        return self.__obj
+
+    @docval()
+    def get_ancestors(self, **kwargs):
+        p = self.parent
+        ret = []
+        while p is not None:
+            ret.append(p)
+            p = p.parent
+        return tuple(ret)
 
     @property
     def fields(self):
@@ -337,6 +453,9 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if isinstance(parent_container, Container):
                 parent_container.__children.append(self)
                 parent_container.set_modified()
+            for child in self.children:
+                # used by hdmf.common.table.DynamicTableRegion to check for orphaned tables
+                child._validate_on_set_parent()
 
     def _remove_child(self, child):
         """Remove a child Container. Intended for use in subclasses that allow dynamic addition of child Containers."""
@@ -361,6 +480,14 @@ class AbstractContainer(metaclass=ExtenderMeta):
             self.parent._remove_child(self)
         else:
             raise ValueError("Cannot reset parent when parent is not an AbstractContainer: %s" % repr(self.parent))
+
+    def _validate_on_set_parent(self):
+        """Validate this Container after setting the parent.
+
+        This method is called by the parent setter. It can be overridden in subclasses to perform additional
+        validation. The default implementation does nothing.
+        """
+        pass
 
 
 class Container(AbstractContainer):
@@ -434,6 +561,107 @@ class Container(AbstractContainer):
             else:
                 template += "  {}: {}\n".format(k, v)
         return template
+
+    def _repr_html_(self):
+        CSS_STYLE = """
+        <style>
+            .container-fields {
+                font-family: "Open Sans", Arial, sans-serif;
+            }
+            .container-fields .field-value {
+                color: #00788E;
+            }
+            .container-fields details > summary {
+                cursor: pointer;
+                display: list-item;
+            }
+            .container-fields details > summary:hover {
+                color: #0A6EAA;
+            }
+        </style>
+        """
+
+        JS_SCRIPT = """
+        <script>
+            function copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(function() {
+                    console.log('Copied to clipboard: ' + text);
+                }, function(err) {
+                    console.error('Could not copy text: ', err);
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                let fieldKeys = document.querySelectorAll('.container-fields .field-key');
+                fieldKeys.forEach(function(fieldKey) {
+                    fieldKey.addEventListener('click', function() {
+                        let accessCode = fieldKey.getAttribute('title').replace('Access code: ', '');
+                        copyToClipboard(accessCode);
+                    });
+                });
+            });
+        </script>
+        """
+        if self.name == self.__class__.__name__:
+            header_text = self.name
+        else:
+            header_text = f"{self.name} ({self.__class__.__name__})"
+        html_repr = CSS_STYLE
+        html_repr += JS_SCRIPT
+        html_repr += "<div class='container-wrap'>"
+        html_repr += (
+            f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
+        )
+        html_repr += self._generate_html_repr(self.fields)
+        html_repr += "</div>"
+        return html_repr
+
+    def _generate_html_repr(self, fields, level=0, access_code=".fields"):
+        html_repr = ""
+
+        if isinstance(fields, dict):
+            for key, value in fields.items():
+                current_access_code = f"{access_code}['{key}']"
+                if (
+                    isinstance(value, (list, dict, np.ndarray))
+                    or hasattr(value, "fields")
+                ):
+                    label = key
+                    if isinstance(value, dict):
+                        label += f" ({len(value)})"
+
+                    html_repr += (
+                        f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
+                        f'class="container-fields field-key" title="{current_access_code}"><b>{label}</b></summary>'
+                    )
+                    if hasattr(value, "fields"):
+                        value = value.fields
+                        current_access_code = current_access_code + ".fields"
+                    html_repr += self._generate_html_repr(
+                        value, level + 1, current_access_code
+                    )
+                    html_repr += "</details>"
+                else:
+                    html_repr += (
+                        f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"'
+                        f' title="{current_access_code}">{key}:</span> <span class="field-value">{value}</span></div>'
+                    )
+        elif isinstance(fields, list):
+            for index, item in enumerate(fields):
+                current_access_code = f"{access_code}[{index}]"
+                html_repr += (
+                    f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-value"'
+                    f' title="{current_access_code}">{str(item)}</span></div>'
+                )
+        elif isinstance(fields, np.ndarray):
+            str_ = str(fields).replace("\n", "</br>")
+            html_repr += (
+                f'<div style="margin-left: {level * 20}px;" class="container-fields">{str_}</div>'
+            )
+        else:
+            pass
+
+        return html_repr
 
     @staticmethod
     def __smart_str(v, num_indent):
@@ -510,6 +738,12 @@ class Container(AbstractContainer):
             out += '\n' + indent_in + Container.__smart_str(keys[-1], num_indent + 1) + ' ' + str(type(d[keys[-1]]))
         out += '\n' + indent + right_br
         return out
+
+    def set_data_io(self, dataset_name, data_io_class, **kwargs):
+        data = self.fields.get(dataset_name)
+        if data is None:
+            raise ValueError(f"{dataset_name} is None and cannot be wrapped in a DataIO class")
+        self.fields[dataset_name] = data_io_class(data=data, **kwargs)
 
 
 class Data(AbstractContainer):
