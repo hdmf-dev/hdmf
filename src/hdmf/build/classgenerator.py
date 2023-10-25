@@ -295,30 +295,26 @@ class CustomClassGenerator:
         cls._set_default_name(docval_args, spec.default_name)
 
     @classmethod
-    def _get_attrs_to_set_init(cls, classdict, not_inherited_fields, parent_docval_args):
+    def _get_attrs_not_to_set_init(cls, classdict, parent_docval_args):
+        return parent_docval_args
+
+    @classmethod
+    def set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
         # get docval arg names from superclass
-        args_to_set = list()
-        fixed_value_args_to_set = list()
+        base = bases[0]
+        parent_docval_args = set(arg['name'] for arg in get_docval(base.__init__))
+        attrs_to_set = list()
+        fixed_value_attrs_to_set = list()
+        attrs_not_to_set = cls._get_attrs_not_to_set_init(classdict, parent_docval_args)
         for attr_name, field_spec in not_inherited_fields.items():
             # store arguments for fields that are not in the superclass and not in the superclass __init__ docval
             # so that they are set after calling base.__init__
             # except for fields that have fixed values -- these are set at the class level
             fixed_value = getattr(field_spec, 'value', None)
             if fixed_value is not None:
-                fixed_value_args_to_set.append(attr_name)
-            elif attr_name not in parent_docval_args:
-                args_to_set.append(attr_name)
-
-        return args_to_set, fixed_value_args_to_set
-
-
-    @classmethod
-    def set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
-        base = bases[0]
-        parent_docval_args = set(arg['name'] for arg in get_docval(base.__init__))
-        args_to_set, fixed_value_args_to_set = cls._get_attrs_to_set_init(
-            classdict, not_inherited_fields, parent_docval_args
-        )
+                fixed_value_attrs_to_set.append(attr_name)
+            elif attr_name not in attrs_not_to_set:
+                attrs_to_set.append(attr_name)
 
         @docval(*docval_args, allow_positional=AllowPositional.WARNING)
         def __init__(self, **kwargs):
@@ -328,7 +324,7 @@ class CustomClassGenerator:
             # remove arguments from kwargs that correspond to fields that are new (not inherited)
             # set these arguments after calling base.__init__
             new_kwargs = dict()
-            for f in args_to_set:
+            for f in attrs_to_set:
                 new_kwargs[f] = popargs(f, kwargs) if f in kwargs else None
 
             # NOTE: the docval of some constructors do not include all of the fields. the constructor may set
@@ -344,7 +340,7 @@ class CustomClassGenerator:
 
             # set the fields that have fixed values using the fields dict directly
             # because the setters do not allow setting the value
-            for f in fixed_value_args_to_set:
+            for f in fixed_value_attrs_to_set:
                 self.fields[f] = getattr(not_inherited_fields[f], 'value')
 
         classdict['__init__'] = __init__
