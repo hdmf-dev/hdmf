@@ -228,7 +228,6 @@ class CustomClassGenerator:
         classdict.setdefault(parent_cls._fieldsname, list()).append(fields_conf)
 
         if fixed_value is not None:  # field has fixed value - do not create arg on __init__
-            classdict[attr_name] = fixed_value  # set the fixed value on the class
             return
 
         docval_arg = dict(
@@ -296,12 +295,15 @@ class CustomClassGenerator:
         base = bases[0]
         parent_docval_args = set(arg['name'] for arg in get_docval(base.__init__))
         new_args = list()
+        fixed_value_args = list()
         for attr_name, field_spec in not_inherited_fields.items():
             # store arguments for fields that are not in the superclass and not in the superclass __init__ docval
             # so that they are set after calling base.__init__
             # except for fields that have fixed values -- these are set at the class level
             fixed_value = getattr(field_spec, 'value', None)
-            if attr_name not in parent_docval_args and fixed_value is None:
+            if fixed_value is not None:
+                fixed_value_args.append(attr_name)
+            elif attr_name not in parent_docval_args:
                 new_args.append(attr_name)
 
         @docval(*docval_args, allow_positional=AllowPositional.WARNING)
@@ -325,6 +327,11 @@ class CustomClassGenerator:
             # set the fields that are new to this class (not inherited)
             for f, arg_val in new_kwargs.items():
                 setattr(self, f, arg_val)
+
+            # set the fields that have fixed values using the fields dict directly
+            # because the setters do not allow setting the value
+            for f in fixed_value_args:
+                self.fields[f] = getattr(not_inherited_fields[f], 'value')
 
         classdict['__init__'] = __init__
 

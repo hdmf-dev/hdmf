@@ -454,12 +454,17 @@ class TestDynamicContainerFixedValue(TestCase):
     def test_init_fields(self):
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)  # generate the class
         self.assertEqual(cls.get_fields_conf(), ({'name': 'attr1', 'doc': 'a string attribute', 'settable': False},))
-        self.assertEqual(cls.attr1, "fixed")
 
     def test_init_object(self):
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)  # generate the class
         obj = cls(name="test")
         self.assertEqual(obj.attr1, "fixed")
+
+    def test_set_value(self):
+        cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)  # generate the class
+        obj = cls(name="test")
+        with self.assertRaises(AttributeError):
+            obj.attr1 = "new"
 
 
 class TestGetClassSeparateNamespace(TestCase):
