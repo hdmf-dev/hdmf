@@ -41,7 +41,7 @@ class DtypeHelper:
         'object': ['object'],
         'region': ['region'],
         'numeric': ['numeric'],
-        'isodatetime': ["isodatetime", "datetime"]
+        'isodatetime': ["isodatetime", "datetime", "date"]
     }
 
     # List of recommended primary dtype strings. These are the keys of primary_dtype_string_synonyms
@@ -816,6 +816,11 @@ class LinkSpec(Spec):
         ''' The data type of target specification '''
         return self.get(_target_type_key)
 
+    @property
+    def data_type(self):
+        ''' The data type of target specification '''
+        return self.get(_target_type_key)
+
     def is_many(self):
         return self.quantity not in (1, ZERO_OR_ONE)
 
@@ -1245,17 +1250,17 @@ class GroupSpec(BaseStorageSpec):
 
     @property
     def groups(self):
-        ''' The groups specificed in this GroupSpec '''
+        ''' The groups specified in this GroupSpec '''
         return tuple(self.get('groups', tuple()))
 
     @property
     def datasets(self):
-        ''' The datasets specificed in this GroupSpec '''
+        ''' The datasets specified in this GroupSpec '''
         return tuple(self.get('datasets', tuple()))
 
     @property
     def links(self):
-        ''' The links specificed in this GroupSpec '''
+        ''' The links specified in this GroupSpec '''
         return tuple(self.get('links', tuple()))
 
     @docval(*_group_args)

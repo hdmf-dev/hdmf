@@ -19,14 +19,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.7-minimum      , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: ubuntu-latest }
-          - { name: linux-python3.10             , test-tox-env: py310           , build-tox-env: build-py310           , python-ver: "3.10", os: ubuntu-latest }
+          - { name: linux-python3.8-minimum      , test-tox-env: py38-minimum    , build-tox-env: build-py38-minimum    , python-ver: "3.8" , os: ubuntu-latest }
+          - { name: linux-python3.11             , test-tox-env: py311           , build-tox-env: build-py311           , python-ver: "3.11", os: ubuntu-latest }
           # NOTE config below with "upload-wheels: true" specifies that wheels should be uploaded as an artifact
-          - { name: linux-python3.10-upgraded    , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: ubuntu-latest , upload-wheels: true }
-          - { name: windows-python3.7-minimum    , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: windows-latest }
-          - { name: windows-python3.10-upgraded  , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: windows-latest }
-          - { name: macos-python3.7-minimum      , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: macos-latest }
-          - { name: macos-python3.10-upgraded    , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: macos-latest }
+          - { name: linux-python3.11-upgraded    , test-tox-env: py311-upgraded  , build-tox-env: build-py311-upgraded  , python-ver: "3.11", os: ubuntu-latest , upload-wheels: true }
+          - { name: windows-python3.8-minimum    , test-tox-env: py38-minimum    , build-tox-env: build-py38-minimum    , python-ver: "3.8" , os: windows-latest }
+          - { name: windows-python3.11-upgraded  , test-tox-env: py311-upgraded  , build-tox-env: build-py311-upgraded  , python-ver: "3.11", os: windows-latest }
+          - { name: macos-python3.8-minimum      , test-tox-env: py38-minimum    , build-tox-env: build-py38-minimum    , python-ver: "3.8" , os: macos-latest }
+          - { name: macos-python3.11-upgraded    , test-tox-env: py311-upgraded  , build-tox-env: build-py311-upgraded  , python-ver: "3.11", os: macos-latest }
     steps:
       - name: Cancel non-latest runs
         uses: styfle/cancel-workflow-action@0.11.0
@@ -63,6 +63,10 @@ jobs:
         run: |
           tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
 
+      - name: Test installation from a source distribution
+        run: |
+          tox -e wheelinstall --recreate --installpkg dist/*.tar.gz
+
       - name: Upload distribution as a workspace artifact
         if: ${{ matrix.upload-wheels }}
         uses: actions/upload-artifact@v3
@@ -80,10 +84,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-gallery-python3.7-minimum    , test-tox-env: gallery-py37-minimum  , python-ver: "3.7" , os: ubuntu-latest }
-          - { name: linux-gallery-python3.10-upgraded  , test-tox-env: gallery-py310-upgraded, python-ver: "3.10", os: ubuntu-latest }
-          - { name: windows-gallery-python3.7-minimum  , test-tox-env: gallery-py37-minimum  , python-ver: "3.7" , os: windows-latest }
-          - { name: windows-gallery-python3.10-upgraded, test-tox-env: gallery-py310-upgraded, python-ver: "3.10", os: windows-latest }
+          - { name: linux-gallery-python3.8-minimum    , test-tox-env: gallery-py38-minimum  , python-ver: "3.8" , os: ubuntu-latest }
+          - { name: linux-gallery-python3.11-upgraded  , test-tox-env: gallery-py311-upgraded, python-ver: "3.11", os: ubuntu-latest }
+          - { name: windows-gallery-python3.8-minimum  , test-tox-env: gallery-py38-minimum  , python-ver: "3.8" , os: windows-latest }
+          - { name: windows-gallery-python3.11-upgraded, test-tox-env: gallery-py311-upgraded, python-ver: "3.11", os: windows-latest }
     steps:
       - name: Cancel non-latest runs
         uses: styfle/cancel-workflow-action@0.11.0
@@ -120,8 +124,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: conda-linux-python3.7-minimum    , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: ubuntu-latest }
-          - { name: conda-linux-python3.10-upgraded  , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: ubuntu-latest }
+          - { name: conda-linux-python3.8-minimum    , test-tox-env: py38-minimum    , build-tox-env: build-py38-minimum    , python-ver: "3.8" , os: ubuntu-latest }
+          - { name: conda-linux-python3.11-upgraded  , test-tox-env: py311-upgraded  , build-tox-env: build-py311-upgraded  , python-ver: "3.11", os: ubuntu-latest }
     steps:
       - name: Cancel non-latest runs
         uses: styfle/cancel-workflow-action@0.11.0
@@ -138,8 +142,6 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
-          auto-activate-base: true
-          activate-environment: true
           python-version: ${{ matrix.python-ver }}
 
       - name: Install build dependencies
@@ -147,7 +149,12 @@ jobs:
           conda config --set always_yes yes --set changeps1 no
           conda info
           conda install -c conda-forge tox
-          conda list
+
+      - name: Conda reporting
+        run: |
+          conda info
+          conda config --show-sources
+          conda list --show-channel-urls
 
       - name: Run tox tests
         run: |
@@ -161,6 +168,10 @@ jobs:
       - name: Test installation from a wheel
         run: |
           tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
+
+      - name: Test installation from a source distribution
+        run: |
+          tox -e wheelinstall --recreate --installpkg dist/*.tar.gz
 
   deploy-dev:
     name: Deploy pre-release from dev
@@ -182,7 +193,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Download wheel and source distributions from artifact
         uses: actions/download-artifact@v3
@@ -201,3 +212,51 @@ jobs:
               --prerelease-packages-keep-pattern "*dev<COMMIT_DISTANCE>*" \
               --token ${{ secrets.BOT_GITHUB_TOKEN }} \
               --re-upload
+
+  run-gallery-ros3-tests:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}  # necessary for conda
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-gallery-python3.11-ros3  , python-ver: "3.11", os: ubuntu-latest }
+    steps:
+      - name: Cancel non-latest runs
+        uses: styfle/cancel-workflow-action@0.11.0
+        with:
+          all_but_latest: true
+          access_token: ${{ github.token }}
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          activate-environment: ros3
+          environment-file: environment-ros3.yml
+          python-version: ${{ matrix.python-ver }}
+          channels: conda-forge
+          auto-activate-base: false
+
+      - name: Install run dependencies
+        run: |
+          pip install matplotlib
+          pip install -e .
+          pip list
+
+      - name: Conda reporting
+        run: |
+          conda info
+          conda config --show-sources
+          conda list --show-channel-urls
+
+      - name: Run ros3 tests  # TODO include gallery tests after they are written
+        run: |
+          pytest tests/unit/test_io_hdf5_streaming.py

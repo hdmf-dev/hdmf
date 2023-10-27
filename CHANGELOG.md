@@ -1,5 +1,176 @@
 # HDMF Changelog
 
+## HDMF 3.11.0 (Upcoming)
+
+### Enhancements
+- Added `target_tables` attribute to `DynamicTable` to allow users to specify the target table of any predefined
+`DynamicTableRegion` columns of a `DynamicTable` subclass. @rly [#971](https://github.com/hdmf-dev/hdmf/pull/971)
+- Updated `TermSet` to include `_repr_html_` for easy to read notebook representation. @mavaylon1 [967](https://github.com/hdmf-dev/hdmf/pull/967)
+
+### Bug fixes
+- Updated custom class generation to handle specs with fixed values and required names. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
+- Fixed custom class generation of `DynamicTable` subtypes to set attributes corresponding to column names for correct write. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
+
+## HDMF 3.10.0 (October 3, 2023)
+
+Since version 3.9.1 should have been released as 3.10.0 but failed to release on PyPI and conda-forge, this release
+will increase the minor version number to 3.10.0. See the 3.9.1 release notes below for new features.
+
+### Bug fixes
+- Fixed issue with testing and deployment of releases. @rly [#957](https://github.com/hdmf-dev/hdmf/pull/957)
+
+## HDMF 3.9.1 (September 29, 2023)
+
+### Enhancements
+- Updated `TermSet` to be used with `TermSetWrapper`, allowing for general use of validation for datasets and attributes. This also brings updates to `HERD` integration and updates on `write` to easily add references for wrapped datasets/attributes. @mavaylon1 [#950](https://github.com/hdmf-dev/hdmf/pull/950)
+
+### Minor improvements
+- Removed warning when namespaces are loaded and the attribute marking where the specs are cached is missing. @bendichter [#926](https://github.com/hdmf-dev/hdmf/pull/926)
+
+### Bug fixes
+- Fixed bug allowing `DynamicTable` to be constructed with empty `id` column when initializing all columns via `AbstractDataChunkIterator` objects. @oruebel [#953](https://github.com/hdmf-dev/hdmf/pull/953)
+
+## HDMF 3.9.0 (August 25, 2023)
+
+### New features and minor improvements
+- Increased raw data chunk cache size for reading HDF5 files from 1 MiB to 32 MiB. @bendichter, @rly [#925](https://github.com/hdmf-dev/hdmf/pull/925)
+- Increased default chunk size for `GenericDataChunkIterator` from 1 MB to 10 MB. @bendichter, @rly [#925](https://github.com/hdmf-dev/hdmf/pull/925)
+- Added the magic `__reduce__` method as well as two private semi-abstract helper methods to enable pickling of the `GenericDataChunkIterator`. @codycbakerphd [#924](https://github.com/hdmf-dev/hdmf/pull/924)
+- Updated `add_ref_termset` to add all instances of `TermSet` within a given root container. @mavaylon1 [#935](https://github.com/hdmf-dev/hdmf/pull/935)
+- Added Dynamic Enumerations and Schemasheets support to `TermSet`. @mavaylon1 [#923](https://github.com/hdmf-dev/hdmf/pull/923)
+- Updated `HERD` to support user defined file name for the `HERD` zip file. @mavaylon1 [#941](https://github.com/hdmf-dev/hdmf/pull/941)
+- Added method `Container.set_data_io`, which wraps an existing data field in a `DataIO`. @bendichter [#938](https://github.com/hdmf-dev/hdmf/pull/938)
+
+## HDMF 3.8.1 (July 25, 2023)
+
+### Bug fixes
+- Fixed error when calling `HDF5IO.read` twice. @rly [#915](https://github.com/hdmf-dev/hdmf/pull/915)
+
+## HDMF 3.8.0 (July 21, 2023)
+
+### New features and minor improvements
+- Added the ability to write ExternalResources if the path is provided and the container has a linked instance of ExternalResources. @mavaylon1 [#910](https://github.com/hdmf-dev/hdmf/pull/910)
+
+### Bug fixes
+- Fixed bug on `add_ref_term_set` in which attributes that were not subscribtable returned an error. @mavaylon1 [#909](https://github.com/hdmf-dev/hdmf/pull/909)
+
+## HDMF 3.7.0 (July 10, 2023)
+
+### New features and minor improvements
+- Updated `ExternalResources` to have EntityKeyTable with updated tests/documentation and minor bug fix to ObjectKeyTable. @mavaylon1 [#872](https://github.com/hdmf-dev/hdmf/pull/872)
+- Added abstract static method `HDMFIO.can_read()` and concrete static method `HDF5IO.can_read()`. @bendichter [#875](https://github.com/hdmf-dev/hdmf/pull/875)
+- Added warning for `DynamicTableRegion` links that are not added to the same parent as the original container object. @mavaylon1 [#891](https://github.com/hdmf-dev/hdmf/pull/891)
+- Added the `TermSet` class along with integrated validation methods for any child of `AbstractContainer`, e.g., `VectorData`, `Data`, `DynamicTable`. @mavaylon1 [#880](https://github.com/hdmf-dev/hdmf/pull/880)
+- Added `AbstractContainer.read_io` property to be able to retrieve the HDMFIO object used for reading from the container and to ensure the I/O object used for reading is not garbage collected before the container is being deleted. @bendichter @oruebel [#882](https://github.com/hdmf-dev/hdmf/pull/882)
+- Allow for `datetime.date` to be used instead of `datetime.datetime`. @bendichter [#874](https://github.com/hdmf-dev/hdmf/pull/874)
+- Updated `HDMFIO` and `HDF5IO` to support `ExternalResources`. @mavaylon1 [#895](https://github.com/hdmf-dev/hdmf/pull/895)
+- Dropped Python 3.7 support. @rly [#897](https://github.com/hdmf-dev/hdmf/pull/897)
+- Added HTML repr to `Container` objects which displays an interactive tree of a container's values and children in a Jupyter notebook and other HTML representations. @edeno [#883](https://github.com/hdmf-dev/hdmf/pull/883)
+- Update software_process.rst with the correct external links. @mavaylon1 [#900](https://github.com/hdmf-dev/hdmf/pull/900)
+
+### Documentation and tutorial enhancements:
+- Added tutorial for the new `TermSet` class @mavaylon1 [#880](https://github.com/hdmf-dev/hdmf/pull/880)
+
+### Bug fixes
+- Fixed CI testing of minimum installation requirements, and removed some gallery tests run on each PR. @rly
+  [#877](https://github.com/hdmf-dev/hdmf/pull/877)
+- Fixed reporting of version when installed using conda. @rly [#890](https://github.com/hdmf-dev/hdmf/pull/890)
+
+
+## HMDF 3.6.1 (May 18, 2023)
+
+### Bug fixes
+- Fixed compatibility with hdmf_zarr for converting string arrays from Zarr to HDF5 by adding logic to determine the dtype for object arrays. @oruebel [#866](https://github.com/hdmf-dev/hdmf/pull/866)
+
+## HDMF 3.6.0 (May 12, 2023)
+
+### New features and minor improvements
+- Updated `ExternalResources` to have `FileTable` and new methods to query data. the `ResourceTable` has been removed along with methods relating to `Resource`. @mavaylon [#850](https://github.com/hdmf-dev/hdmf/pull/850)
+- Updated hdmf-common-schema version to 1.6.0. @mavaylon [#850](https://github.com/hdmf-dev/hdmf/pull/850)
+- Added testing of HDMF-Zarr on PR and nightly. @rly [#859](https://github.com/hdmf-dev/hdmf/pull/859)
+- Replaced `setup.py` with `pyproject.toml`. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
+- Use `ruff` instead of `flake8`. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
+- Replaced `versioneer` with `setuptools_scm` for versioning. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
+- Now recommending developers use `pre-commit`. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
+
+### Bug fixes
+- Export cached specs that are loaded in source IO manager but not in export IO manager. @rly
+  [#855](https://github.com/hdmf-dev/hdmf/pull/855)
+- Fixed issue with passing an S3 URL for source in the constructor of ``HDMFIO`` @rly
+  [#853](https://github.com/hdmf-dev/hdmf/pull/853)
+
+### Documentation and tutorial enhancements:
+- Updated `ExternalResources` how to tutorial to include the new features. @mavaylon [#850](https://github.com/hdmf-dev/hdmf/pull/850)
+
+## HDMF 3.5.6 (April 28, 2023)
+
+### Bug fixes
+- Removed references to discontinued `requires.io` service in documentation. @rly
+  [#854](https://github.com/hdmf-dev/hdmf/pull/854)
+
+## HDMF 3.5.5 (April 13, 2023)
+
+### Bug fixes
+- Fixed error during export where an external link to the same file was created in some situations.
+  @rly [#847](https://github.com/hdmf-dev/hdmf/pull/847)
+- Removed unused, deprecated `codecov` package from dev installation requirements. @rly
+  [#849](https://github.com/hdmf-dev/hdmf/pull/849)
+- Fixed export with `'link_data': False'` not copying datasets in some situations. @rly
+  [#848](https://github.com/hdmf-dev/hdmf/pull/848)
+
+## HDMF 3.5.4 (April 7, 2023)
+
+### Bug fixes
+- Fixed typo in deploy release workflow. @rly [#845](https://github.com/hdmf-dev/hdmf/pull/845)
+
+## HDMF 3.5.3 (April 7, 2023)
+
+### Bug fixes
+- Fixed search bar and missing jquery in ReadTheDocs documentation. @rly
+  [#840](https://github.com/hdmf-dev/hdmf/pull/840)
+- Fixed issue with dynamic class generation for a multi-container interface where one or more are required. @rly
+  [#839](https://github.com/hdmf-dev/hdmf/pull/839)
+
+### Minor improvements
+- Added support for Python 3.11. @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
+- No longer set upper bounds on dependencies. @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
+- `DynamicTable.to_dataframe()` now sets the index (id) column dtype to int64 rather than the OS default (int32 on Windows, int64 on Mac, Linux). @rly [#803](https://github.com/hdmf-dev/hdmf/pull/803)
+
+## HDMF 3.5.2 (March 13, 2023)
+
+### Bug fixes
+- Fixed issue with conda CI. @rly [#823](https://github.com/hdmf-dev/hdmf/pull/823)
+- Fixed issue with deprecated `pkg_resources`. @mavaylon [#822](https://github.com/hdmf-dev/hdmf/pull/822)
+- Fixed `hdmf.common` deprecation warning. @mavaylon [#826]((https://github.com/hdmf-dev/hdmf/pull/826)
+
+### Internal improvements
+- A number of typos fixed and Github action running codespell to ensure that no typo sneaks in [#825](https://github.com/hdmf-dev/hdmf/pull/825) was added.
+- Added additional documentation for `__fields__` in `AbstactContainer`. @mavaylon [#827](https://github.com/hdmf-dev/hdmf/pull/827)
+- Updated warning message for broken links. @mavaylon [#829](https://github.com/hdmf-dev/hdmf/pull/829)
+
+## HDMF 3.5.1 (January 26, 2023)
+
+### Bug fixes
+- Fixed bug when closing a ``HDF5IO`` on delete via the new ``HDMFIO.__del__`` before ``HDF5IO.__init__`` has been completed. @oruebel [#817](https://github.com/hdmf-dev/hdmf/pull/817)
+
+### Documentation and tutorial enhancements:
+- Updated `DynamicTable` how to tutorial to clarify the status of `EnumData`. @oruebel [#819](https://github.com/hdmf-dev/hdmf/pull/819)
+
+## HDMF 3.5.0 (January 17, 2023)
+
+### Bug fixes
+- Fixed an issue with `ExternalResources` where retrieving an object resources wasn't in the proper format for a Pandas DataFrame. Additionally, a boolean parameter for creating an object when checking the existence of an object was added. @mavaylon1 [#790](https://github.com/hdmf-dev/hdmf/pull/790)
+- Fixed an issue with the `tox` tool when upgrading to tox 4. @rly [#802](https://github.com/hdmf-dev/hdmf/pull/802)
+- Fixed export of newly added links to existing elements of the exported file. @rly [#808](https://github.com/hdmf-dev/hdmf/pull/808)
+- Added ``HDMFIO.__del__`` to ensure that I/O objects are being closed on delete. @oruebel[#811](https://github.com/hdmf-dev/hdmf/pull/811)
+
+### Minor improvements
+- Added support for reading and writing `ExternalResources` to and from denormalized TSV files. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
+- Changed the name of `ExternalResources.export_to_sqlite` to `ExternalResources.to_sqlite`. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
+- Updated the tutorial for `ExternalResources`. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
+- Added `message` argument for assert methods defined by `hdmf.testing.TestCase` to allow developers to include custom error messages with asserts. @oruebel [#812](https://github.com/hdmf-dev/hdmf/pull/812)
+- Clarify the expected chunk shape behavior for `DataChunkIterator`. @oruebel [#813](https://github.com/hdmf-dev/hdmf/pull/813)
+
 ## HDMF 3.4.7 (November 9, 2022)
 
 ### Minor improvements
@@ -23,7 +194,7 @@ the fields (i.e., when the constructor sets some fields to fixed values). @rly
 ## HDMF 3.4.5 (September 22, 2022)
 
 ### Minor improvements
-- Allow passing arguments through to column class constructur (argument `col_cls`) when calling `DynamicTable.add_column`. @ajtritt ([#769](https://github.com/hdmf-dev/hdmf/pull/769))
+- Allow passing arguments through to column class constructor (argument `col_cls`) when calling `DynamicTable.add_column`. @ajtritt ([#769](https://github.com/hdmf-dev/hdmf/pull/769))
 
 ## HDMF 3.4.4 (September 20, 2022)
 
@@ -177,7 +348,7 @@ the fields (i.e., when the constructor sets some fields to fixed values). @rly
 
 ### Bug fixes
 - Do not build wheels compatible with Python 2 because HDMF requires Python 3.7. @rly (#642)
-- ``AlignedDynamicTable`` did not overwrite its ``get`` function. When using ``DynamicTableRegion`` to referenece ``AlignedDynamicTable`` this led to cases where the columns of the category subtables where omitted during data access (e.g., conversion to pandas.DataFrame). This fix adds the ``AlignedDynamicTable.get`` based on the existing ``AlignedDynamicTable.__getitem__``. @oruebel (#645)
+- ``AlignedDynamicTable`` did not overwrite its ``get`` function. When using ``DynamicTableRegion`` to reference ``AlignedDynamicTable`` this led to cases where the columns of the category subtables where omitted during data access (e.g., conversion to pandas.DataFrame). This fix adds the ``AlignedDynamicTable.get`` based on the existing ``AlignedDynamicTable.__getitem__``. @oruebel (#645)
 - Fixed #651 to support selection of cells in an ``AlignedDynamicTable`` via slicing with  ``[int, (str, str)]``(and ``[int, str, str]``) to select a single cell, and ``[int, str]`` to select a single row of a category table. @oruebel (#645)
 
 ### Minor improvements

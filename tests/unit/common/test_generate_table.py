@@ -10,7 +10,7 @@ from hdmf.spec import GroupSpec, DatasetSpec, SpecCatalog, SpecNamespace, Namesp
 from hdmf.testing import TestCase
 from hdmf.validate import ValidatorMap
 
-from tests.unit.utils import CORE_NAMESPACE
+from tests.unit.helpers.utils import CORE_NAMESPACE
 
 
 class TestDynamicDynamicTable(TestCase):
@@ -227,6 +227,13 @@ class TestDynamicDynamicTable(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             self.TestDTRTable(name='test_dtr_table', description='my table',
                               target_tables={'optional_col3': test_table})
+
+    def test_attribute(self):
+        test_table = self.TestTable(name='test_table', description='my test table')
+        assert test_table.my_col is not None
+        assert test_table.indexed_col is not None
+        assert test_table.my_col is test_table['my_col']
+        assert test_table.indexed_col is test_table['indexed_col'].target
 
     def test_roundtrip(self):
         # NOTE this does not use H5RoundTripMixin because this requires custom validation

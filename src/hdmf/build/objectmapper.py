@@ -3,7 +3,6 @@ import re
 import warnings
 from collections import OrderedDict
 from copy import copy
-from datetime import datetime
 
 import numpy as np
 
@@ -13,6 +12,7 @@ from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBu
 from .manager import Proxy, BuildManager
 from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
 from ..container import AbstractContainer, Data, DataRegion
+from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
@@ -275,6 +275,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         Check edge cases in converting data to a dtype
         """
         if value is None:
+            # Data is missing. Determine dtype from spec
             dt = spec_dtype
             if isinstance(dt, RefSpec):
                 dt = dt.reftype
@@ -284,19 +285,26 @@ class ObjectMapper(metaclass=ExtenderMeta):
             # return the list of DtypeSpecs
             return value, spec_dtype
         if isinstance(value, DataIO):
+            # data is wrapped for I/O via DataIO
             if value.data is None:
+                # Data is missing so DataIO.dtype must be set to determine the dtype
                 return value, value.dtype
             else:
+                # Determine the dtype from the DataIO.data
                 return value, cls.convert_dtype(spec, value.data, spec_dtype)[1]
         if spec_dtype is None or spec_dtype == 'numeric' or type(value) in cls.__no_convert:
             # infer type from value
-            if hasattr(value, 'dtype'):  # covers numpy types, AbstractDataChunkIterator
+            if hasattr(value, 'dtype'):  # covers numpy types, Zarr Array, AbstractDataChunkIterator
                 if spec_dtype == 'numeric':
                     cls.__check_convert_numeric(value.dtype.type)
                 if np.issubdtype(value.dtype, np.str_):
                     ret_dtype = 'utf8'
                 elif np.issubdtype(value.dtype, np.string_):
                     ret_dtype = 'ascii'
+                elif np.issubdtype(value.dtype, np.dtype('O')):
+                    # Only variable-length strings should ever appear as generic objects.
+                    # Everything else should have a well-defined type
+                    ret_dtype = 'utf8'
                 else:
                     ret_dtype = value.dtype.type
                 return value, ret_dtype
@@ -557,6 +565,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
                        % (container.__class__.__name__, container.name, attr_name, spec))
                 raise ContainerConfigurationError(msg)
+            if isinstance(attr_val, TermSetWrapper):
+                attr_val = attr_val.value
             if attr_val is not None:
                 attr_val = self.__convert_string(attr_val, spec)
                 spec_dt = self.__get_data_type(spec)
@@ -603,7 +613,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 elif 'ascii' in spec.dtype:
                     string_type = bytes
                 elif 'isodatetime' in spec.dtype:
-                    string_type = datetime.isoformat
+                    def string_type(x):
+                        return x.isoformat()  # method works for both date and datetime
                 if string_type is not None:
                     if spec.shape is not None or spec.dims is not None:
                         ret = list(map(string_type, value))
@@ -929,7 +940,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if attr_value is None:
                     self.logger.debug("        Skipping empty attribute")
                     continue
-
             builder.set_attribute(spec.name, attr_value)
 
     def __set_attr_to_ref(self, builder, attr_value, build_manager, spec):

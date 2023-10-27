@@ -71,12 +71,18 @@ def register_map(**kwargs):
 
 
 def __get_resources():
-    from pkg_resources import resource_filename
-    from os.path import join
+    try:
+        from importlib.resources import files
+    except ImportError:
+        # TODO: Remove when python 3.9 becomes the new minimum
+        from importlib_resources import files
+
+    __location_of_this_file = files(__name__)
     __core_ns_file_name = 'namespace.yaml'
+    __schema_dir = 'hdmf-common-schema/common'
 
     ret = dict()
-    ret['namespace_path'] = join(resource_filename(__name__, 'hdmf-common-schema/common'), __core_ns_file_name)
+    ret['namespace_path'] = str(__location_of_this_file / __schema_dir / __core_ns_file_name)
     return ret
 
 
@@ -197,13 +203,13 @@ if os.path.exists(__resources['namespace_path']):
     load_namespaces(__resources['namespace_path'])
 
     # import these so the TypeMap gets populated
-    from . import io as __io  # noqa: F401,E402
+    from . import io as __io  # noqa: E402
 
-    from . import table  # noqa: F401,E402
-    from . import alignedtable  # noqa: F401,E402
-    from . import sparse  # noqa: F401,E402
-    from . import resources  # noqa: F401,E402
-    from . import multi  # noqa: F401,E402
+    from . import table  # noqa: E402
+    from . import alignedtable  # noqa: E402
+    from . import sparse  # noqa: E402
+    from . import resources  # noqa: E402
+    from . import multi  # noqa: E402
 
     # register custom class generators
     from .io.table import DynamicTableGenerator
@@ -224,6 +230,6 @@ ElementIdentifiers = get_class('ElementIdentifiers', CORE_NAMESPACE)
 DynamicTableRegion = get_class('DynamicTableRegion', CORE_NAMESPACE)
 EnumData = get_class('EnumData', EXP_NAMESPACE)
 CSRMatrix = get_class('CSRMatrix', CORE_NAMESPACE)
-ExternalResources = get_class('ExternalResources', EXP_NAMESPACE)
+HERD = get_class('HERD', EXP_NAMESPACE)
 SimpleMultiContainer = get_class('SimpleMultiContainer', CORE_NAMESPACE)
 AlignedDynamicTable = get_class('AlignedDynamicTable', CORE_NAMESPACE)

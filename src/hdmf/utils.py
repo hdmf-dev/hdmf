@@ -212,6 +212,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         * 'args' : Dict all arguments where keys are the names and values are the values of the arguments.
         * 'errors' : List of string with error messages
     """
+
     ret = dict()
     syntax_errors = list()
     type_errors = list()
@@ -219,7 +220,6 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
     future_warnings = list()
     argsi = 0
     extras = dict()  # has to be initialized to empty here, to avoid spurious errors reported upon early raises
-
     try:
         # check for duplicates in docval
         names = [x['name'] for x in validator]
@@ -267,7 +267,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 # an error
                 if argsi < len(args):
                     type_errors.append("got multiple values for argument '%s'" % argname)
-                argval = kwargs.get(argname)
+                argval = kwargs.get(argname) # kwargs is the dict that stores the object names and the values
                 extras.pop(argname, None)
                 argval_set = True
             elif argsi < len(args):
@@ -277,6 +277,12 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             if not argval_set:
                 type_errors.append("missing argument '%s'" % argname)
             else:
+                from .term_set import TermSetWrapper # circular import fix
+                wrapper = None
+                if isinstance(argval, TermSetWrapper):
+                    wrapper = argval
+                    # we can use this to unwrap the dataset/attribute to use the "item" for docval to validate the type.
+                    argval = argval.value
                 if enforce_type:
                     if not __type_okay(argval, arg['type']):
                         if argval is None:
@@ -305,6 +311,10 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                     if err:
                         value_errors.append(err)
 
+                if wrapper is not None:
+                    # reassign the wrapper so that it can be used to flag HERD "on write"
+                    argval = wrapper
+
                 ret[argname] = argval
             argsi += 1
             arg = next(it)
@@ -322,6 +332,13 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
             else:
                 ret[argname] = _copy.deepcopy(arg['default'])
             argval = ret[argname]
+
+            from .term_set import TermSetWrapper # circular import fix
+            wrapper = None
+            if isinstance(argval, TermSetWrapper):
+                wrapper = argval
+                # we can use this to unwrap the dataset/attribute to use the "item" for docval to validate the type.
+                argval = argval.value
             if enforce_type:
                 if not __type_okay(argval, arg['type'], arg['default'] is None or arg.get('allow_none', False)):
                     if argval is None and arg['default'] is None:
@@ -349,7 +366,9 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 err = __check_enum(argval, arg)
                 if err:
                     value_errors.append(err)
-
+            if wrapper is not None:
+                # reassign the wrapper so that it can be used to flag HERD "on write"
+                argval = wrapper
             arg = next(it)
     except StopIteration:
         pass
@@ -602,8 +621,7 @@ def docval(*validator, **options):  # noqa: C901
                            'expected {})'.format(a['name'], [type(x) for x in a['enum']], a['type']))
                     raise Exception(msg)
             if a.get('allow_none', False) and 'default' not in a:
-                msg = ('docval for {}: allow_none=True can only be set if a default value is provided.').format(
-                    a['name'])
+                msg = 'docval for {}: allow_none=True can only be set if a default value is provided.'.format(a['name'])
                 raise Exception(msg)
             if 'default' in a:
                 kw.append(a)
@@ -616,6 +634,7 @@ def docval(*validator, **options):  # noqa: C901
             """Parse and check arguments to decorated function. Raise warnings and errors as appropriate."""
             # this function was separated from func_call() in order to make stepping through lines of code using pdb
             # easier
+
             parsed = __parse_args(
                 loc_val,
                 args[1:] if is_method else args,
