@@ -111,3 +111,12 @@ class DynamicTableGenerator(CustomClassGenerator):
         columns = classdict.get('__columns__')
         if columns is not None:
             classdict['__columns__'] = tuple(columns)
+
+    @classmethod
+    def _get_attrs_not_to_set_init(cls, classdict, parent_docval_args):
+        # exclude columns from the args that are set in __init__
+        attrs_not_to_set = parent_docval_args.copy()
+        if "__columns__" in classdict:
+            column_names = [column_conf["name"] for column_conf in classdict["__columns__"]]
+            attrs_not_to_set.update(column_names)
+        return attrs_not_to_set
