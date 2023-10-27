@@ -62,14 +62,15 @@ class TermSet:
         re = "Schema Path: %s\n" % self.term_schema_path
         re += "Sources: " + ", ".join(list(self.sources.keys()))+"\n"
         re += "Terms: \n"
-        i = 1
-        for term in terms:
-            if i>4:
-                break
-            elif i==3:
-                re += "   ... ... \n"
-            re += "   - %s\n" % term
-            i += 1
+        if len(terms) > 4:
+            re += "   - %s\n" % terms[0]
+            re += "   - %s\n" % terms[1]
+            re += "   - %s\n" % terms[2]
+            re += "   ... ... \n"
+            re += "   - %s\n" % terms[-1]
+        else:
+            for term in terms:
+                re += "   - %s\n" % term
         re += "Number of terms: %s" % len(terms)
         return re
 
@@ -79,14 +80,15 @@ class TermSet:
         re = "<b>" + "Schema Path: " + "</b>" + self.term_schema_path + "<br>"
         re += "<b>" + "Sources: " + "</b>" + ", ".join(list(self.sources.keys())) + "<br>"
         re += "<b> Terms: </b>"
-        i = 1
-        for term in terms:
-            if i>4:
-                break
-            elif i==3:
-                re += "... ..."
-            re += "<li> %s </li>" % term
-            i += 1
+        if len(terms) > 4:
+            re += "<li> %s </li>" % terms[0]
+            re += "<li> %s </li>" % terms[1]
+            re += "<li> %s </li>" % terms[2]
+            re += "... ..."
+            re += "<li> %s </li>" % terms[-1]
+        else:
+            for term in terms:
+                re += "<li> %s </li>" % term
         re += "<i> Number of terms:</i> %s" % len(terms)
         return re
 
