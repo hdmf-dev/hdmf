@@ -1,5 +1,16 @@
 # HDMF Changelog
 
+## HDMF 3.11.0 (Upcoming)
+
+### Enhancements
+- Added `target_tables` attribute to `DynamicTable` to allow users to specify the target table of any predefined
+`DynamicTableRegion` columns of a `DynamicTable` subclass. @rly [#971](https://github.com/hdmf-dev/hdmf/pull/971)
+- Updated `TermSet` to include `_repr_html_` for easy to read notebook representation. @mavaylon1 [967](https://github.com/hdmf-dev/hdmf/pull/967)
+
+### Bug fixes
+- Updated custom class generation to handle specs with fixed values and required names. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
+- Fixed custom class generation of `DynamicTable` subtypes to set attributes corresponding to column names for correct write. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
+
 ## HDMF 3.10.0 (October 3, 2023)
 
 Since version 3.9.1 should have been released as 3.10.0 but failed to release on PyPI and conda-forge, this release

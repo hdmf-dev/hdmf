@@ -55,7 +55,7 @@ Overall Health
 Installation
 ============
 
-See the `HDMF documentation <http://hdmf.readthedocs.io/en/stable/getting_started.html#installation>`_.
+See the `HDMF documentation <https://hdmf.readthedocs.io/en/stable/install_users.html>`_.
 
 Code of Conduct
 ===============
