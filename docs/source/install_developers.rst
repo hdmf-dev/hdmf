@@ -52,11 +52,11 @@ Option 2: Using conda
 
 The `conda package and environment management system`_ is an alternate way of managing virtual environments.
 First, install Anaconda_ to install the ``conda`` tool. Then create and
-activate a new virtual environment called ``"hdmf-env"`` with Python 3.9 installed.
+activate a new virtual environment called ``"hdmf-env"`` with Python 3.11 installed.
 
 .. code:: bash
 
-    conda create --name hdmf-env python=3.9
+    conda create --name hdmf-env python=3.11
     conda activate hdmf-env
 
 Similar to a virtual environment created with ``venv``, a conda environment
@@ -68,8 +68,13 @@ Activate your newly created virtual environment using the above command whenever
 deactivate it using the ``conda deactivate`` command to return to the base environment. And you can delete the virtual
 environment by using the ``conda remove --name hdmf-venv --all`` command.
 
-.. _Anaconda: https://www.anaconda.com/products/distribution
+.. note::
 
+    For advanced users, we recommend using Mambaforge_, a faster version of the conda package manager
+    that includes conda-forge as a default channel.
+
+.. _Anaconda: https://www.anaconda.com/products/distribution
+.. _Mambaforge: https://github.com/conda-forge/miniforge
 
 Install from GitHub
 -------------------
@@ -89,12 +94,7 @@ package requirements using the pip_ Python package manager, and install HDMF in 
 .. note::
 
    When using ``conda``, you may use ``pip install`` to install dependencies as shown above; however, it is generally
-   recommended that dependencies should be installed via ``conda install``, e.g.,
-
-   .. code:: bash
-
-      conda install --file=requirements.txt --file=requirements-dev.txt --file=requirements-doc.txt \
-      --file=requirements-opt.txt
+   recommended that dependencies should be installed via ``conda install``.
 
 
 Run tests
@@ -106,6 +106,7 @@ You can run the full test suite by running:
 
     pytest
 
+This will run all the tests and compute the test coverage. The coverage report can be found in ``/htmlcov``.
 You can also run a specific test module or class, or you can configure ``pytest`` to start the
 Python debugger (PDB) prompt on an error, e.g.,
 
@@ -122,7 +123,7 @@ create a virtual environment, install dependencies, and run the test suite for d
 This can take some time to run.
 
 .. _pytest: https://docs.pytest.org/
-.. _tox: https://tox.readthedocs.io/en/latest/
+.. _tox: https://tox.wiki/en/latest/
 
 .. code:: bash
 

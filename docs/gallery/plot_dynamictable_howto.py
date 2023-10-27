@@ -142,8 +142,16 @@ table.add_column(
 # references those values by index. Using this method is more efficient than storing
 # a single value many times, and has the advantage of communicating to downstream
 # tools that the data is categorical in nature.
+#
+# .. warning::
+#
+#    :py:class:`~hdmf.common.table.EnumData` is currently an experimental
+#    feature and as such should not be used for production use.
+#
 
 from hdmf.common.table import EnumData
+import warnings
+warnings.filterwarnings(action="ignore", message="EnumData is experimental")
 
 # this column has a length of 5, not 3. the first row has value "aa"
 enum_col = EnumData(
@@ -309,6 +317,41 @@ table3 = DynamicTable(
     description='an example table',
     columns=[dtr_idx, indexed_dtr_col],
 )
+
+###############################################################################
+# Setting the target table of a DynamicTableRegion column of a DynamicTable
+# -------------------------------------------------------------------------
+# A subclass of DynamicTable might have a pre-defined DynamicTableRegion column.
+# To write this column correctly, the "table" attribute of the column must be set so
+# that users know to what table the row index values reference. Because the target
+# table could be any table, the "table" attribute must be set explicitly. There are three
+# ways to do so. First, you can use the ``target_tables`` argument of the
+# DynamicTable constructor as shown below. This argument
+# is a dictionary mapping the name of the DynamicTableRegion column to
+# the target table. Secondly, the target table can be set after the DynamicTable
+# has been initialized using ``my_table.my_column.table = other_table``. Finally,
+# you can create the DynamicTableRegion column and pass the ``table``
+# attribute to `DynamicTableRegion.__init__` and then pass the column to
+# `DynamicTable.__init__` using the `columns` argument. However, this approach
+# is not recommended for columns defined in the schema, because it is up to
+# the user to ensure that the column is created in accordance with the schema.
+
+class SubTable(DynamicTable):
+    __columns__ = (
+        {'name': 'dtr', 'description': 'required region', 'required': True, 'table': True},
+    )
+
+referenced_table = DynamicTable(
+    name='referenced_table',
+    description='an example table',
+)
+
+sub_table = SubTable(
+    name='sub_table',
+    description='an example table',
+    target_tables={'dtr': referenced_table},
+)
+# now the target table of the DynamicTableRegion column 'dtr' is set to `referenced_table`
 
 ###############################################################################
 # Creating an expandable table

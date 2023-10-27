@@ -13,7 +13,7 @@ from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
-from tests.unit.utils import Foo, CORE_NAMESPACE
+from tests.unit.helpers.utils import Foo, CORE_NAMESPACE
 
 
 class Baz(Data):

@@ -8,7 +8,7 @@ from hdmf.backends.hdf5 import HDF5IO
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
 from hdmf.testing import TestCase
 from hdmf.utils import get_data_shape
-from tests.unit.utils import Foo, get_foo_buildmanager
+from tests.unit.helpers.utils import Foo, get_foo_buildmanager
 
 
 class HDF5Encoder(json.JSONEncoder):

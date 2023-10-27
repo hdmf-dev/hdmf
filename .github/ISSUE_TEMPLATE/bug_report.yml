@@ -35,9 +35,7 @@ body:
         Please copy and paste the full traceback produced by the error.
 
         This section will be automatically formatted into code, so no need for backticks.
-      render: shell
-    validations:
-      required: true
+      render: pytb
   - type: dropdown
     id: os
     attributes:
@@ -62,10 +60,10 @@ body:
     attributes:
       label: Python Version
       options:
-        - "3.7"
         - "3.8"
         - "3.9"
         - "3.10"
+        - "3.11"
     validations:
       required: true
   - type: textarea
