@@ -45,7 +45,7 @@ jobs:
           - { name: macos-python3.11-prerelease  , test-tox-env: py311-prerelease, build-tox-env: build-py311-prerelease, python-ver: "3.11", os: macos-latest }
     steps:
       - name: Cancel non-latest runs
-        uses: styfle/cancel-workflow-action@0.11.0
+        uses: styfle/cancel-workflow-action@0.12.0
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
@@ -107,7 +107,7 @@ jobs:
           - { name: macos-gallery-python3.11-prerelease  , test-tox-env: gallery-py311-prerelease, python-ver: "3.11", os: macos-latest }
     steps:
       - name: Cancel non-latest runs
-        uses: styfle/cancel-workflow-action@0.11.0
+        uses: styfle/cancel-workflow-action@0.12.0
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
@@ -151,7 +151,7 @@ jobs:
           - { name: conda-linux-python3.11-prerelease, test-tox-env: py311-prerelease, build-tox-env: build-py311-prerelease, python-ver: "3.11", os: ubuntu-latest }
     steps:
       - name: Cancel non-latest runs
-        uses: styfle/cancel-workflow-action@0.11.0
+        uses: styfle/cancel-workflow-action@0.12.0
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
@@ -211,7 +211,7 @@ jobs:
           - { name: macos-gallery-python3.11-ros3  , python-ver: "3.11", os: macos-latest }
     steps:
       - name: Cancel non-latest runs
-        uses: styfle/cancel-workflow-action@0.11.0
+        uses: styfle/cancel-workflow-action@0.12.0
         with:
           all_but_latest: true
           access_token: ${{ github.token }}
