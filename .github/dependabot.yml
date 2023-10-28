@@ -4,7 +4,7 @@ updates:
   # many updates and dependabot will not ignore requirements-min.txt
   # until https://github.com/dependabot/dependabot-core/issues/2883 is resolved
   # workaround is to continue updating these files manually
-  
+
   # - package-ecosystem: "pip"
   #   directory: "/"
   #   schedule:
