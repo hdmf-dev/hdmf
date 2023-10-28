@@ -8,7 +8,7 @@
 - Updated `TermSet` to include `_repr_html_` for easy to read notebook representation. @mavaylon1 [#967](https://github.com/hdmf-dev/hdmf/pull/967)
 
 ### Minor improvements
-- Set up GitHub dependabot to check for updates to Python requirements and GitHub Actions. @rly [#977](https://github.com/hdmf-dev/hdmf/pull/977)
+- Set up GitHub dependabot to check for updates to GitHub Actions. @rly [#977](https://github.com/hdmf-dev/hdmf/pull/977)
 
 ### Bug fixes
 - Updated custom class generation to handle specs with fixed values and required names. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
