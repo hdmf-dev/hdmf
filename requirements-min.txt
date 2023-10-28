@@ -12,4 +12,4 @@ scipy==1.4
 # oaklib==0.5.12; python_version >= "3.9"
 # pyyaml==6.0.1; python_version >= "3.9"
 tqdm==4.41.0
-zarr==2.12.0
+zarr==2.16.1
