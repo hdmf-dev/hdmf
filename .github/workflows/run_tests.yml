@@ -124,8 +124,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: conda-linux-python3.8-minimum    , test-tox-env: py38-minimum    , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: conda-linux-python3.12-upgraded  , test-tox-env: py312-upgraded  , python-ver: "3.12", os: ubuntu-latest }
+          - { name: conda-linux-python3.8-minimum    , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: ubuntu-latest }
+          - { name: conda-linux-python3.12-upgraded  , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: ubuntu-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
@@ -174,7 +174,7 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
+      group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - name: Checkout repo with submodules
