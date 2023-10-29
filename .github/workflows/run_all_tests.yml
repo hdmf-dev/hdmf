@@ -25,30 +25,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.8-minimum       , test-tox-env: pytest-py38-minimum     , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: linux-python3.9               , test-tox-env: pytest-py39-pinned      , python-ver: "3.9" , os: ubuntu-latest }
-          - { name: linux-python3.10              , test-tox-env: pytest-py310-pinned     , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-python3.11              , test-tox-env: pytest-py311-pinned     , python-ver: "3.11", os: ubuntu-latest }
-          - { name: linux-python3.11-optional     , test-tox-env: pytest-py311-optional   , python-ver: "3.11", os: ubuntu-latest }
-          - { name: linux-python3.12              , test-tox-env: pytest-py312-pinned     , python-ver: "3.12", os: ubuntu-latest }
-          - { name: linux-python3.12-upgraded     , test-tox-env: pytest-py312-upgraded   , python-ver: "3.12", os: ubuntu-latest }
-          - { name: linux-python3.12-prerelease   , test-tox-env: pytest-py312-prerelease , python-ver: "3.12", os: ubuntu-latest }
-          - { name: windows-python3.8-minimum     , test-tox-env: pytest-py38-minimum     , python-ver: "3.8" , os: windows-latest }
-          - { name: windows-python3.9             , test-tox-env: pytest-py39-pinned      , python-ver: "3.9" , os: windows-latest }
-          - { name: windows-python3.10            , test-tox-env: pytest-py310-pinned     , python-ver: "3.10", os: windows-latest }
-          - { name: windows-python3.11            , test-tox-env: pytest-py311-pinned     , python-ver: "3.11", os: windows-latest }
-          - { name: windows-python3.11-optional   , test-tox-env: pytest-py311-optional   , python-ver: "3.11", os: windows-latest }
-          - { name: windows-python3.12            , test-tox-env: pytest-py312-pinned     , python-ver: "3.12", os: windows-latest }
-          - { name: windows-python3.12-upgraded   , test-tox-env: pytest-py312-upgraded   , python-ver: "3.12", os: windows-latest }
-          - { name: windows-python3.12-prerelease , test-tox-env: pytest-py312-prerelease , python-ver: "3.12", os: windows-latest }
-          - { name: macos-python3.8-minimum       , test-tox-env: pytest-py38-minimum     , python-ver: "3.8" , os: macos-latest }
-          - { name: macos-python3.9               , test-tox-env: pytest-py39-pinned      , python-ver: "3.9" , os: macos-latest }
-          - { name: macos-python3.10              , test-tox-env: pytest-py310-pinned     , python-ver: "3.10", os: macos-latest }
-          - { name: macos-python3.11              , test-tox-env: pytest-py311-pinned     , python-ver: "3.11", os: macos-latest }
-          - { name: macos-python3.11-optional     , test-tox-env: pytest-py311-optional   , python-ver: "3.11", os: macos-latest }
-          - { name: macos-python3.12              , test-tox-env: pytest-py312-pinned     , python-ver: "3.12", os: macos-latest }
-          - { name: macos-python3.12-upgraded     , test-tox-env: pytest-py312-upgraded   , python-ver: "3.12", os: macos-latest }
-          - { name: macos-python3.12-prerelease   , test-tox-env: pytest-py312-prerelease , python-ver: "3.12", os: macos-latest }
+          - { name: linux-python3.8-minimum       , test-tox-env: pytest-py38-minimum          , python-ver: "3.8" , os: ubuntu-latest }
+          - { name: linux-python3.9               , test-tox-env: pytest-py39-pinned           , python-ver: "3.9" , os: ubuntu-latest }
+          - { name: linux-python3.10              , test-tox-env: pytest-py310-pinned          , python-ver: "3.10", os: ubuntu-latest }
+          - { name: linux-python3.11              , test-tox-env: pytest-py311-pinned          , python-ver: "3.11", os: ubuntu-latest }
+          - { name: linux-python3.11-optional     , test-tox-env: pytest-py311-optional-pinned , python-ver: "3.11", os: ubuntu-latest }
+          - { name: linux-python3.12              , test-tox-env: pytest-py312-pinned          , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-python3.12-upgraded     , test-tox-env: pytest-py312-upgraded        , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-python3.12-prerelease   , test-tox-env: pytest-py312-prerelease      , python-ver: "3.12", os: ubuntu-latest }
+          - { name: windows-python3.8-minimum     , test-tox-env: pytest-py38-minimum          , python-ver: "3.8" , os: windows-latest }
+          - { name: windows-python3.9             , test-tox-env: pytest-py39-pinned           , python-ver: "3.9" , os: windows-latest }
+          - { name: windows-python3.10            , test-tox-env: pytest-py310-pinned          , python-ver: "3.10", os: windows-latest }
+          - { name: windows-python3.11            , test-tox-env: pytest-py311-pinned          , python-ver: "3.11", os: windows-latest }
+          - { name: windows-python3.11-optional   , test-tox-env: pytest-py311-optional-pinned , python-ver: "3.11", os: windows-latest }
+          - { name: windows-python3.12            , test-tox-env: pytest-py312-pinned          , python-ver: "3.12", os: windows-latest }
+          - { name: windows-python3.12-upgraded   , test-tox-env: pytest-py312-upgraded        , python-ver: "3.12", os: windows-latest }
+          - { name: windows-python3.12-prerelease , test-tox-env: pytest-py312-prerelease      , python-ver: "3.12", os: windows-latest }
+          - { name: macos-python3.8-minimum       , test-tox-env: pytest-py38-minimum          , python-ver: "3.8" , os: macos-latest }
+          - { name: macos-python3.9               , test-tox-env: pytest-py39-pinned           , python-ver: "3.9" , os: macos-latest }
+          - { name: macos-python3.10              , test-tox-env: pytest-py310-pinned          , python-ver: "3.10", os: macos-latest }
+          - { name: macos-python3.11              , test-tox-env: pytest-py311-pinned          , python-ver: "3.11", os: macos-latest }
+          - { name: macos-python3.11-optional     , test-tox-env: pytest-py311-optional-pinned , python-ver: "3.11", os: macos-latest }
+          - { name: macos-python3.12              , test-tox-env: pytest-py312-pinned          , python-ver: "3.12", os: macos-latest }
+          - { name: macos-python3.12-upgraded     , test-tox-env: pytest-py312-upgraded        , python-ver: "3.12", os: macos-latest }
+          - { name: macos-python3.12-prerelease   , test-tox-env: pytest-py312-prerelease      , python-ver: "3.12", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
@@ -97,18 +97,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-gallery-python3.8-minimum      , test-tox-env: gallery-py38-minimum    , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: linux-gallery-python3.11-optional    , test-tox-env: gallery-py311-optional  , python-ver: "3.11", os: ubuntu-latest }
-          - { name: linux-gallery-python3.12-upgraded    , test-tox-env: gallery-py312-upgraded  , python-ver: "3.12", os: ubuntu-latest }
-          - { name: linux-gallery-python3.12-prerelease  , test-tox-env: gallery-py312-prerelease, python-ver: "3.12", os: ubuntu-latest }
-          - { name: windows-gallery-python3.8-minimum    , test-tox-env: gallery-py38-minimum    , python-ver: "3.8" , os: windows-latest }
-          - { name: windows-gallery-python3.11-optional  , test-tox-env: gallery-py311-optional  , python-ver: "3.11", os: windows-latest }
-          - { name: windows-gallery-python3.12-upgraded  , test-tox-env: gallery-py312-upgraded  , python-ver: "3.12", os: windows-latest }
-          - { name: windows-gallery-python3.12-prerelease, test-tox-env: gallery-py312-prerelease, python-ver: "3.12", os: windows-latest }
-          - { name: macos-gallery-python3.8-minimum      , test-tox-env: gallery-py38-minimum    , python-ver: "3.8" , os: macos-latest }
-          - { name: macos-gallery-python3.11-optional    , test-tox-env: gallery-py311-optional  , python-ver: "3.11", os: macos-latest }
-          - { name: macos-gallery-python3.12-upgraded    , test-tox-env: gallery-py312-upgraded  , python-ver: "3.12", os: macos-latest }
-          - { name: macos-gallery-python3.12-prerelease  , test-tox-env: gallery-py312-prerelease, python-ver: "3.12", os: macos-latest }
+          - { name: linux-gallery-python3.8-minimum      , test-tox-env: gallery-py38-minimum          , python-ver: "3.8" , os: ubuntu-latest }
+          - { name: linux-gallery-python3.11-optional    , test-tox-env: gallery-py311-optional-pinned , python-ver: "3.11", os: ubuntu-latest }
+          - { name: linux-gallery-python3.12-upgraded    , test-tox-env: gallery-py312-upgraded        , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-gallery-python3.12-prerelease  , test-tox-env: gallery-py312-prerelease      , python-ver: "3.12", os: ubuntu-latest }
+          - { name: windows-gallery-python3.8-minimum    , test-tox-env: gallery-py38-minimum          , python-ver: "3.8" , os: windows-latest }
+          - { name: windows-gallery-python3.11-optional  , test-tox-env: gallery-py311-optional-pinned , python-ver: "3.11", os: windows-latest }
+          - { name: windows-gallery-python3.12-upgraded  , test-tox-env: gallery-py312-upgraded        , python-ver: "3.12", os: windows-latest }
+          - { name: windows-gallery-python3.12-prerelease, test-tox-env: gallery-py312-prerelease      , python-ver: "3.12", os: windows-latest }
+          - { name: macos-gallery-python3.8-minimum      , test-tox-env: gallery-py38-minimum          , python-ver: "3.8" , os: macos-latest }
+          - { name: macos-gallery-python3.11-optional    , test-tox-env: gallery-py311-optional-pinned , python-ver: "3.11", os: macos-latest }
+          - { name: macos-gallery-python3.12-upgraded    , test-tox-env: gallery-py312-upgraded        , python-ver: "3.12", os: macos-latest }
+          - { name: macos-gallery-python3.12-prerelease  , test-tox-env: gallery-py312-prerelease      , python-ver: "3.12", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
@@ -144,14 +144,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: conda-linux-python3.8-minimum     , test-tox-env: pytest-py38-minimum     , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: conda-linux-python3.9             , test-tox-env: pytest-py39-pinned      , python-ver: "3.9" , os: ubuntu-latest }
-          - { name: conda-linux-python3.10            , test-tox-env: pytest-py310-pinned     , python-ver: "3.10", os: ubuntu-latest }
-          - { name: conda-linux-python3.11            , test-tox-env: pytest-py311-pinned     , python-ver: "3.11", os: ubuntu-latest }
-          - { name: conda-linux-python3.11-optional   , test-tox-env: pytest-py311-optional   , python-ver: "3.11", os: ubuntu-latest }
-          - { name: conda-linux-python3.12            , test-tox-env: pytest-py312-pinned     , python-ver: "3.12", os: ubuntu-latest }
-          - { name: conda-linux-python3.12-upgraded   , test-tox-env: pytest-py312-upgraded   , python-ver: "3.12", os: ubuntu-latest }
-          - { name: conda-linux-python3.12-prerelease , test-tox-env: pytest-py312-prerelease , python-ver: "3.12", os: ubuntu-latest }
+          - { name: conda-linux-python3.8-minimum     , test-tox-env: pytest-py38-minimum          , python-ver: "3.8" , os: ubuntu-latest }
+          - { name: conda-linux-python3.9             , test-tox-env: pytest-py39-pinned           , python-ver: "3.9" , os: ubuntu-latest }
+          - { name: conda-linux-python3.10            , test-tox-env: pytest-py310-pinned          , python-ver: "3.10", os: ubuntu-latest }
+          - { name: conda-linux-python3.11            , test-tox-env: pytest-py311-pinned          , python-ver: "3.11", os: ubuntu-latest }
+          - { name: conda-linux-python3.11-optional   , test-tox-env: pytest-py311-optional-pinned , python-ver: "3.11", os: ubuntu-latest }
+          - { name: conda-linux-python3.12            , test-tox-env: pytest-py312-pinned          , python-ver: "3.12", os: ubuntu-latest }
+          - { name: conda-linux-python3.12-upgraded   , test-tox-env: pytest-py312-upgraded        , python-ver: "3.12", os: ubuntu-latest }
+          - { name: conda-linux-python3.12-prerelease , test-tox-env: pytest-py312-prerelease      , python-ver: "3.12", os: ubuntu-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
