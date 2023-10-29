@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: '3.11'  # TODO update to 3.12 when optional reqs (e.g., oaklib) support 3.12
 
       - name: Install Sphinx dependencies and package
         run: |
