@@ -31,11 +31,11 @@ jobs:
           python -m pip list
           git clone https://github.com/hdmf-dev/hdmf-zarr.git --recurse-submodules
           cd hdmf-zarr
-          python -m pip install -r requirements-dev.txt -r requirements.txt
+          python -m pip install -r requirements-dev.txt  # do not install the pinned install requirements
           # must install in editable mode for coverage to find sources
-          python -m pip install -e .  # this will install a pinned version of hdmf instead of the current one
+          python -m pip install -e .  # this will install a different version of hdmf from the current one
           cd ..
-          python -m pip uninstall -y hdmf  # uninstall the pinned version of hdmf
+          python -m pip uninstall -y hdmf  # uninstall the other version of hdmf
           python -m pip install .  # reinstall current branch of hdmf
           python -m pip list
 
