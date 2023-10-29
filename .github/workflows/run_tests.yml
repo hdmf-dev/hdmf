@@ -16,7 +16,7 @@ jobs:
       run:
         shell: bash
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
       cancel-in-progress: true
     strategy:
       fail-fast: false
@@ -79,7 +79,7 @@ jobs:
       run:
         shell: bash
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
       cancel-in-progress: true
     strategy:
       fail-fast: false
@@ -118,7 +118,7 @@ jobs:
      run:
        shell: bash -l {0}
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
       cancel-in-progress: true
     strategy:
       fail-fast: false
@@ -174,7 +174,7 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
       cancel-in-progress: true
     steps:
       - name: Checkout repo with submodules
@@ -213,7 +213,7 @@ jobs:
       run:
         shell: bash -l {0}  # necessary for conda
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
       cancel-in-progress: true
     strategy:
       fail-fast: false
