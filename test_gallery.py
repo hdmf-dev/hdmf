@@ -35,6 +35,12 @@ _experimental_warning_re = (
 
 pydantic_warning_re = ("Support for class-based `config` is deprecated, use ConfigDict instead.")
 
+datetime_warning_re = (
+    "datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal "
+    "in a future version. Use timezone-aware objects to represent datetimes in UTC: "
+    "datetime.datetime.fromtimestamp(timestamp, datetime.UTC)."
+)
+
 
 def run_gallery_tests():
     global TOTAL, FAILURES, ERRORS
@@ -77,6 +83,12 @@ def run_gallery_tests():
                     # will be deprecated in the future
                     "ignore",
                     message=pydantic_warning_re,
+                    category=DeprecationWarning,
+                )
+                warnings.filterwarnings(
+                    # this warning is triggered from pandas 2.1.2 and python 3.12
+                    "ignore",
+                    message=datetime_warning_re,
                     category=DeprecationWarning,
                 )
                 _import_from_file(script)
