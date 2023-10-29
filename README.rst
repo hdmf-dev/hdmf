@@ -60,12 +60,12 @@ See the `HDMF documentation <https://hdmf.readthedocs.io/en/stable/install_users
 Code of Conduct
 ===============
 
-This project and everyone participating in it is governed by our `code of conduct guidelines <.github/CODE_OF_CONDUCT.md>`_. By participating, you are expected to uphold this code.
+This project and everyone participating in it is governed by our `code of conduct guidelines <https://github.com/hdmf-dev/hdmf/blob/dev/.github/CODE_OF_CONDUCT.md>`_. By participating, you are expected to uphold this code.
 
 Contributing
 ============
 
-For details on how to contribute to HDMF see our `contribution guidelines <docs/CONTRIBUTING.rst>`_.
+For details on how to contribute to HDMF see our `contribution guidelines <https://github.com/hdmf-dev/hdmf/blob/dev/docs/CONTRIBUTING.rst>`_.
 
 Citing HDMF
 ===========
