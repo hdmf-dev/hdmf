@@ -9,6 +9,7 @@
 
 ### Minor improvements
 - Set up GitHub dependabot to check for updates to Python requirements and GitHub Actions. @rly [#977](https://github.com/hdmf-dev/hdmf/pull/977)
+- Simplify tox configuration. @rly [#988](https://github.com/hdmf-dev/hdmf/pull/988)
 
 ### Bug fixes
 - Updated custom class generation to handle specs with fixed values and required names. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
