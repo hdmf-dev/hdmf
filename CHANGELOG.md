@@ -8,7 +8,7 @@
 - Updated `TermSet` to include `_repr_html_` for easy to read notebook representation. @mavaylon1 [#967](https://github.com/hdmf-dev/hdmf/pull/967)
 
 ### Minor improvements
-- Set up GitHub dependabot to check for updates to Python requirements and GitHub Actions. @rly [#977](https://github.com/hdmf-dev/hdmf/pull/977)
+- Set up GitHub dependabot to check for updates to GitHub Actions. @rly [#977](https://github.com/hdmf-dev/hdmf/pull/977)
 - Simplify tox configuration. @rly [#988](https://github.com/hdmf-dev/hdmf/pull/988)
 
 ### Bug fixes
