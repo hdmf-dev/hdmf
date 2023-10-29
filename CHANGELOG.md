@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.11.0 (Upcoming)
+## HDMF 3.11.0 (October 30, 2023)
 
 ### Enhancements
 - Added `target_tables` attribute to `DynamicTable` to allow users to specify the target table of any predefined
@@ -10,6 +10,7 @@
 ### Minor improvements
 - Set up GitHub dependabot to check for updates to GitHub Actions. @rly [#977](https://github.com/hdmf-dev/hdmf/pull/977)
 - Simplify tox configuration. @rly [#988](https://github.com/hdmf-dev/hdmf/pull/988)
+- Add testing for Python 3.12. @rly [#988](https://github.com/hdmf-dev/hdmf/pull/988)
 
 ### Bug fixes
 - Updated custom class generation to handle specs with fixed values and required names. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
