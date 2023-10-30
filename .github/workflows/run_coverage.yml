@@ -19,6 +19,9 @@ jobs:
     defaults:
       run:
         shell: bash
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.os }}-${{ matrix.opt_req }}
+      cancel-in-progress: true
     strategy:
       matrix:
         include:
@@ -28,18 +31,13 @@ jobs:
           - { os: macos-latest  , opt_req: false }
     env:  # used by codecov-action
       OS: ${{ matrix.os }}
-      PYTHON: '3.11'
+      PYTHON: '3.11'  # TODO update to 3.12 when optional reqs (e.g., oaklib) support 3.12
     steps:
-      - name: Cancel non-latest runs
-        uses: styfle/cancel-workflow-action@0.11.0
-        with:
-          all_but_latest: true
-          access_token: ${{ github.token }}
-
-      - uses: actions/checkout@v4
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-          fetch-depth: 0  # tags are required for versioneer to determine the version
+          fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
         uses: actions/setup-python@v4
