@@ -1,4 +1,4 @@
-Prepare for release of HDMF 3.11.0
+Prepare for release of HDMF [version]
 
 ### Before merging:
 - [ ] Major and minor releases: Update package versions in `requirements.txt`, `requirements-dev.txt`,
