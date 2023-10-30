@@ -486,7 +486,7 @@ class HERD(Container):
              'doc': ('The field of the compound data type using an external resource.')},
             {'name': 'key', 'type': (str, Key), 'default': None,
              'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
-            {'name': 'termset', 'type': TermSet, 'default': None,
+            {'name': 'termset', 'type': TermSet,
              'doc': 'The TermSet to be used if the container/attribute does not have one.'}
             )
     def add_ref_termset(self, **kwargs):
@@ -503,19 +503,6 @@ class HERD(Container):
         key = kwargs['key']
         field = kwargs['field']
         termset = kwargs['termset']
-
-        if termset is None:
-            if attribute is None:
-                try:
-                    termset = container.termset
-                except AttributeError:
-                    msg = "Cannot Find TermSet"
-                    raise AttributeError(msg)
-            else:
-                termset = container[attribute].termset
-                if termset is None:
-                    msg = "Cannot Find TermSet"
-                    raise ValueError(msg)
 
         if file is None:
             file = self._get_file_from_container(container=container)

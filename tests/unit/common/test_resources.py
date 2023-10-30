@@ -339,7 +339,6 @@ class TestHERD(TestCase):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
-        em.link_resources(er)
 
         col1 = VectorData(name='Species_Data',
                           description='species from NCBI and Ensemble',
@@ -362,7 +361,6 @@ class TestHERD(TestCase):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
-        em.link_resources(er)
 
         col1 = VectorData(name='Species_Data',
                           description='species from NCBI and Ensemble',
@@ -387,7 +385,6 @@ class TestHERD(TestCase):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
-        em.link_resources(er)
 
         col1 = VectorData(name='Species_Data',
                           description='species from NCBI and Ensemble',
