@@ -91,6 +91,7 @@ are rules to how users store information in the interlinked tables.
 # sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_externalresources.png'
 from hdmf.common import HERD
 from hdmf.common import DynamicTable, VectorData
+from hdmf.term_set import TermSet
 from hdmf import Container, HERDManager
 from hdmf import Data
 import numpy as np
@@ -269,7 +270,7 @@ er.get_object_entities(file=file,
 ###############################################################################
 # Using the get_object_type
 # ------------------------------------------------------
-# The :py:class:`~hdmf.common.resources.HERD.get_object_entities` method
+# The :py:func:`~hdmf.common.resources.HERD.get_object_entities` method
 # allows the user to retrieve all entities and key information associated with an `Object` in
 # the form of a pandas DataFrame.
 
@@ -305,6 +306,52 @@ er.add_ref(
     entity_id='NCBI_TAXON:txid10090',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
+
+###############################################################################
+# Using add_ref_termset
+# ------------------------------------------------------
+# :py:class:`~hdmf.common.resources.HERD` has multiple ways for users to add
+# external references. The :py:func:`~hdmf.common.resources.HERD.add_ref_termset`
+# method allows users to not only validate terms, i.e., keys, but also perform
+# bulk populating of the data structure.
+
+# The :py:func:`~hdmf.common.resources.HERD.add_ref_container` method is directly
+# used for populating :py:class:`~hdmf.common.resources.HERD` when writing a file.
+# :py:func:`~hdmf.common.resources.HERD.add_ref_termset` can be used for new files;
+# however, it is also the best practice when adding references for existing files.
+
+# :py:func:`~hdmf.common.resources.HERD.add_ref_termset` has many optional fields,
+# giving the user a range of control when adding references. Let's see an example.
+er = HERD()
+terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+file = HERDManagerContainer(name='file')
+
+er.add_ref_termset(file=file,
+                   container=species,
+                   attribute='Species_Data',
+                   key='Ursus arctos horribilis',
+                   termset=terms)
+
+###############################################################################
+# Using add_ref_termset for an entire dataset
+# ------------------------------------------------------
+# As mentioned above, :py:func:`~hdmf.common.resources.HERD.add_ref_termset`
+# supports iteratively validating and populating :py:class:`~hdmf.common.resources.HERD`.
+
+# When populating :py:class:`~hdmf.common.resources.HERD`, users may have some terms
+# that are not in the :py:class:`~hdmf.term_set.TermSet`. As a result,
+# :py:func:`~hdmf.common.resources.HERD.add_ref_termset` will return an all the missing
+# terms in a dictionary. It is up to the user to either add these terms to the
+# :py:class:`~hdmf.term_set.TermSet` or remove them from the dataset.
+
+er = HERD()
+terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+file = HERDManagerContainer(name='file')
+
+er.add_ref_termset(file=file,
+                   container=species,
+                   attribute='Species_Data',
+                   termset=terms)
 
 ###############################################################################
 # Write HERD
