@@ -703,15 +703,20 @@ class HERD(Container):
                 key = self._add_key(key)
 
         if check_object_key:
+            # check for object-key relationship in ObjectKeyTable
             key_idx = key.idx
             object_key_row_idx = self.object_keys.which(keys_idx=key_idx)
-            obj_key_exists = False
-            for row_idx in object_key_row_idx:
-                obj_idx = self.object_keys['objects_idx', row_idx]
-                if obj_idx == object_field.idx:
-                    obj_key_exists = True
-            if not obj_key_exists:
-                add_object_key = True
+            if len(object_key_row_idx)!=0:
+                # this means there exists rows where the key is in the ObjectKeyTable
+                obj_key_exists = False
+                for row_idx in object_key_row_idx:
+                    obj_idx = self.object_keys['objects_idx', row_idx]
+                    if obj_idx == object_field.idx:
+                        obj_key_exists = True
+                        # this means there is already a object-key relationship recorded
+                if not obj_key_exists:
+                    # this means that though the key is there, there is not object-key relationship
+                    add_object_key = True
 
         if add_object_key:
             self._add_object_key(object_field, key)
@@ -731,10 +736,9 @@ class HERD(Container):
                     entity_idx = self.entity_keys['entities_idx', row_idx]
                     if entity_idx == entity.idx:
                         entity_key_check = True
-                        # this means there is already a key-entity relationship recorded
+                        # this means there is already a entity-key relationship recorded
                 if not entity_key_check:
-                    # this means that though the key is there, there is not key-entity relationship
-                    # a.k.a add it now
+                    # this means that though the key is there, there is not entity-key relationship
                     add_entity_key = True
             else:
                 # this means that specific key is not in the EntityKeyTable, so add it and establish
