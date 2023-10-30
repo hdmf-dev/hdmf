@@ -2,7 +2,7 @@ import pandas as pd
 import unittest
 from hdmf.common import DynamicTable, VectorData
 from hdmf import TermSet, TermSetWrapper
-from hdmf.common.resources2 import HERD, Key
+from hdmf.common.resources import HERD, Key
 from hdmf import Data, Container, HERDManager
 from hdmf.testing import TestCase, remove_test_file
 import numpy as np
@@ -333,6 +333,96 @@ class TestHERD(TestCase):
         self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', 'description', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+        em.link_resources(er)
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        er.add_ref_termset(file=em,
+                    container=species,
+                    attribute='Species_Data',
+                    termset=terms
+                   )
+        self.assertEqual(er.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_bulk(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+        em.link_resources(er)
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens', 'Mus musculus'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        er.add_ref_termset(file=em,
+                    container=species,
+                    attribute='Species_Data',
+                    termset=terms
+                   )
+        self.assertEqual(er.keys.data, [('Homo sapiens',), ('Mus musculus',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'),
+        ('NCBI_TAXON:10090',
+         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=10090')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_missing_terms(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+        em.link_resources(er)
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens', 'missing_term'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        missing_terms = er.add_ref_termset(file=em,
+                                            container=species,
+                                            attribute='Species_Data',
+                                            termset=terms
+                                           )
+        self.assertEqual(er.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+        self.assertEqual(missing_terms, {'missing_terms': ['missing_term']})
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_missing_file_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        with self.assertRaises(ValueError):
+            er.add_ref_termset(
+                        container=species,
+                        attribute='Species_Data',
+                        termset=terms
+                       )
 
     def test_get_file_from_container(self):
         file = HERDManagerContainer(name='file')
