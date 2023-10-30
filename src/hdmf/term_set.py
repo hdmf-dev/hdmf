@@ -53,11 +53,43 @@ class TermSet:
             self.expanded_termset_path = self.__enum_expander()
             self.view = SchemaView(self.expanded_termset_path)
 
+        self.name = self.view.schema.name
         self.sources = self.view.schema.prefixes
 
     def __repr__(self):
-        re = "class: %s\n" % str(self.__class__)
-        re += "term_schema_path: %s\n" % self.term_schema_path
+        terms = list(self.view_set.keys())
+
+        re = "Schema Path: %s\n" % self.term_schema_path
+        re += "Sources: " + ", ".join(list(self.sources.keys()))+"\n"
+        re += "Terms: \n"
+        if len(terms) > 4:
+            re += "   - %s\n" % terms[0]
+            re += "   - %s\n" % terms[1]
+            re += "   - %s\n" % terms[2]
+            re += "   ... ... \n"
+            re += "   - %s\n" % terms[-1]
+        else:
+            for term in terms:
+                re += "   - %s\n" % term
+        re += "Number of terms: %s" % len(terms)
+        return re
+
+    def _repr_html_(self):
+        terms = list(self.view_set.keys())
+
+        re = "<b>" + "Schema Path: " + "</b>" + self.term_schema_path + "<br>"
+        re += "<b>" + "Sources: " + "</b>" + ", ".join(list(self.sources.keys())) + "<br>"
+        re += "<b> Terms: </b>"
+        if len(terms) > 4:
+            re += "<li> %s </li>" % terms[0]
+            re += "<li> %s </li>" % terms[1]
+            re += "<li> %s </li>" % terms[2]
+            re += "... ..."
+            re += "<li> %s </li>" % terms[-1]
+        else:
+            for term in terms:
+                re += "<li> %s </li>" % term
+        re += "<i> Number of terms:</i> %s" % len(terms)
         return re
 
     def __perm_value_key_info(self, perm_values_dict: dict, key: str):

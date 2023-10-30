@@ -1,4 +1,4 @@
-id: termset/species_example
+id: termset/species_example2
 name: Species
 version: 0.0.1
 prefixes:
@@ -19,9 +19,3 @@ enums:
       Ursus arctos horribilis:
         description: the species is a grizzly bear
         meaning: NCBI_TAXON:116960
-      Myrmecophaga tridactyla:
-        description: the species is an anteater
-        meaning: NCBI_TAXON:71006
-      Ailuropoda melanoleuca:
-        description: the species is a panda
-        meaning: NCBI_TAXON:9646

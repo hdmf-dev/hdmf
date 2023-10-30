@@ -52,11 +52,11 @@ Option 2: Using conda
 
 The `conda package and environment management system`_ is an alternate way of managing virtual environments.
 First, install Anaconda_ to install the ``conda`` tool. Then create and
-activate a new virtual environment called ``"hdmf-env"`` with Python 3.11 installed.
+activate a new virtual environment called ``"hdmf-env"`` with Python 3.12 installed.
 
 .. code:: bash
 
-    conda create --name hdmf-env python=3.11
+    conda create --name hdmf-env python=3.12
     conda activate hdmf-env
 
 Similar to a virtual environment created with ``venv``, a conda environment
