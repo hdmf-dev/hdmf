@@ -16,6 +16,8 @@ Prepare for release of HDMF [version]
   (`pytest && python test_gallery.py`)
 - [ ] Run PyNWB tests locally including gallery and validation tests, and inspect all warnings and outputs
   (`cd pynwb; python test.py -v > out.txt 2>&1`)
+- [ ] Run HDMF-Zarr tests locally including gallery and validation tests, and inspect all warnings and outputs
+  (`cd hdmf-zarr; pytest && python test_gallery.py`)
 - [ ] Test docs locally and inspect all warnings and outputs `cd docs; make clean && make html`
 - [ ] Push changes to this PR and make sure all PRs to be included in this release have been merged
 - [ ] Check that the readthedocs build for this PR succeeds (build latest to pull the new branch, then activate and
