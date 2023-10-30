@@ -625,6 +625,8 @@ class HERD(Container):
             add_entity = True
             add_entity_key = True
         else:
+            # The entity exists and so we need to check if an entity_key exists
+            # for this entity and key combination.
             check_entity_key = True
 
         #################
@@ -717,7 +719,7 @@ class HERD(Container):
         if check_entity_key:
             if entity_uri is not None:
                 msg = 'This entity already exists. Ignoring new entity uri'
-                warn(msg) # TODO: Change to Warn that the uri provided is being ignored
+                warn(msg)
 
             # check for entity-key relationship in EntityKeyTable
             key_idx = key.idx
@@ -733,12 +735,10 @@ class HERD(Container):
                 if not entity_key_check:
                     # this means that though the key is there, there is not key-entity relationship
                     # a.k.a add it now
-                    # self._add_entity_key(entity, key) TODO
                     add_entity_key = True
             else:
                 # this means that specific key is not in the EntityKeyTable, so add it and establish
                 # the relationship with the entity
-                # self._add_entity_key(entity, key) TODO
                 add_entity_key = True
 
         if add_entity:
