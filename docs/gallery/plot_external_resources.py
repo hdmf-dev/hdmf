@@ -322,8 +322,11 @@ er.add_ref(
 
 # :py:func:`~hdmf.common.resources.HERD.add_ref_termset` has many optional fields,
 # giving the user a range of control when adding references. Let's see an example.
+dir_path = os.path.dirname(os.path.abspath(__file__))
+yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
+
 er = HERD()
-terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+terms = TermSet(term_schema_path=yaml_file)
 file = HERDManagerContainer(name='file')
 
 er.add_ref_termset(file=file,
