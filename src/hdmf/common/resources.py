@@ -674,22 +674,28 @@ class HERD(Container):
                                             relative_path=object_field['relative_path'],
                                             field=object_field['field'])
 
-        # Since object_field is set, we need to check if
-        # the key has been associated with that object.
-        # If so, just reuse the key.
         if add_key:
+            # Now that object_field is set, we need to check if
+            # the key has been associated with that object.
+            # If so, just reuse the key.
             key_exists = False
             key_idx_matches = self.keys.which(key=key)
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 key_idx = self.object_keys['keys_idx', row_idx]
+                # breakpoint()
                 if key_idx in key_idx_matches:
-                    key_exists = True # Make sure we don't add the key
+                    key_exists = True # Make sure we don't add the key.
+                    # Automatically resolve the key for keys associated with
+                    # the same object.
                     key = self.keys.row[key_idx]
+
             if not key_exists:
                 key = self._add_key(key)
 
         if check_object_key:
-            # check for object-key relationship in ObjectKeyTable
+            # When using a Key Object, we want to still check for whether the key
+            # has been used with the Object object. If not, add it to ObjectKeyTable.
+            # If so, do nothing and add_object_key remains False.
             key_idx = key.idx
             object_key_row_idx = self.object_keys.which(keys_idx=key_idx)
             if len(object_key_row_idx)!=0:

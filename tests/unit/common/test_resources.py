@@ -23,7 +23,6 @@ class HERDManagerContainer(Container, HERDManager):
     def __init__(self, **kwargs):
         kwargs['name'] = 'HERDManagerContainer'
         super().__init__(**kwargs)
-        attr = ['Homo sapiens']
 
 
 class TestHERD(TestCase):
@@ -372,7 +371,6 @@ class TestHERD(TestCase):
 
         er.add_ref_termset(file=em,
                     container=species['Species_Data'],
-                    key='Homo sapiens',
                     termset=terms
                    )
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
@@ -959,24 +957,21 @@ class TestHERD(TestCase):
                    entity_uri='entity_uri2')
         self.assertEqual(er.object_keys.data, [(0, 0), (1, 0)])
 
-    def test_reuse_key_reuse_entity(self):
+    def test_reuse_key_string(self):
         # With the key and entity existing, the EntityKeyTable should not have duplicates
         er = HERD()
-        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
-                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
-
-        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
-                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        data_1 = Data(name='data_name',
+                      data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0), ('mouse', 3, 27.0)],
+                      dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
         er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        existing_key = er.get_key('Mus musculus')
         er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_2,
-                   key=existing_key,
+                   container=data_1,
+                   key='Mus musculus',
                    entity_id='NCBI:txid10090')
 
         self.assertEqual(er.entity_keys.data, [(0, 0)])
