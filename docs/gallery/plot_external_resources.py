@@ -323,7 +323,7 @@ er.add_ref(
 # :py:func:`~hdmf.common.resources.HERD.add_ref_termset` has many optional fields,
 # giving the user a range of control when adding references. Let's see an example.
 er = HERD()
-terms = TermSet(term_schema_path='docs/gallery/example_test_term_set.yaml')
+terms = TermSet(term_schema_path='example_term_set.yaml')
 file = HERDManagerContainer(name='file')
 
 er.add_ref_termset(file=file,
@@ -345,7 +345,7 @@ er.add_ref_termset(file=file,
 # :py:class:`~hdmf.term_set.TermSet` or remove them from the dataset.
 
 er = HERD()
-terms = TermSet(term_schema_path='docs/gallery/example_test_term_set.yaml')
+terms = TermSet(term_schema_path='example_term_set.yaml')
 file = HERDManagerContainer(name='file')
 
 er.add_ref_termset(file=file,
