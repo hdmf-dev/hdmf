@@ -616,7 +616,7 @@ class HERD(Container):
             # for this entity and key combination.
             check_entity_key = True
             if entity_uri is not None:
-                entity = entity.entity_uri
+                entity_uri = entity.entity_uri
                 msg = 'This entity already exists. Ignoring new entity uri'
                 warn(msg)
 
