@@ -686,14 +686,14 @@ class HERD(Container):
             # If so, just reuse the key.
             key_exists = False
             key_idx_matches = self.keys.which(key=key)
-            for row_idx in self.object_keys.which(objects_idx=object_field.idx):
-                key_idx = self.object_keys['keys_idx', row_idx]
-                # breakpoint()
-                if key_idx in key_idx_matches:
-                    key_exists = True # Make sure we don't add the key.
-                    # Automatically resolve the key for keys associated with
-                    # the same object.
-                    key = self.keys.row[key_idx]
+            if len(key_idx_matches)!=0:
+                for row_idx in self.object_keys.which(objects_idx=object_field.idx):
+                    key_idx = self.object_keys['keys_idx', row_idx]
+                    if key_idx in key_idx_matches:
+                        key_exists = True # Make sure we don't add the key.
+                        # Automatically resolve the key for keys associated with
+                        # the same object.
+                        key = self.keys.row[key_idx]
 
             if not key_exists:
                 key = self._add_key(key)
@@ -702,11 +702,11 @@ class HERD(Container):
             # When using a Key Object, we want to still check for whether the key
             # has been used with the Object object. If not, add it to ObjectKeyTable.
             # If so, do nothing and add_object_key remains False.
+            obj_key_exists = False
             key_idx = key.idx
             object_key_row_idx = self.object_keys.which(keys_idx=key_idx)
             if len(object_key_row_idx)!=0:
                 # this means there exists rows where the key is in the ObjectKeyTable
-                obj_key_exists = False
                 for row_idx in object_key_row_idx:
                     obj_idx = self.object_keys['objects_idx', row_idx]
                     if obj_idx == object_field.idx:
@@ -721,11 +721,11 @@ class HERD(Container):
 
         if check_entity_key:
             # check for entity-key relationship in EntityKeyTable
+            entity_key_check = False
             key_idx = key.idx
             entity_key_row_idx = self.entity_keys.which(keys_idx=key_idx)
             if len(entity_key_row_idx)!=0:
                 # this means there exists rows where the key is in the EntityKeyTable
-                entity_key_check = False
                 for row_idx in entity_key_row_idx:
                     entity_idx = self.entity_keys['entities_idx', row_idx]
                     if entity_idx == entity.idx:
