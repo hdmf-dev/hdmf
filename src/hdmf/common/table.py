@@ -278,11 +278,16 @@ class DynamicTable(Container):
             msg = "'__columns__' must be of type tuple, found %s" % type(cls.__columns__)
             raise TypeError(msg)
 
-        if (len(bases) and 'DynamicTable' in globals() and issubclass(bases[-1], Container)
-                and bases[-1].__columns__ is not cls.__columns__):
-            new_columns = list(cls.__columns__)
-            new_columns[0:0] = bases[-1].__columns__  # prepend superclass columns to new_columns
-            cls.__columns__ = tuple(new_columns)
+        if len(bases) and 'DynamicTable' in globals():
+            for item in bases:
+                if issubclass(item, Container):
+                    try:
+                        if item.__columns__ is not cls.__columns__:
+                            new_columns = list(cls.__columns__)
+                            new_columns[0:0] = bases[-1].__columns__  # prepend superclass columns to new_columns
+                            cls.__columns__ = tuple(new_columns)
+                    except AttributeError:
+                        continue
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},  # noqa: C901
             {'name': 'description', 'type': str, 'doc': 'a description of what is in this table'},
