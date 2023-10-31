@@ -565,9 +565,9 @@ class TestDynamicTable(TestCase):
         rows = table[0:5:2]
         self.assertIsInstance(rows, pd.DataFrame)
         self.assertTupleEqual(rows.shape, (3, 3))
-        self.assertEqual(rows.iloc[2][0], 5)
-        self.assertEqual(rows.iloc[2][1], 50.0)
-        self.assertEqual(rows.iloc[2][2], 'lizard')
+        self.assertEqual(rows.iloc[2].iloc[0], 5)
+        self.assertEqual(rows.iloc[2].iloc[1], 50.0)
+        self.assertEqual(rows.iloc[2].iloc[2], 'lizard')
 
     def test_getitem_invalid_keytype(self):
         table = self.with_spec()

@@ -39,6 +39,9 @@ Overall Health
 .. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_pynwb_tests.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_pynwb_tests.yml
 
+.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_hdmf_zarr_tests.yml/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_hdmf_zarr_tests.yml
+
 .. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_all_tests.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_all_tests.yml
 
