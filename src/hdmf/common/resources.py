@@ -615,6 +615,10 @@ class HERD(Container):
             # The entity exists and so we need to check if an entity_key exists
             # for this entity and key combination.
             check_entity_key = True
+            if entity_uri is not None:
+                entity = entity.entity_uri
+                msg = 'This entity already exists. Ignoring new entity uri'
+                warn(msg)
 
         #################
         # Validate Object
@@ -716,10 +720,6 @@ class HERD(Container):
             self._add_object_key(object_field, key)
 
         if check_entity_key:
-            if entity_uri is not None:
-                msg = 'This entity already exists. Ignoring new entity uri'
-                warn(msg)
-
             # check for entity-key relationship in EntityKeyTable
             key_idx = key.idx
             entity_key_row_idx = self.entity_keys.which(keys_idx=key_idx)
