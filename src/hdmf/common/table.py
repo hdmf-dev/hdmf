@@ -284,7 +284,7 @@ class DynamicTable(Container):
                     try:
                         if item.__columns__ is not cls.__columns__:
                             new_columns = list(cls.__columns__)
-                            new_columns[0:0] = bases[-1].__columns__  # prepend superclass columns to new_columns
+                            new_columns[0:0] = item.__columns__  # prepend superclass columns to new_columns
                             cls.__columns__ = tuple(new_columns)
                     except AttributeError:
                         continue
