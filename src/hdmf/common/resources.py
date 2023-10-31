@@ -382,6 +382,7 @@ class HERD(Container):
         if len(objecttable_idx) == 1:
             return self.objects.row[objecttable_idx[0]]
         elif len(objecttable_idx) == 0 and create:
+            # Used for add_ref
             return {'file_object_id': file_object_id,
                     'files_idx': files_idx,
                     'container': container,
@@ -527,7 +528,6 @@ class HERD(Container):
             except ValueError:
                 missing_terms.append(term)
                 continue
-            # prep for add_ref
             entity_id = term_info[0]
             entity_uri = term_info[2]
             self.add_ref(file=file,
@@ -566,6 +566,7 @@ class HERD(Container):
         container = kwargs['container']
         attribute = kwargs['attribute']
         if isinstance(container, Data):
+            # Used when using the TermSetWrapper
             if attribute == 'data':
                 attribute = None
         key = kwargs['key']
@@ -580,9 +581,9 @@ class HERD(Container):
         if file is None:
             file = self._get_file_from_container(container=container)
 
-        ##############
-        # Validate Key
-        ##############
+        ################
+        # Set Key Checks
+        ################
         add_key = False
         add_object_key = False
         check_object_key = False
@@ -595,9 +596,9 @@ class HERD(Container):
             # in the ObjectKeyTable
             check_object_key = True
 
-        #################
-        # Validate Entity
-        #################
+        ###################
+        # Set Entity Checks
+        ###################
         add_entity_key = False
         add_entity = False
 
@@ -662,10 +663,11 @@ class HERD(Container):
                                                             relative_path=relative_path,
                                                             field=field)
 
-        ###############
-        # Populate HERD
-        ###############
+        #######################################
+        # Validate Parameters and Populate HERD
+        #######################################
         if isinstance(object_field, dict):
+            # Create the object and file
             if object_field['files_idx'] is None:
                 self._add_file(object_field['file_object_id'])
                 object_field['files_idx'] = self.files.which(file_object_id=object_field['file_object_id'])[0]
