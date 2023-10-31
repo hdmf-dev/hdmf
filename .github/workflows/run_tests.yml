@@ -138,6 +138,7 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-ver }}
+          mamba-version: "*"
 
       - name: Install build dependencies
         run: |
@@ -151,6 +152,7 @@ jobs:
           conda config --show-sources
           conda list --show-channel-urls
 
+      # NOTE tox installs packages from PyPI not conda-forge...
       - name: Run tox tests
         run: |
           tox -e ${{ matrix.test-tox-env }}
@@ -236,6 +238,7 @@ jobs:
           python-version: ${{ matrix.python-ver }}
           channels: conda-forge
           auto-activate-base: false
+          mamba-version: "*"
 
       - name: Install run dependencies
         run: |
