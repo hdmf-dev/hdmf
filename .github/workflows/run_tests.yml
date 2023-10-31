@@ -138,6 +138,7 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-ver }}
+          channels: conda-forge
           mamba-version: "*"
 
       - name: Install build dependencies
