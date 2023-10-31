@@ -506,7 +506,6 @@ class HERD(Container):
 
         if file is None:
             file = self._get_file_from_container(container=container)
-
         # if key is provided then add_ref proceeds as normal
         if key is not None:
             data = [key]
@@ -518,7 +517,7 @@ class HERD(Container):
                 data_object = getattr(container, attribute)
             if isinstance(data_object, (Data, DataIO)):
                 data = data_object.data
-            elif isinstance(data_object, (list, np.ndarray)):
+            elif isinstance(data_object, (list, tuple, np.ndarray)):
                 data = data_object
         missing_terms = []
         for term in data:
