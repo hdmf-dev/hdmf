@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.11.1 (Upcoming)
+
+### Enhancements
+- Added `add_ref_termset`, updated helper methods for `HERD`, and revised `add_ref` to support validations prior to populating the tables. @mavaylon1 [#968](https://github.com/hdmf-dev/hdmf/pull/968)
+
 ## HDMF 3.11.0 (October 30, 2023)
 
 ### Enhancements
