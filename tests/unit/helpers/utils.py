@@ -653,3 +653,28 @@ class CustomSpecNamespace(SpecNamespace):
     @classmethod
     def types_key(cls):
         return cls.__types_key
+
+class FooExtendDynamicTable0(DynamicTable):
+    """
+    Within PyNWB, PlaneSegmentation extends DynamicTable and sets __columns__. This class is a helper
+    class for testing and is directly meant to test __gather_columns, i.e., class generation, downstream.
+    """
+    __columns__ = (
+        {'name': 'col1', 'description': '...'},
+        {'name': 'col2', 'description': '...'},
+    )
+
+
+class FooExtendDynamicTable1(FooExtendDynamicTable0):
+    """
+    In extensions, users can create new classes that inherit from classes that inherit from DynamicTable.
+    This is a helper class for testing and is directly meant to test __gather_columns, i.e.,
+    class generation, downstream.
+    """
+    __columns__ = (
+        {'name': 'col3', 'description': '...'},
+        {'name': 'col4', 'description': '...'},
+    )
+
+class FooExtendDynamicTable2(FooExtendDynamicTable2):
+    pass
