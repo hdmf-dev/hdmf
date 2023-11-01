@@ -15,7 +15,7 @@ from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
 from hdmf.data_utils import DataChunkIterator
 
-from tests.unit.helpers.utils import get_temp_filepath
+from tests.unit.helpers.utils import get_temp_filepath, FooExtendDynamicTable0, FooExtendDynamicTable1, FooExtendDynamicTable2
 
 try:
     import linkml_runtime  # noqa: F401
@@ -2677,7 +2677,7 @@ class TestVectorIndexDtype(TestCase):
         self.assertEqual(index.data[0], 255)  # make sure the 255 is upgraded
         self.assertEqual(type(index.data[0]), np.uint32)
 
-from tests.unit.helpers.utils import FooExtendDynamicTable0, FooExtendDynamicTable1, FooExtendDynamicTable2
+
 class TestDynamicTableSubclassColumns(TestCase):
     def setUp(self):
         self.foo1 = FooExtendDynamicTable0()
