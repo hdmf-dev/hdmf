@@ -3,6 +3,7 @@ import tempfile
 from copy import copy, deepcopy
 
 from hdmf.build import BuildManager, ObjectMapper, TypeMap
+from hdmf.common.table import DynamicTable
 from hdmf.container import Container, HERDManager, Data
 from hdmf.spec import (
     AttributeSpec,
@@ -664,6 +665,11 @@ class FooExtendDynamicTable0(DynamicTable):
         {'name': 'col2', 'description': '...'},
     )
 
+    def __init__(self, **kwargs):
+        kwargs['name'] = 'foo0'
+        kwargs['description'] = '...'
+        super().__init__(**kwargs)
+
 
 class FooExtendDynamicTable1(FooExtendDynamicTable0):
     """
@@ -676,5 +682,14 @@ class FooExtendDynamicTable1(FooExtendDynamicTable0):
         {'name': 'col4', 'description': '...'},
     )
 
-class FooExtendDynamicTable2(FooExtendDynamicTable2):
-    pass
+    def __init__(self, **kwargs):
+        kwargs['name'] = 'foo1'
+        kwargs['description'] = '...'
+        super().__init__(**kwargs)
+
+
+class FooExtendDynamicTable2(FooExtendDynamicTable1):
+    def __init__(self, **kwargs):
+        kwargs['name'] = 'foo2'
+        kwargs['description'] = '...'
+        super().__init__(**kwargs)
