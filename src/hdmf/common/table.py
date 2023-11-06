@@ -279,6 +279,7 @@ class DynamicTable(Container):
             raise TypeError(msg)
 
         if len(bases) and 'DynamicTable' in globals():
+            breakpoint()
             for item in bases[::-1]: # reverse the bases tuple as the code suggest it should be last
                 if issubclass(item, Container):
                     try:
