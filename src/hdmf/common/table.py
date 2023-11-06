@@ -283,8 +283,6 @@ class DynamicTable(Container):
                 if issubclass(item, Container):
                     try:
                         if item.__columns__ is not cls.__columns__:
-                            if cls.__name__ == 'PlaneSegmentation':
-                                breakpoint()
                             new_columns = list(cls.__columns__)
                             new_columns[0:0] = item.__columns__  # prepend superclass columns to new_columns
                             cls.__columns__ = tuple(new_columns)
