@@ -287,7 +287,7 @@ class DynamicTable(Container):
                             new_columns[0:0] = item.__columns__  # prepend superclass columns to new_columns
                             cls.__columns__ = tuple(new_columns)
                             break
-                    except AttributeError:  # raises error when "__columns__" is not an attr of item
+                    except AttributeError:
                         continue
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},  # noqa: C901
