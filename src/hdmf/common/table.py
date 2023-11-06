@@ -281,11 +281,14 @@ class DynamicTable(Container):
         if len(bases) and 'DynamicTable' in globals():
             for item in bases[::-1]: # reverse the bases tuple as the code suggest it should be last
                 if issubclass(item, Container):
-                    if item.__columns__ is not cls.__columns__:
-                        new_columns = list(cls.__columns__)
-                        new_columns[0:0] = item.__columns__  # prepend superclass columns to new_columns
-                        cls.__columns__ = tuple(new_columns)
-                        break
+                    try:
+                        if item.__columns__ is not cls.__columns__:
+                            new_columns = list(cls.__columns__)
+                            new_columns[0:0] = item.__columns__  # prepend superclass columns to new_columns
+                            cls.__columns__ = tuple(new_columns)
+                            break
+                    except AttributeError:  # raises error when "__columns__" is not an attr of item
+                        continue
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},  # noqa: C901
             {'name': 'description', 'type': str, 'doc': 'a description of what is in this table'},
