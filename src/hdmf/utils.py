@@ -839,7 +839,7 @@ class ExtenderMeta(ABCMeta):
     def pre_init(cls, func):
         """
         A decorator that sets a '__preinit' attribute on the target function and
-        then returns the function as a classmethod. 
+        then returns the function as a classmethod.
         """
         setattr(func, cls.__preinit, True)
         return classmethod(func)
