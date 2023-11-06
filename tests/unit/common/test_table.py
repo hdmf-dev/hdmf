@@ -15,7 +15,8 @@ from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
 from hdmf.data_utils import DataChunkIterator
 
-from tests.unit.helpers.utils import get_temp_filepath, FooExtendDynamicTable0, FooExtendDynamicTable1, FooExtendDynamicTable2
+from tests.unit.helpers.utils import (get_temp_filepath, FooExtendDynamicTable0,
+                                      FooExtendDynamicTable1, FooExtendDynamicTable2)
 
 try:
     import linkml_runtime  # noqa: F401
