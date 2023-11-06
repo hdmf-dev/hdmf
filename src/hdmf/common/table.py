@@ -268,7 +268,7 @@ class DynamicTable(Container):
 
     @ExtenderMeta.pre_init
     def __gather_columns(cls, name, bases, classdict):
-        """
+        r"""
         Gather columns from the *\_\_columns\_\_* class attribute and add them to the class.
 
         This classmethod will be called during class declaration in the metaclass to automatically
