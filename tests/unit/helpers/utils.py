@@ -4,7 +4,7 @@ from copy import copy, deepcopy
 
 from hdmf.build import BuildManager, ObjectMapper, TypeMap
 from hdmf.common.table import DynamicTable
-from hdmf.container import Container, HERDManager, Data
+from hdmf.container import Container, HERDManager, Data, MultiContainerInterface
 from hdmf.spec import (
     AttributeSpec,
     DatasetSpec,
@@ -688,7 +688,7 @@ class FooExtendDynamicTable1(FooExtendDynamicTable0):
         super().__init__(**kwargs)
 
 
-class FooExtendDynamicTable2(FooExtendDynamicTable1):
+class FooExtendDynamicTable2(FooExtendDynamicTable1, MultiContainerInterface):
     def __init__(self, **kwargs):
         kwargs['name'] = 'foo2'
         kwargs['description'] = '...'
