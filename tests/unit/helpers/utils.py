@@ -693,6 +693,7 @@ class FooExtendDynamicTable2(FooExtendDynamicTable1, MultiContainerInterface):
         'add': '...',
         'get': '...',
         'create': '...',
+        'type': Container,
         'attr': '...'
     }
 
