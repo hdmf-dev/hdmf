@@ -689,6 +689,13 @@ class FooExtendDynamicTable1(FooExtendDynamicTable0):
 
 
 class FooExtendDynamicTable2(FooExtendDynamicTable1, MultiContainerInterface):
+    __clsconf__ = {
+        'add': '...',
+        'get': '...',
+        'create': '...',
+        'attr': '...'
+    }
+
     def __init__(self, **kwargs):
         kwargs['name'] = 'foo2'
         kwargs['description'] = '...'
