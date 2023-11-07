@@ -279,7 +279,7 @@ class DynamicTable(Container):
             raise TypeError(msg)
 
         if len(bases) and 'DynamicTable' in globals():
-            for item in bases[::-1]: # reverse the bases tuple as the code suggest it should be last
+            for item in bases[::-1]: # look for __columns__ in the base classes, closest first
                 if issubclass(item, Container):
                     try:
                         if item.__columns__ is not cls.__columns__:
