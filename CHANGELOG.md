@@ -4,6 +4,7 @@
 
 ### Minor Improvements
 - Updated `__gather_columns` to ignore the order of bases when generating columns from the super class. @mavaylon1 [#991](https://github.com/hdmf-dev/hdmf/pull/991)
+- Improve HTML rendering of tables. @bendichter [#998](https://github.com/hdmf-dev/hdmf/pull/998)
 
 ## HDMF 3.11.0 (October 30, 2023)
 
