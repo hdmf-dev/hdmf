@@ -1192,6 +1192,17 @@ class DynamicTable(Container):
         ret = self.__get_selection_as_df(sel)
         return ret
 
+    def generate_html_repr(self, level=0, access_code=""):
+        out = ""
+        for key, value in self.fields.items():
+            if key not in ("id", "colnames", "columns"):
+                out += self._generate_field_html(key, value, level, access_code)
+        out += (
+            f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
+            f'class="container-fields field-key" title="{access_code}"><b>table</b></summary>{self.to_dataframe().to_html()}</details>'
+        )
+        return out
+
     @classmethod
     @docval(
         {'name': 'df', 'type': pd.DataFrame, 'doc': 'source DataFrame'},
