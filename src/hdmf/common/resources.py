@@ -510,8 +510,7 @@ class HERD(Container):
                 # the key has never been used before
                 raise ValueError("key '%s' does not exist" % key_name)
             elif len(key_idx_matches) > 1:
-                msg = "There are more than one key with that name. Please search with additional information."
-                raise ValueError(msg)
+                return [self.keys.row[x] for x in key_idx_matches]
             else:
                 return self.keys.row[key_idx_matches[0]]
 
