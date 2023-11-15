@@ -290,7 +290,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         dict(
             name="chunk_mb",
             type=(float, int),
-            doc="Size of the HDF5 chunk in megabytes. Recommended to be less than 1MB.",
+            doc="Size of the HDF5 chunk in megabytes.",
             default=None,
         )
     )

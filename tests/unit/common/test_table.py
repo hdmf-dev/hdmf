@@ -15,7 +15,8 @@ from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
 from hdmf.data_utils import DataChunkIterator
 
-from tests.unit.helpers.utils import get_temp_filepath
+from tests.unit.helpers.utils import (get_temp_filepath, FooExtendDynamicTable0,
+                                      FooExtendDynamicTable1, FooExtendDynamicTable2)
 
 try:
     import linkml_runtime  # noqa: F401
@@ -565,9 +566,9 @@ class TestDynamicTable(TestCase):
         rows = table[0:5:2]
         self.assertIsInstance(rows, pd.DataFrame)
         self.assertTupleEqual(rows.shape, (3, 3))
-        self.assertEqual(rows.iloc[2][0], 5)
-        self.assertEqual(rows.iloc[2][1], 50.0)
-        self.assertEqual(rows.iloc[2][2], 'lizard')
+        self.assertEqual(rows.iloc[2].iloc[0], 5)
+        self.assertEqual(rows.iloc[2].iloc[1], 50.0)
+        self.assertEqual(rows.iloc[2].iloc[2], 'lizard')
 
     def test_getitem_invalid_keytype(self):
         table = self.with_spec()
@@ -1598,6 +1599,97 @@ class TestDynamicTableClassColumns(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             SubTable(name='subtable', description='subtable description', columns=[col1_ind, col1])
 
+    def test_no_set_target_tables(self):
+        """Test that the target table of a predefined DTR column is None."""
+        table = SubTable(name='subtable', description='subtable description')
+        self.assertIsNone(table.col5.table)
+
+    def test_set_target_tables(self):
+        """Test setting target tables for predefined DTR columns."""
+        table1 = SubTable(name='subtable1', description='subtable description')
+        table2 = SubTable(
+            name='subtable2',
+            description='subtable description',
+            target_tables={
+                'col5': table1,
+                'col6': table1,
+                'col7': table1,
+                'col8': table1,
+            },
+        )
+        self.assertIs(table2.col5.table, table1)
+        self.assertIs(table2.col6.table, table1)
+        self.assertIs(table2.col7.table, table1)
+        self.assertIs(table2.col8.table, table1)
+
+    def test_set_target_tables_unknown_col(self):
+        """Test setting target tables for unknown columns."""
+        table1 = SubTable(name='subtable1', description='subtable description')
+        msg = r"'bad_col' is not the name of a predefined column of table subtable2 .*"
+        with self.assertRaisesRegex(ValueError, msg):
+            SubTable(
+                name='subtable2',
+                description='subtable description',
+                target_tables={
+                    'bad_col': table1,
+                },
+            )
+
+    def test_set_target_tables_bad_init_col(self):
+        """Test setting target tables for predefined, required non-DTR columns."""
+        table1 = SubTable(name='subtable1', description='subtable description')
+        msg = "Column 'col1' must be a DynamicTableRegion to have a target table."
+        with self.assertRaisesWith(ValueError, msg):
+            SubTable(
+                name='subtable2',
+                description='subtable description',
+                target_tables={
+                    'col1': table1,
+                },
+            )
+
+    def test_set_target_tables_bad_opt_col(self):
+        """Test setting target tables for predefined, optional non-DTR columns."""
+        table1 = SubTable(name='subtable1', description='subtable description')
+        msg = "Column 'col2' must be a DynamicTableRegion to have a target table."
+        with self.assertRaisesWith(ValueError, msg):
+            SubTable(
+                name='subtable2',
+                description='subtable description',
+                target_tables={
+                    'col2': table1,
+                },
+            )
+
+    def test_set_target_tables_existing_col_mismatch(self):
+        """Test setting target tables for an existing DTR column with a mismatched, existing target table."""
+        table1 = SubTable(name='subtable1', description='subtable description')
+        table2 = SubTable(name='subtable2', description='subtable description')
+        dtr = DynamicTableRegion(name='dtr', data=[], description='desc', table=table1)
+        msg = "Column 'dtr' already has a target table that is not the passed table."
+        with self.assertRaisesWith(ValueError, msg):
+            SubTable(
+                name='subtable3',
+                description='subtable description',
+                columns=[dtr],
+                target_tables={
+                    'dtr': table2,
+                },
+            )
+
+    def test_set_target_tables_existing_col_match(self):
+        """Test setting target tables for an existing DTR column with a matching, existing target table."""
+        table1 = SubTable(name='subtable1', description='subtable description')
+        dtr = DynamicTableRegion(name='dtr', data=[], description='desc', table=table1)
+        SubTable(
+            name='subtable2',
+            description='subtable description',
+            columns=[dtr],
+            target_tables={
+                'dtr': table1,
+            },
+        )
+
 
 class TestEnumData(TestCase):
 
@@ -2585,3 +2677,19 @@ class TestVectorIndexDtype(TestCase):
         index.add_vector(list(range(65536 - 255)))
         self.assertEqual(index.data[0], 255)  # make sure the 255 is upgraded
         self.assertEqual(type(index.data[0]), np.uint32)
+
+
+class TestDynamicTableSubclassColumns(TestCase):
+    def setUp(self):
+        self.foo1 = FooExtendDynamicTable0()
+        self.foo2 = FooExtendDynamicTable1()
+        self.foo3 = FooExtendDynamicTable2()
+
+    def test_columns(self):
+        self.assertEqual(self.foo1.__columns__,
+                        ({'name': 'col1', 'description': '...'}, {'name': 'col2', 'description': '...'}))
+        self.assertEqual(self.foo2.__columns__,
+                        ({'name': 'col1', 'description': '...'}, {'name': 'col2', 'description': '...'},
+                         {'name': 'col3', 'description': '...'}, {'name': 'col4', 'description': '...'})
+)
+        self.assertEqual(self.foo2.__columns__, self.foo3.__columns__)

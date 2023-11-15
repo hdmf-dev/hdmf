@@ -1,5 +1,27 @@
 # HDMF Changelog
 
+## HDMF 3.11.1 (Upcoming)
+
+### Minor Improvements
+- Updated `__gather_columns` to ignore the order of bases when generating columns from the super class. @mavaylon1 [#991](https://github.com/hdmf-dev/hdmf/pull/991)
+
+## HDMF 3.11.0 (October 30, 2023)
+
+### Enhancements
+- Added `target_tables` attribute to `DynamicTable` to allow users to specify the target table of any predefined
+`DynamicTableRegion` columns of a `DynamicTable` subclass. @rly [#971](https://github.com/hdmf-dev/hdmf/pull/971)
+- Updated `TermSet` to include `_repr_html_` for easy to read notebook representation. @mavaylon1 [#967](https://github.com/hdmf-dev/hdmf/pull/967)
+
+### Minor improvements
+- Set up GitHub dependabot to check for updates to GitHub Actions. @rly [#977](https://github.com/hdmf-dev/hdmf/pull/977)
+- Simplify tox configuration. @rly [#988](https://github.com/hdmf-dev/hdmf/pull/988)
+- Add testing for Python 3.12. @rly [#988](https://github.com/hdmf-dev/hdmf/pull/988)
+
+### Bug fixes
+- Updated custom class generation to handle specs with fixed values and required names. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
+- Fixed custom class generation of `DynamicTable` subtypes to set attributes corresponding to column names for correct write. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
+- Added a `.mailmap` file to correct mapping of names/emails in git logs. @oruebel [#976](https://github.com/hdmf-dev/hdmf/pull/976)
+
 ## HDMF 3.10.0 (October 3, 2023)
 
 Since version 3.9.1 should have been released as 3.10.0 but failed to release on PyPI and conda-forge, this release
