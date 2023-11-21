@@ -4,6 +4,7 @@
 
 ### Minor Improvements
 - Updated `__gather_columns` to ignore the order of bases when generating columns from the super class. @mavaylon1 [#991](https://github.com/hdmf-dev/hdmf/pull/991)
+- Update `get_key` to return all the keys if there are multiple within a `HERD` instance. @mavaylon1 [#999](https://github.com/hdmf-dev/hdmf/pull/999)
 
 ## HDMF 3.11.0 (October 30, 2023)
 
