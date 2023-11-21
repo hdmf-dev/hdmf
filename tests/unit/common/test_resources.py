@@ -1133,7 +1133,7 @@ class TestHERDGetKey(TestCase):
     def setUp(self):
         self.er = HERD()
 
-    def test_get_key_error_more_info(self):
+    def test_get_key_multiple(self):
         self.er.add_ref(file=HERDManagerContainer(name='file'),
                         container=Container(name='Container'),
                         key='key1',
