@@ -1192,14 +1192,32 @@ class DynamicTable(Container):
         ret = self.__get_selection_as_df(sel)
         return ret
 
-    def generate_html_repr(self, level=0, access_code=""):
+    def _repr_html_(self) -> str:
+        """Generates the HTML representation of the object."""
+        header_text = self.name if self.name == self.__class__.__name__ else f"{self.name} ({self.__class__.__name__})"
+        html_repr = self.css_style + self.js_script
+        html_repr += "<div class='container-wrap'>"
+        html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
+        html_repr += self.generate_html_repr()
+        html_repr += "</div>"
+        return html_repr
+
+    def generate_html_repr(self, level: int = 0, access_code: str = "", nrows: int = 4):
         out = ""
         for key, value in self.fields.items():
             if key not in ("id", "colnames", "columns"):
                 out += self._generate_field_html(key, value, level, access_code)
+
+        inside = f"{self[:min(nrows, len(self))].to_html()}"
+
+        if len(self) == nrows + 1:
+            inside += f"<p>... and 1 more row.</p>"
+        elif len(self) > nrows + 1:
+            inside += f"<p>... and {len(self) - nrows} more rows.</p>"
+
         out += (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
-            f'class="container-fields field-key" title="{access_code}"><b>table</b></summary>{self.to_dataframe().to_html()}</details>'
+            f'class="container-fields field-key" title="{access_code}"><b>table</b></summary>{inside}</details>'
         )
         return out
 
