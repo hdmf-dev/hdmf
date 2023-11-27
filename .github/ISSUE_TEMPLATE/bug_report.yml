@@ -80,9 +80,9 @@ body:
         If GitHub upload is not working, you can also copy and paste the output into this section.
   - type: markdown
     attributes:
-      value: | 
+      value: |
         By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/hdmf-dev/hdmf/blob/dev/.github/CODE_OF_CONDUCT.md).
 
         Before submitting this issue, please review the [Contributing Guide](https://github.com/hdmf-dev/hdmf/blob/dev/docs/CONTRIBUTING.rst).
-        
+
         Please also ensure that this issue has not already been [reported](https://github.com/hdmf-dev/hdmf/issues). Thank you!
