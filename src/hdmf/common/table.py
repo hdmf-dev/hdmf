@@ -1211,7 +1211,7 @@ class DynamicTable(Container):
         inside = f"{self[:min(nrows, len(self))].to_html()}"
 
         if len(self) == nrows + 1:
-            inside += f"<p>... and 1 more row.</p>"
+            inside += "<p>... and 1 more row.</p>"
         elif len(self) > nrows + 1:
             inside += f"<p>... and {len(self) - nrows} more rows.</p>"
 
