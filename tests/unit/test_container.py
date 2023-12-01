@@ -420,7 +420,6 @@ class TestContainer(TestCase):
             obj.set_data_io("data2", H5DataIO, chunks=True)
 
 
-
 class TestHTMLRepr(TestCase):
 
     class ContainerWithChildAndData(Container):
