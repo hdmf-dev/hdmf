@@ -562,8 +562,10 @@ class Container(AbstractContainer):
                 template += "  {}: {}\n".format(k, v)
         return template
 
-    def _repr_html_(self):
-        CSS_STYLE = """
+    @property
+    def css_style(self) -> str:
+        """CSS styles for the HTML representation."""
+        return """
         <style>
             .container-fields {
                 font-family: "Open Sans", Arial, sans-serif;
@@ -581,7 +583,10 @@ class Container(AbstractContainer):
         </style>
         """
 
-        JS_SCRIPT = """
+    @property
+    def js_script(self) -> str:
+        """JavaScript for the HTML representation."""
+        return """
         <script>
             function copyToClipboard(text) {
                 navigator.clipboard.writeText(text).then(function() {
@@ -602,66 +607,68 @@ class Container(AbstractContainer):
             });
         </script>
         """
-        if self.name == self.__class__.__name__:
-            header_text = self.name
-        else:
-            header_text = f"{self.name} ({self.__class__.__name__})"
-        html_repr = CSS_STYLE
-        html_repr += JS_SCRIPT
+
+    def _repr_html_(self) -> str:
+        """Generates the HTML representation of the object."""
+        header_text = self.name if self.name == self.__class__.__name__ else f"{self.name} ({self.__class__.__name__})"
+        html_repr = self.css_style + self.js_script
         html_repr += "<div class='container-wrap'>"
-        html_repr += (
-            f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
-        )
-        html_repr += self._generate_html_repr(self.fields)
+        html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
+        html_repr += self._generate_html_repr(self.fields, is_field=True)
         html_repr += "</div>"
         return html_repr
 
-    def _generate_html_repr(self, fields, level=0, access_code=".fields"):
+    def _generate_html_repr(self, fields, level=0, access_code="", is_field=False):
+        """Recursively generates HTML representation for fields."""
         html_repr = ""
 
         if isinstance(fields, dict):
             for key, value in fields.items():
-                current_access_code = f"{access_code}['{key}']"
-                if (
-                    isinstance(value, (list, dict, np.ndarray))
-                    or hasattr(value, "fields")
-                ):
-                    label = key
-                    if isinstance(value, dict):
-                        label += f" ({len(value)})"
-
-                    html_repr += (
-                        f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
-                        f'class="container-fields field-key" title="{current_access_code}"><b>{label}</b></summary>'
-                    )
-                    if hasattr(value, "fields"):
-                        value = value.fields
-                        current_access_code = current_access_code + ".fields"
-                    html_repr += self._generate_html_repr(
-                        value, level + 1, current_access_code
-                    )
-                    html_repr += "</details>"
-                else:
-                    html_repr += (
-                        f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"'
-                        f' title="{current_access_code}">{key}:</span> <span class="field-value">{value}</span></div>'
-                    )
+                current_access_code = f"{access_code}.{key}" if is_field else f"{access_code}['{key}']"
+                html_repr += self._generate_field_html(key, value, level, current_access_code)
         elif isinstance(fields, list):
             for index, item in enumerate(fields):
-                current_access_code = f"{access_code}[{index}]"
-                html_repr += (
-                    f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-value"'
-                    f' title="{current_access_code}">{str(item)}</span></div>'
-                )
+                access_code += f'[{index}]'
+                html_repr += self._generate_field_html(index, item, level, access_code)
         elif isinstance(fields, np.ndarray):
-            str_ = str(fields).replace("\n", "</br>")
-            html_repr += (
-                f'<div style="margin-left: {level * 20}px;" class="container-fields">{str_}</div>'
-            )
+            html_repr += self._generate_array_html(fields, level)
         else:
             pass
 
         return html_repr
+
+    def _generate_field_html(self, key, value, level, access_code):
+        """Generates HTML for a single field."""
+
+        if isinstance(value, (int, float, str, bool)):
+            return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
+                   f' title="{access_code}">{key}: </span><span class="field-value">{value}</span></div>'
+
+        if hasattr(value, "generate_html_repr"):
+            html_content = value.generate_html_repr(level + 1, access_code)
+
+        elif hasattr(value, '__repr_html__'):
+            html_content = value.__repr_html__()
+
+        elif hasattr(value, "fields"):
+            html_content = self._generate_html_repr(value.fields, level + 1, access_code, is_field=True)
+        elif isinstance(value, (list, dict, np.ndarray)):
+            html_content = self._generate_html_repr(value, level + 1, access_code, is_field=False)
+        else:
+            html_content = f'<span class="field-key">{value}</span>'
+        html_repr = (
+            f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
+            f'class="container-fields field-key" title="{access_code}"><b>{key}</b></summary>'
+        )
+        html_repr += html_content
+        html_repr += "</details>"
+
+        return html_repr
+
+    def _generate_array_html(self, array, level):
+        """Generates HTML for a NumPy array."""
+        str_ = str(array).replace("\n", "</br>")
+        return f'<div style="margin-left: {level * 20}px;" class="container-fields">{str_}</div>'
 
     @staticmethod
     def __smart_str(v, num_indent):
