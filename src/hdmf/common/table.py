@@ -278,11 +278,17 @@ class DynamicTable(Container):
             msg = "'__columns__' must be of type tuple, found %s" % type(cls.__columns__)
             raise TypeError(msg)
 
-        if (len(bases) and 'DynamicTable' in globals() and issubclass(bases[-1], Container)
-                and bases[-1].__columns__ is not cls.__columns__):
-            new_columns = list(cls.__columns__)
-            new_columns[0:0] = bases[-1].__columns__  # prepend superclass columns to new_columns
-            cls.__columns__ = tuple(new_columns)
+        if len(bases) and 'DynamicTable' in globals():
+            for item in bases[::-1]: # look for __columns__ in the base classes, closest first
+                if issubclass(item, Container):
+                    try:
+                        if item.__columns__ is not cls.__columns__:
+                            new_columns = list(cls.__columns__)
+                            new_columns[0:0] = item.__columns__  # prepend superclass columns to new_columns
+                            cls.__columns__ = tuple(new_columns)
+                            break
+                    except AttributeError:   # raises error when "__columns__" is not an attr of item
+                        continue
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},  # noqa: C901
             {'name': 'description', 'type': str, 'doc': 'a description of what is in this table'},
@@ -1185,6 +1191,35 @@ class DynamicTable(Container):
         sel = self.__get_selection_as_dict(arg, df=True, **kwargs)
         ret = self.__get_selection_as_df(sel)
         return ret
+
+    def _repr_html_(self) -> str:
+        """Generates the HTML representation of the object."""
+        header_text = self.name if self.name == self.__class__.__name__ else f"{self.name} ({self.__class__.__name__})"
+        html_repr = self.css_style + self.js_script
+        html_repr += "<div class='container-wrap'>"
+        html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
+        html_repr += self.generate_html_repr()
+        html_repr += "</div>"
+        return html_repr
+
+    def generate_html_repr(self, level: int = 0, access_code: str = "", nrows: int = 4):
+        out = ""
+        for key, value in self.fields.items():
+            if key not in ("id", "colnames", "columns"):
+                out += self._generate_field_html(key, value, level, access_code)
+
+        inside = f"{self[:min(nrows, len(self))].to_html()}"
+
+        if len(self) == nrows + 1:
+            inside += "<p>... and 1 more row.</p>"
+        elif len(self) > nrows + 1:
+            inside += f"<p>... and {len(self) - nrows} more rows.</p>"
+
+        out += (
+            f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
+            f'class="container-fields field-key" title="{access_code}"><b>table</b></summary>{inside}</details>'
+        )
+        return out
 
     @classmethod
     @docval(

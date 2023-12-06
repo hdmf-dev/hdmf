@@ -3,7 +3,8 @@ import tempfile
 from copy import copy, deepcopy
 
 from hdmf.build import BuildManager, ObjectMapper, TypeMap
-from hdmf.container import Container, HERDManager, Data
+from hdmf.common.table import DynamicTable
+from hdmf.container import Container, HERDManager, Data, MultiContainerInterface
 from hdmf.spec import (
     AttributeSpec,
     DatasetSpec,
@@ -653,3 +654,50 @@ class CustomSpecNamespace(SpecNamespace):
     @classmethod
     def types_key(cls):
         return cls.__types_key
+
+class FooExtendDynamicTable0(DynamicTable):
+    """
+    Within PyNWB, PlaneSegmentation extends DynamicTable and sets __columns__. This class is a helper
+    class for testing and is directly meant to test __gather_columns, i.e., class generation, downstream.
+    """
+    __columns__ = (
+        {'name': 'col1', 'description': '...'},
+        {'name': 'col2', 'description': '...'},
+    )
+
+    def __init__(self, **kwargs):
+        kwargs['name'] = 'foo0'
+        kwargs['description'] = '...'
+        super().__init__(**kwargs)
+
+
+class FooExtendDynamicTable1(FooExtendDynamicTable0):
+    """
+    In extensions, users can create new classes that inherit from classes that inherit from DynamicTable.
+    This is a helper class for testing and is directly meant to test __gather_columns, i.e.,
+    class generation, downstream.
+    """
+    __columns__ = (
+        {'name': 'col3', 'description': '...'},
+        {'name': 'col4', 'description': '...'},
+    )
+
+    def __init__(self, **kwargs):
+        kwargs['name'] = 'foo1'
+        kwargs['description'] = '...'
+        super().__init__(**kwargs)
+
+
+class FooExtendDynamicTable2(FooExtendDynamicTable1, MultiContainerInterface):
+    __clsconf__ = {
+        'add': '...',
+        'get': '...',
+        'create': '...',
+        'type': Container,
+        'attr': '...'
+    }
+
+    def __init__(self, **kwargs):
+        kwargs['name'] = 'foo2'
+        kwargs['description'] = '...'
+        super().__init__(**kwargs)
