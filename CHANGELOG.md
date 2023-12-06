@@ -7,6 +7,9 @@
 - Improve HTML rendering of tables. @bendichter [#998](https://github.com/hdmf-dev/hdmf/pull/998)
 - Improved issue and PR templates. @rly [#1004](https://github.com/hdmf-dev/hdmf/pull/1004)
 
+### Bug fixes
+- Fixed issue with custom class generation when a spec has a `name`. @rly [#1006](https://github.com/hdmf-dev/hdmf/pull/1006)
+
 ## HDMF 3.11.0 (October 30, 2023)
 
 ### Enhancements

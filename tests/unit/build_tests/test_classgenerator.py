@@ -497,7 +497,7 @@ class TestDynamicContainerIncludingFixedName(TestCase):
             ],
             links=[
                 LinkSpec(
-                    doc='A composition inside with a fixed name',
+                    doc='A composition inside without a fixed name',
                     name="my_baz1_link",
                     target_type='Baz1'
                 ),
@@ -517,7 +517,7 @@ class TestDynamicContainerIncludingFixedName(TestCase):
             {'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'my_baz1', 'doc': 'A composition inside with a fixed name', 'type': baz1_cls},
             {'name': 'my_baz2', 'doc': 'A composition inside with a fixed name', 'type': baz2_cls},
-            {'name': 'my_baz1_link', 'doc': 'A composition inside with a fixed name', 'type': baz1_cls},
+            {'name': 'my_baz1_link', 'doc': 'A composition inside without a fixed name', 'type': baz1_cls},
         ))
 
     def test_init_fields(self):
@@ -537,8 +537,7 @@ class TestDynamicContainerIncludingFixedName(TestCase):
             },
             {
                 'name': 'my_baz1_link',
-                'doc': 'A composition inside with a fixed name',
-                'required_name': 'my_baz1_link'
+                'doc': 'A composition inside without a fixed name',
             },
         ))
 
@@ -548,7 +547,7 @@ class TestDynamicContainerIncludingFixedName(TestCase):
         baz3_cls = self.type_map.get_dt_container_cls('Baz3', CORE_NAMESPACE)
         baz1 = baz1_cls(name="my_baz1")
         baz2 = baz2_cls(name="my_baz2")
-        baz1_link = baz1_cls(name="my_baz1_link")
+        baz1_link = baz1_cls(name="any_name")
         baz3 = baz3_cls(name="test", my_baz1=baz1, my_baz2=baz2, my_baz1_link=baz1_link)
         self.assertEqual(baz3.my_baz1, baz1)
         self.assertEqual(baz3.my_baz2, baz2)
@@ -570,13 +569,6 @@ class TestDynamicContainerIncludingFixedName(TestCase):
         baz2 = baz2_cls(name="test")
         baz1_link = baz1_cls(name="my_baz1_link")
         msg = "Field 'my_baz2' on Baz3 must be named 'my_baz2'."
-        with self.assertRaisesWith(ValueError, msg):
-            baz3_cls(name="test", my_baz1=baz1, my_baz2=baz2, my_baz1_link=baz1_link)
-
-        baz1 = baz1_cls(name="my_baz1")
-        baz2 = baz2_cls(name="my_baz2")
-        baz1_link = baz1_cls(name="test")
-        msg = "Field 'my_baz1_link' on Baz3 must be named 'my_baz1_link'."
         with self.assertRaisesWith(ValueError, msg):
             baz3_cls(name="test", my_baz1=baz1, my_baz2=baz2, my_baz1_link=baz1_link)
 
@@ -1049,7 +1041,7 @@ class TestBaseProcessFieldSpec(TestCase):
             spec=GroupSpec('dummy', 'doc')
         )
 
-        expected = {'__fields__': [{'name': 'attr3', 'doc': 'a link', 'required_name': 'attr3'}]}
+        expected = {'__fields__': [{'name': 'attr3', 'doc': 'a link'}]}
         self.assertDictEqual(classdict, expected)
 
     def test_post_process_fixed_name(self):
