@@ -1392,6 +1392,38 @@ class TestElementIdentifiers(TestCase):
             _ = (self.e == 'test')
 
 
+class TestBadElementIdentifiers(TestCase):
+
+    def test_bad_dtype(self):
+        with self.assertRaisesWith(ValueError, "ElementIdentifiers must contain integers"):
+            ElementIdentifiers(name='ids', data=["1", "2"])
+
+        with self.assertRaisesWith(ValueError, "ElementIdentifiers must contain integers"):
+            ElementIdentifiers(name='ids', data=np.array(["1", "2"]))
+
+        with self.assertRaisesWith(ValueError, "ElementIdentifiers must contain integers"):
+            ElementIdentifiers(name='ids', data=[1.0, 2.0])
+
+    def test_dci_int_ok(self):
+        a = np.arange(30)
+        dci = DataChunkIterator(data=a, buffer_size=1)
+        e = ElementIdentifiers(name='ids', data=dci)  # test that no error is raised
+        self.assertIs(e.data, dci)
+
+    def test_dci_float_bad(self):
+        a = np.arange(30.0)
+        dci = DataChunkIterator(data=a, buffer_size=1)
+        with self.assertRaisesWith(ValueError, "ElementIdentifiers must contain integers"):
+            ElementIdentifiers(name='ids', data=dci)
+
+    def test_dataio_dci_ok(self):
+        a = np.arange(30)
+        dci = DataChunkIterator(data=a, buffer_size=1)
+        dio = H5DataIO(dci)
+        e = ElementIdentifiers(name='ids', data=dio)  # test that no error is raised
+        self.assertIs(e.data, dio)
+
+
 class SubTable(DynamicTable):
 
     __columns__ = (

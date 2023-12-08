@@ -8,12 +8,6 @@ from hdmf.testing import TestCase
 
 class DataIOTests(TestCase):
 
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
     def test_copy(self):
         obj = DataIO(data=[1., 2., 3.])
         obj_copy = copy(obj)

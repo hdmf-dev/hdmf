@@ -1061,6 +1061,8 @@ class DataIO:
             return self.__shape[0]
         if not self.valid:
             raise InvalidDataIOError("Cannot get length of data. Data is not valid.")
+        if isinstance(self.data, AbstractDataChunkIterator):
+            return self.data.maxshape[0]
         return len(self.data)
 
     def __bool__(self):
