@@ -713,7 +713,7 @@ class HERD(Container):
                         obj_key_exists = True
                         # this means there is already a object-key relationship recorded
                 if not obj_key_exists:
-                    # this means that though the key is there, there is not object-key relationship
+                    # this means that though the key is there, there is no object-key relationship
                     add_object_key = True
 
         if add_object_key:
