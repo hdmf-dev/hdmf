@@ -493,7 +493,7 @@ class HERD(Container):
     def add_ref_termset(self, **kwargs):
         """
         This method allows users to take advantage of using the TermSet class to provide the entity information
-        for add_ref, while also validating the data. This method supports adding a single key and an entire dataset
+        for add_ref, while also validating the data. This method supports adding a single key or an entire dataset
         to the HERD tables. For both cases, the term, i.e., key, will be validated against the permissible values
         in the TermSet. If valid, it will proceed to call add_ref. Otherwise, the method will return a dict of
         missing terms.
