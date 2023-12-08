@@ -67,7 +67,7 @@ def get_docval_macro(key=None):
         return tuple(__macros[key])
 
 
-def __type_okay(value, argtype, allow_none=False):
+def check_type(value, argtype, allow_none=False):
     """Check a value against a type
 
        The difference between this function and :py:func:`isinstance` is that
@@ -87,7 +87,7 @@ def __type_okay(value, argtype, allow_none=False):
         return allow_none
     if isinstance(argtype, str):
         if argtype in __macros:
-            return __type_okay(value, __macros[argtype], allow_none=allow_none)
+            return check_type(value, __macros[argtype], allow_none=allow_none)
         elif argtype == 'uint':
             return __is_uint(value)
         elif argtype == 'int':
@@ -106,7 +106,7 @@ def __type_okay(value, argtype, allow_none=False):
             return __is_bool(value)
         return isinstance(value, argtype)
     elif isinstance(argtype, tuple) or isinstance(argtype, list):
-        return any(__type_okay(value, i) for i in argtype)
+        return any(check_type(value, i) for i in argtype)
     else:  # argtype is None
         return True
 
@@ -279,7 +279,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                     # we can use this to unwrap the dataset/attribute to use the "item" for docval to validate the type.
                     argval = argval.value
                 if enforce_type:
-                    if not __type_okay(argval, arg['type']):
+                    if not check_type(argval, arg['type']):
                         if argval is None:
                             fmt_val = (argname, __format_type(arg['type']))
                             type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
@@ -336,7 +336,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                 # we can use this to unwrap the dataset/attribute to use the "item" for docval to validate the type.
                 argval = argval.value
             if enforce_type:
-                if not __type_okay(argval, arg['type'], arg['default'] is None or arg.get('allow_none', False)):
+                if not check_type(argval, arg['type'], arg['default'] is None or arg.get('allow_none', False)):
                     if argval is None and arg['default'] is None:
                         fmt_val = (argname, __format_type(arg['type']))
                         type_errors.append("None is not allowed for '%s' (expected '%s', not None)" % fmt_val)
@@ -613,7 +613,7 @@ def docval(*validator, **options):  # noqa: C901
                     msg = 'docval for {}: enum checking cannot be used with arg type {}'.format(a['name'], a['type'])
                     raise Exception(msg)
                 # check that enum allowed values are allowed by arg type
-                if any([not __type_okay(x, a['type']) for x in a['enum']]):
+                if any([not check_type(x, a['type']) for x in a['enum']]):
                     msg = ('docval for {}: enum values are of types not allowed by arg type (got {}, '
                            'expected {})'.format(a['name'], [type(x) for x in a['enum']], a['type']))
                     raise Exception(msg)
