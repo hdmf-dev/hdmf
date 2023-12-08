@@ -732,7 +732,7 @@ class HERD(Container):
                         entity_key_check = True
                         # this means there is already a entity-key relationship recorded
                 if not entity_key_check:
-                    # this means that though the key is there, there is not entity-key relationship
+                    # this means that though the key is there, there is no entity-key relationship
                     add_entity_key = True
             else:
                 # this means that specific key is not in the EntityKeyTable, so add it and establish
