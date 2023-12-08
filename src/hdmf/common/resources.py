@@ -365,7 +365,7 @@ class HERD(Container):
         file_object_id = file.object_id
         files_idx = self.files.which(file_object_id=file_object_id)
 
-        if len(files_idx) > 1:
+        if len(files_idx) > 1:  # pragma: no cover
             # It isn't possible for len(files_idx) > 1 without the user directly using _add_file
             raise ValueError("Found multiple instances of the same file.")
         elif len(files_idx) == 1:
