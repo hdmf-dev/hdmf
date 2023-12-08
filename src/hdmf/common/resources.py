@@ -484,6 +484,8 @@ class HERD(Container):
 
         If container, relative_path, and field are provided, the Key that corresponds to the given name of the key
         for the given container, relative_path, and field is returned.
+
+        If there are multipe matches, a list of all matching keys will be returned.
         """
         key_name, container, relative_path, field = popargs('key_name', 'container', 'relative_path', 'field', kwargs)
         key_idx_matches = self.keys.which(key=key_name)
