@@ -496,7 +496,7 @@ class HERD(Container):
         for add_ref, while also validating the data. This method supports adding a single key or an entire dataset
         to the HERD tables. For both cases, the term, i.e., key, will be validated against the permissible values
         in the TermSet. If valid, it will proceed to call add_ref. Otherwise, the method will return a dict of
-        missing terms.
+        missing terms (terms not found in the TermSet).
         """
         file = kwargs['file']
         container = kwargs['container']
