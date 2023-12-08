@@ -312,7 +312,7 @@ er.add_ref(
 # ------------------------------------------------------
 # :py:class:`~hdmf.common.resources.HERD` has multiple ways for users to add
 # external references. The :py:func:`~hdmf.common.resources.HERD.add_ref_termset`
-# method allows users to not only validate terms, i.e., keys, but also 
+# method allows users to not only validate terms, i.e., keys, but also
 # add references for entire datasets, lists, arrays, etc.
 
 # The :py:func:`~hdmf.common.resources.HERD.add_ref_container` method is directly
