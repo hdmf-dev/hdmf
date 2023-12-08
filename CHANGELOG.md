@@ -10,6 +10,8 @@
 ### Bug fixes
 - Fixed issue with custom class generation when a spec has a `name`. @rly [#1006](https://github.com/hdmf-dev/hdmf/pull/1006)
 
+- Fixed issue where `ElementIdentifiers` data could be set to non-integer values. @rly [#1009](https://github.com/hdmf-dev/hdmf/pull/1009)
+
 ## HDMF 3.11.0 (October 30, 2023)
 
 ### Enhancements
