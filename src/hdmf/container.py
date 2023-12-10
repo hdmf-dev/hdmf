@@ -791,7 +791,7 @@ class Data(AbstractContainer):
         self.__data = dataio
 
     @docval(
-        {'name': 'data_io_class', 'type': Type[DataIO], 'doc': 'The DataIO to apply to the data held by this Data.'}
+        {'name': 'data_io_class', 'type': Type[DataIO], 'doc': 'The DataIO to apply to the data held by this Data.'},
         {'name': 'data_io_kwargs', 'type': dict, 'doc': 'The keyword arguments to pass to the DataIO.'}
     )
     def set_data_io(self, **kwargs):
