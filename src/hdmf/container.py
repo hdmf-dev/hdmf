@@ -2,6 +2,7 @@ import types
 from abc import abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
+from typing import Type
 from uuid import uuid4
 from warnings import warn
 
@@ -746,7 +747,18 @@ class Container(AbstractContainer):
         out += '\n' + indent + right_br
         return out
 
-    def set_data_io(self, dataset_name, data_io_class, **kwargs):
+    def set_data_io(self, dataset_name: str, data_io_class: Type[DataIO], **kwargs) -> None:
+        """
+
+        Parameters
+        ----------
+        dataset_name: str
+            Name of dataset to wrap in DataIO
+        data_io_class: Type[DataIO]
+            Class to use for DataIO, e.g. H5DataIO or ZarrDataIO
+        **kwargs:
+            kwargs are passed to the constructor of the DataIO class
+        """
         data = self.fields.get(dataset_name)
         if data is None:
             raise ValueError(f"{dataset_name} is None and cannot be wrapped in a DataIO class")
