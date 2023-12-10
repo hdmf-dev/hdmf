@@ -747,11 +747,11 @@ class Container(AbstractContainer):
         out += '\n' + indent + right_br
         return out
 
-    def set_data_io(self, dataset_name, data_io_class, **kwargs):
+    def set_data_io(self, dataset_name: str, data_io_class: Type[DataIO], data_io_kwargs: dict):
         data = self.fields.get(dataset_name)
         if data is None:
             raise ValueError(f"{dataset_name} is None and cannot be wrapped in a DataIO class")
-        self.fields[dataset_name] = data_io_class(data=data, **kwargs)
+        self.fields[dataset_name] = data_io_class(data=data, **data_io_kwargs)
 
 
 class Data(AbstractContainer):
