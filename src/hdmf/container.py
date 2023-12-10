@@ -4,6 +4,7 @@ from collections import OrderedDict
 from copy import deepcopy
 from uuid import uuid4
 from warnings import warn
+from typing import Type
 
 import h5py
 import numpy as np
@@ -788,6 +789,15 @@ class Data(AbstractContainer):
         dataio = getargs('dataio', kwargs)
         dataio.data = self.__data
         self.__data = dataio
+
+    @docval(
+        {'name': 'data_io_class', 'type': Type[DataIO], 'doc': 'The DataIO to apply to the data held by this Data.'}
+        {'name': 'data_io_kwargs', 'type': dict, 'doc': 'The keyword arguments to pass to the DataIO.'}
+    )
+    def set_data_io(self, **kwargs):
+        """Apply DataIO object to the data held by this Data object."""
+        data_io_class, data_io_kwargs = getargs('data_io_class', 'data_io_kwargs', kwargs)
+        self.__data = data_io_class(data=self.__data, **data_io_kwargs)
 
     @docval({'name': 'func', 'type': types.FunctionType, 'doc': 'a function to transform *data*'})
     def transform(self, **kwargs):
