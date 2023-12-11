@@ -480,6 +480,9 @@ class TypeMap:
                     self.register_container_type(new_ns, dt, container_cls)
         return deps
 
+    def load_config(self, **kwargs):
+        pass
+
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
