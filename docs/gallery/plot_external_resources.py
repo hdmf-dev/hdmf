@@ -310,15 +310,10 @@ herd.add_ref(
 ###############################################################################
 # Using add_ref_termset
 # ------------------------------------------------------
-# :py:class:`~hdmf.common.resources.HERD` has multiple ways for users to add
-# external references. The :py:func:`~hdmf.common.resources.HERD.add_ref_termset`
+# The :py:func:`~hdmf.common.resources.HERD.add_ref_termset`
 # method allows users to not only validate terms, i.e., keys, but also
-# add references for entire datasets, lists, arrays, etc.
-
-# The :py:func:`~hdmf.common.resources.HERD.add_ref_container` method is directly
-# used for populating :py:class:`~hdmf.common.resources.HERD` when writing a file.
-# :py:func:`~hdmf.common.resources.HERD.add_ref_termset` can be used for new files;
-# however, it is also the best practice when adding references for existing files.
+# add references for an entire datasets, rather than single entries as we saw
+# prior with :py:func:`~hdmf.common.resources.HERD.add_ref`.
 
 # :py:func:`~hdmf.common.resources.HERD.add_ref_termset` has many optional fields,
 # giving the user a range of control when adding references. Let's see an example.
