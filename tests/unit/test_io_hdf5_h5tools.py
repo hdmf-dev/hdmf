@@ -3694,7 +3694,7 @@ class TestContainerSetDataIO(TestCase):
     def test_set_data_io(self):
         self.obj.set_data_io("data1", H5DataIO, data_io_kwargs=dict(chunks=True))
         assert isinstance(self.obj.data1, H5DataIO)
-        assert self.obj.data1.chunks
+        assert self.obj.data1.io_settings["chunks"]
 
     def test_fail_set_data_io(self):
         """Attempt to set a DataIO for a dataset that is missing."""
@@ -3710,7 +3710,7 @@ class TestContainerSetDataIO(TestCase):
         with self.assertWarnsWith(DeprecationWarning, msg):
             self.obj.set_data_io("data1", H5DataIO, chunks=True)
         self.assertIsInstance(self.obj.data1, H5DataIO)
-        self.assertTrue(self.obj.data1.chunks)
+        self.assertTrue(self.obj.data1.io_settings["chunks"])
 
 
 class TestDataSetDataIO(TestCase):
@@ -3724,4 +3724,4 @@ class TestDataSetDataIO(TestCase):
     def test_set_data_io(self):
         self.data.set_data_io(H5DataIO, dict(chunks=True))
         assert isinstance(self.data.data, H5DataIO)
-        assert self.data.data.chunks
+        assert self.data.data.io_settings["chunks"]
