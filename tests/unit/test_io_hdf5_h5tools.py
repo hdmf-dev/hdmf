@@ -3694,6 +3694,7 @@ class TestContainerSetDataIO(TestCase):
     def test_set_data_io(self):
         self.obj.set_data_io("data1", H5DataIO, data_io_kwargs=dict(chunks=True))
         assert isinstance(self.obj.data1, H5DataIO)
+        assert self.obj.data1.chunks
 
     def test_fail_set_data_io(self):
         """Attempt to set a DataIO for a dataset that is missing."""
