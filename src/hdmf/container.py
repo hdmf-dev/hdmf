@@ -765,8 +765,8 @@ class Container(AbstractContainer):
         """
         if kwargs or (data_io_kwargs is None):
             warn(
-                "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a dictionary to"
-                " the `data_io_kwargs` parameter instead.",
+                "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a "
+                "dictionary to the `data_io_kwargs` parameter instead.",
                 DeprecationWarning,
                 stacklevel=2
             )
