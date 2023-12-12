@@ -3709,6 +3709,7 @@ class TestContainerSetDataIO(TestCase):
         with self.assertWarnsWith(DeprecationWarning, msg):
             self.obj.set_data_io("data1", H5DataIO, chunks=True)
         self.assertIsInstance(self.obj.data1, H5DataIO)
+        self.assertTrue(self.obj.data1.chunks)
 
 
 class TestDataSetDataIO(TestCase):
