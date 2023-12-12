@@ -757,7 +757,7 @@ class Container(AbstractContainer):
             Name of dataset to wrap in DataIO
         data_io_class: Type[DataIO]
             Class to use for DataIO, e.g. H5DataIO or ZarrDataIO
-        data_io_kwargs: dict, optional
+        data_io_kwargs: dict
             keyword arguments passed to the constructor of the DataIO class.
         **kwargs:
             DEPRECATED. Use data_io_kwargs instead.
