@@ -390,7 +390,7 @@ class HERD(Container):
                     'field': field}
         elif len(objecttable_idx) == 0 and not create:
             raise ValueError("Object not in Object Table.")
-        else:
+        else:  # pragma: no cover
             # It isn't possible for this to happen unless the user used _add_object.
             raise ValueError("Found multiple instances of the same object id, relative path, "
                              "and field in objects table.")
