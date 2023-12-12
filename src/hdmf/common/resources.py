@@ -520,6 +520,9 @@ class HERD(Container):
                 data = data_object.data
             elif isinstance(data_object, (list, tuple, np.ndarray)):
                 data = data_object
+            else:
+                msg = "The data object being used is not supported. Please review the documentation for support types."
+                raise ValueError(msg)
         missing_terms = []
         for term in data:
             # check the data according to the permissible_values
@@ -580,6 +583,11 @@ class HERD(Container):
         ##################
         if file is None:
             file = self._get_file_from_container(container=container)
+        else:
+            file_from_container = self._get_file_from_container(container=container)
+            if file.object_id != file_from_container.object_id:
+                msg = "The file given does not match the file in which the container is stored."
+                raise ValueError(msg)
 
         ################
         # Set Key Checks

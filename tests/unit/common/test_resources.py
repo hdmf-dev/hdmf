@@ -268,6 +268,21 @@ class TestHERD(TestCase):
                        entity_id='entity_id1',
                        entity_uri='entity1')
 
+    def test_add_ref_file_mismatch(self):
+        file = HERDManagerContainer(name='file')
+        file2 = HERDManagerContainer()
+
+
+        nested_child = Container(name='nested_child')
+        child = Container(name='child')
+        nested_child.parent = child
+        child.parent = file
+
+        er = HERD()
+        with self.assertRaises(ValueError):
+            er.add_ref(file=file2, container=nested_child, key='key1',
+                       entity_id='entity_id1', entity_uri='entity1')
+
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_check_termset_wrapper(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
@@ -356,6 +371,23 @@ class TestHERD(TestCase):
         self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_data_object_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'])
+
+        with self.assertRaises(ValueError):
+            er.add_ref_termset(
+                        container=col1,
+                        attribute='description',
+                        termset=terms
+                       )
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_attribute_none(self):
