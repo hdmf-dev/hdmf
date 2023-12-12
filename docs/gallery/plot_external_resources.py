@@ -100,6 +100,13 @@ import os
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="HERD is experimental*")
 
+try:
+    dir_path = os.path.dirname(os.path.abspath(__file__))
+    yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
+except NameError:
+    dir_path = os.path.dirname(os.path.abspath('.'))
+    yaml_file = os.path.join(dir_path, 'gallery/example_term_set.yaml')
+
 
 # Class to represent a file
 class HERDManagerContainer(Container, HERDManager):
@@ -320,7 +327,7 @@ herd.add_ref(
 # :py:func:`~hdmf.common.resources.HERD.add_ref_termset` has many optional fields,
 # giving the user a range of control when adding references. Let's see an example.
 herd = HERD()
-terms = TermSet(term_schema_path='docs/gallery/example_term_set.yaml')
+terms = TermSet(term_schema_path=yaml_file)
 
 herd.add_ref_termset(file=file,
                    container=species,
@@ -341,7 +348,7 @@ herd.add_ref_termset(file=file,
 # :py:class:`~hdmf.term_set.TermSet` or remove them from the dataset.
 
 herd = HERD()
-terms = TermSet(term_schema_path='docs/gallery/example_term_set.yaml')
+terms = TermSet(term_schema_path=yaml_file)
 
 herd.add_ref_termset(file=file,
                    container=species,
