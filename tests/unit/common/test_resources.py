@@ -1267,7 +1267,7 @@ class TestHERDGetKey(TestCase):
     def setUp(self):
         self.er = HERD()
 
-    def test_get_key_error_more_info(self):
+    def test_get_key_multiple(self):
         self.er.add_ref(file=HERDManagerContainer(name='file'),
                         container=Container(name='Container'),
                         key='key1',
@@ -1279,9 +1279,11 @@ class TestHERDGetKey(TestCase):
                         entity_id="id12",
                         entity_uri='url21')
 
-        msg = "There are more than one key with that name. Please search with additional information."
-        with self.assertRaisesWith(ValueError, msg):
-            _ = self.er.get_key(key_name='key1')
+        keys = self.er.get_key(key_name='key1')
+        self.assertIsInstance(keys[0], Key)
+        self.assertIsInstance(keys[1], Key)
+        self.assertEqual(keys[0].idx, 0)
+        self.assertEqual(keys[1].idx, 1)
 
     def test_get_key(self):
         self.er.add_ref(file=HERDManagerContainer(name='file'),

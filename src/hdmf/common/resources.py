@@ -390,7 +390,7 @@ class HERD(Container):
                     'field': field}
         elif len(objecttable_idx) == 0 and not create:
             raise ValueError("Object not in Object Table.")
-        else:
+        else:  # pragma: no cover
             # It isn't possible for this to happen unless the user used _add_object.
             raise ValueError("Found multiple instances of the same object id, relative path, "
                              "and field in objects table.")
@@ -771,6 +771,8 @@ class HERD(Container):
 
         If container, relative_path, and field are provided, the Key that corresponds to the given name of the key
         for the given container, relative_path, and field is returned.
+
+        If there are multiple matches, a list of all matching keys will be returned.
         """
         key_name, container, relative_path, field = popargs('key_name', 'container', 'relative_path', 'field', kwargs)
         key_idx_matches = self.keys.which(key=key_name)
@@ -797,8 +799,7 @@ class HERD(Container):
                 # the key has never been used before
                 raise ValueError("key '%s' does not exist" % key_name)
             elif len(key_idx_matches) > 1:
-                msg = "There are more than one key with that name. Please search with additional information."
-                raise ValueError(msg)
+                return [self.keys.row[x] for x in key_idx_matches]
             else:
                 return self.keys.row[key_idx_matches[0]]
 

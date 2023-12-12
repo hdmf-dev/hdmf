@@ -816,11 +816,6 @@ class LinkSpec(Spec):
         ''' The data type of target specification '''
         return self.get(_target_type_key)
 
-    @property
-    def data_type(self):
-        ''' The data type of target specification '''
-        return self.get(_target_type_key)
-
     def is_many(self):
         return self.quantity not in (1, ZERO_OR_ONE)
 
