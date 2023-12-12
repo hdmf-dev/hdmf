@@ -758,7 +758,7 @@ class Container(AbstractContainer):
         data_io_class: Type[DataIO]
             Class to use for DataIO, e.g. H5DataIO or ZarrDataIO
         data_io_kwargs: dict, optional
-            kwargs passed to the constructor of the DataIO class.
+            keyword arguments passed to the constructor of the DataIO class.
         **kwargs:
             DEPRECATED. Use data_io_kwargs instead.
             kwargs are passed to the constructor of the DataIO class.
