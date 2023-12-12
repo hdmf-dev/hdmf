@@ -124,6 +124,7 @@ file = HERDManagerContainer(name='file')
 # the underlying data structures accordingly.
 
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+data.parent = file
 herd.add_ref(
     file=file,
     container=data,
@@ -157,6 +158,7 @@ herd.add_ref(
 genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
 genotypes.add_row(id=0, genotype_name='Rorb')
+genotypes.parent = file
 herd.add_ref(
     file=file,
     container=genotypes,
@@ -288,7 +290,6 @@ herd.get_object_type(object_type='Data')
 
 # Let's create a new instance of :py:class:`~hdmf.common.resources.HERD`.
 herd = HERD()
-file = HERDManagerContainer(name='file')
 
 data = Data(
     name='data_name',
@@ -297,6 +298,7 @@ data = Data(
         dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
     )
 )
+data.parent = file
 
 herd.add_ref(
     file=file,
@@ -318,8 +320,7 @@ herd.add_ref(
 # :py:func:`~hdmf.common.resources.HERD.add_ref_termset` has many optional fields,
 # giving the user a range of control when adding references. Let's see an example.
 herd = HERD()
-terms = TermSet(term_schema_path='example_term_set.yaml')
-file = HERDManagerContainer(name='file')
+terms = TermSet(term_schema_path='docs/gallery/example_term_set.yaml')
 
 herd.add_ref_termset(file=file,
                    container=species,
@@ -340,8 +341,7 @@ herd.add_ref_termset(file=file,
 # :py:class:`~hdmf.term_set.TermSet` or remove them from the dataset.
 
 herd = HERD()
-terms = TermSet(term_schema_path='example_term_set.yaml')
-file = HERDManagerContainer(name='file')
+terms = TermSet(term_schema_path='docs/gallery/example_term_set.yaml')
 
 herd.add_ref_termset(file=file,
                    container=species,
