@@ -15,7 +15,7 @@ import itertools
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
-from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional
+from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type
 from ..term_set import TermSetWrapper
 
 
@@ -211,8 +211,8 @@ class ElementIdentifiers(Data):
     """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this ElementIdentifiers'},
-            {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'a 1D dataset containing identifiers',
-             'default': list()},
+            {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'a 1D dataset containing integer identifiers',
+             'default': list(), 'shape': (None,)},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -236,6 +236,20 @@ class ElementIdentifiers(Data):
             search_ids = [search_ids]
         # Find all matching locations
         return np.in1d(self.data, search_ids).nonzero()[0]
+
+    def _validate_new_data(self, data):
+        # NOTE this may not cover all the many AbstractDataChunkIterator edge cases
+        if (isinstance(data, AbstractDataChunkIterator) or
+                (hasattr(data, "data") and isinstance(data.data, AbstractDataChunkIterator))):
+            if not np.issubdtype(data.dtype, np.integer):
+                raise ValueError("ElementIdentifiers must contain integers")
+        elif hasattr(data, "__len__") and len(data):
+            self._validate_new_data_element(data[0])
+
+    def _validate_new_data_element(self, arg):
+        if not check_type(arg, int):
+            raise ValueError("ElementIdentifiers must contain integers")
+        super()._validate_new_data_element(arg)
 
 
 @register_class('DynamicTable')
