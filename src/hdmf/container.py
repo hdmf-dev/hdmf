@@ -809,6 +809,11 @@ class Data(AbstractContainer):
         """
         Apply DataIO object to the data held by this Data object
         """
+        warn(
+            "Data.set_dataio() is deprecated. Please use Data.set_data_io() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         dataio = getargs('dataio', kwargs)
         dataio.data = self.__data
         self.__data = dataio
