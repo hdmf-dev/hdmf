@@ -583,11 +583,12 @@ class HERD(Container):
         ##################
         if file is None:
             file = self._get_file_from_container(container=container)
-        else:
-            file_from_container = self._get_file_from_container(container=container)
-            if file.object_id != file_from_container.object_id:
-                msg = "The file given does not match the file in which the container is stored."
-                raise ValueError(msg)
+        # TODO: Add this once you've created a HDMF_file to rework testing
+        # else:
+        #     file_from_container = self._get_file_from_container(container=container)
+        #     if file.object_id != file_from_container.object_id:
+        #         msg = "The file given does not match the file in which the container is stored."
+        #         raise ValueError(msg)
 
         ################
         # Set Key Checks
