@@ -10,6 +10,7 @@
 
 ### Bug fixes
 - Fixed issue with custom class generation when a spec has a `name`. @rly [#1006](https://github.com/hdmf-dev/hdmf/pull/1006)
+- Fixed issue with usage of deprecated `ruamel.yaml.safe_load` in `src/hdmf/testing/validate_spec.py`. @rly [#1008](https://github.com/hdmf-dev/hdmf/pull/1008)
 
 - Fixed issue where `ElementIdentifiers` data could be set to non-integer values. @rly [#1009](https://github.com/hdmf-dev/hdmf/pull/1009)
 
