@@ -3724,3 +3724,4 @@ class TestDataSetDataIO(TestCase):
     def test_set_data_io(self):
         self.data.set_data_io(H5DataIO, dict(chunks=True))
         assert isinstance(self.data.data, H5DataIO)
+        assert self.data.data.chunks
