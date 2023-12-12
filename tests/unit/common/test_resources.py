@@ -268,7 +268,7 @@ class TestHERD(TestCase):
                        entity_id='entity_id1',
                        entity_uri='entity1')
 
-    # TODO: Add this once you've created a HDMF_file to rework testing                       
+    # TODO: Add this once you've created a HDMF_file to rework testing
     # def test_add_ref_file_mismatch(self):
     #     file = HERDManagerContainer(name='file')
     #     file2 = HERDManagerContainer()
