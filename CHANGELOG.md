@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.11.1 (Upcoming)
+## HDMF 3.12.0 (Upcoming)
 
 ### Enhancements
 - Add Data.set_data_io allows(), which allows for setting a DataIO to a data object after-the-fact. @bendichter and @CodyCBakerPhD [#1013](https://github.com/hdmf-dev/hdmf/pull/1013)
