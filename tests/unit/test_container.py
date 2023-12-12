@@ -2,7 +2,6 @@ import numpy as np
 from uuid import uuid4, UUID
 import os
 
-from hdmf.backends.hdf5 import H5DataIO
 from hdmf.container import AbstractContainer, Container, Data, HERDManager
 from hdmf.common.resources import HERD
 from hdmf.testing import TestCase
@@ -396,44 +395,6 @@ class TestContainer(TestCase):
         self.assertTupleEqual(grandparent_obj.get_ancestors(), tuple())
         self.assertTupleEqual(parent_obj.get_ancestors(), (grandparent_obj, ))
         self.assertTupleEqual(child_obj.get_ancestors(), (parent_obj, grandparent_obj))
-
-
-class TestSetDataIO(TestCase):
-
-    def setUp(self) -> None:
-        class ContainerWithData(Container):
-            __fields__ = ('data1', 'data2')
-
-            @docval(
-                {"name": "name", "doc": "name", "type": str},
-                {'name': 'data1', 'doc': 'field1 doc', 'type': list},
-                {'name': 'data2', 'doc': 'field2 doc', 'type':  list, 'default': None}
-            )
-            def __init__(self, **kwargs):
-                super().__init__(name=kwargs["name"])
-                self.data1 = kwargs["data1"]
-                self.data2 = kwargs["data2"]
-
-        self.obj = ContainerWithData("name", [1, 2, 3, 4, 5], None)
-
-    def test_set_data_io(self):
-        self.obj.set_data_io("data1", H5DataIO, data_io_kwargs=dict(chunks=True))
-        assert isinstance(self.obj.data1, H5DataIO)
-
-    def test_fail_set_data_io(self):
-        """Attempt to set a DataIO for a dataset that is missing."""
-        with self.assertRaisesWith(ValueError, "data2 is None and cannot be wrapped in a DataIO class"):
-            self.obj.set_data_io("data2", H5DataIO, data_io_kwargs=dict(chunks=True))
-
-    def test_set_data_io_old_api(self):
-        """Test that using the kwargs still works but throws a warning."""
-        msg = (
-            "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a dictionary to"
-            " the `data_io_kwargs` parameter instead."
-        )
-        with self.assertWarnsWith(DeprecationWarning, msg) as cm:
-            self.obj.set_data_io("data1", H5DataIO, chunks=True)
-        self.assertIsInstance(self.obj.data1, H5DataIO)
 
 
 class TestHTMLRepr(TestCase):

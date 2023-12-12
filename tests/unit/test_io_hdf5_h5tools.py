@@ -20,7 +20,7 @@ from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
 from hdmf.container import Container
-from hdmf import Data
+from hdmf import Data, docval
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
@@ -3671,3 +3671,54 @@ def test_hdf5io_can_read():
     assert not HDF5IO.can_read("not_a_file")
     assert HDF5IO.can_read("tests/unit/back_compat_tests/1.0.5.h5")
     assert not HDF5IO.can_read(__file__)  # this file is not an HDF5 file
+
+
+class TestContainerSetDataIO(TestCase):
+
+    def setUp(self) -> None:
+        class ContainerWithData(Container):
+            __fields__ = ('data1', 'data2')
+
+            @docval(
+                {"name": "name", "doc": "name", "type": str},
+                {'name': 'data1', 'doc': 'field1 doc', 'type': list},
+                {'name': 'data2', 'doc': 'field2 doc', 'type':  list, 'default': None}
+            )
+            def __init__(self, **kwargs):
+                super().__init__(name=kwargs["name"])
+                self.data1 = kwargs["data1"]
+                self.data2 = kwargs["data2"]
+
+        self.obj = ContainerWithData("name", [1, 2, 3, 4, 5], None)
+
+    def test_set_data_io(self):
+        self.obj.set_data_io("data1", H5DataIO, data_io_kwargs=dict(chunks=True))
+        assert isinstance(self.obj.data1, H5DataIO)
+
+    def test_fail_set_data_io(self):
+        """Attempt to set a DataIO for a dataset that is missing."""
+        with self.assertRaisesWith(ValueError, "data2 is None and cannot be wrapped in a DataIO class"):
+            self.obj.set_data_io("data2", H5DataIO, data_io_kwargs=dict(chunks=True))
+
+    def test_set_data_io_old_api(self):
+        """Test that using the kwargs still works but throws a warning."""
+        msg = (
+            "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a dictionary to"
+            " the `data_io_kwargs` parameter instead."
+        )
+        with self.assertWarnsWith(DeprecationWarning, msg):
+            self.obj.set_data_io("data1", H5DataIO, chunks=True)
+        self.assertIsInstance(self.obj.data1, H5DataIO)
+
+
+class TestDataSetDataIO(TestCase):
+
+    def setUp(self):
+        class MyData(Data):
+            pass
+
+        self.data = MyData("my_data", [1, 2, 3])
+
+    def test_set_data_io(self):
+        self.data.set_data_io(H5DataIO, dict(chunks=True))
+        assert isinstance(self.data.data, H5DataIO)
