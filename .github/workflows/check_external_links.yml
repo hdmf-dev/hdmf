@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'  # TODO update to 3.12 when optional reqs (e.g., oaklib) support 3.12
 
