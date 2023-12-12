@@ -763,6 +763,8 @@ class HERD(Container):
 
         If container, relative_path, and field are provided, the Key that corresponds to the given name of the key
         for the given container, relative_path, and field is returned.
+
+        If there are multiple matches, a list of all matching keys will be returned.
         """
         key_name, container, relative_path, field = popargs('key_name', 'container', 'relative_path', 'field', kwargs)
         key_idx_matches = self.keys.which(key=key_name)
@@ -789,8 +791,7 @@ class HERD(Container):
                 # the key has never been used before
                 raise ValueError("key '%s' does not exist" % key_name)
             elif len(key_idx_matches) > 1:
-                msg = "There are more than one key with that name. Please search with additional information."
-                raise ValueError(msg)
+                return [self.keys.row[x] for x in key_idx_matches]
             else:
                 return self.keys.row[key_idx_matches[0]]
 
