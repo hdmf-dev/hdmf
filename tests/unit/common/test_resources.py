@@ -376,7 +376,6 @@ class TestHERD(TestCase):
     def test_add_ref_termset_data_object_error(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
-        em = HERDManagerContainer()
 
         col1 = VectorData(name='Species_Data',
                           description='species from NCBI and Ensemble',
