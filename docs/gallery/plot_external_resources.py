@@ -182,7 +182,7 @@ herd.add_ref(
 # not the object_id of the genotypes table.
 
 ###############################################################################
-# Using the add_ref method without the file parametherd.
+# Using the add_ref method without the file parameter.
 # ------------------------------------------------------
 # Even though :py:class:`~hdmf.common.resources.File` is required to create/add a new reference,
 # the user can omit the file parameter if the :py:class:`~hdmf.common.resources.Object` has a file
