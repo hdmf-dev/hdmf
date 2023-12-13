@@ -343,7 +343,7 @@ herd.add_ref_termset(file=file,
 
 # When populating :py:class:`~hdmf.common.resources.HERD`, users may have some terms
 # that are not in the :py:class:`~hdmf.term_set.TermSet`. As a result,
-# :py:func:`~hdmf.common.resources.HERD.add_ref_termset` will return an all the missing
+# :py:func:`~hdmf.common.resources.HERD.add_ref_termset` will return all of the missing
 # terms in a dictionary. It is up to the user to either add these terms to the
 # :py:class:`~hdmf.term_set.TermSet` or remove them from the dataset.
 
