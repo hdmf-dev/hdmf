@@ -521,7 +521,8 @@ class HERD(Container):
             elif isinstance(data_object, (list, tuple, np.ndarray)):
                 data = data_object
             else:
-                msg = "The data object being used is not supported. Please review the documentation for supported types."
+                msg = ("The data object being used is not supported. "
+                       "Please review the documentation for supported types.")
                 raise ValueError(msg)
         missing_terms = []
         for term in data:
