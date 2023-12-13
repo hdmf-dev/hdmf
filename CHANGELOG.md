@@ -1,6 +1,9 @@
 # HDMF Changelog
 
-## HDMF 3.11.1 (Upcoming)
+## HDMF 3.12.0 (Upcoming)
+
+### Enhancements
+- Add Data.set_data_io allows(), which allows for setting a DataIO to a data object after-the-fact. @bendichter and @CodyCBakerPhD [#1013](https://github.com/hdmf-dev/hdmf/pull/1013)
 
 ### Minor Improvements
 - Updated `__gather_columns` to ignore the order of bases when generating columns from the super class. @mavaylon1 [#991](https://github.com/hdmf-dev/hdmf/pull/991)

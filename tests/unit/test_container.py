@@ -2,7 +2,6 @@ import numpy as np
 from uuid import uuid4, UUID
 import os
 
-from hdmf.backends.hdf5 import H5DataIO
 from hdmf.container import AbstractContainer, Container, Data, HERDManager
 from hdmf.common.resources import HERD
 from hdmf.testing import TestCase
@@ -396,28 +395,6 @@ class TestContainer(TestCase):
         self.assertTupleEqual(grandparent_obj.get_ancestors(), tuple())
         self.assertTupleEqual(parent_obj.get_ancestors(), (grandparent_obj, ))
         self.assertTupleEqual(child_obj.get_ancestors(), (parent_obj, grandparent_obj))
-
-    def test_set_data_io(self):
-
-        class ContainerWithData(Container):
-            __fields__ = ('data1', 'data2')
-
-            @docval(
-                {"name": "name", "doc": "name", "type": str},
-                {'name': 'data1', 'doc': 'field1 doc', 'type': list},
-                {'name': 'data2', 'doc': 'field2 doc', 'type':  list, 'default': None}
-            )
-            def __init__(self, **kwargs):
-                super().__init__(name=kwargs["name"])
-                self.data1 = kwargs["data1"]
-                self.data2 = kwargs["data2"]
-
-        obj = ContainerWithData("name", [1, 2, 3, 4, 5], None)
-        obj.set_data_io("data1", H5DataIO, chunks=True)
-        assert isinstance(obj.data1, H5DataIO)
-
-        with self.assertRaises(ValueError):
-            obj.set_data_io("data2", H5DataIO, chunks=True)
 
 
 class TestHTMLRepr(TestCase):
