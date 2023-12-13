@@ -89,8 +89,8 @@ class HDMFIO(metaclass=ABCMeta):
                 from hdmf.common import HERD
                 herd = HERD(type_map=self.manager.type_map)
 
-            # add_ref_term_set to search for and resolve the TermSetWrapper
-            herd.add_ref_term_set(container) # container would be the NWBFile
+            # add_ref_container to search for and resolve the TermSetWrapper
+            herd.add_ref_container(container) # container would be the NWBFile
             # write HERD
             herd.to_zip(path=self.herd_path)
 
