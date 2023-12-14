@@ -57,7 +57,7 @@ jobs:
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-ver }}
 
@@ -117,7 +117,7 @@ jobs:
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-ver }}
 
@@ -160,7 +160,7 @@ jobs:
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-ver }}
@@ -221,7 +221,7 @@ jobs:
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
           activate-environment: ros3

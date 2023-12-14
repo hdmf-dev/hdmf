@@ -225,8 +225,8 @@ class CustomClassGenerator:
         fixed_value = getattr(field_spec, 'value', None)
         if fixed_value is not None:
             fields_conf['settable'] = False
-        if isinstance(field_spec, (BaseStorageSpec, LinkSpec)) and field_spec.data_type is not None:
-            # subgroups, datasets, and links with data types can have fixed names
+        if isinstance(field_spec, BaseStorageSpec) and field_spec.data_type is not None:
+            # subgroups and datasets with data types can have fixed names
             fixed_name = getattr(field_spec, 'name', None)
             if fixed_name is not None:
                 fields_conf['required_name'] = fixed_name

@@ -2,6 +2,7 @@ import types
 from abc import abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
+from typing import Type
 from uuid import uuid4
 from warnings import warn
 
@@ -746,11 +747,34 @@ class Container(AbstractContainer):
         out += '\n' + indent + right_br
         return out
 
-    def set_data_io(self, dataset_name, data_io_class, **kwargs):
+    def set_data_io(self, dataset_name: str, data_io_class: Type[DataIO], data_io_kwargs: dict = None, **kwargs):
+        """
+        Apply DataIO object to a dataset field of the Container.
+
+        Parameters
+        ----------
+        dataset_name: str
+            Name of dataset to wrap in DataIO
+        data_io_class: Type[DataIO]
+            Class to use for DataIO, e.g. H5DataIO or ZarrDataIO
+        data_io_kwargs: dict
+            keyword arguments passed to the constructor of the DataIO class.
+        **kwargs:
+            DEPRECATED. Use data_io_kwargs instead.
+            kwargs are passed to the constructor of the DataIO class.
+        """
+        if kwargs or (data_io_kwargs is None):
+            warn(
+                "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a "
+                "dictionary to the `data_io_kwargs` parameter instead.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+            data_io_kwargs = kwargs
         data = self.fields.get(dataset_name)
         if data is None:
             raise ValueError(f"{dataset_name} is None and cannot be wrapped in a DataIO class")
-        self.fields[dataset_name] = data_io_class(data=data, **kwargs)
+        self.fields[dataset_name] = data_io_class(data=data, **data_io_kwargs)
 
 
 class Data(AbstractContainer):
@@ -763,6 +787,8 @@ class Data(AbstractContainer):
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)
         super().__init__(**kwargs)
+
+        self._validate_new_data(data)
         self.__data = data
 
     @property
@@ -783,9 +809,27 @@ class Data(AbstractContainer):
         """
         Apply DataIO object to the data held by this Data object
         """
+        warn(
+            "Data.set_dataio() is deprecated. Please use Data.set_data_io() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         dataio = getargs('dataio', kwargs)
         dataio.data = self.__data
         self.__data = dataio
+
+    def set_data_io(self, data_io_class: Type[DataIO], data_io_kwargs: dict) -> None:
+        """
+        Apply DataIO object to the data held by this Data object.
+
+        Parameters
+        ----------
+        data_io_class: Type[DataIO]
+            The DataIO to apply to the data held by this Data.
+        data_io_kwargs: dict
+            The keyword arguments to pass to the DataIO.
+        """
+        self.__data = data_io_class(data=self.__data, **data_io_kwargs)
 
     @docval({'name': 'func', 'type': types.FunctionType, 'doc': 'a function to transform *data*'})
     def transform(self, **kwargs):
@@ -822,6 +866,7 @@ class Data(AbstractContainer):
         return self.data[args]
 
     def append(self, arg):
+        self._validate_new_data_element(arg)
         self.__data = append_data(self.__data, arg)
 
     def extend(self, arg):
@@ -831,7 +876,22 @@ class Data(AbstractContainer):
 
         :param arg: The iterable to add to the end of this VectorData
         """
+        self._validate_new_data(arg)
         self.__data = extend_data(self.__data, arg)
+
+    def _validate_new_data(self, data):
+        """Function to validate a new array that will be set or added to data. Raises an error if the data is invalid.
+
+        Subclasses should override this function to perform class-specific validation.
+        """
+        pass
+
+    def _validate_new_data_element(self, arg):
+        """Function to validate a new value that will be added to the data. Raises an error if the data is invalid.
+
+        Subclasses should override this function to perform class-specific validation.
+        """
+        pass
 
 
 class DataRegion(Data):

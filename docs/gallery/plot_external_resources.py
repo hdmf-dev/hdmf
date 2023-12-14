@@ -91,6 +91,7 @@ are rules to how users store information in the interlinked tables.
 # sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_externalresources.png'
 from hdmf.common import HERD
 from hdmf.common import DynamicTable, VectorData
+from hdmf.term_set import TermSet
 from hdmf import Container, HERDManager
 from hdmf import Data
 import numpy as np
@@ -98,6 +99,13 @@ import os
 # Ignore experimental feature warnings in the tutorial to improve rendering
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="HERD is experimental*")
+
+try:
+    dir_path = os.path.dirname(os.path.abspath(__file__))
+    yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
+except NameError:
+    dir_path = os.path.dirname(os.path.abspath('.'))
+    yaml_file = os.path.join(dir_path, 'gallery/example_term_set.yaml')
 
 
 # Class to represent a file
@@ -107,7 +115,7 @@ class HERDManagerContainer(Container, HERDManager):
         super().__init__(**kwargs)
 
 
-er = HERD()
+herd = HERD()
 file = HERDManagerContainer(name='file')
 
 
@@ -123,7 +131,8 @@ file = HERDManagerContainer(name='file')
 # the underlying data structures accordingly.
 
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-er.add_ref(
+data.parent = file
+herd.add_ref(
     file=file,
     container=data,
     key='Homo sapiens',
@@ -131,7 +140,7 @@ er.add_ref(
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
 )
 
-er.add_ref(
+herd.add_ref(
     file=file,
     container=data,
     key='Mus musculus',
@@ -156,7 +165,8 @@ er.add_ref(
 genotypes = DynamicTable(name='genotypes', description='My genotypes')
 genotypes.add_column(name='genotype_name', description="Name of genotypes")
 genotypes.add_row(id=0, genotype_name='Rorb')
-er.add_ref(
+genotypes.parent = file
+herd.add_ref(
     file=file,
     container=genotypes,
     attribute='genotype_name',
@@ -166,8 +176,8 @@ er.add_ref(
 )
 
 # Note: :py:func:`~hdmf.common.resources.HERD.add_ref` internally resolves the object
-# to the closest parent, so that ``er.add_ref(container=genotypes, attribute='genotype_name')`` and
-# ``er.add_ref(container=genotypes.genotype_name, attribute=None)`` will ultimately both use the ``object_id``
+# to the closest parent, so that ``herd.add_ref(container=genotypes, attribute='genotype_name')`` and
+# ``herd.add_ref(container=genotypes.genotype_name, attribute=None)`` will ultimately both use the ``object_id``
 # of the ``genotypes.genotype_name`` :py:class:`~hdmf.common.table.VectorData` column and
 # not the object_id of the genotypes table.
 
@@ -188,7 +198,7 @@ col1 = VectorData(
 species = DynamicTable(name='species', description='My species', columns=[col1])
 species.parent = file
 
-er.add_ref(
+herd.add_ref(
     container=species,
     attribute='Species_Data',
     key='Ursus arctos horribilis',
@@ -203,15 +213,15 @@ er.add_ref(
 # as separate tables.
 
 # `~hdmf.common.resources.HERD` as a flattened table
-er.to_dataframe()
+herd.to_dataframe()
 
 # The individual interlinked tables:
-er.files.to_dataframe()
-er.objects.to_dataframe()
-er.entities.to_dataframe()
-er.keys.to_dataframe()
-er.object_keys.to_dataframe()
-er.entity_keys.to_dataframe()
+herd.files.to_dataframe()
+herd.objects.to_dataframe()
+herd.entities.to_dataframe()
+herd.keys.to_dataframe()
+herd.object_keys.to_dataframe()
+herd.entity_keys.to_dataframe()
 
 ###############################################################################
 # Using the get_key method
@@ -224,11 +234,11 @@ er.entity_keys.to_dataframe()
 
 # The :py:func:`~hdmf.common.resources.HERD.get_key` method will be able to return the
 # :py:class:`~hdmf.common.resources.Key` object if the :py:class:`~hdmf.common.resources.Key` object is unique.
-genotype_key_object = er.get_key(key_name='Rorb')
+genotype_key_object = herd.get_key(key_name='Rorb')
 
 # If the :py:class:`~hdmf.common.resources.Key` object has a duplicate name, then the user will need
 # to provide the unique (file, container, relative_path, field, key) combination.
-species_key_object = er.get_key(file=file,
+species_key_object = herd.get_key(file=file,
                                 container=species['Species_Data'],
                                 key_name='Ursus arctos horribilis')
 
@@ -246,7 +256,7 @@ species_key_object = er.get_key(file=file,
 # :py:func:`~hdmf.common.resources.HERD.add_ref` method. If a 'key_name'
 # is used, a new :py:class:`~hdmf.common.resources.Key` will be created.
 
-er.add_ref(
+herd.add_ref(
     file=file,
     container=genotypes,
     attribute='genotype_name',
@@ -262,18 +272,18 @@ er.add_ref(
 # allows the user to retrieve all entities and key information associated with an `Object` in
 # the form of a pandas DataFrame.
 
-er.get_object_entities(file=file,
+herd.get_object_entities(file=file,
                        container=genotypes['genotype_name'],
                        relative_path='')
 
 ###############################################################################
 # Using the get_object_type
 # ------------------------------------------------------
-# The :py:class:`~hdmf.common.resources.HERD.get_object_entities` method
+# The :py:func:`~hdmf.common.resources.HERD.get_object_entities` method
 # allows the user to retrieve all entities and key information associated with an `Object` in
 # the form of a pandas DataFrame.
 
-er.get_object_type(object_type='Data')
+herd.get_object_type(object_type='Data')
 
 ###############################################################################
 # Special Case: Using add_ref with compound data
@@ -286,8 +296,7 @@ er.get_object_type(object_type='Data')
 # 'x' is using the external reference.
 
 # Let's create a new instance of :py:class:`~hdmf.common.resources.HERD`.
-er = HERD()
-file = HERDManagerContainer(name='file')
+herd = HERD()
 
 data = Data(
     name='data_name',
@@ -296,8 +305,9 @@ data = Data(
         dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]
     )
 )
+data.parent = file
 
-er.add_ref(
+herd.add_ref(
     file=file,
     container=data,
     field='species',
@@ -307,13 +317,52 @@ er.add_ref(
 )
 
 ###############################################################################
+# Using add_ref_termset
+# ------------------------------------------------------
+# The :py:func:`~hdmf.common.resources.HERD.add_ref_termset`
+# method allows users to not only validate terms, i.e., keys, but also
+# add references for an entire datasets, rather than single entries as we saw
+# prior with :py:func:`~hdmf.common.resources.HERD.add_ref`.
+
+# :py:func:`~hdmf.common.resources.HERD.add_ref_termset` has many optional fields,
+# giving the user a range of control when adding references. Let's see an example.
+herd = HERD()
+terms = TermSet(term_schema_path=yaml_file)
+
+herd.add_ref_termset(file=file,
+                   container=species,
+                   attribute='Species_Data',
+                   key='Ursus arctos horribilis',
+                   termset=terms)
+
+###############################################################################
+# Using add_ref_termset for an entire dataset
+# ------------------------------------------------------
+# As mentioned above, :py:func:`~hdmf.common.resources.HERD.add_ref_termset`
+# supports iteratively validating and populating :py:class:`~hdmf.common.resources.HERD`.
+
+# When populating :py:class:`~hdmf.common.resources.HERD`, users may have some terms
+# that are not in the :py:class:`~hdmf.term_set.TermSet`. As a result,
+# :py:func:`~hdmf.common.resources.HERD.add_ref_termset` will return all of the missing
+# terms in a dictionary. It is up to the user to either add these terms to the
+# :py:class:`~hdmf.term_set.TermSet` or remove them from the dataset.
+
+herd = HERD()
+terms = TermSet(term_schema_path=yaml_file)
+
+herd.add_ref_termset(file=file,
+                   container=species,
+                   attribute='Species_Data',
+                   termset=terms)
+
+###############################################################################
 # Write HERD
 # ------------------------------------------------------
 # :py:class:`~hdmf.common.resources.HERD` is written as a zip file of
 # the individual tables written to tsv.
 # The user provides the path, which contains the name of the file.
 
-er.to_zip(path='./HERD.zip')
+herd.to_zip(path='./HERD.zip')
 
 ###############################################################################
 # Read HERD
