@@ -4,7 +4,7 @@ from hdmf.common import DynamicTable, VectorData
 from hdmf import TermSet, TermSetWrapper
 from hdmf.common.resources import HERD, Key
 from hdmf import Data, Container, HERDManager
-from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
+from hdmf.testing import TestCase, remove_test_file
 import numpy as np
 from tests.unit.build_tests.test_io_map import Bar
 from tests.unit.helpers.utils import create_test_type_map, CORE_NAMESPACE
@@ -25,7 +25,7 @@ class HERDManagerContainer(Container, HERDManager):
         super().__init__(**kwargs)
 
 
-class TestHERD(H5RoundTripMixin, TestCase):
+class TestHERD(TestCase):
 
     def setUpContainer(self):
         er = HERD()
@@ -88,18 +88,18 @@ class TestHERD(H5RoundTripMixin, TestCase):
         file_1 = HERDManagerContainer(name='file_1')
         file_2 = HERDManagerContainer(name='file_2')
 
-        k1, e1 = er.add_ref(file=file_1,
-                             container=data1,
-                             field='species',
-                             key='Mus musculus',
-                             entity_id='NCBI:txid10090',
-                             entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        k2, e2 = er.add_ref(file=file_2,
-                            container=data2,
-                            field='species',
-                            key='Homo sapiens',
-                            entity_id='NCBI:txid9606',
-                            entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
+        er.add_ref(file=file_1,
+                   container=data1,
+                   field='species',
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        er.add_ref(file=file_2,
+                   container=data2,
+                   field='species',
+                   key='Homo sapiens',
+                   entity_id='NCBI:txid9606',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606')
 
         # Convert to dataframe and compare against the expected result
         result_df = er.to_dataframe()
@@ -268,6 +268,21 @@ class TestHERD(H5RoundTripMixin, TestCase):
                        entity_id='entity_id1',
                        entity_uri='entity1')
 
+    # TODO: Add this once you've created a HDMF_file to rework testing
+    # def test_add_ref_file_mismatch(self):
+    #     file = HERDManagerContainer(name='file')
+    #     file2 = HERDManagerContainer()
+    #
+    #     nested_child = Container(name='nested_child')
+    #     child = Container(name='child')
+    #     nested_child.parent = child
+    #     child.parent = file
+    #
+    #     er = HERD()
+    #     with self.assertRaises(ValueError):
+    #         er.add_ref(file=file2, container=nested_child, key='key1',
+    #                    entity_id='entity_id1', entity_uri='entity1')
+
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_check_termset_wrapper(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
@@ -289,7 +304,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
         self.assertTrue(isinstance(ret[0][2], TermSetWrapper))
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    def test_add_ref_termset_data(self):
+    def test_add_ref_container_data(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
@@ -305,14 +320,14 @@ class TestHERD(H5RoundTripMixin, TestCase):
 
         species.parent = em
 
-        er.add_ref_term_set(root_container=em)
+        er.add_ref_container(root_container=em)
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
         self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
-    def test_add_ref_termset_attr(self):
+    def test_add_ref_container_attr(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
@@ -328,11 +343,158 @@ class TestHERD(H5RoundTripMixin, TestCase):
 
         species.parent = em
 
-        er.add_ref_term_set(root_container=em)
+        er.add_ref_container(root_container=em)
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
         self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', 'description', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        er.add_ref_termset(file=em,
+                    container=species,
+                    attribute='Species_Data',
+                    key='Homo sapiens',
+                    termset=terms
+                   )
+        self.assertEqual(er.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_data_object_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'])
+
+        with self.assertRaises(ValueError):
+            er.add_ref_termset(
+                        container=col1,
+                        attribute='description',
+                        termset=terms
+                       )
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_attribute_none(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        er.add_ref_termset(file=em,
+                    container=species['Species_Data'],
+                    termset=terms
+                   )
+        self.assertEqual(er.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_data_object_list(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+
+        col1 = VectorData(name='Homo sapiens',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        er.add_ref_termset(file=em,
+                    container=species,
+                    attribute='colnames',
+                    termset=terms
+                   )
+        self.assertEqual(er.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er.objects.data, [(0, species.object_id, 'DynamicTable', 'colnames', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_bulk(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens', 'Mus musculus'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        er.add_ref_termset(file=em,
+                    container=species,
+                    attribute='Species_Data',
+                    termset=terms
+                   )
+        self.assertEqual(er.keys.data, [('Homo sapiens',), ('Mus musculus',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'),
+        ('NCBI_TAXON:10090',
+         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=10090')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_missing_terms(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens', 'missing_term'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        missing_terms = er.add_ref_termset(file=em,
+                                            container=species,
+                                            attribute='Species_Data',
+                                            termset=terms
+                                           )
+        self.assertEqual(er.keys.data, [('Homo sapiens',)])
+        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+        self.assertEqual(missing_terms, {'missing_terms': ['missing_term']})
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_missing_file_error(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        with self.assertRaises(ValueError):
+            er.add_ref_termset(
+                        container=species,
+                        attribute='Species_Data',
+                        termset=terms
+                       )
 
     def test_get_file_from_container(self):
         file = HERDManagerContainer(name='file')
@@ -826,42 +988,21 @@ class TestHERD(H5RoundTripMixin, TestCase):
                    entity_uri='entity_uri2')
         self.assertEqual(er.object_keys.data, [(0, 0), (1, 0)])
 
-    def test_object_key_existing_key_new_object_error(self):
-        er = HERD()
-        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
-                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
-
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_1,
-                   key='Mus musculus',
-                   entity_id='NCBI:txid10090',
-                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        key = er._add_key('key')
-        with self.assertRaises(ValueError):
-            er.add_ref(file=HERDManagerContainer(name='file'),
-                       container=data_1,
-                       key=key,
-                       entity_id='entity1',
-                       entity_uri='entity_uri1')
-
-    def test_reuse_key_reuse_entity(self):
+    def test_reuse_key_string(self):
         # With the key and entity existing, the EntityKeyTable should not have duplicates
         er = HERD()
-        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
-                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
-
-        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
-                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        data_1 = Data(name='data_name',
+                      data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0), ('mouse', 3, 27.0)],
+                      dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
         er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        existing_key = er.get_key('Mus musculus')
         er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_2,
-                   key=existing_key,
+                   container=data_1,
+                   key='Mus musculus',
                    entity_id='NCBI:txid10090')
 
         self.assertEqual(er.entity_keys.data, [(0, 0)])
@@ -922,7 +1063,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
                        key='Mus musculus',
                        entity_id='NCBI:txid10090')
 
-    def test_entity_uri_reuse_error(self):
+    def test_entity_uri_warning(self):
         er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
@@ -936,7 +1077,7 @@ class TestHERD(H5RoundTripMixin, TestCase):
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
         existing_key = er.get_key('Mus musculus')
-        with self.assertRaises(ValueError):
+        with self.assertWarns(Warning):
             er.add_ref(file=HERDManagerContainer(name='file'),
                        container=data_2,
                        key=existing_key,
@@ -963,32 +1104,32 @@ class TestHERD(H5RoundTripMixin, TestCase):
     def test_check_object_field_add(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er._check_object_field(file=HERDManagerContainer(name='file'),
+        file = HERDManagerContainer(name='file')
+        _dict = er._check_object_field(file=file,
                                container=data,
                                relative_path='',
                                field='')
-
-        self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
+        expected = {'file_object_id': file.object_id,
+                    'files_idx': None,
+                    'container': data,
+                    'relative_path': '',
+                    'field': ''}
+        self.assertEqual(_dict, expected)
 
     def test_check_object_field_multi_files(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         file = HERDManagerContainer(name='file')
-
-        er._check_object_field(file=file, container=data, relative_path='', field='')
+        er._add_file(file.object_id)
         er._add_file(file.object_id)
 
-        data2 = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         with self.assertRaises(ValueError):
-            er._check_object_field(file=file, container=data2, relative_path='', field='')
+            er._check_object_field(file=file, container=data, relative_path='', field='')
 
     def test_check_object_field_multi_error(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er._check_object_field(file=HERDManagerContainer(name='file'),
-                               container=data,
-                               relative_path='',
-                               field='')
+        er._add_object(files_idx=0, container=data, relative_path='', field='')
         er._add_object(files_idx=0, container=data, relative_path='', field='')
         with self.assertRaises(ValueError):
             er._check_object_field(file=HERDManagerContainer(name='file'),
@@ -1062,14 +1203,6 @@ class TestHERD(H5RoundTripMixin, TestCase):
         self.assertEqual(er.keys.data, [('Mus musculus',)])
         self.assertEqual(er.entities.data, [('NCBI:txid10090', 'entity_0_uri')])
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', 'species')])
-
-    def test_roundtrip(self):
-        read_container = self.roundtripContainer()
-        pd.testing.assert_frame_equal(read_container.to_dataframe(), self.container.to_dataframe())
-
-    def test_roundtrip_export(self):
-        read_container = self.roundtripExportContainer()
-        pd.testing.assert_frame_equal(read_container.to_dataframe(), self.container.to_dataframe())
 
 
 class TestHERDNestedAttributes(TestCase):

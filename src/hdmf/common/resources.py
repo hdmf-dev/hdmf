@@ -3,6 +3,8 @@ import numpy as np
 from . import register_class, EXP_NAMESPACE
 from . import get_type_map
 from ..container import Table, Row, Container, Data, AbstractContainer, HERDManager
+from ..term_set import TermSet
+from ..data_utils import DataIO
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
 from ..term_set import TermSetWrapper
@@ -10,6 +12,7 @@ from glob import glob
 import os
 import zipfile
 from collections import namedtuple
+from warnings import warn
 
 
 class KeyTable(Table):
@@ -358,16 +361,17 @@ class HERD(Container):
         relative_path = kwargs['relative_path']
         field = kwargs['field']
         create = kwargs['create']
+
         file_object_id = file.object_id
         files_idx = self.files.which(file_object_id=file_object_id)
 
-        if len(files_idx) > 1:
+        if len(files_idx) > 1:  # pragma: no cover
+            # It isn't possible for len(files_idx) > 1 without the user directly using _add_file
             raise ValueError("Found multiple instances of the same file.")
         elif len(files_idx) == 1:
             files_idx = files_idx[0]
         else:
-            self._add_file(file_object_id)
-            files_idx = self.files.which(file_object_id=file_object_id)[0]
+            files_idx = None
 
         objecttable_idx = self.objects.which(object_id=container.object_id)
 
@@ -378,10 +382,16 @@ class HERD(Container):
         if len(objecttable_idx) == 1:
             return self.objects.row[objecttable_idx[0]]
         elif len(objecttable_idx) == 0 and create:
-            return self._add_object(files_idx=files_idx, container=container, relative_path=relative_path, field=field)
+            # Used for add_ref
+            return {'file_object_id': file_object_id,
+                    'files_idx': files_idx,
+                    'container': container,
+                    'relative_path': relative_path,
+                    'field': field}
         elif len(objecttable_idx) == 0 and not create:
             raise ValueError("Object not in Object Table.")
-        else:
+        else:  # pragma: no cover
+            # It isn't possible for this to happen unless the user used _add_object.
             raise ValueError("Found multiple instances of the same object id, relative path, "
                              "and field in objects table.")
 
@@ -437,7 +447,7 @@ class HERD(Container):
 
     @docval({'name': 'root_container', 'type': HERDManager,
              'doc': 'The root container or file containing objects with a TermSet.'})
-    def add_ref_term_set(self, **kwargs):
+    def add_ref_container(self, **kwargs):
         """
         Method to search through the root_container for all instances of TermSet.
         Currently, only datasets are supported. By using a TermSet, the data comes validated
@@ -465,6 +475,285 @@ class HERD(Container):
                              key=term,
                              entity_id=entity_id,
                              entity_uri=entity_uri)
+
+    @docval({'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
+             'default': None},
+            {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
+             'doc': ('The Container/Data object that uses the key or '
+                     'the object_id for the Container/Data object that uses the key.')},
+            {'name': 'attribute', 'type': str,
+             'doc': 'The attribute of the container for the external reference.', 'default': None},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')},
+            {'name': 'key', 'type': (str, Key), 'default': None,
+             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
+            {'name': 'termset', 'type': TermSet,
+             'doc': 'The TermSet to be used if the container/attribute does not have one.'}
+            )
+    def add_ref_termset(self, **kwargs):
+        """
+        This method allows users to take advantage of using the TermSet class to provide the entity information
+        for add_ref, while also validating the data. This method supports adding a single key or an entire dataset
+        to the HERD tables. For both cases, the term, i.e., key, will be validated against the permissible values
+        in the TermSet. If valid, it will proceed to call add_ref. Otherwise, the method will return a dict of
+        missing terms (terms not found in the TermSet).
+        """
+        file = kwargs['file']
+        container = kwargs['container']
+        attribute = kwargs['attribute']
+        key = kwargs['key']
+        field = kwargs['field']
+        termset = kwargs['termset']
+
+        if file is None:
+            file = self._get_file_from_container(container=container)
+        # if key is provided then add_ref proceeds as normal
+        if key is not None:
+            data = [key]
+        else:
+            # if the key is not provided, proceed to "bulk add"
+            if attribute is None:
+                data_object = container
+            else:
+                data_object = getattr(container, attribute)
+            if isinstance(data_object, (Data, DataIO)):
+                data = data_object.data
+            elif isinstance(data_object, (list, tuple, np.ndarray)):
+                data = data_object
+            else:
+                msg = ("The data object being used is not supported. "
+                       "Please review the documentation for supported types.")
+                raise ValueError(msg)
+        missing_terms = []
+        for term in data:
+            # check the data according to the permissible_values
+            try:
+                term_info = termset[term]
+            except ValueError:
+                missing_terms.append(term)
+                continue
+            entity_id = term_info[0]
+            entity_uri = term_info[2]
+            self.add_ref(file=file,
+                         container=container,
+                         attribute=attribute,
+                         key=term,
+                         field=field,
+                         entity_id=entity_id,
+                         entity_uri=entity_uri)
+        if len(missing_terms)>0:
+            return {"missing_terms": missing_terms}
+
+    @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
+             'doc': ('The Container/Data object that uses the key or '
+                     'the object_id for the Container/Data object that uses the key.')},
+            {'name': 'attribute', 'type': str,
+             'doc': 'The attribute of the container for the external reference.', 'default': None},
+            {'name': 'field', 'type': str, 'default': '',
+             'doc': ('The field of the compound data type using an external resource.')},
+            {'name': 'key', 'type': (str, Key), 'default': None,
+             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
+            {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
+            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None},
+            {'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
+             'default': None},
+            )
+    def add_ref(self, **kwargs):
+        """
+        Add information about an external reference used in this file.
+
+        It is possible to use the same name of the key to refer to different resources
+        so long as the name of the key is not used within the same object, relative_path, and
+        field combination. This method does not support such functionality by default.
+        """
+        ###############################################################
+        container = kwargs['container']
+        attribute = kwargs['attribute']
+        if isinstance(container, Data):
+            # Used when using the TermSetWrapper
+            if attribute == 'data':
+                attribute = None
+        key = kwargs['key']
+        field = kwargs['field']
+        entity_id = kwargs['entity_id']
+        entity_uri = kwargs['entity_uri']
+        file = kwargs['file']
+
+        ##################
+        # Set File if None
+        ##################
+        if file is None:
+            file = self._get_file_from_container(container=container)
+        # TODO: Add this once you've created a HDMF_file to rework testing
+        # else:
+        #     file_from_container = self._get_file_from_container(container=container)
+        #     if file.object_id != file_from_container.object_id:
+        #         msg = "The file given does not match the file in which the container is stored."
+        #         raise ValueError(msg)
+
+        ################
+        # Set Key Checks
+        ################
+        add_key = False
+        add_object_key = False
+        check_object_key = False
+        if not isinstance(key, Key):
+            add_key = True
+            add_object_key = True
+        else:
+            # Check to see that the existing key is being used with the object.
+            # If true, do nothing. If false, create a new obj/key relationship
+            # in the ObjectKeyTable
+            check_object_key = True
+
+        ###################
+        # Set Entity Checks
+        ###################
+        add_entity_key = False
+        add_entity = False
+
+        entity = self.get_entity(entity_id=entity_id)
+        check_entity_key = False
+        if entity is None:
+            if entity_uri is None:
+                msg = 'New entities must have an entity_uri.'
+                raise ValueError(msg)
+
+            add_entity = True
+            add_entity_key = True
+        else:
+            # The entity exists and so we need to check if an entity_key exists
+            # for this entity and key combination.
+            check_entity_key = True
+            if entity_uri is not None:
+                entity_uri = entity.entity_uri
+                msg = 'This entity already exists. Ignoring new entity uri'
+                warn(msg)
+
+        #################
+        # Validate Object
+        #################
+        if attribute is None:  # Trivial Case
+            relative_path = ''
+            object_field = self._check_object_field(file=file,
+                                                    container=container,
+                                                    relative_path=relative_path,
+                                                    field=field)
+        else:  # DataType Attribute Case
+            attribute_object = getattr(container, attribute)  # returns attribute object
+            if isinstance(attribute_object, AbstractContainer):
+                relative_path = ''
+                object_field = self._check_object_field(file=file,
+                                                        container=attribute_object,
+                                                        relative_path=relative_path,
+                                                        field=field)
+            else:  # Non-DataType Attribute Case:
+                obj_mapper = self.type_map.get_map(container)
+                spec = obj_mapper.get_attr_spec(attr_name=attribute)
+                parent_spec = spec.parent  # return the parent spec of the attribute
+                if parent_spec.data_type is None:
+                    while parent_spec.data_type is None:
+                        parent_spec = parent_spec.parent  # find the closest parent with a data_type
+                    parent_cls = self.type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
+                    if isinstance(container, parent_cls):
+                        parent = container
+                        # We need to get the path of the spec for relative_path
+                        absolute_path = spec.path
+                        relative_path = absolute_path[absolute_path.find('/')+1:]
+                        object_field = self._check_object_field(file=file,
+                                                                container=parent,
+                                                                relative_path=relative_path,
+                                                                field=field)
+                    else:
+                        msg = 'Container not the nearest data_type'
+                        raise ValueError(msg)
+                else:
+                    parent = container  # container needs to be the parent
+                    absolute_path = spec.path
+                    relative_path = absolute_path[absolute_path.find('/')+1:]
+                    # this regex removes everything prior to the container on the absolute_path
+                    object_field = self._check_object_field(file=file,
+                                                            container=parent,
+                                                            relative_path=relative_path,
+                                                            field=field)
+
+        #######################################
+        # Validate Parameters and Populate HERD
+        #######################################
+        if isinstance(object_field, dict):
+            # Create the object and file
+            if object_field['files_idx'] is None:
+                self._add_file(object_field['file_object_id'])
+                object_field['files_idx'] = self.files.which(file_object_id=object_field['file_object_id'])[0]
+            object_field = self._add_object(files_idx=object_field['files_idx'],
+                                            container=object_field['container'],
+                                            relative_path=object_field['relative_path'],
+                                            field=object_field['field'])
+
+        if add_key:
+            # Now that object_field is set, we need to check if
+            # the key has been associated with that object.
+            # If so, just reuse the key.
+            key_exists = False
+            key_idx_matches = self.keys.which(key=key)
+            if len(key_idx_matches)!=0:
+                for row_idx in self.object_keys.which(objects_idx=object_field.idx):
+                    key_idx = self.object_keys['keys_idx', row_idx]
+                    if key_idx in key_idx_matches:
+                        key_exists = True # Make sure we don't add the key.
+                        # Automatically resolve the key for keys associated with
+                        # the same object.
+                        key = self.keys.row[key_idx]
+
+            if not key_exists:
+                key = self._add_key(key)
+
+        if check_object_key:
+            # When using a Key Object, we want to still check for whether the key
+            # has been used with the Object object. If not, add it to ObjectKeyTable.
+            # If so, do nothing and add_object_key remains False.
+            obj_key_exists = False
+            key_idx = key.idx
+            object_key_row_idx = self.object_keys.which(keys_idx=key_idx)
+            if len(object_key_row_idx)!=0:
+                # this means there exists rows where the key is in the ObjectKeyTable
+                for row_idx in object_key_row_idx:
+                    obj_idx = self.object_keys['objects_idx', row_idx]
+                    if obj_idx == object_field.idx:
+                        obj_key_exists = True
+                        # this means there is already a object-key relationship recorded
+                if not obj_key_exists:
+                    # this means that though the key is there, there is no object-key relationship
+                    add_object_key = True
+
+        if add_object_key:
+            self._add_object_key(object_field, key)
+
+        if check_entity_key:
+            # check for entity-key relationship in EntityKeyTable
+            entity_key_check = False
+            key_idx = key.idx
+            entity_key_row_idx = self.entity_keys.which(keys_idx=key_idx)
+            if len(entity_key_row_idx)!=0:
+                # this means there exists rows where the key is in the EntityKeyTable
+                for row_idx in entity_key_row_idx:
+                    entity_idx = self.entity_keys['entities_idx', row_idx]
+                    if entity_idx == entity.idx:
+                        entity_key_check = True
+                        # this means there is already a entity-key relationship recorded
+                if not entity_key_check:
+                    # this means that though the key is there, there is no entity-key relationship
+                    add_entity_key = True
+            else:
+                # this means that specific key is not in the EntityKeyTable, so add it and establish
+                # the relationship with the entity
+                add_entity_key = True
+
+        if add_entity:
+            entity = self._add_entity(entity_id, entity_uri)
+
+        if add_entity_key:
+            self._add_entity_key(entity, key)
 
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
             {'name': 'file', 'type': HERDManager, 'doc': 'The file associated with the container.',
@@ -524,151 +813,6 @@ class HERD(Container):
             return self.entities.row[entity[0]]
         else:
             return None
-
-    @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
-             'doc': ('The Container/Data object that uses the key or '
-                     'the object_id for the Container/Data object that uses the key.')},
-            {'name': 'attribute', 'type': str,
-             'doc': 'The attribute of the container for the external reference.', 'default': None},
-            {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.')},
-            {'name': 'key', 'type': (str, Key), 'default': None,
-             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
-            {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
-            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None},
-            {'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
-             'default': None},
-            )
-    def add_ref(self, **kwargs):
-        """
-        Add information about an external reference used in this file.
-
-        It is possible to use the same name of the key to refer to different resources
-        so long as the name of the key is not used within the same object, relative_path, and
-        field combination. This method does not support such functionality by default.
-        """
-        ###############################################################
-        container = kwargs['container']
-        attribute = kwargs['attribute']
-        if isinstance(container, Data):
-            if attribute == 'data':
-                attribute = None
-        key = kwargs['key']
-        field = kwargs['field']
-        entity_id = kwargs['entity_id']
-        entity_uri = kwargs['entity_uri']
-        file = kwargs['file']
-
-        if file is None:
-            file = self._get_file_from_container(container=container)
-
-        if attribute is None:  # Trivial Case
-            relative_path = ''
-            object_field = self._check_object_field(file=file,
-                                                    container=container,
-                                                    relative_path=relative_path,
-                                                    field=field)
-        else:  # DataType Attribute Case
-            attribute_object = getattr(container, attribute)  # returns attribute object
-            if isinstance(attribute_object, AbstractContainer):
-                relative_path = ''
-                object_field = self._check_object_field(file=file,
-                                                        container=attribute_object,
-                                                        relative_path=relative_path,
-                                                        field=field)
-            else:  # Non-DataType Attribute Case:
-                obj_mapper = self.type_map.get_map(container)
-                spec = obj_mapper.get_attr_spec(attr_name=attribute)
-                parent_spec = spec.parent  # return the parent spec of the attribute
-                if parent_spec.data_type is None:
-                    while parent_spec.data_type is None:
-                        parent_spec = parent_spec.parent  # find the closest parent with a data_type
-                    parent_cls = self.type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
-                    if isinstance(container, parent_cls):
-                        parent = container
-                        # We need to get the path of the spec for relative_path
-                        absolute_path = spec.path
-                        relative_path = absolute_path[absolute_path.find('/')+1:]
-                        object_field = self._check_object_field(file=file,
-                                                                container=parent,
-                                                                relative_path=relative_path,
-                                                                field=field)
-                    else:
-                        msg = 'Container not the nearest data_type'
-                        raise ValueError(msg)
-                else:
-                    parent = container  # container needs to be the parent
-                    absolute_path = spec.path
-                    relative_path = absolute_path[absolute_path.find('/')+1:]
-                    # this regex removes everything prior to the container on the absolute_path
-                    object_field = self._check_object_field(file=file,
-                                                            container=parent,
-                                                            relative_path=relative_path,
-                                                            field=field)
-
-        if not isinstance(key, Key):
-            key_idx_matches = self.keys.which(key=key)
-        # if same key is used multiple times, determine
-        # which instance based on the Container
-            for row_idx in self.object_keys.which(objects_idx=object_field.idx):
-                key_idx = self.object_keys['keys_idx', row_idx]
-                if key_idx in key_idx_matches:
-                    msg = "Use Key Object when referencing an existing (container, relative_path, key)"
-                    raise ValueError(msg)
-
-            key = self._add_key(key)
-            self._add_object_key(object_field, key)
-
-        else:
-            # Check to see that the existing key is being used with the object.
-            # If true, do nothing. If false, create a new obj/key relationship
-            # in the ObjectKeyTable
-            key_idx = key.idx
-            object_key_row_idx = self.object_keys.which(keys_idx=key_idx)
-            if len(object_key_row_idx)!=0:
-                obj_key_check = False
-                for row_idx in object_key_row_idx:
-                    obj_idx = self.object_keys['objects_idx', row_idx]
-                    if obj_idx == object_field.idx:
-                        obj_key_check = True
-                if not obj_key_check:
-                    self._add_object_key(object_field, key)
-            else:
-                msg = "Cannot find key object. Create new Key with string."
-                raise ValueError(msg)
-            # check if the key and object have been related in the ObjectKeyTable
-
-        entity = self.get_entity(entity_id=entity_id)
-        if entity is None:
-            if entity_uri is None:
-                msg = 'New entities must have an entity_uri.'
-                raise ValueError(msg)
-            entity = self._add_entity(entity_id, entity_uri)
-            self._add_entity_key(entity, key)
-        else:
-            if entity_uri is not None:
-                msg = 'If you plan on reusing an entity, then entity_uri parameter must be None.'
-                raise ValueError(msg)
-            # check for entity-key relationship in EntityKeyTable
-            key_idx = key.idx
-            entity_key_row_idx = self.entity_keys.which(keys_idx=key_idx)
-            if len(entity_key_row_idx)!=0:
-                # this means there exists rows where the key is in the EntityKeyTable
-                entity_key_check = False
-                for row_idx in entity_key_row_idx:
-                    entity_idx = self.entity_keys['entities_idx', row_idx]
-                    if entity_idx == entity.idx:
-                        entity_key_check = True
-                        # this means there is already a key-entity relationship recorded
-                if not entity_key_check:
-                    # this means that though the key is there, there is not key-entity relationship
-                    # a.k.a add it now
-                    self._add_entity_key(entity, key)
-            else:
-                # this means that specific key is not in the EntityKeyTable, so add it and establish
-                # the relationship with the entity
-                self._add_entity_key(entity, key)
-        return key, entity
 
     @docval({'name': 'object_type', 'type': str,
              'doc': 'The type of the object. This is also the parent in relative_path.'},

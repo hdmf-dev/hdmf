@@ -57,7 +57,7 @@ jobs:
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-ver }}
 
@@ -117,7 +117,7 @@ jobs:
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-ver }}
 
@@ -164,12 +164,14 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-ver }}
+          channels: conda-forge
+          mamba-version: "*"
 
       - name: Install build dependencies
         run: |
           conda config --set always_yes yes --set changeps1 no
           conda info
-          conda install -c conda-forge "tox>=4"
+          mamba install -c conda-forge "tox>=4"
 
       - name: Conda reporting
         run: |
@@ -177,6 +179,7 @@ jobs:
           conda config --show-sources
           conda list --show-channel-urls
 
+      # NOTE tox installs packages from PyPI not conda-forge...
       - name: Run tox tests
         run: |
           tox -e ${{ matrix.test-tox-env }}
@@ -226,6 +229,7 @@ jobs:
           python-version: ${{ matrix.python-ver }}
           channels: conda-forge
           auto-activate-base: false
+          mamba-version: "*"
 
       - name: Install run dependencies
         run: |
