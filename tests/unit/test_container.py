@@ -32,6 +32,10 @@ class TestHERDManager(TestCase):
         er_get = em.get_linked_resources()
         self.assertEqual(er, er_get)
 
+class TestContainerConfig(TestCase):
+    def test_init_config(self):
+        obj = Container('obj1')
+
 
 class TestContainer(TestCase):
 

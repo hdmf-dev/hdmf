@@ -5,6 +5,7 @@ from copy import deepcopy
 from typing import Type
 from uuid import uuid4
 from warnings import warn
+import yaml
 
 import h5py
 import numpy as np
@@ -12,6 +13,8 @@ import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data
 from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
+
+from .term_set import TermSet, TermSetWrapper
 
 
 def _set_exp(cls):
@@ -231,6 +234,24 @@ class AbstractContainer(metaclass=ExtenderMeta):
         self.__field_values = dict()
         self.__read_io = None
         self.__obj = None
+
+    @docval({'name': 'fields', 'type': dict, 'doc': 'The fields/parameters/attibutes for the object.'})
+    def init_validation(self, fields):
+        # load termset configuartion file from global Config
+        from . import TS_CONFIG #update path
+        # Before calling super().__init__() and before setting fields, check for config file for
+        # validation via TermSetWrapper.
+        with open(TS_CONFIG.path, 'r') as config:
+            termset_config = yaml.safe_load(config)
+            object_name = self.__class__.__name__
+
+            for obj_config in termset_config:
+                if obj_config['data_type'] == object_name:
+                    for attr in obj_config['fields']:
+                        if attr in fields: # make sure any custom fields are not handled (i.e., make an extension)
+                            termset_path = obj_config['fields'][attr]
+                            termset = TermSet(term_schema_path=termset_path)
+                            fields[attr] = TermSetWrapper(value=fields[attr], termset=termset)
 
     @property
     def read_io(self):
@@ -785,6 +806,8 @@ class Data(AbstractContainer):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):
+        self.init_validation(fields=kwargs)
+        breakpoint()
         data = popargs('data', kwargs)
         super().__init__(**kwargs)
 

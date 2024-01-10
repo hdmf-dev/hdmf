@@ -3,8 +3,12 @@ from .backends.hdf5.h5_utils import H5Dataset, H5RegionSlicer
 from .container import Container, Data, DataRegion, HERDManager
 from .region import ListSlicer
 from .utils import docval, getargs
-from .term_set import TermSet, TermSetWrapper
+from .term_set import TermSet, TermSetWrapper, TermSetConfigurator
 
+
+# a global TermSetConfigurator
+global TS_CONFIG
+TS_CONFIG = TermSetConfigurator()
 
 @docval(
     {"name": "dataset", "type": None, "doc": "the HDF5 dataset to slice"},

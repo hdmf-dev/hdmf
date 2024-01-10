@@ -36,6 +36,10 @@ try:
 except ImportError:
     LINKML_INSTALLED = False
 
+class TestVDConfig(TestCase):
+    def test_init_config(self):
+        vd = VectorData(name='data', description='',data=['Homo sapiens'])
+
 
 class TestDynamicTable(TestCase):
 

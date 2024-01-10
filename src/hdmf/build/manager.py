@@ -410,6 +410,7 @@ class TypeMap:
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
         self.__class_generator = ClassGenerator()
+        self.__load_termset_config = True
         self.register_generator(CustomClassGenerator)
         self.register_generator(MCIClassGenerator)
 
@@ -479,9 +480,6 @@ class TypeMap:
                         container_cls = TypeSource(src_ns, dt)
                     self.register_container_type(new_ns, dt, container_cls)
         return deps
-
-    def load_config(self, **kwargs):
-        pass
 
     @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
             {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},

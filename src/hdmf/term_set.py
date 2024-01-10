@@ -304,3 +304,28 @@ class TermSetWrapper:
         else:
             msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
             raise ValueError(msg)
+
+class TermSetConfigurator:
+    """
+
+    """
+    def __init__(self):
+        self.path = '/Users/mavaylon/Research/NWB/hdmf2/hdmf/docs/gallery/example_config.yaml'
+
+    # @property
+    # def config_path(self):
+    #     return self.__config_path
+
+    @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.'})
+    def load_termset_config(config_path: str):
+        """
+        Load the configuration file for validation on the fields defined for the objects within the file.
+        By default, the curated configuration file is used, but can take in a custom file.
+        """
+        self.path = config_path
+
+    def unload_termset_config():
+        """
+        Remove validation according to termset configuration file.
+        """
+        self.path = None
