@@ -10,6 +10,22 @@ from .term_set import TermSet, TermSetWrapper, TermSetConfigurator
 global TS_CONFIG
 TS_CONFIG = TermSetConfigurator()
 
+@docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.',
+         'default': '/Users/mavaylon/Research/NWB/hdmf2/hdmf/docs/gallery/example_config.yaml'}) #update path
+def load_termset_config(config_path: str):
+    """
+    Load the configuration file for validation on the fields defined for the objects within the file.
+    By default, the curated configuration file is used, but can take in a custom file.
+    """
+    return __TS_CONFIG.load_termset_config(config_path)
+
+
+def unload_termset_config():
+    """
+    Remove validation.
+    """
+    return __TS_CONFIG.unload_termset_config()
+
 @docval(
     {"name": "dataset", "type": None, "doc": "the HDF5 dataset to slice"},
     {"name": "region", "type": None, "doc": "the region reference to use to slice"},

@@ -107,23 +107,6 @@ def available_namespaces():
     return __TYPE_MAP.namespace_catalog.namespaces
 
 
-@docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.',
-         'default': '/Users/mavaylon/Research/NWB/hdmf2/hdmf/docs/gallery/example_config.yaml'}) #update path
-def load_termset_config(config_path: str):
-    """
-    Load the configuration file for validation on the fields defined for the objects within the file.
-    By default, the curated configuration file is used, but can take in a custom file.
-    """
-    return __TS_CONFIG.load_termset_config(config_path)
-
-
-def unload_termset_config():
-    """
-    Remove validation according to termset configuration file.
-    """
-    return __TS_CONFIG.unload_termset_config()
-
-
 # a function to get the container class for a give type
 @docval({'name': 'data_type', 'type': str,
          'doc': 'the data_type to get the Container class for'},
