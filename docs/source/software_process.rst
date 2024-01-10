@@ -19,7 +19,7 @@ inconsistencies.
 There are badges in the README_ file which shows the current condition of the dev branch.
 
 .. _GitHub Actions: https://github.com/hdmf-dev/hdmf/actions
-.. _README: https://github.com/hdmf-dev/hdmf#readme
+.. _README: https://github.com/hdmf-dev/hdmf/blob/dev/README.rst
 
 
 --------
