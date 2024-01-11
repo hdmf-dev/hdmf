@@ -16,7 +16,6 @@ from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, po
 
 from .term_set import TermSet, TermSetWrapper
 
-
 def _set_exp(cls):
     """Set a class as being experimental"""
     cls._experimental = True

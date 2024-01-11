@@ -17,14 +17,14 @@ def load_termset_config(config_path: str):
     Load the configuration file for validation on the fields defined for the objects within the file.
     By default, the curated configuration file is used, but can take in a custom file.
     """
-    return __TS_CONFIG.load_termset_config(config_path)
+    return TS_CONFIG.load_termset_config(config_path)
 
 
 def unload_termset_config():
     """
     Remove validation.
     """
-    return __TS_CONFIG.unload_termset_config()
+    return TS_CONFIG.unload_termset_config()
 
 @docval(
     {"name": "dataset", "type": None, "doc": "the HDF5 dataset to slice"},
