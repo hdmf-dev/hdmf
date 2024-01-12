@@ -434,7 +434,7 @@ def fmt_docval_args(func, kwargs):
                   "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
                   "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
                   "is set), then you will need to pop the extra arguments out of kwargs before calling the function.",
-                  PendingDeprecationWarning)
+                  PendingDeprecationWarning, stacklevel=2)
     func_docval = getattr(func, docval_attr_name, None)
     ret_args = list()
     ret_kwargs = dict()
@@ -488,7 +488,7 @@ def call_docval_func(func, kwargs):
                   "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
                   "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
                   "is set), then you will need to pop the extra arguments out of kwargs before calling the function.",
-                  PendingDeprecationWarning)
+                  PendingDeprecationWarning, stacklevel=2)
     with warnings.catch_warnings(record=True):
         # catch and ignore only PendingDeprecationWarnings from fmt_docval_args so that two
         # PendingDeprecationWarnings saying the same thing are not raised
