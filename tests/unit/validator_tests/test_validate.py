@@ -508,6 +508,58 @@ class Test1DArrayValidation(TestCase):
     # TODO test shape validation more completely
 
 
+class TestStringDatetime(TestCase):
+
+    def test_str_coincidental_isodatetime(self):
+        """Test validation of a text spec allows a string that coincidentally matches the isodatetime format."""
+        spec_catalog = SpecCatalog()
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(doc='an example scalar dataset', dtype="text", name='data1'),
+                DatasetSpec(doc='an example 1D dataset', dtype="text", name='data2', shape=(None, )),
+                DatasetSpec(
+                    doc='an example 1D compound dtype dataset',
+                    dtype=[
+                        DtypeSpec('x', doc='x', dtype='int'),
+                        DtypeSpec('y', doc='y', dtype='text'),
+                    ],
+                    name='data3',
+                    shape=(None, ),
+                ),
+            ],
+            attributes=[
+                AttributeSpec(name='attr1', doc='an example scalar attribute', dtype="text"),
+                AttributeSpec(name='attr2', doc='an example 1D attribute', dtype="text", shape=(None, )),
+            ]
+        )
+        spec_catalog.register_spec(spec, 'test.yaml')
+        namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog
+        )
+        vmap = ValidatorMap(namespace)
+
+        bar_builder = GroupBuilder(
+            name='my_bar',
+            attributes={'data_type': 'Bar', 'attr1': "2023-01-01", 'attr2': ["2023-01-01"]},
+            datasets=[
+                DatasetBuilder(name='data1', data="2023-01-01"),
+                DatasetBuilder(name='data2', data=["2023-01-01"]),
+                DatasetBuilder(
+                    name='data3',
+                    data=[(1, "2023-01-01")],
+                    dtype=[
+                        DtypeSpec('x', doc='x', dtype='int'),
+                        DtypeSpec('y', doc='y', dtype='text'),
+                    ],
+                ),
+            ],
+        )
+        results = vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+
 class TestLinkable(TestCase):
 
     def set_up_spec(self):
