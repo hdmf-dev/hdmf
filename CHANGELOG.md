@@ -4,8 +4,6 @@
 
 ### Enhancements
 - Add Data.set_data_io(), which allows for setting a `DataIO` to a data object after-the-fact. @bendichter and @CodyCBakerPhD [#1013](https://github.com/hdmf-dev/hdmf/pull/1013)
-
-### Enhancements
 - Added `add_ref_termset`, updated helper methods for `HERD`, revised `add_ref` to support validations prior to populating the tables
   and added `add_ref_container`.  @mavaylon1 [#968](https://github.com/hdmf-dev/hdmf/pull/968)
 
@@ -18,8 +16,8 @@
 ### Bug fixes
 - Fixed issue with custom class generation when a spec has a `name`. @rly [#1006](https://github.com/hdmf-dev/hdmf/pull/1006)
 - Fixed issue with usage of deprecated `ruamel.yaml.safe_load` in `src/hdmf/testing/validate_spec.py`. @rly [#1008](https://github.com/hdmf-dev/hdmf/pull/1008)
-
 - Fixed issue where `ElementIdentifiers` data could be set to non-integer values. @rly [#1009](https://github.com/hdmf-dev/hdmf/pull/1009)
+- Fixed issue where string datasets/attributes with isodatetime-formatted values failed validation against a text spec. @rly [#1026](https://github.com/hdmf-dev/hdmf/pull/1026)
 
 ## HDMF 3.11.0 (October 30, 2023)
 
