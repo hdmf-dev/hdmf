@@ -645,7 +645,7 @@ def docval(*validator, **options):  # noqa: C901
             parse_warnings = parsed.get('future_warnings')
             if parse_warnings:
                 msg = '%s: %s' % (func.__qualname__, ', '.join(parse_warnings))
-                warnings.warn(msg, FutureWarning)
+                warnings.warn(msg, category=FutureWarning, stacklevel=3)
 
             for error_type, ExceptionType in (('type_errors', TypeError),
                                               ('value_errors', ValueError),
