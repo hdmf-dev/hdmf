@@ -116,7 +116,18 @@ class TestDateTimeInSpec(ValidatorTestBase):
                 ),
                 DatasetSpec('an example time dataset', 'isodatetime', name='datetime'),
                 DatasetSpec('an example time dataset', 'isodatetime', name='date', quantity='?'),
-                DatasetSpec('an array of times', 'isodatetime', name='time_array', dims=('num_times',), shape=(None,))
+                DatasetSpec('an array of times', 'isodatetime', name='time_array', dims=('num_times',), shape=(None,)),
+                DatasetSpec(
+                    doc='an array with compound dtype that includes an isodatetime',
+                    dtype=[
+                        DtypeSpec('x', doc='x', dtype='int'),
+                        DtypeSpec('y', doc='y', dtype='isodatetime'),
+                    ],
+                    name='cpd_array',
+                    dims=('num_times',),
+                    shape=(None,),
+                    quantity="?",
+                ),
             ],
             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
         return ret,
@@ -129,7 +140,15 @@ class TestDateTimeInSpec(ValidatorTestBase):
                 DatasetBuilder('data', 100, attributes={'attr2': 10}),
                 DatasetBuilder('datetime', datetime(2017, 5, 1, 12, 0, 0)),
                 DatasetBuilder('date', date(2017, 5, 1)),
-                DatasetBuilder('time_array', [datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())])
+                DatasetBuilder('time_array', [datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())]),
+                DatasetBuilder(
+                    name='cpd_array',
+                    data=[(1, datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal()))],
+                    dtype=[
+                        DtypeSpec('x', doc='x', dtype='int'),
+                        DtypeSpec('y', doc='y', dtype='isodatetime'),
+                    ],
+                ),
             ]
         )
         validator = self.vmap.get_validator('Bar')
@@ -143,7 +162,7 @@ class TestDateTimeInSpec(ValidatorTestBase):
             datasets=[
                 DatasetBuilder('data', 100, attributes={'attr2': 10}),
                 DatasetBuilder('datetime', 100),
-                DatasetBuilder('time_array', [datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())])
+                DatasetBuilder('time_array', [datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())]),
             ]
         )
         validator = self.vmap.get_validator('Bar')
@@ -152,17 +171,43 @@ class TestDateTimeInSpec(ValidatorTestBase):
         self.assertValidationError(result[0], DtypeError, name='Bar/datetime')
 
     def test_invalid_isodatetime_array(self):
-        builder = GroupBuilder('my_bar',
-                               attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
-                               datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10}),
-                                         DatasetBuilder('datetime',
-                                                        datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())),
-                                         DatasetBuilder('time_array',
-                                                        datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal()))])
+        builder = GroupBuilder(
+            'my_bar',
+            attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+            datasets=[
+                DatasetBuilder('data', 100, attributes={'attr2': 10}),
+                DatasetBuilder('datetime', datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())),
+                DatasetBuilder('time_array', datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())),
+            ],
+        )
         validator = self.vmap.get_validator('Bar')
         result = validator.validate(builder)
         self.assertEqual(len(result), 1)
         self.assertValidationError(result[0], ExpectedArrayError, name='Bar/time_array')
+
+    def test_invalid_cpd_isodatetime_array(self):
+        builder = GroupBuilder(
+            'my_bar',
+            attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+            datasets=[
+                DatasetBuilder('data', 100, attributes={'attr2': 10}),
+                DatasetBuilder('datetime', datetime(2017, 5, 1, 12, 0, 0)),
+                DatasetBuilder('date', date(2017, 5, 1)),
+                DatasetBuilder('time_array', [datetime(2017, 5, 1, 12, 0, 0, tzinfo=tzlocal())]),
+                DatasetBuilder(
+                    name='cpd_array',
+                    data=[(1, "wrong")],
+                    dtype=[
+                        DtypeSpec('x', doc='x', dtype='int'),
+                        DtypeSpec('y', doc='y', dtype='isodatetime'),
+                    ],
+                ),
+            ],
+        )
+        validator = self.vmap.get_validator('Bar')
+        result = validator.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertValidationError(result[0], DtypeError, name='Bar/cpd_array')
 
 
 class TestNestedTypes(ValidatorTestBase):
@@ -506,6 +551,58 @@ class Test1DArrayValidation(TestCase):
         self.assertEqual(len(results), 0)
 
     # TODO test shape validation more completely
+
+
+class TestStringDatetime(TestCase):
+
+    def test_str_coincidental_isodatetime(self):
+        """Test validation of a text spec allows a string that coincidentally matches the isodatetime format."""
+        spec_catalog = SpecCatalog()
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(doc='an example scalar dataset', dtype="text", name='data1'),
+                DatasetSpec(doc='an example 1D dataset', dtype="text", name='data2', shape=(None, )),
+                DatasetSpec(
+                    doc='an example 1D compound dtype dataset',
+                    dtype=[
+                        DtypeSpec('x', doc='x', dtype='int'),
+                        DtypeSpec('y', doc='y', dtype='text'),
+                    ],
+                    name='data3',
+                    shape=(None, ),
+                ),
+            ],
+            attributes=[
+                AttributeSpec(name='attr1', doc='an example scalar attribute', dtype="text"),
+                AttributeSpec(name='attr2', doc='an example 1D attribute', dtype="text", shape=(None, )),
+            ]
+        )
+        spec_catalog.register_spec(spec, 'test.yaml')
+        namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog
+        )
+        vmap = ValidatorMap(namespace)
+
+        bar_builder = GroupBuilder(
+            name='my_bar',
+            attributes={'data_type': 'Bar', 'attr1': "2023-01-01", 'attr2': ["2023-01-01"]},
+            datasets=[
+                DatasetBuilder(name='data1', data="2023-01-01"),
+                DatasetBuilder(name='data2', data=["2023-01-01"]),
+                DatasetBuilder(
+                    name='data3',
+                    data=[(1, "2023-01-01")],
+                    dtype=[
+                        DtypeSpec('x', doc='x', dtype='int'),
+                        DtypeSpec('y', doc='y', dtype='text'),
+                    ],
+                ),
+            ],
+        )
+        results = vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
 
 
 class TestLinkable(TestCase):
