@@ -628,7 +628,7 @@ class HERD(Container):
             if entity_uri is not None:
                 entity_uri = entity.entity_uri
                 msg = 'This entity already exists. Ignoring new entity uri'
-                warn(msg)
+                warn(msg, stacklevel=2)
 
         #################
         # Validate Object
