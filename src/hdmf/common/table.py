@@ -503,7 +503,7 @@ class DynamicTable(Container):
             msg = ("An attribute '%s' already exists on %s '%s' so this column cannot be accessed as an attribute, "
                    "e.g., table.%s; it can only be accessed using other methods, e.g., table['%s']."
                    % (col.name, self.__class__.__name__, self.name, col.name, col.name))
-            warn(msg)
+            warn(msg, stacklevel=2)
         else:
             setattr(self, col.name, col)
 
@@ -764,7 +764,7 @@ class DynamicTable(Container):
 
         if isinstance(index, VectorIndex):
             warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
-                 "deprecated in a future version of HDMF.", FutureWarning)
+                 "deprecated in a future version of HDMF.", category=FutureWarning, stacklevel=2)
 
         if name in self.__colids:  # column has already been added
             msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
@@ -781,7 +781,7 @@ class DynamicTable(Container):
                        "Please ensure the new column complies with the spec. "
                        "This will raise an error in a future version of HDMF."
                        % (name, self.__class__.__name__, spec_table))
-                warn(msg)
+                warn(msg, stacklevel=2)
 
             index_bool = index or not isinstance(index, bool)
             spec_index = self.__uninit_cols[name].get('index', False)
@@ -791,7 +791,7 @@ class DynamicTable(Container):
                        "Please ensure the new column complies with the spec. "
                        "This will raise an error in a future version of HDMF."
                        % (name, self.__class__.__name__, spec_index))
-                warn(msg)
+                warn(msg, stacklevel=2)
 
             spec_col_cls = self.__uninit_cols[name].get('class', VectorData)
             if col_cls != spec_col_cls:
@@ -800,7 +800,7 @@ class DynamicTable(Container):
                        "Please ensure the new column complies with the spec. "
                        "This will raise an error in a future version of HDMF."
                        % (name, self.__class__.__name__, spec_col_cls))
-                warn(msg)
+                warn(msg, stacklevel=2)
 
         ckwargs = dict(kwargs)
 
@@ -1517,7 +1517,7 @@ class DynamicTableRegion(VectorData):
         if set(table_ancestor_ids).isdisjoint(self_ancestor_ids):
             msg = (f"The linked table for DynamicTableRegion '{self.name}' does not share an ancestor with the "
                    "DynamicTableRegion.")
-            warn(msg)
+            warn(msg, stacklevel=2)
         return super()._validate_on_set_parent()
 
 

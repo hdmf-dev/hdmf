@@ -6,6 +6,7 @@
 - Add Data.set_data_io(), which allows for setting a `DataIO` to a data object after-the-fact. @bendichter and @CodyCBakerPhD [#1013](https://github.com/hdmf-dev/hdmf/pull/1013)
 - Added `add_ref_termset`, updated helper methods for `HERD`, revised `add_ref` to support validations prior to populating the tables
   and added `add_ref_container`.  @mavaylon1 [#968](https://github.com/hdmf-dev/hdmf/pull/968)
+- Use `stacklevel` in most warnings. @rly [#1027](https://github.com/hdmf-dev/hdmf/pull/1027)
 
 ### Minor Improvements
 - Updated `__gather_columns` to ignore the order of bases when generating columns from the super class. @mavaylon1 [#991](https://github.com/hdmf-dev/hdmf/pull/991)
