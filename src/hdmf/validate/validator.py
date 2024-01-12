@@ -54,7 +54,10 @@ def check_type(expected, received, string_format=None):
             rec = received[i]
             if exp == "isodatetime":  # short circuit for isodatetime
                 sub_string_format = string_format[i]
-                return rec in ("utf", "ascii") and sub_string_format == "isodatetime"
+                return (
+                    rec in __allowable[exp] or
+                    rec in ("utf", "ascii") and sub_string_format == "isodatetime"
+                )
             if rec not in __allowable[exp]:
                 return False
         return True
