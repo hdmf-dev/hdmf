@@ -160,7 +160,7 @@ def get_type(data, builder_dtype=None):
             if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
                 # Try to determine dtype from the first array element
                 if len(data) > 0:
-                    return get_type(data[0])
+                    return get_type(data[0], builder_dtype)
                 # Empty array
                 else:
                     # Empty string array
