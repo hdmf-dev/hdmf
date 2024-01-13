@@ -165,7 +165,7 @@ def get_type(data, builder_dtype=None):
                 else:
                     # Empty string array
                     if data.dtype.metadata["vlen"] == str:
-                        return "utf", get_string_format(data)
+                        return "utf", None
                     # Undetermined variable length data type.
                     else:                        # pragma: no cover
                         raise EmptyArrayError()  # pragma: no cover
