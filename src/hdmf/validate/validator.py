@@ -118,26 +118,36 @@ class EmptyArrayError(Exception):
 
 def get_type(data, builder_dtype=None):
     """Return a tuple of (the string representation of the type, the format of the string data) for the given data."""
+    # String data
     if isinstance(data, str):
         return 'utf', get_string_format(data)
+    # Bytes data
     elif isinstance(data, bytes):
         return 'ascii', get_string_format(data)
+    # RegionBuilder data
     elif isinstance(data, RegionBuilder):
         return 'region', None
+    # ReferenceBuilder data
     elif isinstance(data, ReferenceBuilder):
         return 'object', None
+    # ReferenceResolver data
     elif isinstance(data, ReferenceResolver):
         return data.dtype, None
+    # Numpy nd-array data
     elif isinstance(data, np.ndarray):
-        if data.size == 0:
+        if data.size > 0:
+            return get_type(data[0], builder_dtype)
+        else:
             raise EmptyArrayError()
-        return get_type(data[0], builder_dtype)
+    # Numpy bool data
     elif isinstance(data, np.bool_):
         return 'bool', None
     if not hasattr(data, '__len__'):
         return type(data).__name__, None
+    # Case for h5py.Dataset and other I/O specific array types
     else:
-        if builder_dtype and isinstance(builder_dtype, list):  # compound dtype
+        # Compound dtype
+        if builder_dtype and isinstance(builder_dtype, list):
             dtypes = []
             string_formats = []
             for i in range(len(builder_dtype)):
@@ -145,13 +155,28 @@ def get_type(data, builder_dtype=None):
                 dtypes.append(dtype)
                 string_formats.append(string_format)
             return dtypes, string_formats
+        # Object has 'dtype' attribute, e.g., an h5py.Dataset
         if hasattr(data, 'dtype'):
             if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
-                return get_type(data[0])
-            return data.dtype, None
-        if len(data) == 0:
+                # Try to determine dtype from the first array element
+                if len(data) > 0:
+                    return get_type(data[0], builder_dtype)
+                # Empty array
+                else:
+                    # Empty string array
+                    if data.dtype.metadata["vlen"] == str:
+                        return "utf", None
+                    # Undetermined variable length data type.
+                    else:                        # pragma: no cover
+                        raise EmptyArrayError()  # pragma: no cover
+            # Standard data type (i.e., not compound or vlen)
+            else:
+                return data.dtype, None
+        # If all else has failed, try to determine the datatype from the first element of the array
+        if len(data) > 0:
+            return get_type(data[0], builder_dtype)
+        else:
             raise EmptyArrayError()
-        return get_type(data[0], builder_dtype)
 
 
 def check_shape(expected, received):
