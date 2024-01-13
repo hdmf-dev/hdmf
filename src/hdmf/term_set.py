@@ -316,13 +316,19 @@ class TermSetConfigurator:
     # def config_path(self):
     #     return self.__config_path
 
-    @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.'})
+    @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.',
+             'default': None})
     def load_termset_config(config_path: str):
         """
         Load the configuration file for validation on the fields defined for the objects within the file.
         By default, the curated configuration file is used, but can take in a custom file.
         """
-        self.path = config_path
+        if config_path not None:
+            self.path = config_path
+
+        with open(self.path, 'r') as config:
+            termset_config = yaml.safe_load(config)
+            return termset_config
 
     def unload_termset_config():
         """

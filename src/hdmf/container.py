@@ -240,17 +240,16 @@ class AbstractContainer(metaclass=ExtenderMeta):
         from . import TS_CONFIG #update path
         # Before calling super().__init__() and before setting fields, check for config file for
         # validation via TermSetWrapper.
-        with open(TS_CONFIG.path, 'r') as config:
-            termset_config = yaml.safe_load(config)
-            object_name = self.__class__.__name__
+        termset_config = TS_CONFIG.load_termset_config()
+        object_name = self.__class__.__name__
 
-            for obj_config in termset_config:
-                if obj_config['data_type'] == object_name:
-                    for attr in obj_config['fields']:
-                        if attr in fields: # make sure any custom fields are not handled (i.e., make an extension)
-                            termset_path = obj_config['fields'][attr]
-                            termset = TermSet(term_schema_path=termset_path)
-                            fields[attr] = TermSetWrapper(value=fields[attr], termset=termset)
+        for obj_config in termset_config:
+            if obj_config['data_type'] == object_name:
+                for attr in obj_config['fields']:
+                    if attr in fields: # make sure any custom fields are not handled (i.e., make an extension)
+                        termset_path = obj_config['fields'][attr]
+                        termset = TermSet(term_schema_path=termset_path)
+                        fields[attr] = TermSetWrapper(value=fields[attr], termset=termset)
 
     @property
     def read_io(self):
@@ -801,7 +800,6 @@ class Data(AbstractContainer):
     """
     A class for representing dataset containers
     """
-
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):

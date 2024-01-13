@@ -7,7 +7,6 @@ from .term_set import TermSet, TermSetWrapper, TermSetConfigurator
 
 
 # a global TermSetConfigurator
-global TS_CONFIG
 TS_CONFIG = TermSetConfigurator()
 
 @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.',
