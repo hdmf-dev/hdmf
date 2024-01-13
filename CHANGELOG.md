@@ -13,6 +13,7 @@
 - Update `get_key` to return all the keys if there are multiple within a `HERD` instance. @mavaylon1 [#999](https://github.com/hdmf-dev/hdmf/pull/999)
 - Improve HTML rendering of tables. @bendichter [#998](https://github.com/hdmf-dev/hdmf/pull/998)
 - Improved issue and PR templates. @rly [#1004](https://github.com/hdmf-dev/hdmf/pull/1004)
+- Added check during validation for if a variable length dataset is empty. @bendichter [#789](https://github.com/hdmf-dev/hdmf/pull/789)
 
 ### Bug fixes
 - Fixed issue with custom class generation when a spec has a `name`. @rly [#1006](https://github.com/hdmf-dev/hdmf/pull/1006)
