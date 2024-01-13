@@ -318,7 +318,7 @@ class BaseStorageSpec(Spec):
         default_name = getargs('default_name', kwargs)
         if default_name:
             if name is not None:
-                warn("found 'default_name' with 'name' - ignoring 'default_name'")
+                warn("found 'default_name' with 'name' - ignoring 'default_name'", stacklevel=2)
             else:
                 self['default_name'] = default_name
         self.__attributes = dict()
