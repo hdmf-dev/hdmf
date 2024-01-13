@@ -247,7 +247,7 @@ def export_spec(ns_builder, new_data_types, output_dir):
     """
 
     if len(new_data_types) == 0:
-        warnings.warn('No data types specified. Exiting.')
+        warnings.warn('No data types specified. Exiting.', stacklevel=2)
         return
 
     ns_path = ns_builder.name + '.namespace.yaml'

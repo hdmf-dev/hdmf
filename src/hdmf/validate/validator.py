@@ -42,7 +42,7 @@ for dt, dt_syn in __synonyms.items():
 __allowable['numeric'] = set(chain.from_iterable(__allowable[k] for k in __allowable if 'int' in k or 'float' in k))
 
 
-def check_type(expected, received):
+def check_type(expected, received, string_format=None):
     '''
     *expected* should come from the spec
     *received* should come from the data
@@ -52,6 +52,12 @@ def check_type(expected, received):
             raise ValueError('compound type shorter than expected')
         for i, exp in enumerate(DtypeHelper.simplify_cpd_type(expected)):
             rec = received[i]
+            if exp == "isodatetime":  # short circuit for isodatetime
+                sub_string_format = string_format[i]
+                return (
+                    rec in __allowable[exp] or
+                    rec in ("utf", "ascii") and sub_string_format == "isodatetime"
+                )
             if rec not in __allowable[exp]:
                 return False
         return True
@@ -71,6 +77,11 @@ def check_type(expected, received):
                 received = received.name
         elif isinstance(received, type):
             received = received.__name__
+        if expected == "isodatetime":  # short circuit for isodatetime
+            return (
+                received in __allowable[expected] or
+                (received in ("utf", "ascii") and string_format == "isodatetime")
+            )
         if isinstance(expected, RefSpec):
             expected = expected.reftype
         elif isinstance(expected, type):
@@ -89,48 +100,58 @@ def get_iso8601_regex():
 _iso_re = get_iso8601_regex()
 
 
-def _check_isodatetime(s, default=None):
+def get_string_format(data):
+    """Return the string format of the given data. Possible outputs are "isodatetime" and None.
+    """
+    assert isinstance(data, (str, bytes))
     try:
-        if _iso_re.match(pystr(s)) is not None:
+        if _iso_re.match(pystr(data)) is not None:
             return 'isodatetime'
     except Exception:
         pass
-    return default
+    return None
 
 
 class EmptyArrayError(Exception):
     pass
 
 
-def get_type(data):
+def get_type(data, builder_dtype=None):
+    """Return a tuple of (the string representation of the type, the format of the string data) for the given data."""
     if isinstance(data, str):
-        return _check_isodatetime(data, 'utf')
+        return 'utf', get_string_format(data)
     elif isinstance(data, bytes):
-        return _check_isodatetime(data, 'ascii')
+        return 'ascii', get_string_format(data)
     elif isinstance(data, RegionBuilder):
-        return 'region'
+        return 'region', None
     elif isinstance(data, ReferenceBuilder):
-        return 'object'
+        return 'object', None
     elif isinstance(data, ReferenceResolver):
-        return data.dtype
+        return data.dtype, None
     elif isinstance(data, np.ndarray):
         if data.size == 0:
             raise EmptyArrayError()
-        return get_type(data[0])
+        return get_type(data[0], builder_dtype)
     elif isinstance(data, np.bool_):
-        return 'bool'
+        return 'bool', None
     if not hasattr(data, '__len__'):
-        return type(data).__name__
+        return type(data).__name__, None
     else:
+        if builder_dtype and isinstance(builder_dtype, list):  # compound dtype
+            dtypes = []
+            string_formats = []
+            for i in range(len(builder_dtype)):
+                dtype, string_format = get_type(data[0][i])
+                dtypes.append(dtype)
+                string_formats.append(string_format)
+            return dtypes, string_formats
         if hasattr(data, 'dtype'):
-            if isinstance(data.dtype, list):
-                return [get_type(data[0][i]) for i in range(len(data.dtype))]
             if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
                 return get_type(data[0])
-            return data.dtype
+            return data.dtype, None
         if len(data) == 0:
             raise EmptyArrayError()
-        return get_type(data[0])
+        return get_type(data[0], builder_dtype)
 
 
 def check_shape(expected, received):
@@ -310,7 +331,7 @@ class AttributeValidator(Validator):
                 if not isinstance(value, BaseBuilder):
                     expected = '%s reference' % spec.dtype.reftype
                     try:
-                        value_type = get_type(value)
+                        value_type, _ = get_type(value)
                         ret.append(DtypeError(self.get_spec_loc(spec), expected, value_type))
                     except EmptyArrayError:
                         # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
@@ -323,8 +344,8 @@ class AttributeValidator(Validator):
                         ret.append(IncorrectDataType(self.get_spec_loc(spec), spec.dtype.target_type, data_type))
             else:
                 try:
-                    dtype = get_type(value)
-                    if not check_type(spec.dtype, dtype):
+                    dtype, string_format = get_type(value)
+                    if not check_type(spec.dtype, dtype, string_format):
                         ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
                 except EmptyArrayError:
                     # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
@@ -385,14 +406,17 @@ class DatasetValidator(BaseStorageValidator):
         data = builder.data
         if self.spec.dtype is not None:
             try:
-                dtype = get_type(data)
-                if not check_type(self.spec.dtype, dtype):
+                dtype, string_format = get_type(data, builder.dtype)
+                if not check_type(self.spec.dtype, dtype, string_format):
                     ret.append(DtypeError(self.get_spec_loc(self.spec), self.spec.dtype, dtype,
                                           location=self.get_builder_loc(builder)))
             except EmptyArrayError:
                 # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                 pass
-        shape = get_data_shape(data)
+        if isinstance(builder.dtype, list):
+            shape = (len(builder.data), )  # only 1D datasets with compound types are supported
+        else:
+            shape = get_data_shape(data)
         if not check_shape(self.spec.shape, shape):
             if shape is None:
                 ret.append(ExpectedArrayError(self.get_spec_loc(self.spec), self.spec.shape, str(data),

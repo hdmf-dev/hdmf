@@ -324,7 +324,9 @@ class HDF5IO(HDMFIO):
         """
 
         warnings.warn("The copy_file class method is no longer supported and may be removed in a future version of "
-                      "HDMF. Please use the export method or h5py.File.copy method instead.", DeprecationWarning)
+                      "HDMF. Please use the export method or h5py.File.copy method instead.",
+                      category=DeprecationWarning,
+                      stacklevel=2)
 
         source_filename, dest_filename, expand_external, expand_refs, expand_soft = getargs('source_filename',
                                                                                             'dest_filename',

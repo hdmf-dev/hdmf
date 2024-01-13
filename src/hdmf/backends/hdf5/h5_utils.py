@@ -499,7 +499,7 @@ class H5DataIO(DataIO):
         # Check for possible collision with other parameters
         if not isinstance(getargs('data', kwargs), Dataset) and self.__link_data:
             self.__link_data = False
-            warnings.warn('link_data parameter in H5DataIO will be ignored')
+            warnings.warn('link_data parameter in H5DataIO will be ignored', stacklevel=2)
         # Call the super constructor and consume the data parameter
         super().__init__(**kwargs)
         # Construct the dict with the io args, ignoring all options that were set to None
@@ -523,7 +523,7 @@ class H5DataIO(DataIO):
                 self.__iosettings.pop('compression', None)
                 if 'compression_opts' in self.__iosettings:
                     warnings.warn('Compression disabled by compression=False setting. ' +
-                                  'compression_opts parameter will, therefore, be ignored.')
+                                  'compression_opts parameter will, therefore, be ignored.', stacklevel=2)
                     self.__iosettings.pop('compression_opts', None)
         # Validate the compression options used
         self._check_compression_options()
@@ -537,7 +537,8 @@ class H5DataIO(DataIO):
         # Check possible parameter collisions
         if isinstance(self.data, Dataset):
             for k in self.__iosettings.keys():
-                warnings.warn("%s in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset" % k)
+                warnings.warn("%s in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset" % k,
+                              stacklevel=2)
 
         self.__dataset = None
 
@@ -594,7 +595,7 @@ class H5DataIO(DataIO):
             if self.__iosettings['compression'] not in ['gzip', h5py_filters.h5z.FILTER_DEFLATE]:
                 warnings.warn(str(self.__iosettings['compression']) + " compression may not be available "
                               "on all installations of HDF5. Use of gzip is recommended to ensure portability of "
-                              "the generated HDF5 files.")
+                              "the generated HDF5 files.", stacklevel=3)
 
     @staticmethod
     def filter_available(filter, allow_plugin_filters):
