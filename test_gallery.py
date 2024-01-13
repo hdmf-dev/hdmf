@@ -26,15 +26,10 @@ def _import_from_file(script):
 
 _numpy_warning_re = "numpy.ufunc size changed, may indicate binary incompatibility. Expected 216, got 192"
 
-_distutils_warning_re = "distutils Version classes are deprecated. Use packaging.version instead."
-
 _experimental_warning_re = (
     "[a-zA-Z0-9]+ is experimental -- it may be removed in the future "
     "and is not guaranteed to maintain backward compatibility"
 )
-
-pydantic_warning_re = ("Support for class-based `config` is deprecated, use ConfigDict instead.")
-
 
 def run_gallery_tests():
     global TOTAL, FAILURES, ERRORS
@@ -48,6 +43,10 @@ def run_gallery_tests():
                 gallery_file_names.append(os.path.join(root, f))
 
     warnings.simplefilter("error")
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,  # these can be triggered by downstream packages. ignore for these tests
+    )
 
     TOTAL += len(gallery_file_names)
     for script in gallery_file_names:
@@ -60,29 +59,16 @@ def run_gallery_tests():
                     category=UserWarning,
                 )
                 warnings.filterwarnings(
-                    # this warning is triggered from pandas when HDMF is installed with the minimum requirements
-                    "ignore",
-                    message=_distutils_warning_re,
-                    category=DeprecationWarning,
-                )
-                warnings.filterwarnings(
                     # this warning is triggered when some numpy extension code in an upstream package was compiled
                     # against a different version of numpy than the one installed
                     "ignore",
                     message=_numpy_warning_re,
                     category=RuntimeWarning,
                 )
-                warnings.filterwarnings(
-                    # this warning is triggered when some linkml dependency like curies uses pydantic in a way that
-                    # will be deprecated in the future
-                    "ignore",
-                    message=pydantic_warning_re,
-                    category=DeprecationWarning,
-                )
                 _import_from_file(script)
         except (ImportError, ValueError) as e:
-            if "linkml" in str(e) and sys.version_info < (3, 9):
-                pass  # this is OK because plot_term_set.py and plot_external_resources.py cannot be run on Python 3.8
+            if "linkml" in str(e):
+                pass  # this is OK because linkml is not always installed
             else:
                 raise e
         except Exception:

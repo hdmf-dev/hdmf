@@ -9,13 +9,26 @@ from hdmf import Container
 from hdmf import TermSet, TermSetWrapper
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 from hdmf.backends.hdf5.h5tools import H5_TEXT, H5PY_3
-from hdmf.common import (DynamicTable, VectorData, VectorIndex, ElementIdentifiers, EnumData,
-                         DynamicTableRegion, get_manager, SimpleMultiContainer)
+from hdmf.common import (
+    DynamicTable,
+    VectorData,
+    VectorIndex,
+    ElementIdentifiers,
+    EnumData,
+    DynamicTableRegion,
+    get_manager,
+    SimpleMultiContainer,
+)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
 from hdmf.data_utils import DataChunkIterator
 
-from tests.unit.helpers.utils import get_temp_filepath
+from tests.unit.helpers.utils import (
+    get_temp_filepath,
+    FooExtendDynamicTable0,
+    FooExtendDynamicTable1,
+    FooExtendDynamicTable2,
+)
 
 try:
     import linkml_runtime  # noqa: F401
@@ -565,9 +578,9 @@ class TestDynamicTable(TestCase):
         rows = table[0:5:2]
         self.assertIsInstance(rows, pd.DataFrame)
         self.assertTupleEqual(rows.shape, (3, 3))
-        self.assertEqual(rows.iloc[2][0], 5)
-        self.assertEqual(rows.iloc[2][1], 50.0)
-        self.assertEqual(rows.iloc[2][2], 'lizard')
+        self.assertEqual(rows.iloc[2].iloc[0], 5)
+        self.assertEqual(rows.iloc[2].iloc[1], 50.0)
+        self.assertEqual(rows.iloc[2].iloc[2], 'lizard')
 
     def test_getitem_invalid_keytype(self):
         table = self.with_spec()
@@ -770,6 +783,36 @@ Fields:
 """
         expected = expected % id(table)
         self.assertEqual(str(table), expected)
+
+    def test_repr_html(self):
+        table = self.with_spec()
+        html = table._repr_html_()
+
+        assert html == (
+            '\n        <style>\n            .container-fields {\n                font-family: "Open Sans", Arial, '
+            'sans-serif;\n            }\n            .container-fields .field-value {\n                color: '
+            '#00788E;\n            }\n            .container-fields details > summary {\n                cursor: '
+            'pointer;\n                display: list-item;\n            }\n            .container-fields details > '
+            'summary:hover {\n                color: #0A6EAA;\n            }\n        </style>\n        \n        '
+            '<script>\n            function copyToClipboard(text) {\n                navigator.clipboard.writeText('
+            'text).then(function() {\n                    console.log(\'Copied to clipboard: \' + text);\n            '
+            '    }, function(err) {\n                    console.error(\'Could not copy text: \', err);\n             '
+            '   });\n            }\n\n            document.addEventListener(\'DOMContentLoaded\', function() {\n      '
+            '          let fieldKeys = document.querySelectorAll(\'.container-fields .field-key\');\n                '
+            'fieldKeys.forEach(function(fieldKey) {\n                    fieldKey.addEventListener(\'click\', '
+            'function() {\n                        let accessCode = fieldKey.getAttribute(\'title\').replace(\'Access '
+            'code: \', \'\');\n                        copyToClipboard(accessCode);\n                    });\n        '
+            '        });\n            });\n        </script>\n        <div class=\'container-wrap\'><div '
+            'class=\'container-header\'><div class=\'xr-obj-type\'><h3>with_spec (DynamicTable)</h3></div></div><div '
+            'style="margin-left: 0px;" class="container-fields"><span class="field-key" title="">description: '
+            '</span><span class="field-value">a test table</span></div><details><summary style="display: list-item; '
+            'margin-left: 0px;" class="container-fields field-key" title=""><b>table</b></summary><table border="1" '
+            'class="dataframe">\n  <thead>\n    <tr style="text-align: right;">\n      <th></th>\n      '
+            '<th>foo</th>\n      <th>bar</th>\n      <th>baz</th>\n    </tr>\n    <tr>\n      <th>id</th>\n      '
+            '<th></th>\n      <th></th>\n      <th></th>\n    </tr>\n  </thead>\n  <tbody>\n  '
+            '</tbody>\n</table></details></div>'
+        )
+
 
     def test_add_column_existing_attr(self):
         table = self.with_table_columns()
@@ -1347,6 +1390,38 @@ class TestElementIdentifiers(TestCase):
             _ = (self.e == 0.1)
         with self.assertRaises(TypeError):
             _ = (self.e == 'test')
+
+
+class TestBadElementIdentifiers(TestCase):
+
+    def test_bad_dtype(self):
+        with self.assertRaisesWith(ValueError, "ElementIdentifiers must contain integers"):
+            ElementIdentifiers(name='ids', data=["1", "2"])
+
+        with self.assertRaisesWith(ValueError, "ElementIdentifiers must contain integers"):
+            ElementIdentifiers(name='ids', data=np.array(["1", "2"]))
+
+        with self.assertRaisesWith(ValueError, "ElementIdentifiers must contain integers"):
+            ElementIdentifiers(name='ids', data=[1.0, 2.0])
+
+    def test_dci_int_ok(self):
+        a = np.arange(30)
+        dci = DataChunkIterator(data=a, buffer_size=1)
+        e = ElementIdentifiers(name='ids', data=dci)  # test that no error is raised
+        self.assertIs(e.data, dci)
+
+    def test_dci_float_bad(self):
+        a = np.arange(30.0)
+        dci = DataChunkIterator(data=a, buffer_size=1)
+        with self.assertRaisesWith(ValueError, "ElementIdentifiers must contain integers"):
+            ElementIdentifiers(name='ids', data=dci)
+
+    def test_dataio_dci_ok(self):
+        a = np.arange(30)
+        dci = DataChunkIterator(data=a, buffer_size=1)
+        dio = H5DataIO(dci)
+        e = ElementIdentifiers(name='ids', data=dio)  # test that no error is raised
+        self.assertIs(e.data, dio)
 
 
 class SubTable(DynamicTable):
@@ -2676,3 +2751,19 @@ class TestVectorIndexDtype(TestCase):
         index.add_vector(list(range(65536 - 255)))
         self.assertEqual(index.data[0], 255)  # make sure the 255 is upgraded
         self.assertEqual(type(index.data[0]), np.uint32)
+
+
+class TestDynamicTableSubclassColumns(TestCase):
+    def setUp(self):
+        self.foo1 = FooExtendDynamicTable0()
+        self.foo2 = FooExtendDynamicTable1()
+        self.foo3 = FooExtendDynamicTable2()
+
+    def test_columns(self):
+        self.assertEqual(self.foo1.__columns__,
+                        ({'name': 'col1', 'description': '...'}, {'name': 'col2', 'description': '...'}))
+        self.assertEqual(self.foo2.__columns__,
+                        ({'name': 'col1', 'description': '...'}, {'name': 'col2', 'description': '...'},
+                         {'name': 'col3', 'description': '...'}, {'name': 'col4', 'description': '...'})
+)
+        self.assertEqual(self.foo2.__columns__, self.foo3.__columns__)

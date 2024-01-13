@@ -1,15 +1,41 @@
 # HDMF Changelog
 
-## HDMF 3.11.0 (Upcoming)
+## HDMF 3.12.0 (Upcoming)
+
+### Enhancements
+- Add Data.set_data_io(), which allows for setting a `DataIO` to a data object after-the-fact. @bendichter and @CodyCBakerPhD [#1013](https://github.com/hdmf-dev/hdmf/pull/1013)
+- Added `add_ref_termset`, updated helper methods for `HERD`, revised `add_ref` to support validations prior to populating the tables
+  and added `add_ref_container`.  @mavaylon1 [#968](https://github.com/hdmf-dev/hdmf/pull/968)
+- Use `stacklevel` in most warnings. @rly [#1027](https://github.com/hdmf-dev/hdmf/pull/1027)
+
+### Minor Improvements
+- Updated `__gather_columns` to ignore the order of bases when generating columns from the super class. @mavaylon1 [#991](https://github.com/hdmf-dev/hdmf/pull/991)
+- Update `get_key` to return all the keys if there are multiple within a `HERD` instance. @mavaylon1 [#999](https://github.com/hdmf-dev/hdmf/pull/999)
+- Improve HTML rendering of tables. @bendichter [#998](https://github.com/hdmf-dev/hdmf/pull/998)
+- Improved issue and PR templates. @rly [#1004](https://github.com/hdmf-dev/hdmf/pull/1004)
+
+### Bug fixes
+- Fixed issue with custom class generation when a spec has a `name`. @rly [#1006](https://github.com/hdmf-dev/hdmf/pull/1006)
+- Fixed issue with usage of deprecated `ruamel.yaml.safe_load` in `src/hdmf/testing/validate_spec.py`. @rly [#1008](https://github.com/hdmf-dev/hdmf/pull/1008)
+- Fixed issue where `ElementIdentifiers` data could be set to non-integer values. @rly [#1009](https://github.com/hdmf-dev/hdmf/pull/1009)
+- Fixed issue where string datasets/attributes with isodatetime-formatted values failed validation against a text spec. @rly [#1026](https://github.com/hdmf-dev/hdmf/pull/1026)
+
+## HDMF 3.11.0 (October 30, 2023)
 
 ### Enhancements
 - Added `target_tables` attribute to `DynamicTable` to allow users to specify the target table of any predefined
 `DynamicTableRegion` columns of a `DynamicTable` subclass. @rly [#971](https://github.com/hdmf-dev/hdmf/pull/971)
-- Updated `TermSet` to include `_repr_html_` for easy to read notebook representation. @mavaylon1 [967](https://github.com/hdmf-dev/hdmf/pull/967)
+- Updated `TermSet` to include `_repr_html_` for easy to read notebook representation. @mavaylon1 [#967](https://github.com/hdmf-dev/hdmf/pull/967)
+
+### Minor improvements
+- Set up GitHub dependabot to check for updates to GitHub Actions. @rly [#977](https://github.com/hdmf-dev/hdmf/pull/977)
+- Simplify tox configuration. @rly [#988](https://github.com/hdmf-dev/hdmf/pull/988)
+- Add testing for Python 3.12. @rly [#988](https://github.com/hdmf-dev/hdmf/pull/988)
 
 ### Bug fixes
 - Updated custom class generation to handle specs with fixed values and required names. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
 - Fixed custom class generation of `DynamicTable` subtypes to set attributes corresponding to column names for correct write. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
+- Added a `.mailmap` file to correct mapping of names/emails in git logs. @oruebel [#976](https://github.com/hdmf-dev/hdmf/pull/976)
 
 ## HDMF 3.10.0 (October 3, 2023)
 

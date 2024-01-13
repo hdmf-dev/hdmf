@@ -2,12 +2,11 @@ import numpy as np
 from uuid import uuid4, UUID
 import os
 
-from hdmf.backends.hdf5 import H5DataIO
 from hdmf.container import AbstractContainer, Container, Data, HERDManager
 from hdmf.common.resources import HERD
 from hdmf.testing import TestCase
 from hdmf.utils import docval
-from hdmf.common import (DynamicTable, VectorData, DynamicTableRegion)
+from hdmf.common import DynamicTable, VectorData, DynamicTableRegion
 from hdmf.backends.hdf5.h5tools import HDF5IO
 
 
@@ -397,29 +396,6 @@ class TestContainer(TestCase):
         self.assertTupleEqual(parent_obj.get_ancestors(), (grandparent_obj, ))
         self.assertTupleEqual(child_obj.get_ancestors(), (parent_obj, grandparent_obj))
 
-    def test_set_data_io(self):
-
-        class ContainerWithData(Container):
-            __fields__ = ('data1', 'data2')
-
-            @docval(
-                {"name": "name", "doc": "name", "type": str},
-                {'name': 'data1', 'doc': 'field1 doc', 'type': list},
-                {'name': 'data2', 'doc': 'field2 doc', 'type':  list, 'default': None}
-            )
-            def __init__(self, **kwargs):
-                super().__init__(name=kwargs["name"])
-                self.data1 = kwargs["data1"]
-                self.data2 = kwargs["data2"]
-
-        obj = ContainerWithData("name", [1, 2, 3, 4, 5], None)
-        obj.set_data_io("data1", H5DataIO, chunks=True)
-        assert isinstance(obj.data1, H5DataIO)
-
-        with self.assertRaises(ValueError):
-            obj.set_data_io("data2", H5DataIO, chunks=True)
-
-
 
 class TestHTMLRepr(TestCase):
 
@@ -446,29 +422,32 @@ class TestHTMLRepr(TestCase):
         child_obj1 = Container('test child 1')
         obj1 = self.ContainerWithChildAndData(child=child_obj1, data=[1, 2, 3], str="hello")
         assert obj1._repr_html_() == (
-            '\n        <style>\n            .container-fields {\n                font-family: "Open Sans", Arial, sans-'
-            'serif;\n            }\n            .container-fields .field-value {\n                color: #00788E;\n    '
-            '        }\n            .container-fields details > summary {\n                cursor: pointer;\n          '
-            '      display: list-item;\n            }\n            .container-fields details > summary:hover {\n       '
-            '         color: #0A6EAA;\n            }\n        </style>\n        \n        <script>\n            functio'
-            'n copyToClipboard(text) {\n                navigator.clipboard.writeText(text).then(function() {\n        '
-            '            console.log(\'Copied to clipboard: \' + text);\n                }, function(err) {\n          '
-            '          console.error(\'Could not copy text: \', err);\n                });\n            }\n\n          '
-            '  document.addEventListener(\'DOMContentLoaded\', function() {\n                let fieldKeys = document.q'
-            'uerySelectorAll(\'.container-fields .field-key\');\n                fieldKeys.forEach(function(fieldKey) {'
-            '\n                    fieldKey.addEventListener(\'click\', function() {\n                        let acces'
-            'sCode = fieldKey.getAttribute(\'title\').replace(\'Access code: \', \'\');\n                        copyTo'
-            'Clipboard(accessCode);\n                    });\n                });\n            });\n        </script>\n'
-            '        <div class=\'container-wrap\'><div class=\'container-header\'><div class=\'xr-obj-type\'><h3>test '
-            'name (ContainerWithChildAndData)</h3></div></div><details><summary style="display: list-item; margin-left:'
-            ' 0px;" class="container-fields field-key" title=".fields[\'child\']"><b>child</b></summary></details><deta'
-            'ils><summary style="display: list-item; margin-left: 0px;" class="container-fields field-key" title=".fiel'
-            'ds[\'data\']"><b>data</b></summary><div style="margin-left: 20px;" class="container-fields"><span class="f'
-            'ield-value" title=".fields[\'data\'][0]">1</span></div><div style="margin-left: 20px;" class="container-fi'
-            'elds"><span class="field-value" title=".fields[\'data\'][1]">2</span></div><div style="margin-left: 20px;"'
-            ' class="container-fields"><span class="field-value" title=".fields[\'data\'][2]">3</span></div></details><'
-            'div style="margin-left: 0px;" class="container-fields"><span class="field-key" title=".fields[\'str\']">st'
-            'r:</span> <span class="field-value">hello</span></div></div>'
+            '\n        <style>\n            .container-fields {\n                font-family: "Open Sans", Arial, '
+            'sans-serif;\n            }\n            .container-fields .field-value {\n                color: '
+            '#00788E;\n            }\n            .container-fields details > summary {\n                cursor: '
+            'pointer;\n                display: list-item;\n            }\n            .container-fields details > '
+            'summary:hover {\n                color: #0A6EAA;\n            }\n        </style>\n        \n        '
+            '<script>\n            function copyToClipboard(text) {\n                navigator.clipboard.writeText('
+            'text).then(function() {\n                    console.log(\'Copied to clipboard: \' + text);\n            '
+            '    }, function(err) {\n                    console.error(\'Could not copy text: \', err);\n             '
+            '   });\n            }\n\n            document.addEventListener(\'DOMContentLoaded\', function() {\n      '
+            '          let fieldKeys = document.querySelectorAll(\'.container-fields .field-key\');\n                '
+            'fieldKeys.forEach(function(fieldKey) {\n                    fieldKey.addEventListener(\'click\', '
+            'function() {\n                        let accessCode = fieldKey.getAttribute(\'title\').replace(\'Access '
+            'code: \', \'\');\n                        copyToClipboard(accessCode);\n                    });\n        '
+            '        });\n            });\n        </script>\n        <div class=\'container-wrap\'><div '
+            'class=\'container-header\'><div class=\'xr-obj-type\'><h3>test name ('
+            'ContainerWithChildAndData)</h3></div></div><details><summary style="display: list-item; margin-left: '
+            '0px;" class="container-fields field-key" '
+            'title=".child"><b>child</b></summary></details><details><summary style="display: list-item; margin-left: '
+            '0px;" class="container-fields field-key" title=".data"><b>data</b></summary><div style="margin-left: '
+            '20px;" class="container-fields"><span class="field-key" title=".data[0]">0: </span><span '
+            'class="field-value">1</span></div><div style="margin-left: 20px;" class="container-fields"><span '
+            'class="field-key" title=".data[0][1]">1: </span><span class="field-value">2</span></div><div '
+            'style="margin-left: 20px;" class="container-fields"><span class="field-key" title=".data[0][1][2]">2: '
+            '</span><span class="field-value">3</span></div></details><div style="margin-left: 0px;" '
+            'class="container-fields"><span class="field-key" title=".str">str: </span><span '
+            'class="field-value">hello</span></div></div>'
         )
 
 
