@@ -210,7 +210,7 @@ _attr_args = [
     {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
     {'name': 'required', 'type': bool,
      'doc': 'whether or not this attribute is required. ignored when "value" is specified', 'default': True},
-    {'name': 'parent', 'type': 'BaseStorageSpec', 'doc': 'the parent of this spec', 'default': None},
+    {'name': 'parent', 'type': '~hdmf.spec.spec.BaseStorageSpec', 'doc': 'the parent of this spec', 'default': None},
     {'name': 'value', 'type': None, 'doc': 'a constant value for this attribute', 'default': None},
     {'name': 'default_value', 'type': None, 'doc': 'a default value for this attribute', 'default': None}
 ]
