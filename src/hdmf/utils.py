@@ -702,8 +702,10 @@ def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=No
             module = argtype.__module__
             name = argtype.__name__
 
-            if module.startswith("h5py") or module.startswith("pandas") or module.startswith("builtins"):
+            if module.startswith("builtins"):
                 return ":py:class:`~{name}`".format(name=name)
+            elif module.startswith("h5py") or module.startswith('pandas'):
+                return ":py:class:`~{module}.{name}`".format(name=name, module=module.split('.')[0])
             else:
                 return ":py:class:`~{module}.{name}`".format(name=name, module=module)
         return argtype
@@ -712,18 +714,23 @@ def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=No
         fmt = dict()
         fmt['name'] = arg.get('name')
         fmt['doc'] = arg.get('doc')
-        if isinstance(arg['type'], tuple) or isinstance(arg['type'], list):
-            fmt['type'] = " or ".join(map(to_str, arg['type']))
-        else:
-            fmt['type'] = to_str(arg['type'])
+        fmt['type'] = type_to_str(arg['type'])
         return arg_fmt.format(**fmt)
+
+    def type_to_str(type_arg, string=" or "):
+        if isinstance(type_arg, tuple) or isinstance(type_arg, list):
+            type_str = f"{string}".join(type_to_str(t, string=', ') for t in type_arg)
+        else:
+            type_str = to_str(type_arg)
+        return type_str
 
     sig = "%s(%s)\n\n" % (func.__name__, ", ".join(map(__sig_arg, validator)))
     desc = func.__doc__.strip() if func.__doc__ is not None else ""
     sig += docstring_fmt.format(description=desc, args="\n".join(map(__sphinx_arg, validator)))
 
     if not (ret_fmt is None or returns is None or rtype is None):
-        sig += ret_fmt.format(returns=returns, rtype=rtype)
+        rtype_fmt = type_to_str(rtype)
+        sig += ret_fmt.format(returns=returns, rtype=rtype_fmt)
     return sig
 
 
