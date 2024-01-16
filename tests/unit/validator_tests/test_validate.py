@@ -1118,3 +1118,102 @@ class TestReferenceDatasetsRoundTrip(ValidatorTestBase):
             attributes={'data_type': 'Foo'}
         )
         self.runBuilderRoundTrip(foo)
+
+
+class TestEmptyDataRoundTrip(ValidatorTestBase):
+    """
+    Test the special case of empty string datasets and attributes during validation
+    """
+    def setUp(self):
+        self.filename = 'test_ref_dataset.h5'
+        super().setUp()
+
+    def tearDown(self):
+        remove_test_file(self.filename)
+        super().tearDown()
+
+    def getSpecs(self):
+        ret = GroupSpec('A test group specification with a data type',
+                        data_type_def='Bar',
+                        datasets=[DatasetSpec(name='data',
+                                              doc='an example dataset',
+                                              dtype='text',
+                                              attributes=[AttributeSpec(
+                                                  name='attr2',
+                                                  doc='an example integer attribute',
+                                                  dtype='int',
+                                                  shape=(None,))]),
+                                  DatasetSpec(name='dataInt',
+                                              doc='an example int dataset',
+                                              dtype='int',
+                                              attributes=[])
+                                  ],
+                        attributes=[AttributeSpec(name='attr1',
+                                                  doc='an example string attribute',
+                                                  dtype='text',
+                                                  shape=(None,))])
+        return (ret,)
+
+    def runBuilderRoundTrip(self, builder):
+        """Executes a round-trip test for a builder
+
+        1. First writes the builder to file,
+        2. next reads a new builder from disk
+        3. and finally runs the builder through the validator.
+        The test is successful if there are no validation errors."""
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.add_namespace(self.namespace.name, self.namespace)
+        typemap = TypeMap(ns_catalog)
+        self.manager = BuildManager(typemap)
+
+        with HDF5IO(self.filename, manager=self.manager, mode='w') as write_io:
+            write_io.write_builder(builder)
+
+        with HDF5IO(self.filename, manager=self.manager, mode='r') as read_io:
+            read_builder = read_io.read_builder()
+            errors = self.vmap.validate(read_builder)
+            self.assertEqual(len(errors), 0, errors)
+
+    def test_empty_string_attribute(self):
+        """Verify that we can determine dtype for empty string attribute during validation"""
+        builder = GroupBuilder('my_bar',
+                               attributes={'data_type': 'Bar', 'attr1': []},  # <-- Empty string attribute
+                               datasets=[DatasetBuilder(name='data', data=['text1', 'text2'],
+                                                        attributes={'attr2': [10, ]}),
+                                         DatasetBuilder(name='dataInt', data=[5, ])
+                                         ])
+        self.runBuilderRoundTrip(builder)
+
+    def test_empty_string_dataset(self):
+        """Verify that we can determine dtype for empty string dataset during validation"""
+        builder = GroupBuilder('my_bar',
+                               attributes={'data_type': 'Bar', 'attr1': ['text1', 'text2']},
+                               datasets=[DatasetBuilder(name='data',    # <-- Empty string dataset
+                                                        data=[],
+                                                        dtype='text',
+                                                        attributes={'attr2': [10, ]}),
+                                         DatasetBuilder(name='dataInt', data=[5, ])
+                                         ])
+        self.runBuilderRoundTrip(builder)
+
+    def test_empty_int_attribute(self):
+        """Verify that we can determine dtype for empty integer attribute  during validation"""
+        builder = GroupBuilder('my_bar',
+                               attributes={'data_type': 'Bar', 'attr1': ['text1', 'text2']},
+                               datasets=[DatasetBuilder(name='data', data=['text1', 'text2'],
+                                                        attributes={'attr2': []}  # <-- Empty integer attribute
+                                                        ),
+                                         DatasetBuilder(name='dataInt', data=[5, ])
+                                         ])
+        self.runBuilderRoundTrip(builder)
+
+    def test_empty_int_dataset(self):
+        """Verify that a dataset builder containing an array of references passes
+        validation after a round trip"""
+        builder = GroupBuilder('my_bar',
+                               attributes={'data_type': 'Bar', 'attr1': ['text1', 'text2']},
+                               datasets=[DatasetBuilder(name='data', data=['text1', 'text2'],
+                                                        attributes={'attr2': [10, ]}),
+                                         DatasetBuilder(name='dataInt', data=[], dtype='int')  # <-- Empty int dataset
+                                         ])
+        self.runBuilderRoundTrip(builder)
