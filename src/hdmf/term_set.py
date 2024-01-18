@@ -315,14 +315,6 @@ class TermSetConfigurator:
         self.config = None
         self.load_termset_config()
 
-    def get_data_types(self):
-        """
-        Return list of data_types within current configuration file.
-        """
-        data_types = []
-        for data_type_dict in self.config:
-            data_types.append(data_type_dict['data_type'])
-
     @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.',
              'default': None})
     def load_termset_config(self,config_path):
@@ -334,18 +326,18 @@ class TermSetConfigurator:
             with open(self.path[0], 'r') as config:
                 termset_config = yaml.safe_load(config)
             self.config = termset_config
+        else:
+            # Check data_types within new config to see if they already exist in the current config
+            with open(config_path, 'r') as config:
+                termset_config = yaml.safe_load(config)
+                for data_type in termset_config:
+                    if data_type in self.config:
+                        self.config[data_type] = termset_config[data_type]
+                        termset_config.pop(data_type)
+                self.config.update(termset_config)
 
-        # # Check data_types within new config to see if they already exist in the current config
-        # with open(config_path, 'r') as config:
-        #     termset_config = yaml.safe_load(config)
-        #     for data_type_dict in termset_config:
-        #         if data_type_dict['data_type'] in self.get_data_types():
-        #             pass
-        #
-        #
-        # # append path to new config to self.path
-        # if config_path is not None:
-        #     self.path.append(config_path)
+            # append path to new config to self.path
+            self.path.append(config_path)
 
 
     def unload_termset_config():

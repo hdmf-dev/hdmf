@@ -12,9 +12,6 @@ TS_CONFIG = TermSetConfigurator()
 def get_termset_config():
     return TS_CONFIG.config
 
-def get_config_types():
-    return TS_CONFIG.get_data_types()
-
 @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.',
          'default': None})
 def load_termset_config(config_path: str):
@@ -28,12 +25,10 @@ def load_termset_config(config_path: str):
     - If the data_type is not present, then they will be loaded alongside the default curated configuration.
     """
     if config_path is None:
-        TS_CONFIG.path = "/Users/mavaylon/Research/NWB/hdmf2/hdmf/docs/gallery/example_config.yaml"
+        TS_CONFIG.unload_termset_config()
         TS_CONFIG.load_termset_config()
-
-
-
-
+    else:
+        TS_CONFIG.load_termset_config(config_path)
 
 def unload_termset_config():
     """
