@@ -5,6 +5,7 @@ from .utils import docval
 import warnings
 import numpy as np
 from .data_utils import append_data, extend_data
+import yaml
 
 
 class TermSet:
@@ -310,28 +311,46 @@ class TermSetConfigurator:
 
     """
     def __init__(self):
-        self.path = '/Users/mavaylon/Research/NWB/hdmf2/hdmf/docs/gallery/example_config.yaml'
+        self.path = ['/Users/mavaylon/Research/NWB/hdmf2/hdmf/docs/gallery/example_config.yaml']
+        self.config = None
+        self.load_termset_config()
 
-    # @property
-    # def config_path(self):
-    #     return self.__config_path
+    def get_data_types(self):
+        """
+        Return list of data_types within current configuration file.
+        """
+        data_types = []
+        for data_type_dict in self.config:
+            data_types.append(data_type_dict['data_type'])
 
     @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.',
              'default': None})
-    def load_termset_config(config_path: str):
+    def load_termset_config(self,config_path):
         """
         Load the configuration file for validation on the fields defined for the objects within the file.
-        By default, the curated configuration file is used, but can take in a custom file.
         """
-        if config_path not None:
-            self.path = config_path
+        # Set self.config for __init__
+        if self.config is None:
+            with open(self.path[0], 'r') as config:
+                termset_config = yaml.safe_load(config)
+            self.config = termset_config
 
-        with open(self.path, 'r') as config:
-            termset_config = yaml.safe_load(config)
-            return termset_config
+        # # Check data_types within new config to see if they already exist in the current config
+        # with open(config_path, 'r') as config:
+        #     termset_config = yaml.safe_load(config)
+        #     for data_type_dict in termset_config:
+        #         if data_type_dict['data_type'] in self.get_data_types():
+        #             pass
+        #
+        #
+        # # append path to new config to self.path
+        # if config_path is not None:
+        #     self.path.append(config_path)
+
 
     def unload_termset_config():
         """
         Remove validation according to termset configuration file.
         """
-        self.path = None
+        self.path = ['/Users/mavaylon/Research/NWB/hdmf2/hdmf/docs/gallery/example_config.yaml']
+        self.config = None

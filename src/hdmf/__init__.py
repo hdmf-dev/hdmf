@@ -9,14 +9,30 @@ from .term_set import TermSet, TermSetWrapper, TermSetConfigurator
 # a global TermSetConfigurator
 TS_CONFIG = TermSetConfigurator()
 
+def get_termset_config():
+    return TS_CONFIG.config
+
+def get_config_types():
+    return TS_CONFIG.get_data_types()
+
 @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.',
-         'default': '/Users/mavaylon/Research/NWB/hdmf2/hdmf/docs/gallery/example_config.yaml'}) #update path
+         'default': None})
 def load_termset_config(config_path: str):
     """
-    Load the configuration file for validation on the fields defined for the objects within the file.
-    By default, the curated configuration file is used, but can take in a custom file.
+    If a user does not provide a config_path, then this method will unload any present configuration
+    and load the default curated configuration.
+
+    If a user provides a config_path, then this method will:
+    - Search the current configuation for data_types that are already present. These data_types will be
+    replaced with the new configuration.
+    - If the data_type is not present, then they will be loaded alongside the default curated configuration.
     """
-    return TS_CONFIG.load_termset_config(config_path)
+    if config_path is None:
+        TS_CONFIG.path = "/Users/mavaylon/Research/NWB/hdmf2/hdmf/docs/gallery/example_config.yaml"
+        TS_CONFIG.load_termset_config()
+
+
+
 
 
 def unload_termset_config():

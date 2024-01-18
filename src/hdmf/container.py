@@ -238,18 +238,42 @@ class AbstractContainer(metaclass=ExtenderMeta):
     def init_validation(self, fields):
         # load termset configuartion file from global Config
         from . import TS_CONFIG #update path
-        # Before calling super().__init__() and before setting fields, check for config file for
-        # validation via TermSetWrapper.
-        termset_config = TS_CONFIG.load_termset_config()
+
+        termset_config = TS_CONFIG.config
+        breakpoint()
+        if termset_config is None:
+            msg = 'TermSet Configuration is not loaded.'
+            raise ValueError(msg)
         object_name = self.__class__.__name__
 
-        for obj_config in termset_config:
-            if obj_config['data_type'] == object_name:
-                for attr in obj_config['fields']:
-                    if attr in fields: # make sure any custom fields are not handled (i.e., make an extension)
-                        termset_path = obj_config['fields'][attr]
-                        termset = TermSet(term_schema_path=termset_path)
-                        fields[attr] = TermSetWrapper(value=fields[attr], termset=termset)
+        # Check that the object data_type is in the loaded namespace
+        from .common import get_type_map
+        container_types_dict = get_type_map().container_types
+        object_exists = False
+        for namespace in container_types_dict:
+            if object_name in container_types_dict[namespace]:
+                object_exists = True
+            else:
+                continue
+
+        if not object_exists:
+            msg = "%s is not in the loaded Namespace(s)." % object_name
+            raise ValueError(msg)
+
+        # Wrap supported fields with TermSetWrapper
+        obj_wrapped = False
+        if object_name in termset_config:
+            obj_wrapped = True
+            for attr in termset_config[object_name]['fields']:
+                if attr in fields: # make sure any custom fields are not handled (i.e., make an extension)
+                    termset_path = termset_config[object_name]['fields'][attr]
+                    termset = TermSet(term_schema_path=termset_path)
+                    fields[attr] = TermSetWrapper(value=fields[attr], termset=termset)
+
+        # Even if the data_type is in the namespace, it might not be in the configuration.
+        if not obj_wrapped:
+            msg = "%s is not in the loaded TermSet Configuration." % object_name
+            raise ValueError(msg)
 
     @property
     def read_io(self):
