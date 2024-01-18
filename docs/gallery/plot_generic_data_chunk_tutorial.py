@@ -119,9 +119,9 @@ with h5py.File(name=out_file, mode="w") as f:
 #   optimal performance  (typically 1 MB or less). In contrast, a :py:class:`~hdmf.data_utils.DataChunk` in
 #   HDMF acts as a block of data for writing data to dataset, and spans multiple HDF5 chunks to improve performance.
 #   This is achieved by avoiding repeat
-#   updates to the same `Chunk` in the HDF5 file, :py:class:`~hdmf.data_utils.DataChunk` objects for write
-#   should align with `Chunks` in the HDF5 file, i.e., the `DataChunk.selection`
-#   should fully cover one or more `Chunks`  in the HDF5 file to avoid repeat updates to the same
+#   updates to the same ``Chunk`` in the HDF5 file, :py:class:`~hdmf.data_utils.DataChunk` objects for write
+#   should align with ``Chunks`` in the HDF5 file, i.e., the ``DataChunk.selection``
+#   should fully cover one or more ``Chunks`` in the HDF5 file to avoid repeat updates to the same
 #   ``Chunks`` in the HDF5 file. This is what the `buffer` of the :py:class`~hdmf.data_utils.GenericDataChunkIterator`
 #   does, which upon each iteration returns a single
 #   :py:class:`~hdmf.data_utils.DataChunk` object (by default > 1 GB) that perfectly spans many HDF5 chunks
