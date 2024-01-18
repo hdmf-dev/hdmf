@@ -7,7 +7,7 @@ from .term_set import TermSet, TermSetWrapper, TermSetConfigurator
 
 
 # a global TermSetConfigurator
-TS_CONFIG = TermSetConfigurator()
+TS_CONFIG = TermSetConfigurator(path='src/hdmf/hdmf_config.yaml')
 
 def get_termset_config():
     return TS_CONFIG.config
