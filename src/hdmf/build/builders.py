@@ -415,7 +415,7 @@ class ReferenceBuilder(dict):
 
 class RegionBuilder(ReferenceBuilder):
 
-    @docval({'name': 'region', 'type': (slice, tuple, list, RegionReference),
+    @docval({'name': 'region', 'type': (slice, tuple, list, 'RegionReference'),
              'doc': 'The region, i.e. slice or indices, into the target dataset.'},
             {'name': 'builder', 'type': DatasetBuilder, 'doc': 'The dataset this region reference applies to.'})
     def __init__(self, **kwargs):

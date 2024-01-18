@@ -36,7 +36,7 @@ def extend_data(data, arg):
     """Add all the elements of the iterable arg to the end of data.
 
     :param data: The array to extend
-    :type data: list, DataIO, np.ndarray, h5py.Dataset
+    :type data: list, DataIO, numpy.ndarray, h5py.Dataset
     """
     if isinstance(data, (list, DataIO)):
         data.extend(arg)
@@ -383,15 +383,12 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         The developer of a new implementation of the GenericDataChunkIterator must ensure the data is actually
         loaded into memory, and not simply mapped.
 
-        :param selection: Tuple of slices, each indicating the selection indexed with respect to maxshape for that axis
-        :type selection: tuple of slices
+        :param selection: tuple of slices, each indicating the selection indexed with respect to maxshape for that axis.
+            Each axis of tuple is a slice of the full shape from which to pull data into the buffer.
+        :type selection: Tuple[slice]
 
         :returns: Array of data specified by selection
-        :rtype: np.ndarray
-        Parameters
-        ----------
-        selection : tuple of slices
-            Each axis of tuple is a slice of the full shape from which to pull data into the buffer.
+        :rtype: numpy.ndarray
         """
         raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
 
@@ -615,7 +612,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
         .. tip::
 
-            :py:attr:`numpy.s_` provides a convenient way to generate index tuples using standard array slicing. This
+            :py:obj:`numpy.s_` provides a convenient way to generate index tuples using standard array slicing. This
             is often useful to define the DataChunk.selection of the current chunk
 
         :returns: DataChunk object with the data and selection of the current chunk
@@ -800,17 +797,17 @@ def assertEqualShape(data1,
     Ensure that the shape of data1 and data2 match along the given dimensions
 
     :param data1: The first input array
-    :type data1: List, Tuple, np.ndarray, DataChunkIterator etc.
+    :type data1: List, Tuple, numpy.ndarray, DataChunkIterator
     :param data2: The second input array
-    :type data2: List, Tuple, np.ndarray, DataChunkIterator etc.
+    :type data2: List, Tuple, numpy.ndarray, DataChunkIterator
     :param name1: Optional string with the name of data1
     :param name2: Optional string with the name of data2
     :param axes1: The dimensions of data1 that should be matched to the dimensions of data2. Set to None to
                   compare all axes in order.
-    :type axes1: int, Tuple of ints, List of ints, or None
+    :type axes1: int, Tuple(int), List(int), None
     :param axes2: The dimensions of data2 that should be matched to the dimensions of data1. Must have
                   the same length as axes1. Set to None to compare all axes in order.
-    :type axes1: int, Tuple of ints, List of ints, or None
+    :type axes1: int, Tuple(int), List(int), None
     :param ignore_undetermined: Boolean indicating whether non-matching unlimited dimensions should be ignored,
                i.e., if two dimension don't match because we can't determine the shape of either one, then
                should we ignore that case or treat it as no match

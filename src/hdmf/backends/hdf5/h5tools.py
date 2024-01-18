@@ -484,7 +484,7 @@ class HDF5IO(HDMFIO):
                 raise UnsupportedOperation("Cannot read data from file %s in mode '%s'. There are no values."
                                            % (self.source, self.__mode))
 
-    @docval(returns='a GroupBuilder representing the data object', rtype='GroupBuilder')
+    @docval(returns='a GroupBuilder representing the data object', rtype=GroupBuilder)
     def read_builder(self):
         """
         Read data and return the GroupBuilder representing it.
@@ -978,7 +978,7 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
-            returns='the Group that was created', rtype='Group')
+            returns='the Group that was created', rtype=Group)
     def write_group(self, **kwargs):
         parent, builder = popargs('parent', 'builder', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
@@ -1033,7 +1033,7 @@ class HDF5IO(HDMFIO):
             {'name': 'builder', 'type': LinkBuilder, 'doc': 'the LinkBuilder to write'},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
-            returns='the Link that was created', rtype='Link')
+            returns='the Link that was created', rtype=(SoftLink, ExternalLink))
     def write_link(self, **kwargs):
         parent, builder, export_source = getargs('parent', 'builder', 'export_source', kwargs)
         self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
