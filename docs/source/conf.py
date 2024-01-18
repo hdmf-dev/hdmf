@@ -86,7 +86,6 @@ linkcheck_ignore = [
 ]
 
 nitpicky = True
-nitpick_ignore = [('py:class', 'Intracomm')]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
