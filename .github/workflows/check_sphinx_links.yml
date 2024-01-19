@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-external-links:
+  check-sphinx-links:
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
