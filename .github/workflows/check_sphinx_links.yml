@@ -1,4 +1,4 @@
-name: Check Sphinx external links
+name: Check Sphinx links
 on:
   pull_request:
   schedule:
@@ -29,5 +29,5 @@ jobs:
           python -m pip install -r requirements-doc.txt -r requirements-opt.txt
           python -m pip install .
 
-      - name: Check Sphinx external links
+      - name: Check Sphinx internal and external links
         run: sphinx-build -W -b linkcheck ./docs/source ./test_build
