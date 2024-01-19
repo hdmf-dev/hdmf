@@ -77,7 +77,7 @@ class HDF5IODataChunkIteratorQueue(deque):
         Append a value to the queue
 
         :param dataset: The dataset where the DataChunkIterator is written to
-        :type dataset: Dataset
+        :type dataset: :py:class:`~h5py.Dataset`
         :param data: DataChunkIterator with the data to be written
         :type data: AbstractDataChunkIterator
         """
@@ -604,7 +604,7 @@ class H5DataIO(DataIO):
 
         :param filter: String with the name of the filter, e.g., gzip, szip etc.
                        int with the registered filter ID, e.g. 307
-        :type filter: String, int
+        :type filter: str, int
         :param allow_plugin_filters: bool indicating whether the given filter can be dynamically loaded
         :return: bool indicating whether the given filter is available
         """

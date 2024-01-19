@@ -827,6 +827,17 @@ class TestDocValidator(TestCase):
             def method(self, **kwargs):
                 pass
 
+    def test_nested_return_types(self):
+        """Test that having nested tuple rtype creates valid sphinx references"""
+        @docval({'name': 'arg1', 'type': int, 'doc': 'an arg'},
+                returns='output', rtype=(list, (list, bool), (list, 'Test')))
+        def method(self, **kwargs):
+            return []
+
+        doc = ('method(arg1)\n\n\n\nArgs:\n    arg1 (:py:class:`~int`): an arg\n\nReturns:\n    '
+               ':py:class:`~list` or :py:class:`~list`, :py:class:`~bool` or :py:class:`~list`, Test: output')
+        self.assertEqual(method.__doc__, doc)
+
 
 class TestDocValidatorChain(TestCase):
 

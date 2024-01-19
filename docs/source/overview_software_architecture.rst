@@ -81,19 +81,19 @@ Spec
 * Interface for writing extensions or custom specification
 * There are several main specification classes:
 
-   * :py:class:`~hdmf.spec.AttributeSpec` - specification for metadata
-   * :py:class:`~hdmf.spec.GroupSpec` - specification for a collection of
+   * :py:class:`~hdmf.spec.spec.AttributeSpec` - specification for metadata
+   * :py:class:`~hdmf.spec.spec.GroupSpec` - specification for a collection of
      objects (i.e. subgroups, datasets, link)
-   * :py:class:`~hdmf.spec.DatasetSpec` - specification for dataset (like
+   * :py:class:`~hdmf.spec.spec.DatasetSpec` - specification for dataset (like
      and n-dimensional array). Specifies data type, dimensions, etc.
-   * :py:class:`~hdmf.spec.LinkSpec` - specification for link (like a POSIX
+   * :py:class:`~hdmf.spec.spec.LinkSpec` - specification for link (like a POSIX
      soft link)
    * :py:class:`~hdmf.spec.spec.RefSpec` - specification for references
      (References are like links, but stored as data)
-   * :py:class:`~hdmf.spec.DtypeSpec` - specification for compound data
+   * :py:class:`~hdmf.spec.spec.DtypeSpec` - specification for compound data
      types. Used to build complex data type specification, e.g., to define
      tables (used only in :py:class:`~hdmf.spec.spec.DatasetSpec` and
-     correspondingly :py:class:`~hdmf.spec.DatasetSpec`)
+     correspondingly :py:class:`~hdmf.spec.spec.DatasetSpec`)
 
 * **Main Modules:** :py:class:`hdmf.spec`
 

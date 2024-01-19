@@ -3,7 +3,7 @@
 Validating HDMF Data
 ====================
 
-Validation of NWB files is available through :py:mod:`~pynwb`. See the `PyNWB documentation
+Validation of NWB files is available through ``pynwb``. See the `PyNWB documentation
 <https://pynwb.readthedocs.io/en/stable/validation.html>`_ for more information.
 
 --------

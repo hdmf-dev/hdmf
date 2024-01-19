@@ -897,7 +897,7 @@ class HERD(Container):
 
     @docval({'name': 'use_categories', 'type': bool, 'default': False,
              'doc': 'Use a multi-index on the columns to indicate which category each column belongs to.'},
-            rtype=pd.DataFrame, returns='A DataFrame with all data merged into a flat, denormalized table.')
+            rtype='pandas.DataFrame', returns='A DataFrame with all data merged into a flat, denormalized table.')
     def to_dataframe(self, **kwargs):
         """
         Convert the data from the keys, resources, entities, objects, and object_keys tables

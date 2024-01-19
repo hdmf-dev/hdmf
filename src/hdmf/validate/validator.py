@@ -635,7 +635,7 @@ class SpecMatcher:
 
     @property
     def spec_matches(self):
-        """Returns a list of tuples of: (spec, assigned builders)"""
+        """Returns a list of tuples of (spec, assigned builders)"""
         return [(sm.spec, sm.builders) for sm in self._spec_matches]
 
     def assign_to_specs(self, builders):

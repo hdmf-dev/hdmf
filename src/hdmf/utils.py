@@ -72,10 +72,10 @@ def check_type(value, argtype, allow_none=False):
 
        The difference between this function and :py:func:`isinstance` is that
        it allows specifying a type as a string. Furthermore, strings allow for specifying more general
-       types, such as a simple numeric type (i.e. ``argtype``="num").
+       types, such as a simple numeric type (i.e. ``argtype="num"``).
 
        Args:
-           value (any): the value to check
+           value (Any): the value to check
            argtype (type, str): the type to check for
            allow_none (bool): whether or not to allow None as a valid value
 
@@ -568,7 +568,7 @@ def docval(*validator, **options):  # noqa: C901
     :param rtype: String describing the data type of the return values
     :param is_method: True if this is decorating an instance or class method, False otherwise (Default=True)
     :param enforce_shape: Enforce the dimensions of input arrays (Default=True)
-    :param validator: :py:func:`dict` objects specifying the method parameters
+    :param validator: :py:class:`dict` objects specifying the method parameters
     :param allow_extra: Allow extra arguments (Default=False)
     :param allow_positional: Allow positional arguments (Default=True)
     :param options: additional options for documenting and validating method parameters
@@ -668,8 +668,6 @@ def docval(*validator, **options):  # noqa: C901
                 return func(**pargs)
 
         _rtype = rtype
-        if isinstance(rtype, type):
-            _rtype = rtype.__name__
         docstring = __googledoc(func, _docval[__docval_args_loc], returns=returns, rtype=_rtype)
         docval_idx = {a['name']: a for a in _docval[__docval_args_loc]}  # cache a name-indexed dictionary of args
         setattr(func_call, '__doc__', docstring)
@@ -702,8 +700,10 @@ def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=No
             module = argtype.__module__
             name = argtype.__name__
 
-            if module.startswith("h5py") or module.startswith("pandas") or module.startswith("builtins"):
+            if module.startswith("builtins"):
                 return ":py:class:`~{name}`".format(name=name)
+            elif module.startswith("h5py") or module.startswith('pandas'):
+                return ":py:class:`~{module}.{name}`".format(name=name, module=module.split('.')[0])
             else:
                 return ":py:class:`~{module}.{name}`".format(name=name, module=module)
         return argtype
@@ -712,18 +712,23 @@ def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=No
         fmt = dict()
         fmt['name'] = arg.get('name')
         fmt['doc'] = arg.get('doc')
-        if isinstance(arg['type'], tuple) or isinstance(arg['type'], list):
-            fmt['type'] = " or ".join(map(to_str, arg['type']))
-        else:
-            fmt['type'] = to_str(arg['type'])
+        fmt['type'] = type_to_str(arg['type'])
         return arg_fmt.format(**fmt)
+
+    def type_to_str(type_arg, string=" or "):
+        if isinstance(type_arg, tuple) or isinstance(type_arg, list):
+            type_str = f"{string}".join(type_to_str(t, string=', ') for t in type_arg)
+        else:
+            type_str = to_str(type_arg)
+        return type_str
 
     sig = "%s(%s)\n\n" % (func.__name__, ", ".join(map(__sig_arg, validator)))
     desc = func.__doc__.strip() if func.__doc__ is not None else ""
     sig += docstring_fmt.format(description=desc, args="\n".join(map(__sphinx_arg, validator)))
 
     if not (ret_fmt is None or returns is None or rtype is None):
-        sig += ret_fmt.format(returns=returns, rtype=rtype)
+        rtype_fmt = type_to_str(rtype)
+        sig += ret_fmt.format(returns=returns, rtype=rtype_fmt)
     return sig
 
 
@@ -852,7 +857,7 @@ class ExtenderMeta(ABCMeta):
 
         An example use of this method would be to define a classmethod that gathers
         any defined methods or attributes after the base Python type construction (i.e. after
-        :py:func:`type` has been called)
+        :py:obj:`type` has been called)
         '''
         setattr(func, cls.__postinit, True)
         return classmethod(func)
@@ -880,8 +885,8 @@ def get_data_shape(data, strict_no_data_load=False):
     to enforce that this does not happen, at the cost that we may not be able to determine
     the shape of the array.
 
-    :param data: Array for which we should determine the shape.
-    :type data: List, numpy.ndarray, DataChunkIterator, any object that support __len__ or .shape.
+    :param data: Array for which we should determine the shape. Can be any object that supports __len__ or .shape.
+    :type data: List, numpy.ndarray, DataChunkIterator
     :param strict_no_data_load: If True and data is an out-of-core iterator, None may be returned. If False (default),
                                 the first element of data may be loaded into memory.
     :return: Tuple of ints indicating the size of known dimensions. Dimensions for which the size is unknown
