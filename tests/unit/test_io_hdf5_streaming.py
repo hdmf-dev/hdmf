@@ -19,6 +19,7 @@ class TestRos3(TestCase):
     def setUp(self):
         # Skip ROS3 tests if internet is not available or the ROS3 driver is not installed
         try:
+            # this is a 174 KB file
             urllib.request.urlopen("https://dandiarchive.s3.amazonaws.com/ros3test.nwb", timeout=1)
         except urllib.request.URLError:
             self.skipTest("Internet access to DANDI failed. Skipping all Ros3 streaming tests.")

@@ -389,7 +389,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
     def children(self):
         return tuple(self.__children)
 
-    @docval({'name': 'child', 'type': 'Container',
+    @docval({'name': 'child', 'type': 'hdmf.container.Container',
              'doc': 'the child Container for this Container', 'default': None})
     def add_child(self, **kwargs):
         warn(DeprecationWarning('add_child is deprecated. Set the parent attribute instead.'))
