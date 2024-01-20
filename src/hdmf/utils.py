@@ -96,7 +96,11 @@ def check_type(value, argtype, allow_none=False):
             return __is_float(value)
         elif argtype == 'bool':
             return __is_bool(value)
-        return argtype in [cls.__name__ for cls in value.__class__.__mro__]
+        cls_names = []
+        for cls in value.__class__.__mro__:
+            cls_names.append(f"{cls.__module__}.{cls.__qualname__}")
+            cls_names.append(cls.__name__)
+        return argtype in cls_names
     elif isinstance(argtype, type):
         if argtype is int:
             return __is_int(value)
@@ -706,6 +710,11 @@ def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=No
                 return ":py:class:`~{module}.{name}`".format(name=name, module=module.split('.')[0])
             else:
                 return ":py:class:`~{module}.{name}`".format(name=name, module=module)
+        elif isinstance(argtype, str):
+            if "." in argtype:  # type is (probably) a fully-qualified class name
+                return f":py:class:`~{argtype}`"
+            else:  # type is locally resolved class name. just format as code
+                return f"``{argtype}``"
         return argtype
 
     def __sphinx_arg(arg):
