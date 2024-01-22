@@ -310,8 +310,7 @@ class TermSetConfigurator:
     """
 
     """
-    @docval({'name': 'path', 'type': str, 'doc': 'Path to the configuartion file.',
-             'default': None})
+    @docval({'name': 'path', 'type': str, 'doc': 'Path to the configuartion file.'})
     def __init__(self, **kwargs):
         self.path = [kwargs['path']]
         self.config = None
@@ -341,9 +340,9 @@ class TermSetConfigurator:
             # append path to new config to self.path
             self.path.append(config_path)
 
-    def unload_termset_config():
+    def unload_termset_config(self):
         """
         Remove validation according to termset configuration file.
         """
-        self.path = ['src/hdmf/hdmf_config.yaml']
+        self.path = []
         self.config = None

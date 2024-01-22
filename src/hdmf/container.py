@@ -234,62 +234,68 @@ class AbstractContainer(metaclass=ExtenderMeta):
         self.__read_io = None
         self.__obj = None
 
-    @docval({'name': 'constructor_args', 'type': dict, 'doc': 'The fields/parameters/attibutes for the object.'})
-    def init_validation(self, constructor_args):
-        # load termset configuartion file from global Config
+    def get_config(self):
         from . import TS_CONFIG #update path
+        return TS_CONFIG
 
-        termset_config = TS_CONFIG.config
-        if termset_config is None:
-            msg = 'TermSet Configuration is not loaded.'
-            raise ValueError(msg)
-        object_name = self.__class__.__name__
-
-        # Check that the object data_type is in the loaded namespace
+    def get_type_map(self):
         from .common import get_type_map
         tm = get_type_map()
+        return tm
 
-        container_types_dict = tm.container_types
-        object_exists = False
-        for namespace in container_types_dict:
-            if object_name in container_types_dict[namespace]:
-                object_exists = True
-            else:
-                continue
+    @docval({'name': 'constructor_args', 'type': dict,
+             'doc': 'The fields/parameters/attibutes for the object.'})
+    def init_validation(self, constructor_args):
+        # load termset configuartion file from global Config
+        config = self.get_config()
+        termset_config = config.config
+        if termset_config is not None:
+            object_name = self.__class__.__name__
 
-        if not object_exists:
-            msg = "%s is not in the loaded Namespace(s)." % object_name
-            raise warn(msg)
+            # Check that the object data_type is in the loaded namespace
+            tm = self.get_type_map()
 
-        # Wrap supported fields with TermSetWrapper
-        obj_wrapped = False
-        if object_name in termset_config:
-            obj_wrapped = True
-            for attr in termset_config[object_name]['fields']:
-                obj_mapper = tm.get_map(self)
-                # get the spec according to attr name in schema
-                # Note: this is the name for the field in the config
-                spec = obj_mapper.get_attr_spec(attr)
-
-                # In the case of dealing with datasets directly or not defined in the spec.
-                # (Data/VectorData/DynamicTable/etc)
-                if spec is None:
-                #     constr_name= attr
-                    msg = "Spec not found for %s" % attr
-                    raise warn(msg)
-                # From the spec, get the corresponding constructor name
+            container_types_dict = tm.container_types
+            object_exists = False
+            for namespace in container_types_dict:
+                if object_name in container_types_dict[namespace]:
+                    object_exists = True
                 else:
-                    constr_name = obj_mapper.get_const_arg(spec)
+                    continue
 
-                if constr_name in constructor_args: # make sure any custom fields are not handled (i.e., make an extension)
-                    termset_path = termset_config[object_name]['fields'][attr]
-                    termset = TermSet(term_schema_path=termset_path)
-                    constructor_args[attr] = TermSetWrapper(value=constructor_args[attr], termset=termset)
+            if not object_exists:
+                msg = "%s is not in the loaded Namespace(s)." % object_name
+                warn(msg)
 
-        # Even if the data_type is in the namespace, it might not be in the configuration.
-        if object_exists and not obj_wrapped:
-            msg = "%s is not in the loaded TermSet Configuration." % object_name
-            raise warn(msg)
+            # Wrap supported fields with TermSetWrapper
+            obj_wrapped = False
+            if object_name in termset_config:
+                obj_wrapped = True
+                for attr in termset_config[object_name]['fields']:
+                    obj_mapper = tm.get_map(self)
+                    # get the spec according to attr name in schema
+                    # Note: this is the name for the field in the config
+                    spec = obj_mapper.get_attr_spec(attr)
+
+                    # In the case of dealing with datasets directly or not defined in the spec.
+                    # (Data/VectorData/DynamicTable/etc)
+                    if spec is None:
+                    #     constr_name= attr
+                        msg = "Spec not found for %s" % attr
+                        warn(msg)
+                    # From the spec, get the corresponding constructor name
+                    else:
+                        constr_name = obj_mapper.get_const_arg(spec)
+
+                    if constr_name in constructor_args: # make sure any custom fields are not handled (i.e., make an extension)
+                        termset_path = termset_config[object_name]['fields'][attr]
+                        termset = TermSet(term_schema_path=termset_path)
+                        constructor_args[attr] = TermSetWrapper(value=constructor_args[attr], termset=termset)
+
+            # Even if the data_type is in the namespace, it might not be in the configuration.
+            if object_exists and not obj_wrapped:
+                msg = "%s is not in the loaded TermSet Configuration." % object_name
+                warn(msg)
 
     @property
     def read_io(self):

@@ -5,12 +5,14 @@ from .region import ListSlicer
 from .utils import docval, getargs
 from .term_set import TermSet, TermSetWrapper, TermSetConfigurator
 
+import os
+
 
 # a global TermSetConfigurator
-TS_CONFIG = TermSetConfigurator(path='src/hdmf/hdmf_config.yaml')
-
-def get_termset_config():
-    return TS_CONFIG.config
+CUR_DIR = os.path.dirname(os.path.realpath(__file__))
+path_to_config = os.path.join(CUR_DIR, 'hdmf_config.yaml')
+TS_CONFIG = TermSetConfigurator(path=path_to_config)
+TS_CONFIG.unload_termset_config()
 
 @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.',
          'default': None})

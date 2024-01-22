@@ -1,5 +1,5 @@
 from hdmf.testing import TestCase
-from hdmf import get_termset_config, load_termset_config, unload_termset_config
+from hdmf import load_termset_config, unload_termset_config
 from hdmf.term_set import TermSetConfigurator
 
 class TestConfig(TestCase):
@@ -24,11 +24,6 @@ class TestConfig(TestCase):
         test_config.unload_termset_config()
         self.assertEqual(config.path, ['src/hdmf/hdmf_config.yaml'])
         self.assertEqual(config.config, None)
-
-    def test_get_termset_config(self):
-        config = get_termset_config()
-        self.assertEqual(config.path, ['src/hdmf/hdmf_config.yaml'])
-        # self.assertEqual(config.config, None)
 
     def test_unload_global_config(self):
         config = get_termset_config()
