@@ -35,7 +35,7 @@ class ClassGenerator:
             {'name': 'spec', 'type': BaseStorageSpec, 'doc': ''},
             {'name': 'parent_cls', 'type': type, 'doc': ''},
             {'name': 'attr_names', 'type': dict, 'doc': ''},
-            {'name': 'type_map', 'type': 'TypeMap', 'doc': ''},
+            {'name': 'type_map', 'type': 'hdmf.build.manager.TypeMap', 'doc': ''},
             returns='the class for the given namespace and data_type', rtype=type)
     def generate_class(self, **kwargs):
         """Get the container class from data type specification.

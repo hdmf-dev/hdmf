@@ -363,7 +363,7 @@ class HDF5IO(HDMFIO):
             {'name': 'exhaust_dci', 'type': bool,
              'doc': 'If True (default), exhaust DataChunkIterators one at a time. If False, exhaust them concurrently.',
              'default': True},
-            {'name': 'herd', 'type': 'HERD',
+            {'name': 'herd', 'type': 'hdmf.common.resources.HERD',
              'doc': 'A HERD object to populate with references.',
              'default': None})
     def write(self, **kwargs):
@@ -399,7 +399,8 @@ class HDF5IO(HDMFIO):
             ns_builder.export(self.__ns_spec_path, writer=writer)
 
     _export_args = (
-        {'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
+        {'name': 'src_io', 'type': 'hdmf.backends.io.HDMFIO',
+         'doc': 'the HDMFIO object for reading the data to export'},
         {'name': 'container', 'type': Container,
          'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
                  'exported'),
