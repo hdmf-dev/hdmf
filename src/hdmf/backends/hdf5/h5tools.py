@@ -363,7 +363,7 @@ class HDF5IO(HDMFIO):
             {'name': 'exhaust_dci', 'type': bool,
              'doc': 'If True (default), exhaust DataChunkIterators one at a time. If False, exhaust them concurrently.',
              'default': True},
-            {'name': 'herd', 'type': 'HERD',
+            {'name': 'herd', 'type': 'hdmf.common.resources.HERD',
              'doc': 'A HERD object to populate with references.',
              'default': None})
     def write(self, **kwargs):

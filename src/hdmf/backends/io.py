@@ -75,7 +75,7 @@ class HDMFIO(metaclass=ABCMeta):
         return container
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
-            {'name': 'herd', 'type': 'HERD',
+            {'name': 'herd', 'type': 'hdmf.common.resources.HERD',
              'doc': 'A HERD object to populate with references.',
              'default': None}, allow_extra=True)
     def write(self, **kwargs):

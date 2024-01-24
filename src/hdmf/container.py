@@ -34,7 +34,7 @@ class HERDManager:
     This class manages whether to set/attach an instance of HERD to the subclass.
     """
 
-    @docval({'name': 'herd', 'type': 'HERD',
+    @docval({'name': 'herd', 'type': 'hdmf.common.resources.HERD',
              'doc': 'The external resources to be used for the container.'},)
     def link_resources(self, **kwargs):
         """
