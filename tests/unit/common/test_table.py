@@ -17,8 +17,7 @@ from hdmf.common import (
     EnumData,
     DynamicTableRegion,
     get_manager,
-    SimpleMultiContainer,
-    load_termset_config
+    SimpleMultiContainer
 )
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
