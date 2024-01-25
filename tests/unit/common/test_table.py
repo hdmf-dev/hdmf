@@ -37,36 +37,6 @@ try:
 except ImportError:
     LINKML_INSTALLED = False
 
-class TestVDConfig(TestCase):
-    def test_init_config(self):
-        load_termset_config(config_path='/Users/mavaylon/Research/NWB/hdmf2/hdmf/tests/unit/test_config2.yaml')
-        vd = VectorData(name='data', description='',data=['Homo sapiens'])
-        # tb = DynamicTable(name="with_table_columns", description='a test table', columns=[vd])
-        # from hdmf.common import get_type_map
-        # htm = get_type_map()
-        # om = htm.get_map(tb)
-        # from datetime import datetime
-        # from uuid import uuid4
-
-        # import numpy as np
-        # from dateutil.tz import tzlocal
-        #
-        # from pynwb import NWBHDF5IO, NWBFile
-        # from pynwb.behavior import SpatialSeries
-        # from pynwb import get_type_map
-        # tm = get_type_map()
-        # timestamps = np.linspace(0, 50) / 200
-        # position_data = np.array([np.linspace(0, 10, 50), np.linspace(0, 8, 50)]).T
-        #
-        # position_spatial_series = SpatialSeries(
-        #     name="SpatialSeries",
-        #     description="Position (x, y) in an open field.",
-        #     data=position_data,
-        #     timestamps=timestamps,
-        #     reference_frame="(0,0) is bottom left corner",
-        # )
-        breakpoint()
-
 
 class TestDynamicTable(TestCase):
 

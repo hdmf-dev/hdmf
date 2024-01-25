@@ -422,10 +422,6 @@ class TypeMap:
         return self.__ns_catalog
 
     @property
-    def data_types(self):
-        return self.__data_types
-
-    @property
     def container_types(self):
         return self.__container_types
 
