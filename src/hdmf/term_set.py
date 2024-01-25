@@ -310,35 +310,35 @@ class TermSetConfigurator:
     """
 
     """
-    @docval({'name': 'path', 'type': str, 'doc': 'Path to the configuartion file.'})
+    @docval({'name': 'path', 'type': str, 'doc': 'Path to the configuration file.', 'default': None})
     def __init__(self, **kwargs):
-        self.path = [kwargs['path']]
         self.config = None
-        self.load_termset_config()
+        if kwargs['path'] is None:
+            self.path = []
+        else:
+            self.path = [kwargs['path']]
+            self.load_termset_config(config_path=self.path[0])
 
-    @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.',
-             'default': None})
+    @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.'})
     def load_termset_config(self,config_path):
         """
         Load the configuration file for validation on the fields defined for the objects within the file.
         """
-        # Set self.config for __init__
-        if self.config is None:
-            with open(self.path[0], 'r') as config:
-                termset_config = yaml.safe_load(config)
-            self.config = termset_config
-        else:
-            # Check data_types within new config to see if they already exist in the current config
-            with open(config_path, 'r') as config:
-                termset_config = yaml.safe_load(config)
+        with open(config_path, 'r') as config:
+            termset_config = yaml.safe_load(config)
+            if self.config is None: # set the initial config/load after config has been unloaded
+                self.config = termset_config
+                if len(self.path)==0: # for loading after an unloaded config
+                    self.path.append(config_path)
+            else: # append to the existing config
                 for data_type in termset_config:
                     if data_type in self.config:
                         self.config[data_type] = termset_config[data_type]
                         termset_config.pop(data_type)
                 self.config.update(termset_config)
 
-            # append path to new config to self.path
-            self.path.append(config_path)
+                # append path to new config to self.path
+                self.path.append(config_path)
 
     def unload_termset_config(self):
         """

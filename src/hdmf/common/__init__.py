@@ -20,6 +20,14 @@ from ..container import _set_exp  # noqa: E402
 # a global type map
 global __TYPE_MAP
 
+def load_termset_config(config_path: str):
+    """
+    This method will:
+    - Search the current configuration for data_types that are already present. These data_types will be
+    replaced with the new configuration.
+    - If the data_type is not present, then they will be loaded alongside the default curated configuration.
+    """
+    __TYPE_MAP.ts_config.load_termset_config(config_path)
 
 # a function to register a container classes with the global map
 @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the spec for'},
@@ -37,10 +45,14 @@ def register_class(**kwargs):
         def _dec(cls):
             _set_exp(cls)
             __TYPE_MAP.register_container_type(namespace, data_type, cls)
+            cls.type_map = __TYPE_MAP
+            cls.namespace = namespace
             return cls
     else:
         def _dec(cls):
             __TYPE_MAP.register_container_type(namespace, data_type, cls)
+            cls.type_map = __TYPE_MAP
+            cls.namespace = namespace
             return cls
 
     if container_cls is None:

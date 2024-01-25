@@ -5,6 +5,7 @@ from copy import copy
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
+from ..term_set import TermSetConfigurator
 from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog
 from ..spec.spec import BaseStorageSpec
 from ..utils import docval, getargs, ExtenderMeta, get_docval
@@ -391,13 +392,15 @@ class TypeSource:
 
 
 class TypeMap:
-    ''' A class to maintain the map between ObjectMappers and AbstractContainer classes
-    '''
+    """
+    A class to maintain the map between ObjectMappers and AbstractContainer classes
+    """
 
     @docval({'name': 'namespaces', 'type': NamespaceCatalog, 'doc': 'the NamespaceCatalog to use', 'default': None},
-            {'name': 'mapper_cls', 'type': type, 'doc': 'the ObjectMapper class to use', 'default': None})
+            {'name': 'mapper_cls', 'type': type, 'doc': 'the ObjectMapper class to use', 'default': None},
+            {'name': 'config_path', 'type': str, 'doc': 'The path to the TermSet config yaml.', 'default': None})
     def __init__(self, **kwargs):
-        namespaces, mapper_cls = getargs('namespaces', 'mapper_cls', kwargs)
+        namespaces, mapper_cls, config_path = getargs('namespaces', 'mapper_cls', 'config_path', kwargs)
         if namespaces is None:
             namespaces = NamespaceCatalog()
         if mapper_cls is None:
@@ -410,13 +413,17 @@ class TypeMap:
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
         self.__class_generator = ClassGenerator()
-        self.__load_termset_config = True
+        self.ts_config = TermSetConfigurator(path=config_path)
         self.register_generator(CustomClassGenerator)
         self.register_generator(MCIClassGenerator)
 
     @property
     def namespace_catalog(self):
         return self.__ns_catalog
+
+    @property
+    def data_types(self):
+        return self.__data_types
 
     @property
     def container_types(self):

@@ -18,6 +18,7 @@ from hdmf.common import (
     DynamicTableRegion,
     get_manager,
     SimpleMultiContainer,
+    load_termset_config
 )
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
@@ -38,13 +39,14 @@ except ImportError:
 
 class TestVDConfig(TestCase):
     def test_init_config(self):
+        load_termset_config(config_path='/Users/mavaylon/Research/NWB/hdmf2/hdmf/tests/unit/test_config2.yaml')
         vd = VectorData(name='data', description='',data=['Homo sapiens'])
-        tb = DynamicTable(name="with_table_columns", description='a test table', columns=[vd])
-        from hdmf.common import get_type_map
-        htm = get_type_map()
-        om = htm.get_map(tb)
-        from datetime import datetime
-        from uuid import uuid4
+        # tb = DynamicTable(name="with_table_columns", description='a test table', columns=[vd])
+        # from hdmf.common import get_type_map
+        # htm = get_type_map()
+        # om = htm.get_map(tb)
+        # from datetime import datetime
+        # from uuid import uuid4
 
         # import numpy as np
         # from dateutil.tz import tzlocal

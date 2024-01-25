@@ -3,40 +3,9 @@ from .backends.hdf5.h5_utils import H5Dataset, H5RegionSlicer
 from .container import Container, Data, DataRegion, HERDManager
 from .region import ListSlicer
 from .utils import docval, getargs
-from .term_set import TermSet, TermSetWrapper, TermSetConfigurator
 
 import os
 
-
-# a global TermSetConfigurator
-CUR_DIR = os.path.dirname(os.path.realpath(__file__))
-path_to_config = os.path.join(CUR_DIR, 'hdmf_config.yaml')
-TS_CONFIG = TermSetConfigurator(path=path_to_config)
-TS_CONFIG.unload_termset_config()
-
-@docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.',
-         'default': None})
-def load_termset_config(config_path: str):
-    """
-    If a user does not provide a config_path, then this method will unload any present configuration
-    and load the default curated configuration.
-
-    If a user provides a config_path, then this method will:
-    - Search the current configuation for data_types that are already present. These data_types will be
-    replaced with the new configuration.
-    - If the data_type is not present, then they will be loaded alongside the default curated configuration.
-    """
-    if config_path is None:
-        TS_CONFIG.unload_termset_config()
-        TS_CONFIG.load_termset_config()
-    else:
-        TS_CONFIG.load_termset_config(config_path)
-
-def unload_termset_config():
-    """
-    Remove validation.
-    """
-    return TS_CONFIG.unload_termset_config()
 
 @docval(
     {"name": "dataset", "type": None, "doc": "the HDF5 dataset to slice"},
