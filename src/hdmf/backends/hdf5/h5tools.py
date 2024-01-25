@@ -140,7 +140,7 @@ class HDF5IO(HDMFIO):
         if file_obj is None:
             file_kwargs = dict()
             if driver is not None:
-                file_kwargs.update(driver=driver)
+                file_kwargs.update(driver=driver, aws_region=bytes("us-east-2", "ascii"))
             file_obj = File(path, 'r', **file_kwargs)
         return file_obj
 
@@ -756,6 +756,9 @@ class HDF5IO(HDMFIO):
 
             if self.driver is not None:
                 kwargs.update(driver=self.driver)
+
+                if self.driver == "ros3":
+                    kwargs.update(aws_region=bytes("us-east-2", "ascii"))
 
             self.__file = File(self.source, open_flag, **kwargs)
 
