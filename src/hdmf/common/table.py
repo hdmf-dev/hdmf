@@ -1101,6 +1101,9 @@ class DynamicTable(Container):
         id_index = coldata.pop('id')
         df_input = OrderedDict()
         for k in coldata:  # for each column
+            for item in coldata[k]:
+                if type(item) == TermSetWrapper:
+                    item = item.value
             if isinstance(coldata[k], np.ndarray) and coldata[k].ndim > 1:
                 df_input[k] = list(coldata[k])  # convert multi-dim array to list of inner arrays
             elif isinstance(coldata[k], pd.DataFrame):
