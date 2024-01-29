@@ -3,6 +3,7 @@
 ## HDMF 3.12.1 (Upcoming)
 
 ### Bug fixes
+- Fixed retrieving the correct path for a `HERD` zip file on read. [#1046](https://github.com/hdmf-dev/hdmf/pull/1046)
 - Fixed internal links in docstrings and tutorials. @stephprince [#1031](https://github.com/hdmf-dev/hdmf/pull/1031)
 - Fixed issue with creating documentation links to classes in docval arguments. @rly [#1036](https://github.com/hdmf-dev/hdmf/pull/1036)
 
