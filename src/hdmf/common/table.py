@@ -1111,7 +1111,7 @@ class DynamicTable(Container):
                     resolve_data.append(item)
             if len(resolve_data) != 0:
                 coldata[k] = resolve_data
-                
+
             if isinstance(coldata[k], np.ndarray) and coldata[k].ndim > 1:
                 df_input[k] = list(coldata[k])  # convert multi-dim array to list of inner arrays
             elif isinstance(coldata[k], pd.DataFrame):
