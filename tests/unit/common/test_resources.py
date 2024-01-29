@@ -750,8 +750,8 @@ class TestHERD(TestCase):
         er.to_zip(path='./HERD.zip')
         er.to_zip(path='HERD2.zip')
 
-        d1 = er._get_zip_directory('./HERD.zip')
-        d2 = er._get_zip_directory('HERD2.zip')
+        d1 = er.get_zip_directory('./HERD.zip')
+        d2 = er.get_zip_directory('HERD2.zip')
 
         self.assertEqual(d1,d2)
 
