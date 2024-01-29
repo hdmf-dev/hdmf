@@ -996,7 +996,7 @@ class HERD(Container):
         Method to read in zipped tsv files to populate HERD.
         """
         zip_file = kwargs['path']
-        directory = os.path.dirname(zip_file)
+        directory = os.path.dirname(os.path.realpath(zip_file))
 
         with zipfile.ZipFile(zip_file, 'r') as zip:
             zip.extractall(directory)
