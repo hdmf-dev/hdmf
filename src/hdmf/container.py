@@ -642,7 +642,10 @@ class Container(AbstractContainer):
         return html_repr
 
     def _generate_field_html(self, key, value, level, access_code):
-        """Generates HTML for a single field."""
+        """Generates HTML for a single field.
+
+        This function can be overwritten by a child class to implement customized html representations.
+        """
 
         if isinstance(value, (int, float, str, bool)):
             return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
