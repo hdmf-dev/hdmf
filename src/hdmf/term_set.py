@@ -319,26 +319,51 @@ class TermSetConfigurator:
             self.path = [kwargs['path']]
             self.load_termset_config(config_path=self.path[0])
 
+    def get_config(self, object_name, namespace):
+        try:
+            namespace_config = self.config['namespaces'][namespace]
+        except KeyError:
+            msg = 'The namespace %s was not found within the configuration.' % namespace
+            raise ValueError(msg)
+
+        try:
+            type_config = namespace_config['data_types'][object_name]
+            return type_config
+        except KeyError:
+            msg = '%s was not found within the configuration for that namespace.' % object_name
+            raise ValueError(msg)
+
     @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.'})
     def load_termset_config(self,config_path):
         """
         Load the configuration file for validation on the fields defined for the objects within the file.
         """
+
         with open(config_path, 'r') as config:
             termset_config = yaml.safe_load(config)
             if self.config is None: # set the initial config/load after config has been unloaded
                 self.config = termset_config
                 if len(self.path)==0: # for loading after an unloaded config
                     self.path.append(config_path)
-            else: # append to the existing config
-                for data_type in termset_config:
-                    if data_type in self.config:
-                        self.config[data_type] = termset_config[data_type]
-                        termset_config.pop(data_type)
-                self.config.update(termset_config)
+            else: # append/replace to the existing config
+                if config_path in self.path:
+                    msg = 'This configuration file path already exists within the configurator.'
+                    raise ValueError(msg)
+                else:
+                    for namespace in termset_config:
+                        if namespace not in self.config: # append namespace config if not present within self.config
+                            self.config['namespaces'][namespace] = termset_config['namespaces'][namespace]
+                        else: # check for any needed overrides within existing namespace configs
+                            for data_type in termset_config['namespaces'][namespace]['data_types']:
+                                if data_type in self.config['namespaces'][namespace]['data_types']:
+                                    replace_config = termset_config['namespaces'][namespace]['data_types'][data_type]
+                                    self.config['namespaces'][namespace]['data_types'][data_type] = replace_config
+                                else: # append to config
+                                    new_data_type_config = termset_config['namespaces'][namespace]['data_types'][data_type]
+                                    self.config['namespaces'][namespace]['data_types'] = new_data_type_config
 
-                # append path to new config to self.path
-                self.path.append(config_path)
+                    # append path to self.path
+                    self.path.append(config_path)
 
     def unload_termset_config(self):
         """

@@ -6,6 +6,7 @@ from typing import Type
 from uuid import uuid4
 from warnings import warn
 import yaml
+import os
 
 import h5py
 import numpy as np
@@ -72,12 +73,12 @@ class AbstractContainer(metaclass=ExtenderMeta):
     # Override the _setter factor function, so directives that apply to
     # Container do not get used on Data
     @classmethod
-    def _setter(cls, field):
+    def _setter(cls, field): # dada
         """
         Make a setter function for creating a :py:func:`property`
         """
         name = field['name']
-
+        # breakpoint()
         if not field.get('settable', True):
             return None
 
@@ -87,9 +88,65 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if name in self.fields:
                 msg = "can't set attribute '%s' -- already set" % name
                 raise AttributeError(msg)
-            self.fields[name] = val
+            self.fields[name] = self._field_config(arg_name=name, val=val)
+            # self.fields[name] = val
 
         return setter
+
+
+    def _field_config(self, arg_name, val):
+        """
+
+        """
+        # load termset configuartion file from global Config
+        # if arg_name == 'location':
+            # breakpoint()
+        configurator = self.type_map.ts_config
+        if len(configurator.path)>0:
+            CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
+            termset_config = configurator.config
+
+
+            # check to see that the namespace for the container is in the config
+            if self.namespace not in self.type_map.container_types:
+                msg = "%s not found within loaded configuration." % self.namespace
+                warn(msg)
+            else:
+                # check to see that the container type is in the config under the namespace
+                config_namespace = termset_config['namespaces'][self.namespace]
+                object_name = self.__class__.__name__
+
+                if object_name not in config_namespace['data_types']:
+                    msg = '%s not found within the configuration for %s' % (object_name, self.namespace)
+                else:
+                    for attr in config_namespace['data_types'][object_name]:
+                        # if the attr has been manually wrapped then skip checking the config for the attr
+                        if type(attr) == TermSetWrapper:
+                            continue
+
+                        obj_mapper = self.type_map.get_map(self)
+                        # get the spec according to attr name in schema
+                        # Note: this is the name for the field in the config
+
+                        spec = obj_mapper.get_attr_spec(attr)
+
+                        # In the case of dealing with datasets directly or not defined in the spec.
+                        # (Data/VectorData/DynamicTable/etc)
+                        if spec is None:
+                            msg = "Spec not found for %s" % attr
+                            warn(msg)
+                        # From the spec, get the corresponding constructor name
+                        else:
+                            constr_name = obj_mapper.get_const_arg(spec)
+                            if constr_name == arg_name: # make sure any custom fields are not handled (i.e., make an extension)
+                                termset_path = os.path.join(CUR_DIR, config_namespace['data_types'][object_name][attr])
+                                termset = TermSet(term_schema_path=termset_path)
+                                val = TermSetWrapper(value=val, termset=termset)
+                                return val
+                return val
+        else:
+            return val
+
 
     @classmethod
     def _getter(cls, field):
@@ -242,11 +299,12 @@ class AbstractContainer(metaclass=ExtenderMeta):
         """
         # load termset configuartion file from global Config
         configurator = self.type_map.ts_config
+        CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
         termset_config = configurator.config
+
         if termset_config is not None:
             # check to see that the namespace for the container is in the config
             if self.namespace not in self.type_map.container_types:
-                breakpoint()
                 msg = "%s not found within loaded configuration." % self.namespace
                 warn(msg)
             else:
@@ -255,18 +313,21 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 object_name = self.__class__.__name__
 
                 if object_name not in config_namespace['data_types']:
-                    breakpoint()
                     msg = '%s not found within the configuration for %s' % (object_name, self.namespace)
                 else:
                     for attr in config_namespace['data_types'][object_name]:
+                        # if the attr has been manually wrapped then skip checking the config for the attr
+                        if type(attr) == TermSetWrapper:
+                            continue
+
                         obj_mapper = self.type_map.get_map(self)
                         # get the spec according to attr name in schema
                         # Note: this is the name for the field in the config
+
                         spec = obj_mapper.get_attr_spec(attr)
 
                         # In the case of dealing with datasets directly or not defined in the spec.
                         # (Data/VectorData/DynamicTable/etc)
-                        breakpoint()
                         if spec is None:
                             msg = "Spec not found for %s" % attr
                             warn(msg)
@@ -274,7 +335,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
                         else:
                             constr_name = obj_mapper.get_const_arg(spec)
                             if constr_name in constructor_args: # make sure any custom fields are not handled (i.e., make an extension)
-                                termset_path = config_namespace['data_types'][object_name][attr]
+                                termset_path = os.path.join(CUR_DIR, config_namespace['data_types'][object_name][attr])
                                 termset = TermSet(term_schema_path=termset_path)
                                 constructor_args[attr] = TermSetWrapper(value=constructor_args[attr], termset=termset)
 
@@ -546,6 +607,7 @@ class Container(AbstractContainer):
     def _setter(cls, field):
         """Returns a list of setter functions for the given field to be added to the class during class declaration."""
         super_setter = AbstractContainer._setter(field)
+        # breakpoint()
         ret = [super_setter]
         # create setter with check for required name
         # the AbstractContainer that is passed to the setter must have name = required_name
@@ -572,6 +634,7 @@ class Container(AbstractContainer):
             idx2 = len(ret) - 1
 
             def container_setter(self, val):
+                # breakpoint()
                 ret[idx2](self, val)  # call the previous setter
                 if val is not None:
                     if isinstance(val, (tuple, list)):
@@ -830,8 +893,6 @@ class Data(AbstractContainer):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):
-        self.init_validation(constructor_args=kwargs)
-        # breakpoint()
         data = popargs('data', kwargs)
         super().__init__(**kwargs)
 
