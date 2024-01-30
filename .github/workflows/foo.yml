@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-          # fetch-depth: 0  # tags are required to determine the version
+          fetch-depth: 0  # tags are required to determine the version
       - name: check tag
         run: |
           git tag -l | sort -V
