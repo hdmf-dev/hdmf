@@ -1,0 +1,41 @@
+name: Run tests
+on:
+  push:
+    branches:
+      - dev
+    tags-ignore:  # exclude tags created by "ci_addons publish_github_release"
+      - 'latest'
+      - 'latest-tmp'
+  pull_request:
+
+jobs:
+  run-tests:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # NOTE config below with "upload-wheels: true" specifies that wheels should be uploaded as an artifact
+          - { name: linux-python3.8-minimum      , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: ubuntu-latest }
+          - { name: linux-python3.12             , test-tox-env: pytest-py312-pinned    , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-python3.12-upgraded    , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: ubuntu-latest , upload-wheels: true }
+          - { name: windows-python3.8-minimum    , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: windows-latest }
+          - { name: windows-python3.12-upgraded  , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: windows-latest }
+          - { name: macos-python3.8-minimum      , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: macos-latest }
+          - { name: macos-python3.12-upgraded    , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: macos-latest }
+    steps:
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          # fetch-depth: 0  # tags are required to determine the version
+      - name: check tag
+        run: |
+          git tag -l | sort -V
