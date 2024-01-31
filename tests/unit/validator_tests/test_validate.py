@@ -1217,3 +1217,55 @@ class TestEmptyDataRoundTrip(ValidatorTestBase):
                                          DatasetBuilder(name='dataInt', data=[], dtype='int')  # <-- Empty int dataset
                                          ])
         self.runBuilderRoundTrip(builder)
+
+
+class TestValidateSubspec(ValidatorTestBase):
+    """When a subtype satisfies a subspec, the validator should also validate
+    that the subtype satisfies its spec.
+    """
+
+    def getSpecs(self):
+        dataset_spec = DatasetSpec('A dataset', data_type_def='Foo')
+        sub_dataset_spec = DatasetSpec(
+            doc='A subtype of Foo',
+            data_type_def='Bar',
+            data_type_inc='Foo',
+            attributes=[
+                AttributeSpec(name='attr1', doc='an example attribute', dtype='text')
+            ],
+        )
+        spec = GroupSpec(
+            doc='A group that contains a Foo',
+            data_type_def='Baz',
+            datasets=[
+                DatasetSpec(doc='Child Dataset', data_type_inc='Foo'),
+            ])
+        return (spec, dataset_spec, sub_dataset_spec)
+
+    def test_validate_subtype(self):
+        """Test that when spec A contains dataset B, and C is a subtype of B, using a C builder is valid.
+        """
+        builder = GroupBuilder(
+            name='my_baz',
+            attributes={'data_type': 'Baz'},
+            datasets=[
+                DatasetBuilder(name='bar', attributes={'data_type': 'Bar', 'attr1': 'value'})
+            ],
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def test_validate_subtype_error(self):
+        """Test that when spec A contains dataset B, and C is a subtype of B, using a C builder validates
+        against spec C.
+        """
+        builder = GroupBuilder(
+            name='my_baz',
+            attributes={'data_type': 'Baz'},
+            datasets=[
+                DatasetBuilder(name='bar', attributes={'data_type': 'Bar'})
+            ],
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertValidationError(result[0], MissingError, name='Bar/attr1')
