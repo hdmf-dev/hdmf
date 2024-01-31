@@ -143,6 +143,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
                                 termset = TermSet(term_schema_path=termset_path)
                                 # If the val has been manually wrapped then skip checking the config for the attr
                                 if type(val) == TermSetWrapper:
+                                    msg = "Field value already wrapped with TermSetWrapper."
+                                    warn(msg)
                                     return val
                                 else:
                                     val = TermSetWrapper(value=val, termset=termset)
