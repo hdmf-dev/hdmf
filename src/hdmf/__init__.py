@@ -5,8 +5,6 @@ from .region import ListSlicer
 from .utils import docval, getargs
 from .term_set import TermSet, TermSetWrapper, TermSetConfigurator
 
-import os
-
 
 @docval(
     {"name": "dataset", "type": None, "doc": "the HDF5 dataset to slice"},
