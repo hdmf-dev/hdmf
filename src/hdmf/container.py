@@ -37,7 +37,7 @@ class HERDManager:
     This class manages whether to set/attach an instance of HERD to the subclass.
     """
 
-    @docval({'name': 'herd', 'type': 'hdmf.common.resources.HERD',
+    @docval({'name': 'herd', 'type': 'HERD',
              'doc': 'The external resources to be used for the container.'},)
     def link_resources(self, **kwargs):
         """
@@ -78,7 +78,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
         Make a setter function for creating a :py:func:`property`
         """
         name = field['name']
-        # breakpoint()
+        # if name == 'electrodes':
+        #     breakpoint()
         if not field.get('settable', True):
             return None
 
@@ -89,7 +90,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 msg = "can't set attribute '%s' -- already set" % name
                 raise AttributeError(msg)
             self.fields[name] = self._field_config(arg_name=name, val=val)
-            # self.fields[name] = val
 
         return setter
 
@@ -99,8 +99,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
         """
         # load termset configuartion file from global Config
-        # if arg_name == 'location':
-            # breakpoint()
         configurator = self.type_map.ts_config
         if len(configurator.path)>0:
             CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
@@ -120,6 +118,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
                     msg = '%s not found within the configuration for %s' % (object_name, self.namespace)
                 else:
                     for attr in config_namespace['data_types'][object_name]:
+                        # if object_name == 'NWBFile':
+                        #     breakpoint()
                         # if the attr has been manually wrapped then skip checking the config for the attr
                         if type(attr) == TermSetWrapper:
                             continue
@@ -141,6 +141,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
                             if constr_name == arg_name: # make sure any custom fields are not handled (i.e., make an extension)
                                 termset_path = os.path.join(CUR_DIR, config_namespace['data_types'][object_name][attr])
                                 termset = TermSet(term_schema_path=termset_path)
+
                                 val = TermSetWrapper(value=val, termset=termset)
                                 return val
                 return val
@@ -496,7 +497,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
     def children(self):
         return tuple(self.__children)
 
-    @docval({'name': 'child', 'type': 'hdmf.container.Container',
+    @docval({'name': 'child', 'type': 'Container',
              'doc': 'the child Container for this Container', 'default': None})
     def add_child(self, **kwargs):
         warn(DeprecationWarning('add_child is deprecated. Set the parent attribute instead.'))

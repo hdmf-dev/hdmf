@@ -350,10 +350,11 @@ class TermSetConfigurator:
                     msg = 'This configuration file path already exists within the configurator.'
                     raise ValueError(msg)
                 else:
-                    for namespace in termset_config:
+                    for namespace in termset_config['namespaces']:
                         if namespace not in self.config: # append namespace config if not present within self.config
                             self.config['namespaces'][namespace] = termset_config['namespaces'][namespace]
                         else: # check for any needed overrides within existing namespace configs
+                            breakpoint()
                             for data_type in termset_config['namespaces'][namespace]['data_types']:
                                 if data_type in self.config['namespaces'][namespace]['data_types']:
                                     replace_config = termset_config['namespaces'][namespace]['data_types'][data_type]

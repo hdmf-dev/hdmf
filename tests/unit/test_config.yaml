@@ -9,3 +9,7 @@ namespaces:
         field1: '...'
   hdmf-experimental:
     version: TBD
+    data_types:
+      type1:
+        field1: '/Users/mavaylon/Research/NWB/hdmf2/hdmf/tests/unit/example_test_term_set.yaml'
+        field2: '...'

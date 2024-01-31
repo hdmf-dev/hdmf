@@ -9,3 +9,8 @@ namespaces:
         field1: '...'
   hdmf-experimental:
     version: TBD
+  core:
+    data_types:
+      NWBFile:
+            experimenter: experimenter_termset2.yaml
+            blah: experimenter.yaml
