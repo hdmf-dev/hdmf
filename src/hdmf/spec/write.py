@@ -240,14 +240,14 @@ def export_spec(ns_builder, new_data_types, output_dir):
     the given data type specs.
 
     Args:
-        ns_builder - NamespaceBuilder instance used to build the
+        ns_builder: NamespaceBuilder instance used to build the
                      namespace and extension
-        new_data_types - Iterable of specs that represent new data types
+        new_data_types: Iterable of specs that represent new data types
                          to be added
     """
 
     if len(new_data_types) == 0:
-        warnings.warn('No data types specified. Exiting.')
+        warnings.warn('No data types specified. Exiting.', stacklevel=2)
         return
 
     ns_path = ns_builder.name + '.namespace.yaml'

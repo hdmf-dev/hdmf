@@ -76,6 +76,7 @@ intersphinx_mapping = {
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "h5py": ("https://docs.h5py.org/en/latest/", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
+    "zarr": ("https://zarr.readthedocs.io/en/stable/", None),
 }
 
 # these links cannot be checked in github actions
@@ -83,6 +84,14 @@ linkcheck_ignore = [
     "https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key",
     "https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request",
 ]
+
+nitpicky = True
+nitpick_ignore = [('py:class', 'Intracomm'),
+                  ('py:class', 'h5py.RegionReference'),
+                  ('py:class', 'h5py._hl.dataset.Dataset'),
+                  ('py:class', 'function'),
+                  ('py:class', 'unittest.case.TestCase'),
+                  ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -99,7 +108,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "HDMF"
-copyright = "2017-2023, Hierarchical Data Modeling Framework"
+copyright = "2017-2024, Hierarchical Data Modeling Framework"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

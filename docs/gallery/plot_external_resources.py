@@ -153,8 +153,8 @@ herd.add_ref(
 # ------------------------------------------------------
 # It is important to keep in mind that when adding and :py:class:`~hdmf.common.resources.Object` to
 # the :py:class:~hdmf.common.resources.ObjectTable, the parent object identified by
-# :py:class:`~hdmf.common.resources.Object.object_id` must be the closest parent to the target object
-# (i.e., :py:class:`~hdmf.common.resources.Object.relative_path` must be the shortest possible path and
+# ``Object.object_id`` must be the closest parent to the target object
+# (i.e., ``Object.relative_path`` must be the shortest possible path and
 # as such cannot contain any objects with a ``data_type`` and associated ``object_id``).
 #
 # A common example would be with the :py:class:`~hdmf.common.table.DynamicTable` class, which holds

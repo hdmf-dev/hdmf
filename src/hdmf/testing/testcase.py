@@ -239,8 +239,8 @@ class TestCase(unittest.TestCase):
         :type check_path: bool
         :param check_source: Check that the builder.source values are equal
         :type check_source: bool
-        :param message: Custom message to add when any asserts as part of this assert are failing
-        :type message: str or None (default=None)
+        :param message: Custom message to add when any asserts as part of this assert are failing (default=None)
+        :type message: str or None
         """
         self.assertTrue(isinstance(builder1, Builder), message)
         self.assertTrue(isinstance(builder2, Builder), message)

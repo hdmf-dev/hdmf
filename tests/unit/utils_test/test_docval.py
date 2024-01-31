@@ -827,6 +827,17 @@ class TestDocValidator(TestCase):
             def method(self, **kwargs):
                 pass
 
+    def test_nested_return_types(self):
+        """Test that having nested tuple rtype creates valid sphinx references"""
+        @docval({'name': 'arg1', 'type': int, 'doc': 'an arg'},
+                returns='output', rtype=(list, (list, bool), (list, 'Test')))
+        def method(self, **kwargs):
+            return []
+
+        doc = ('method(arg1)\n\n\n\nArgs:\n    arg1 (:py:class:`~int`): an arg\n\nReturns:\n    '
+               ':py:class:`~list` or :py:class:`~list`, :py:class:`~bool` or :py:class:`~list`, ``Test``: output')
+        self.assertEqual(method.__doc__, doc)
+
 
 class TestDocValidatorChain(TestCase):
 
@@ -1117,3 +1128,51 @@ class TestMacro(TestCase):
             pass
 
         self.assertTupleEqual(get_docval_macro('dummy'), (Dummy2, ))
+
+
+class TestStringType(TestCase):
+
+    class Dummy1:
+        pass
+
+    class Dummy2:
+        pass
+
+    def test_check_type(self):
+        @docval(
+            {
+                "name": "arg1",
+                "type": (int, np.ndarray, "Dummy1", "tests.unit.utils_test.test_docval.TestStringType.Dummy2"),
+                "doc": "doc"
+            },
+            is_method=False,
+        )
+        def myfunc(**kwargs):
+            return kwargs["arg1"]
+
+        dummy1 = TestStringType.Dummy1()
+        assert dummy1 is myfunc(dummy1)
+
+        dummy2 = TestStringType.Dummy2()
+        assert dummy2 is myfunc(dummy2)
+
+    def test_docstring(self):
+        @docval(
+            {
+                "name": "arg1",
+                "type": (int, np.ndarray, "Dummy1", "tests.unit.utils_test.test_docval.TestStringType.Dummy2"),
+                "doc": "doc"
+            },
+            is_method=False,
+        )
+        def myfunc(**kwargs):
+            return kwargs["arg1"]
+
+        expected = """myfunc(arg1)
+
+
+
+Args:
+    arg1 (:py:class:`~int` or :py:class:`~numpy.ndarray` or ``Dummy1`` or :py:class:`~tests.unit.utils_test.test_docval.TestStringType.Dummy2`): doc
+"""  # noqa: E501
+        assert myfunc.__doc__ == expected

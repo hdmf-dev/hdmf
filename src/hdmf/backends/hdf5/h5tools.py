@@ -324,7 +324,9 @@ class HDF5IO(HDMFIO):
         """
 
         warnings.warn("The copy_file class method is no longer supported and may be removed in a future version of "
-                      "HDMF. Please use the export method or h5py.File.copy method instead.", DeprecationWarning)
+                      "HDMF. Please use the export method or h5py.File.copy method instead.",
+                      category=DeprecationWarning,
+                      stacklevel=2)
 
         source_filename, dest_filename, expand_external, expand_refs, expand_soft = getargs('source_filename',
                                                                                             'dest_filename',
@@ -361,7 +363,7 @@ class HDF5IO(HDMFIO):
             {'name': 'exhaust_dci', 'type': bool,
              'doc': 'If True (default), exhaust DataChunkIterators one at a time. If False, exhaust them concurrently.',
              'default': True},
-            {'name': 'herd', 'type': 'HERD',
+            {'name': 'herd', 'type': 'hdmf.common.resources.HERD',
              'doc': 'A HERD object to populate with references.',
              'default': None})
     def write(self, **kwargs):
@@ -397,7 +399,8 @@ class HDF5IO(HDMFIO):
             ns_builder.export(self.__ns_spec_path, writer=writer)
 
     _export_args = (
-        {'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
+        {'name': 'src_io', 'type': 'hdmf.backends.io.HDMFIO',
+         'doc': 'the HDMFIO object for reading the data to export'},
         {'name': 'container', 'type': Container,
          'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
                  'exported'),
@@ -482,7 +485,7 @@ class HDF5IO(HDMFIO):
                 raise UnsupportedOperation("Cannot read data from file %s in mode '%s'. There are no values."
                                            % (self.source, self.__mode))
 
-    @docval(returns='a GroupBuilder representing the data object', rtype='GroupBuilder')
+    @docval(returns='a GroupBuilder representing the data object', rtype=GroupBuilder)
     def read_builder(self):
         """
         Read data and return the GroupBuilder representing it.
@@ -976,7 +979,7 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
-            returns='the Group that was created', rtype='Group')
+            returns='the Group that was created', rtype=Group)
     def write_group(self, **kwargs):
         parent, builder = popargs('parent', 'builder', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
@@ -1031,7 +1034,7 @@ class HDF5IO(HDMFIO):
             {'name': 'builder', 'type': LinkBuilder, 'doc': 'the LinkBuilder to write'},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
-            returns='the Link that was created', rtype='Link')
+            returns='the Link that was created', rtype=(SoftLink, ExternalLink))
     def write_link(self, **kwargs):
         parent, builder, export_source = getargs('parent', 'builder', 'export_source', kwargs)
         self.logger.debug("Writing LinkBuilder '%s' to parent group '%s'" % (builder.name, parent.name))

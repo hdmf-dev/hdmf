@@ -29,7 +29,7 @@ class AlignedDynamicTable(DynamicTable):
 
     @docval(*get_docval(DynamicTable.__init__),
             {'name': 'category_tables', 'type': list,
-             'doc': 'List of DynamicTables to be added to the container. NOTE: Only regular '
+             'doc': 'List of DynamicTables to be added to the container. NOTE - Only regular '
                     'DynamicTables are allowed. Using AlignedDynamicTable as a category for '
                     'AlignedDynamicTable is currently not supported.', 'default': None},
             {'name': 'categories', 'type': 'array_data',
