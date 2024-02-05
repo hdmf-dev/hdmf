@@ -545,7 +545,8 @@ class GroupValidator(BaseStorageValidator):
                 yield self.__construct_illegal_link_error(child_spec, parent_builder)
                 return  # do not validate illegally linked objects
             child_builder = child_builder.builder
-        for child_validator in self.__get_child_validators(child_spec):
+        child_builder_data_type = child_builder.attributes.get(self.spec.type_key())
+        for child_validator in self.__get_child_validators(child_spec, child_builder_data_type):
             yield from child_validator.validate(child_builder)
 
     def __construct_illegal_link_error(self, child_spec, parent_builder):
@@ -557,7 +558,7 @@ class GroupValidator(BaseStorageValidator):
     def __cannot_be_link(spec):
         return not isinstance(spec, LinkSpec) and not spec.linkable
 
-    def __get_child_validators(self, spec):
+    def __get_child_validators(self, spec, builder_data_type):
         """Returns the appropriate list of validators for a child spec
 
         Due to the fact that child specs can both inherit a data type via data_type_inc
@@ -572,9 +573,21 @@ class GroupValidator(BaseStorageValidator):
         returned. If the spec is a LinkSpec, no additional Validator is returned
         because the LinkSpec cannot add or modify fields and the target_type will be
         validated by the Validator returned from the ValidatorMap.
+
+        For example, if the spec is:
+        {'doc': 'Acquired, raw data.', 'quantity': '*', 'data_type_inc': 'NWBDataInterface'}
+        then the returned validators will be:
+        - a validator for the spec for the builder data type
+        - a validator for the spec for data_type_def: NWBDataInterface
+        - a validator for the above spec which might have extended properties
+          on top of data_type_def: NWBDataInterface
         """
-        if _resolve_data_type(spec) is not None:
-            yield self.vmap.get_validator(_resolve_data_type(spec))
+        if builder_data_type is not None:
+            yield self.vmap.get_validator(builder_data_type)
+
+        spec_data_type = _resolve_data_type(spec)
+        if spec_data_type is not None:
+            yield self.vmap.get_validator(spec_data_type)
 
         if isinstance(spec, GroupSpec):
             yield GroupValidator(spec, self.vmap)
