@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.12.1 (Upcoming)
+## HDMF 3.12.1 (February 5, 2024)
 
 ### Bug fixes
 - Fixed retrieving the correct path for a `HERD` zip file on read. [#1046](https://github.com/hdmf-dev/hdmf/pull/1046)
