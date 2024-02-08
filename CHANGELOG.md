@@ -1,10 +1,12 @@
 # HDMF Changelog
 
-## HDMF 3.12.1 (Upcoming)
+## HDMF 3.12.1 (February 5, 2024)
 
 ### Bug fixes
+- Fixed retrieving the correct path for a `HERD` zip file on read. [#1046](https://github.com/hdmf-dev/hdmf/pull/1046)
 - Fixed internal links in docstrings and tutorials. @stephprince [#1031](https://github.com/hdmf-dev/hdmf/pull/1031)
 - Fixed issue with creating documentation links to classes in docval arguments. @rly [#1036](https://github.com/hdmf-dev/hdmf/pull/1036)
+- Fixed issue with validator not validating against the spec that defines the data type of the builder. @rly [#1050](https://github.com/hdmf-dev/hdmf/pull/1050)
 - Fixed recursion error in html representation generation in jupyter notebooks. @stephprince [#1038](https://github.com/hdmf-dev/hdmf/pull/1038)
 
 ## HDMF 3.12.0 (January 16, 2024)

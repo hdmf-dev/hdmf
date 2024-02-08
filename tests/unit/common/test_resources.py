@@ -52,6 +52,7 @@ class TestHERD(TestCase):
         remove_test_file('./keys.tsv')
         remove_test_file('./files.tsv')
         remove_test_file('./HERD.zip')
+        remove_test_file('./HERD2.zip')
 
     def child_tsv(self, external_resources):
         for child in external_resources.children:
@@ -734,6 +735,25 @@ class TestHERD(TestCase):
 
         er_read = HERD.from_zip(path='./HERD.zip')
         HERD.assert_external_resources_equal(er_read, er, check_dtype=False)
+
+        self.remove_er_files()
+
+    def test_get_zip_directory(self):
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=HERDManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+
+        er.to_zip(path='./HERD.zip')
+        er.to_zip(path='HERD2.zip')
+
+        d1 = er.get_zip_directory('./HERD.zip')
+        d2 = er.get_zip_directory('HERD2.zip')
+
+        self.assertEqual(d1,d2)
 
         self.remove_er_files()
 
