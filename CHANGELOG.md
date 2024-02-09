@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.12.2 (February 9, 2024)
+
+### Bug fixes
+- Fixed recursion error in html representation generation in jupyter notebooks. @stephprince [#1038](https://github.com/hdmf-dev/hdmf/pull/1038)
+
 ## HDMF 3.12.1 (February 5, 2024)
 
 ### Bug fixes
