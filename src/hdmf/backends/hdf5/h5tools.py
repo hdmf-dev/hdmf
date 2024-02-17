@@ -145,7 +145,7 @@ class HDF5IO(HDMFIO):
         return path
 
     @classmethod
-    def __resolve_file_obj(cls, path, file_obj, driver, aws_region):
+    def __resolve_file_obj(cls, path, file_obj, driver, aws_region=None):
         path = cls.__check_path_file_obj(path, file_obj)
 
         if file_obj is None:
