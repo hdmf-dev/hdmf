@@ -63,6 +63,7 @@ class HDF5IO(HDMFIO):
             {'name': 'file', 'type': [File, "S3File", "RemFile"],
              'doc': 'a pre-existing h5py.File, S3File, or RemFile object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+            {'name': 'aws_region', 'type': str, 'doc': 'If driver is ros3, then specify the aws region of the url.'},
             {'name': 'herd_path', 'type': str,
              'doc': 'The path to read/write the HERD file', 'default': None},)
     def __init__(self, **kwargs):
@@ -92,6 +93,7 @@ class HDF5IO(HDMFIO):
         elif isinstance(manager, TypeMap):
             manager = BuildManager(manager)
         self.__driver = driver
+        self.__aws_region = aws_region
         self.__comm = comm
         self.__mode = mode
         self.__file = file_obj
@@ -117,6 +119,10 @@ class HDF5IO(HDMFIO):
     def driver(self):
         return self.__driver
 
+    @property
+    def aws_region(self):
+        return self.__aws_region
+  
     @classmethod
     def __check_path_file_obj(cls, path, file_obj):
         if isinstance(path, Path):
@@ -134,13 +140,13 @@ class HDF5IO(HDMFIO):
         return path
 
     @classmethod
-    def __resolve_file_obj(cls, path, file_obj, driver):
+    def __resolve_file_obj(cls, path, file_obj, driver, aws_region):
         path = cls.__check_path_file_obj(path, file_obj)
 
         if file_obj is None:
             file_kwargs = dict()
             if driver is not None:
-                file_kwargs.update(driver=driver, aws_region=bytes("us-east-2", "ascii"))
+                file_kwargs.update(driver=driver, aws_region=bytes(aws_region, "ascii"))
             file_obj = File(path, 'r', **file_kwargs)
         return file_obj
 
@@ -757,8 +763,8 @@ class HDF5IO(HDMFIO):
             if self.driver is not None:
                 kwargs.update(driver=self.driver)
 
-                if self.driver == "ros3":
-                    kwargs.update(aws_region=bytes("us-east-2", "ascii"))
+                if self.driver == "ros3" and self.aws_region is not None:
+                    kwargs.update(aws_region=bytes(self.aws_region, "ascii"))
 
             self.__file = File(self.source, open_flag, **kwargs)
 
