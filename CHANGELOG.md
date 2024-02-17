@@ -3,7 +3,7 @@
 ## HDMF 3.12.3 (Upcoming)
 
 ### Bug fixes
-- Exposed `aws_region` to `NWBHDF5IO` and downstream passes to `h5py.File`. @codycbakerphd [#1040](https://github.com/hdmf-dev/hdmf/pull/1040)
+- Exposed `aws_region` to `HDF5IO` and downstream passes to `h5py.File`. @codycbakerphd [#1040](https://github.com/hdmf-dev/hdmf/pull/1040)
 
 ## HDMF 3.12.2 (February 9, 2024)
 
