@@ -626,7 +626,10 @@ class Container(AbstractContainer):
         if isinstance(fields, dict):
             for key, value in fields.items():
                 current_access_code = f"{access_code}.{key}" if is_field else f"{access_code}['{key}']"
-                html_repr += self._generate_field_html(key, value, level, current_access_code)
+                if hasattr(value, '_generate_field_html'):
+                    html_repr += value._generate_field_html(key, value, level, current_access_code)
+                else:
+                    html_repr += self._generate_field_html(key, value, level, current_access_code)
         elif isinstance(fields, list):
             for index, item in enumerate(fields):
                 access_code += f'[{index}]'
@@ -639,7 +642,10 @@ class Container(AbstractContainer):
         return html_repr
 
     def _generate_field_html(self, key, value, level, access_code):
-        """Generates HTML for a single field."""
+        """Generates HTML for a single field.
+
+        This function can be overwritten by a child class to implement customized html representations.
+        """
 
         if isinstance(value, (int, float, str, bool)):
             return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
