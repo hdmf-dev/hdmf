@@ -122,7 +122,7 @@ class HDF5IO(HDMFIO):
     @property
     def aws_region(self):
         return self.__aws_region
-  
+
     @classmethod
     def __check_path_file_obj(cls, path, file_obj):
         if isinstance(path, Path):
