@@ -9,7 +9,6 @@ Prepare for release of HDMF [version]
 - [ ] Check legal file dates and information in `Legal.txt`, `license.txt`, `README.rst`, `docs/source/conf.py`,
   and any other locations as needed
 - [ ] Update `pyproject.toml` as needed
-- [ ] Update `README.rst` as needed
 - [ ] Update `src/hdmf/common/hdmf-common-schema` submodule as needed. Check the version number and commit SHA manually
 - [ ] Update changelog (set release date) in `CHANGELOG.md` and any other docs as needed
 - [ ] Run tests locally including gallery tests, and inspect all warnings and outputs
