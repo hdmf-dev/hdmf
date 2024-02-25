@@ -33,8 +33,8 @@ Overall Health
 .. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/ruff.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/ruff.yml
 
-.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/check_external_links.yml/badge.svg
-    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/check_external_links.yml
+.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/check_sphinx_links.yml/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/check_sphinx_links.yml
 
 .. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_pynwb_tests.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_pynwb_tests.yml
