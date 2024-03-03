@@ -225,7 +225,6 @@ class TermSetWrapper:
 
     def __validate(self):
         if self.field is not None:
-            breakpoint()
             values = self.__value[self.field]
         else:
             # check if list, tuple, array
