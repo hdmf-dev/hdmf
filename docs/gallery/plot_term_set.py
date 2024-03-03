@@ -67,6 +67,7 @@ for this tutorial, which provides a concise example of how a term set schema loo
 """
 from hdmf.common import DynamicTable, VectorData
 import os
+import numpy as np
 
 try:
     import linkml_runtime  # noqa: F401
