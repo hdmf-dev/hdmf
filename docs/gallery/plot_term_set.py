@@ -130,6 +130,20 @@ data = VectorData(
     )
 
 ######################################################
+# Validate Compound Data with TermSetWrapper
+# ----------------------------------------------------
+# :py:class:`~hdmf.term_set.TermSetWrapper` can be wrapped around compound data.
+# The user will set the field within the compound data type that is to be validated
+# with the termset.
+c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+data = VectorData(
+    name='species',
+    description='...',
+    data=TermSetWrapper(value=c_data, termset=terms, field='species')
+    )
+
+
+######################################################
 # Validate Attributes with TermSetWrapper
 # ----------------------------------------------------
 # Similar to wrapping datasets, :py:class:`~hdmf.term_set.TermSetWrapper` can be wrapped around any attribute.
