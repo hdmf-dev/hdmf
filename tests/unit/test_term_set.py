@@ -215,3 +215,9 @@ class TestTermSetWrapper(TestCase):
         data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
         with self.assertRaises(ValueError):
             data_obj.extend(['bad_data'])
+
+    def test_wrap_compound_type(self):
+        c_data = np.array([('Homo sapiens', 24), ('Mus musculus', 3)], dtype=[('species', 'U30'), ('age', 'i4')])
+        termset = TermSetWrapper(value=c_data,
+                                 termset=self.termset,
+                                 field='species')

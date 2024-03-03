@@ -214,19 +214,26 @@ class TermSetWrapper:
             {'name': 'value',
              'type': (list, np.ndarray, dict, str, tuple),
              'doc': 'The target item that is wrapped, either data or attribute.'},
+            {'name': 'field', 'type': str, 'default': None,
+             'doc': 'The field within a compound array.'}
             )
     def __init__(self, **kwargs):
         self.__value = kwargs['value']
         self.__termset = kwargs['termset']
+        self.field = kwargs['field']
         self.__validate()
 
     def __validate(self):
-        # check if list, tuple, array
-        if isinstance(self.__value, (list, np.ndarray, tuple)): # TODO: Future ticket on DataIO support
-            values = self.__value
-        # create list if none of those -> mostly for attributes
+        if self.field is not None:
+            breakpoint()
+            values = self.__value[self.field]
         else:
-            values = [self.__value]
+            # check if list, tuple, array
+            if isinstance(self.__value, (list, np.ndarray, tuple)):
+                values = self.__value
+            # create list if none of those -> mostly for attributes
+            else:
+                values = [self.__value]
         # iteratively validate
         bad_values = []
         for term in values:
@@ -262,13 +269,6 @@ class TermSetWrapper:
         """
         return self.__value[val]
 
-    # uncomment when DataChunkIterator objects can be wrapped by TermSet
-    # def __next__(self):
-    #     """
-    #     Return the next item of a wrapped iterator.
-    #     """
-    #     return self.__value.__next__()
-    #
     def __len__(self):
         return len(self.__value)
 
