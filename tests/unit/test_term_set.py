@@ -162,16 +162,6 @@ class TestTermSetWrapper(TestCase):
             description='...',
             data=self.wrapped_array
         )
-        self.list_data = VectorData(
-            name='Species_1',
-            description='...',
-            data=self.wrapped_list
-        )
-        self.comp_np_data = VectorData(
-            name='Species_1',
-            description='...',
-            data=self.wrapped_comp_array
-        )
 
     def test_properties(self):
         self.assertEqual(self.wrapped_array.value, ['Homo sapiens'])
