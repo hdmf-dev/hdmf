@@ -17,6 +17,7 @@ from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type
 from ..term_set import TermSetWrapper
+from ..backends.hdf5.h5_utils import H5DataIO
 
 
 @register_class('VectorData')
