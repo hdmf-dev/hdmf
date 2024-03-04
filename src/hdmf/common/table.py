@@ -42,6 +42,7 @@ class VectorData(Data):
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
+        kwargs['data'] = H5DataIO(data=kwargs['data'], maxshape=(None,))
         description = popargs('description', kwargs)
         super().__init__(**kwargs)
         self.description = description

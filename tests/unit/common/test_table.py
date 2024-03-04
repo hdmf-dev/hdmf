@@ -389,6 +389,7 @@ class TestDynamicTable(TestCase):
                          description='qux column',
                          data=expected,
                          index=True)
+
         self.assertListEqual(table['qux'][:], expected)
         self.assertListEqual(table.qux_index.data, [3, 7])
         # Add more rows after we created the column
@@ -1805,6 +1806,7 @@ class TestEnumData(TestCase):
                       elements=['a', 'b', 'c'],
                       data=np.array([[0, 0], [1, 1], [2, 2]]))
         dat = ed[0]
+        breakpoint()
         np.testing.assert_array_equal(dat, ['a', 'a'])
 
     def test_get_2d_w_2d(self):
