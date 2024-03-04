@@ -799,10 +799,7 @@ class Data(AbstractContainer):
 
     @property
     def data(self):
-        if isinstance(self.__data, DataIO):
-            return self.__data.data
-        else:
-            return self.__data
+        return self.__data
 
     @property
     def shape(self):

@@ -40,10 +40,13 @@ class VectorData(Data):
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
+            {'name': 'extendable', 'type': bool, 'default': True,
+             'doc': 'Bool to decide whether to wrap the data with H5DataIO to be extendable by default.'},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
-        kwargs['data'] = H5DataIO(data=kwargs['data'], maxshape=(None,))
-        description = popargs('description', kwargs)
+        description, extendable = popargs('description', 'extendable', kwargs)
+        if not isinstance(kwargs['data'], DataIO) and extendable:
+            kwargs['data'] = H5DataIO(data=kwargs['data'], maxshape=(None,))
         super().__init__(**kwargs)
         self.description = description
 

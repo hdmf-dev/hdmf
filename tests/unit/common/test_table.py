@@ -1806,7 +1806,6 @@ class TestEnumData(TestCase):
                       elements=['a', 'b', 'c'],
                       data=np.array([[0, 0], [1, 1], [2, 2]]))
         dat = ed[0]
-        breakpoint()
         np.testing.assert_array_equal(dat, ['a', 'a'])
 
     def test_get_2d_w_2d(self):
