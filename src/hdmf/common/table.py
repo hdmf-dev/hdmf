@@ -15,7 +15,7 @@ import itertools
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
-from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type
+from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type, is_ragged
 from ..term_set import TermSetWrapper
 
 
@@ -709,6 +709,8 @@ class DynamicTable(Container):
                 c.add_vector(data[colname])
             else:
                 c.add_row(data[colname])
+                if is_ragged(c.data):
+                    raise ValueError("Data is ragged. Use the 'index' argument when creating a column that will have ragged data.")
 
     def __eq__(self, other):
         """Compare if the two DynamicTables contain the same data.
@@ -823,6 +825,11 @@ class DynamicTable(Container):
         # once we have created the column
         create_vector_index = None
         if ckwargs.get('data', None) is not None:
+
+            # if no index was provided, check that data is not ragged
+            if index is False and is_ragged(data):
+                raise ValueError("Data is ragged. Use the 'index' argument when adding a column with ragged data.")
+
             # Check that we are asked to create an index
             if (isinstance(index, bool) or isinstance(index, int)) and index > 0 and len(data) > 0:
                 # Iteratively flatten the data we use for the column based on the depth of the index to generate.
