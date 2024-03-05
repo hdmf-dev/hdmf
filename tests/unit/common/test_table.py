@@ -354,6 +354,44 @@ class TestDynamicTable(TestCase):
                       ]
                       )
 
+    def test_add_column_without_required_index(self):
+        """
+        Add a column as a ragged list of lists without specifying an index parameter
+        """
+        table = self.with_spec()
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+
+        # testing adding column without a necessary index parameter
+        msg = "Data is ragged. Use the 'index' argument when adding a column with ragged data."
+        lol_data = [[1, 2, 3], [1, 2, 3, 4]]
+        str_data = [['a', 'b'], ['a', 'b', 'c']]
+        empty_data = [[1, 2], []]
+        multi_nested_data = [[[1, 2, 3], [1, 2, 3, 4]], [1, 2]]
+        arr_data = np.array([[1, 2, 3], [1, 2, 3, 4]], dtype='object')
+
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='qux', description='qux column', data=lol_data,)
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='qux', description='qux column', data=str_data,)
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='qux', description='qux column', data=empty_data,)
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='qux', description='qux column', data=multi_nested_data,)
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='qux', description='qux column', data=arr_data,)
+
+    def test_add_row_without_required_index(self):
+        """
+        Add a column as a ragged list of lists without specifying an index parameter
+        """
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column')
+        table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3])
+        msg = "Data is ragged. Use the 'index' argument when creating a column that will have ragged data."
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3 ,4])
+
     def test_add_column_auto_index_int(self):
         """
         Add a column as a list of lists after we have already added data so that we need to create a single VectorIndex
