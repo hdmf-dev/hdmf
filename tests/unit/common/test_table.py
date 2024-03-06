@@ -370,16 +370,16 @@ class TestDynamicTable(TestCase):
         multi_nested_data = [[[1, 2, 3], [1, 2, 3, 4]], [1, 2]]
         arr_data = np.array([[1, 2, 3], [1, 2, 3, 4]], dtype='object')
 
-        with self.assertRaisesWith(ValueError, msg):
-            table.add_column(name='qux', description='qux column', data=lol_data,)
-        with self.assertRaisesWith(ValueError, msg):
-            table.add_column(name='qux', description='qux column', data=str_data,)
-        with self.assertRaisesWith(ValueError, msg):
-            table.add_column(name='qux', description='qux column', data=empty_data,)
-        with self.assertRaisesWith(ValueError, msg):
-            table.add_column(name='qux', description='qux column', data=multi_nested_data,)
-        with self.assertRaisesWith(ValueError, msg):
-            table.add_column(name='qux', description='qux column', data=arr_data,)
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_column(name='col1', description='', data=lol_data,)
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_column(name='col2', description='', data=str_data,)
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_column(name='col3', description='', data=empty_data,)
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_column(name='col4', description='', data=multi_nested_data,)
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_column(name='col5', description='', data=arr_data,)
 
     def test_add_row_without_required_index(self):
         """
@@ -389,7 +389,7 @@ class TestDynamicTable(TestCase):
         table.add_column(name='qux', description='qux column')
         table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3])
         msg = "Data is ragged. Use the 'index' argument when creating a column that will have ragged data."
-        with self.assertRaisesWith(ValueError, msg):
+        with self.assertWarnsWith(UserWarning, msg):
             table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3 ,4])
 
     def test_add_column_auto_index_int(self):

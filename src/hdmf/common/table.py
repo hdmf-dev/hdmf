@@ -710,7 +710,8 @@ class DynamicTable(Container):
             else:
                 c.add_row(data[colname])
                 if is_ragged(c.data):
-                    raise ValueError("Data is ragged. Use the 'index' argument when creating a column that will have ragged data.")
+                    warn("Data is ragged. Use the 'index' argument when creating a column that will have ragged data.",
+                         stacklevel=2)
 
     def __eq__(self, other):
         """Compare if the two DynamicTables contain the same data.
@@ -828,7 +829,8 @@ class DynamicTable(Container):
 
             # if no index was provided, check that data is not ragged
             if index is False and is_ragged(data):
-                raise ValueError("Data is ragged. Use the 'index' argument when adding a column with ragged data.")
+                warn("Data is ragged. Use the 'index' argument when adding a column with ragged data.",
+                     stacklevel=2)
 
             # Check that we are asked to create an index
             if (isinstance(index, bool) or isinstance(index, int)) and index > 0 and len(data) > 0:
