@@ -220,7 +220,7 @@ class TermSetWrapper:
     def __init__(self, **kwargs):
         self.__value = kwargs['value']
         self.__termset = kwargs['termset']
-        self.field = kwargs['field']
+        self.__field = kwargs['field']
         self.__validate()
 
     def __validate(self):
@@ -246,6 +246,10 @@ class TermSetWrapper:
     @property
     def value(self):
         return self.__value
+
+    @property
+    def field(self):
+        return self.__field
 
     @property
     def termset(self):
