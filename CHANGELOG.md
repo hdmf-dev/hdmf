@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.12.3
+## HDMF 3.12.3 (Upcoming)
 ### Enhancements
 - Update `TermSetWrapper` to support validating a single field within a compound array. @mavaylon1 [#1061](https://github.com/hdmf-dev/hdmf/pull/1061)
 
