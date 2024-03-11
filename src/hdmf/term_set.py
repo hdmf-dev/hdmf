@@ -230,7 +230,7 @@ class TermSetWrapper:
             # check if list, tuple, array
             if isinstance(self.__value, (list, np.ndarray, tuple)):
                 values = self.__value
-            # create list if none of those -> mostly for attributes
+            # create list if none of those -> mostly for scalar attributes
             else:
                 values = [self.__value]
         # iteratively validate
