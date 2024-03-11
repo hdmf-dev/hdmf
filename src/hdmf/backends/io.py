@@ -90,7 +90,8 @@ class HDMFIO(metaclass=ABCMeta):
                 herd = HERD(type_map=self.manager.type_map)
 
             # add_ref_container to search for and resolve the TermSetWrapper
-            herd.add_ref_container(container) # container would be the NWBFile
+            herd.add_ref_container(root_container=container,
+                                   unwrap=True) # container would be the NWBFile
             # write HERD
             herd.to_zip(path=self.herd_path)
 

@@ -446,7 +446,9 @@ class HERD(Container):
         return ret
 
     @docval({'name': 'root_container', 'type': HERDManager,
-             'doc': 'The root container or file containing objects with a TermSet.'})
+             'doc': 'The root container or file containing objects with a TermSet.'},
+            {'name': 'unwrap', 'type': bool, 'default': True,
+             'doc': 'Unwrap the wrapper within the containers.'})
     def add_ref_container(self, **kwargs):
         """
         Method to search through the root_container for all instances of TermSet.
@@ -475,6 +477,13 @@ class HERD(Container):
                              key=term,
                              entity_id=entity_id,
                              entity_uri=entity_uri)
+
+            #################################
+            # Unwrap the attribute for the IO
+            #################################
+            if kwargs['unwrap']:
+                setattr(obj, attr_name, wrapper.value)
+
 
     @docval({'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
              'default': None},
