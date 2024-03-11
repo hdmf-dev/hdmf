@@ -224,8 +224,8 @@ class TermSetWrapper:
         self.__validate()
 
     def __validate(self):
-        if self.field is not None:
-            values = self.__value[self.field]
+        if self.__field is not None:
+            values = self.__value[self.__field]
         else:
             # check if list, tuple, array
             if isinstance(self.__value, (list, np.ndarray, tuple)):
