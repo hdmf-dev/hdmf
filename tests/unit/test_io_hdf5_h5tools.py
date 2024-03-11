@@ -830,7 +830,7 @@ class TestRoundTrip(TestCase):
         foo = Foo(name="species", attr1='attr1', attr2=0,
                   my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
                                                          termset=terms))
-                                                         
+
         foobucket = FooBucket('bucket1', [foo])
         foofile = FooFile(buckets=[foobucket])
 
