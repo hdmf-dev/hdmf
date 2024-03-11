@@ -141,7 +141,7 @@ data = VectorData(
     name='species',
     description='...',
     data=TermSetWrapper(value=c_data, termset=terms, field='species')
-    )
+)
 
 
 ######################################################
