@@ -91,12 +91,13 @@ class HDMFIO(metaclass=ABCMeta):
 
             # add_ref_container to search for and resolve the TermSetWrapper
             herd.add_ref_container(root_container=container,
-                                   unwrap=True) # container would be the NWBFile
+                                   unwrap=False) # container would be the NWBFile
             # write HERD
             herd.to_zip(path=self.herd_path)
 
         """Write a container to the IO source."""
         f_builder = self.__manager.build(container, source=self.__source, root=True)
+        breakpoint()
         self.write_builder(f_builder, **kwargs)
 
     @docval({'name': 'src_io', 'type': 'hdmf.backends.io.HDMFIO',

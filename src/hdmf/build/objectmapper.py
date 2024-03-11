@@ -566,6 +566,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                        % (container.__class__.__name__, container.name, attr_name, spec))
                 raise ContainerConfigurationError(msg)
             if isinstance(attr_val, TermSetWrapper):
+                breakpoint()
                 attr_val = attr_val.value
             if attr_val is not None:
                 attr_val = self.__convert_string(attr_val, spec)

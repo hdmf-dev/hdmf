@@ -830,7 +830,7 @@ class TestRoundTrip(TestCase):
         foo = Foo(name="species", attr1='attr1', attr2=0,
                   my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
                                                          termset=terms))
-
+                                                         
         foobucket = FooBucket('bucket1', [foo])
         foofile = FooFile(buckets=[foobucket])
 
@@ -839,7 +839,7 @@ class TestRoundTrip(TestCase):
 
         with HDF5IO(self.path, manager=get_foo_buildmanager("text"), mode='r') as io:
             read_foofile = io.read()
-            self.assertListEqual(foofile.buckets['bucket1'].foos['species'].my_data.value,
+            self.assertListEqual(foofile.buckets['bucket1'].foos['species'].my_data,
                                  read_foofile.buckets['bucket1'].foos['species'].my_data[:].tolist())
         remove_test_file('./HERD.zip')
 
@@ -856,7 +856,7 @@ class TestRoundTrip(TestCase):
 
         with HDF5IO(self.path, manager=self.manager, mode='r') as io:
             read_foofile = io.read()
-            self.assertEqual(foofile.buckets['bucket1'].foos['species'].attr1.value,
+            self.assertEqual(foofile.buckets['bucket1'].foos['species'].attr1,
                              read_foofile.buckets['bucket1'].foos['species'].attr1)
             remove_test_file('./HERD.zip')
 

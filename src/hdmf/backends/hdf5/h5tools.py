@@ -1106,6 +1106,7 @@ class HDF5IO(HDMFIO):
         if isinstance(data, TermSetWrapper):
             # This is for when the wrapped item is a dataset
             # (refer to objectmapper.py for wrapped attributes)
+            breakpoint()
             data = data.value
         attributes = builder.attributes
         options['dtype'] = builder.dtype

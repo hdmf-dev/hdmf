@@ -73,9 +73,17 @@ class Foo(Container):
     def my_data(self):
         return self.__data
 
+    @my_data.setter
+    def my_data(self, value):
+        self.__data = value
+
     @property
     def attr1(self):
         return self.__attr1
+
+    @attr1.setter
+    def attr1(self, value):
+        self.__attr1 = value
 
     @property
     def attr2(self):
