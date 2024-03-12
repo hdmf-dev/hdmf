@@ -5,10 +5,7 @@ from .utils import docval
 import warnings
 import numpy as np
 from .data_utils import append_data, extend_data
-from ruamel.yaml import YAML
 
-
-yaml=YAML(typ='safe') # Use ruamel to avoid multple YAML packages
 
 class TermSet:
     """
@@ -165,6 +162,7 @@ class TermSet:
         This method returns a path to the new schema to be viewed via SchemaView.
         """
         try:
+            import yaml
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
         except ImportError:   # pragma: no cover
