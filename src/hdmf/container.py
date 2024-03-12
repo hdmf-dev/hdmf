@@ -5,7 +5,6 @@ from copy import deepcopy
 from typing import Type
 from uuid import uuid4
 from warnings import warn
-import yaml
 import os
 
 import h5py
