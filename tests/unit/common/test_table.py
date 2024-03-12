@@ -405,7 +405,7 @@ class TestDynamicTable(TestCase):
         table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3])
         with self.assertWarnsWith(UserWarning, msg):
             table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3 ,4])
-        
+
         # test adding row of tuple/str data with different lengths without index parameter
         table = self.with_spec()
         table.add_column(name='qux', description='qux column')
