@@ -98,7 +98,11 @@ class AbstractContainer(metaclass=ExtenderMeta):
         will be wrapped with a TermSetWrapper.
         """
         # load termset configuartion file from global Config
-        configurator = self.type_map.ts_config
+        try:
+            configurator = self.type_map.ts_config
+        except AttributeError: # This is for containers that are not registered, e.g., testing classes.
+            return val
+
         if len(configurator.path)>0:
             CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
             termset_config = configurator.config
