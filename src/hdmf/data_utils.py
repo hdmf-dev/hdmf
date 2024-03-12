@@ -20,7 +20,7 @@ def append_data(data, arg):
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):
-        return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
+        return np.append(data, arg)
     elif isinstance(data, h5py.Dataset):
         shape = list(data.shape)
         shape[0] += 1

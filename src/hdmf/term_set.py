@@ -233,6 +233,7 @@ class TermSetWrapper:
             # create list if none of those -> mostly for scalar attributes
             else:
                 values = [self.__value]
+
         # iteratively validate
         bad_values = []
         for term in values:
@@ -285,12 +286,28 @@ class TermSetWrapper:
         """
         This append resolves the wrapper to use the append of the container using
         the wrapper.
+
+        Note: Within HDMF append also includes numpy array append. This is not the same as list append.
+        Numpy array append is essentially list extend. Now if a user appends an array, we need to
+        support validating arrays with multiple items. This method has an internal bulk validation
+        check just for numpy arrays due to numpy array append. 
         """
-        if self.termset.validate(term=arg):
-            self.__value = append_data(self.__value, arg)
+        if isinstance(arg, np.ndarray):
+            values = arg[self.__field]
         else:
-            msg = ('"%s" is not in the term set.' % arg)
+            values = [arg]
+
+        bad_values = []
+        for item in values:
+            if not self.termset.validate(term=item):
+                bad_values.append(item)
+
+        if len(bad_values)!=0:
+            msg = ('"%s" is not in the term set.' % ', '.join([str(value) for value in bad_values]))
             raise ValueError(msg)
+
+        self.__value = append_data(self.__value, arg)
+
 
     def extend(self, arg):
         """

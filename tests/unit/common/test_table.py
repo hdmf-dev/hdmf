@@ -221,6 +221,33 @@ class TestDynamicTable(TestCase):
         with self.assertRaises(ValueError):
             species.add_row(Species_1='bad data', Species_2='bad data')
 
+    def test_add_ref_compound_data_append(self):
+        c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        compound_vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=c_data
+        )
+        compound_vector_data.append(c_data2)
+
+    def test_add_ref_compound_data_extend(self):
+        pass
+
+    def test_add_ref_wrapped_compound_data_append(self):
+        c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        compound_vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=c_data, field='species', termset=terms)
+        )
+        compound_vector_data.append(c_data2)
+
+    def test_add_ref_wrapped_compound_data_extend(self):
+        pass
+
     def test_constructor_bad_columns(self):
         columns = ['bad_column']
         msg = "'columns' must be a list of dict, VectorData, DynamicTableRegion, or VectorIndex"
