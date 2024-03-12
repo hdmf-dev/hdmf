@@ -356,20 +356,21 @@ class TestDynamicTable(TestCase):
 
     def test_add_column_without_required_index(self):
         """
-        Add a column as a ragged list of lists without specifying an index parameter
+        Add a column with different element lengths without specifying an index parameter
         """
         table = self.with_spec()
         table.add_row(foo=5, bar=50.0, baz='lizard')
         table.add_row(foo=5, bar=50.0, baz='lizard')
 
         # testing adding column without a necessary index parameter
-        msg = "Data is ragged. Use the 'index' argument when adding a column with ragged data."
         lol_data = [[1, 2, 3], [1, 2, 3, 4]]
         str_data = [['a', 'b'], ['a', 'b', 'c']]
         empty_data = [[1, 2], []]
         multi_nested_data = [[[1, 2, 3], [1, 2, 3, 4]], [1, 2]]
-        arr_data = np.array([[1, 2, 3], [1, 2, 3, 4]], dtype='object')
+        tuple_data = ((1, 2, 3), (1, 2, 3, 4))
 
+        msg = ("Data has elements with different lengths and therefore cannot be coerced into an N-dimensional "
+               "array. Use the 'index' argument when adding a column of data with different lengths.")
         with self.assertWarnsWith(UserWarning, msg):
             table.add_column(name='col1', description='', data=lol_data,)
         with self.assertWarnsWith(UserWarning, msg):
@@ -379,18 +380,47 @@ class TestDynamicTable(TestCase):
         with self.assertWarnsWith(UserWarning, msg):
             table.add_column(name='col4', description='', data=multi_nested_data,)
         with self.assertWarnsWith(UserWarning, msg):
-            table.add_column(name='col5', description='', data=arr_data,)
+            table.add_column(name='col5', description='', data=tuple_data,)
+
+    def test_add_column_without_required_index_and_no_ragged_check(self):
+        """
+        Add a column with different element lengths without checking for raggedness
+        """
+        lol_data = [[1, 2, 3], [1, 2, 3, 4]]
+        table = self.with_spec()
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        table.add_column(name='col1', description='', data=lol_data, check_ragged=False)
 
     def test_add_row_without_required_index(self):
         """
-        Add a column as a ragged list of lists without specifying an index parameter
+        Add rows with different element lengths without specifying an index parameter
+        """
+
+        # test adding row of list data with different lengths without index parameter
+        msg = ("Data has elements with different lengths and therefore cannot be coerced into an N-dimensional "
+               "array. Use the 'index' argument when creating a column to add rows with different lengths.")
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column')
+        table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3])
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3 ,4])
+        
+        # test adding row of tuple/str data with different lengths without index parameter
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column')
+        table.add_row(foo=5, bar=50.0, baz='lizard', qux=('a', 'b'))
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_row(foo=5, bar=50.0, baz='lizard', qux=('a', 'b', 'c'))
+
+    def test_add_row_without_required_index_and_no_ragged_check(self):
+        """
+        Add rows with different element lengths without checking for raggedness
         """
         table = self.with_spec()
         table.add_column(name='qux', description='qux column')
         table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3])
-        msg = "Data is ragged. Use the 'index' argument when creating a column that will have ragged data."
-        with self.assertWarnsWith(UserWarning, msg):
-            table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3 ,4])
+        table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3 ,4], check_ragged=False)
 
     def test_add_column_auto_index_int(self):
         """
