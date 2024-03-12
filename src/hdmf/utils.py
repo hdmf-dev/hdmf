@@ -958,9 +958,8 @@ def is_ragged(data):
     """
     Test whether a list of lists or array is ragged / jagged
     """
-    if hasattr(data, '__len__') and not isinstance(data, str):
-        lengths = [len(sub_data) if hasattr(sub_data, '__len__') and not isinstance(sub_data, str) else 1
-                for sub_data in data]
+    if isinstance(data, (list, tuple)):
+        lengths = [len(sub_data) if isinstance(sub_data, (list, tuple)) else 1 for sub_data in data]
         if len(set(lengths)) > 1:
             return True  # ragged at this level
 
