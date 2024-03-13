@@ -151,7 +151,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
                         else:
                             val = TermSetWrapper(value=val, termset=termset)
                             return val
-                            
+
 
     @classmethod
     def _getter(cls, field):
