@@ -1,0 +1,6 @@
+namespaces:
+  hdmf-common:
+    version: 3.12.2
+    data_types:
+      VectorData:
+        description: example_test_term_set.yaml

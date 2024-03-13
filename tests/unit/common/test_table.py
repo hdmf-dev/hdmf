@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import unittest
 
-from hdmf import Container
+from hdmf import Container, Data
 from hdmf import TermSet, TermSetWrapper
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 from hdmf.backends.hdf5.h5tools import H5_TEXT, H5PY_3
@@ -17,10 +17,14 @@ from hdmf.common import (
     EnumData,
     DynamicTableRegion,
     get_manager,
-    SimpleMultiContainer
+    SimpleMultiContainer,
+    load_termset_config,
+    unload_termset_config,
+    get_loaded_config,
+    get_type_map
 )
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
-from hdmf.utils import StrDataset
+from hdmf.utils import StrDataset, popargs, docval
 from hdmf.data_utils import DataChunkIterator
 
 from tests.unit.helpers.utils import (
@@ -2767,3 +2771,42 @@ class TestDynamicTableSubclassColumns(TestCase):
                          {'name': 'col3', 'description': '...'}, {'name': 'col4', 'description': '...'})
 )
         self.assertEqual(self.foo2.__columns__, self.foo3.__columns__)
+
+
+class ExtensionContainer(Container):
+    __fields__ = ("description",)
+
+    def __init__(self, **kwargs):
+        description, namespace, type_map = popargs('description', 'namespace', 'type_map', kwargs)
+        super().__init__(**kwargs)
+        self.namespace = namespace
+        self.type_map = type_map
+        self.description = description
+
+
+class TestTermSetConfig(TestCase):
+    def setUp(self):
+        unload_termset_config()
+        self.tm = load_termset_config(config_path='tests/unit/hdmf_config.yaml', return_map=True)
+
+    def test_load_config(self):
+        config = get_loaded_config()
+        self.assertEqual(config,
+        {'namespaces': {'hdmf-common': {'version': '3.12.2',
+        'data_types': {'VectorData': {'description': 'example_test_term_set.yaml'}}}}})
+
+    def test_validate_with_config(self):
+        data = VectorData(name='foo', data=[0], description='Homo sapiens')
+
+    def test_namespace_warn(self):
+        with self.assertWarns(Warning):
+            container = ExtensionContainer(name='foo', namespace='foo', type_map=self.tm, description='Homo sapiens')
+
+    def test_container_type_warn(self):
+        with self.assertWarns(Warning):
+            container = ExtensionContainer(name='foo', namespace='hdmf-common', type_map=self.tm, description='Homo sapiens')
+
+    def test_already_wrapped_warn(self):
+        with self.assertWarns(Warning):
+            terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+            data = VectorData(name='foo', data=[0], description=TermSetWrapper(value='Homo sapiens', termset=terms))

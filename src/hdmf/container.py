@@ -97,68 +97,61 @@ class AbstractContainer(metaclass=ExtenderMeta):
         to check for a defined TermSet associated with the field. If found, the value of the field
         will be wrapped with a TermSetWrapper.
         """
-        # load termset configuartion file from global Config
+        # load termset configuration file from global Config
         try:
+            """
+            Even though the path field in the configurator can be a list of paths, the config
+            itself is only one file. When a user loads custom configs, the config is appended/modified.
+            The modificiations are not written to file, avoiding permanent modifications.
+            """
             configurator = self.type_map.ts_config
+            CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
+            termset_config = configurator.config
         except AttributeError: # This is for containers that are not registered, e.g., testing classes.
             return val
 
-        if len(configurator.path)>0:
-            CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
-            termset_config = configurator.config
+        # check to see that the namespace for the container is in the config
+        if self.namespace not in self.type_map.container_types:
+            msg = "%s not found within loaded configuration." % self.namespace
+            warn(msg)
+            return val
+        else:
+            # check to see that the container type is in the config under the namespace
+            config_namespace = termset_config['namespaces'][self.namespace]
+            object_name = self.__class__.__name__
 
-
-            # check to see that the namespace for the container is in the config
-            if self.namespace not in self.type_map.container_types:
-                msg = "%s not found within loaded configuration." % self.namespace
+            if object_name not in config_namespace['data_types']:
+                msg = '%s not found within the configuration for %s' % (object_name, self.namespace)
                 warn(msg)
                 return val
             else:
-                # check to see that the container type is in the config under the namespace
-                config_namespace = termset_config['namespaces'][self.namespace]
-                object_name = self.__class__.__name__
+                for attr in config_namespace['data_types'][object_name]:
+                    obj_mapper = self.type_map.get_map(self)
+                    # get the spec according to attr name in schema
+                    # Note: this is the name for the field in the config
 
-                if object_name not in config_namespace['data_types']:
-                    msg = '%s not found within the configuration for %s' % (object_name, self.namespace)
-                    warn(msg)
-                    return val
-                else:
-                    for attr in config_namespace['data_types'][object_name]:
+                    spec = obj_mapper.get_attr_spec(attr)
 
-
-                        obj_mapper = self.type_map.get_map(self)
-                        # get the spec according to attr name in schema
-                        # Note: this is the name for the field in the config
-
-                        spec = obj_mapper.get_attr_spec(attr)
-
-                        # In the case of dealing with datasets directly or not defined in the spec.
-                        # (Data/VectorData/DynamicTable/etc)
-                        if spec is None:
-                            msg = "Spec not found for %s." % attr
+                    # In the case of dealing with datasets directly or not defined in the spec.
+                    # (Data/VectorData/DynamicTable/etc)
+                    if spec is None:
+                        msg = "Spec not found for %s." % attr
+                        warn(msg)
+                        return val
+                    # From the spec, get the corresponding constructor name
+                    else:
+                        constr_name = obj_mapper.get_const_arg(spec)
+                        termset_path = os.path.join(CUR_DIR, config_namespace['data_types'][object_name][attr])
+                        termset = TermSet(term_schema_path=termset_path)
+                        # If the val has been manually wrapped then skip checking the config for the attr
+                        if type(val) == TermSetWrapper:
+                            msg = "Field value already wrapped with TermSetWrapper."
                             warn(msg)
                             return val
-                        # From the spec, get the corresponding constructor name
                         else:
-                            constr_name = obj_mapper.get_const_arg(spec)
-                            if constr_name == arg_name:
-                                termset_path = os.path.join(CUR_DIR, config_namespace['data_types'][object_name][attr])
-                                termset = TermSet(term_schema_path=termset_path)
-                                # If the val has been manually wrapped then skip checking the config for the attr
-                                if type(val) == TermSetWrapper:
-                                    msg = "Field value already wrapped with TermSetWrapper."
-                                    warn(msg)
-                                    return val
-                                else:
-                                    val = TermSetWrapper(value=val, termset=termset)
-                                    return val
-                            else:
-                                msg = "The name of the field does not match the field name in the schema. Field value not wrapped."
-                                warn(msg)
-                                return val
-        else:
-            return val
-
+                            val = TermSetWrapper(value=val, termset=termset)
+                            return val
+                            
 
     @classmethod
     def _getter(cls, field):

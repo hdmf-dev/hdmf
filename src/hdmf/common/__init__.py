@@ -20,6 +20,32 @@ from ..container import _set_exp  # noqa: E402
 # a global type map
 global __TYPE_MAP
 
+@docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.'},
+        {'name': 'return_map', 'type': bool, 'doc': 'Bool to return type_map', 'default': False},
+        is_method=False)
+def load_termset_config(**kwargs):
+    """
+    This method will either load the default config or the config provided by the path.
+    """
+    config_path, return_map = kwargs['config_path'], kwargs['return_map']
+    __TYPE_MAP.ts_config.load_termset_config(config_path)
+
+    if return_map: # This helps with testing
+        return __TYPE_MAP
+
+def get_loaded_config():
+    if __TYPE_MAP.ts_config.config is None:
+        msg = "No configuration is loaded."
+        raise ValueError(msg)
+    else:
+        return __TYPE_MAP.ts_config.config
+
+def unload_termset_config():
+    """
+    Remove validation.
+    """
+    return __TYPE_MAP.ts_config.unload_termset_config()
+
 # a function to register a container classes with the global map
 @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the spec for'},
         {'name': 'namespace', 'type': str, 'doc': 'the name of the namespace', 'default': CORE_NAMESPACE},

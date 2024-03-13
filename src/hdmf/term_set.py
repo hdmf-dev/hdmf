@@ -5,6 +5,7 @@ from .utils import docval
 import warnings
 import numpy as np
 from .data_utils import append_data, extend_data
+import yaml
 
 
 class TermSet:
@@ -162,7 +163,6 @@ class TermSet:
         This method returns a path to the new schema to be viewed via SchemaView.
         """
         try:
-            import yaml
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
         except ImportError:   # pragma: no cover
@@ -307,7 +307,9 @@ class TermSetWrapper:
 
 class TermSetConfigurator:
     """
-
+    This class allows users to toggle on/off a global configuration for defined data types.
+    When toggled on, every instance of a configuration file supported data type will be validated
+    according the corresponding TermSet.
     """
     @docval({'name': 'path', 'type': str, 'doc': 'Path to the configuration file.', 'default': None})
     def __init__(self, **kwargs):
@@ -337,9 +339,8 @@ class TermSetConfigurator:
         """
         Load the configuration file for validation on the fields defined for the objects within the file.
         """
-
         with open(config_path, 'r') as config:
-            termset_config = yaml.load(config)
+            termset_config = yaml.load(config, Loader=yaml.FullLoader)
             if self.config is None: # set the initial config/load after config has been unloaded
                 self.config = termset_config
                 if len(self.path)==0: # for loading after an unloaded config
