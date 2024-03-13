@@ -20,14 +20,6 @@ from ..container import _set_exp  # noqa: E402
 # a global type map
 global __TYPE_MAP
 
-def load_termset_config(config_path: str = None):
-    """
-    This method will either load the default config or the config provided by the path.
-    """
-    if config_path is None:
-        config_path = path_to_config
-    __TYPE_MAP.ts_config.load_termset_config(config_path)
-
 # a function to register a container classes with the global map
 @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the spec for'},
         {'name': 'namespace', 'type': str, 'doc': 'the name of the namespace', 'default': CORE_NAMESPACE},
