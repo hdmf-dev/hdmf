@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import unittest
 
-from hdmf import Container, Data
+from hdmf import Container
 from hdmf import TermSet, TermSetWrapper
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 from hdmf.backends.hdf5.h5tools import H5_TEXT, H5PY_3
@@ -20,11 +20,9 @@ from hdmf.common import (
     SimpleMultiContainer,
     load_termset_config,
     unload_termset_config,
-    get_loaded_config,
-    get_type_map
-)
+    get_loaded_config)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
-from hdmf.utils import StrDataset, popargs, docval
+from hdmf.utils import StrDataset, popargs
 from hdmf.data_utils import DataChunkIterator
 
 from tests.unit.helpers.utils import (
@@ -36,7 +34,6 @@ from tests.unit.helpers.utils import (
 
 try:
     import linkml_runtime  # noqa: F401
-    import yaml
     REQUIREMENTS_INSTALLED = True
 except ImportError:
     REQUIREMENTS_INSTALLED = False
@@ -2804,18 +2801,27 @@ class TestTermSetConfig(TestCase):
 
     def test_validate_with_config(self):
         data = VectorData(name='foo', data=[0], description='Homo sapiens')
+        self.assertEqual(data.description.value, 'Homo sapiens')
 
     def test_namespace_warn(self):
         with self.assertWarns(Warning):
-            container = ExtensionContainer(name='foo', namespace='foo', type_map=self.tm, description='Homo sapiens')
+            ExtensionContainer(name='foo',
+                               namespace='foo',
+                               type_map=self.tm,
+                               description='Homo sapiens')
 
     def test_container_type_warn(self):
         with self.assertWarns(Warning):
-            container = ExtensionContainer(name='foo', namespace='hdmf-common', type_map=self.tm, description='Homo sapiens')
+            ExtensionContainer(name='foo',
+                               namespace='hdmf-common',
+                               type_map=self.tm,
+                               description='Homo sapiens')
 
     def test_already_wrapped_warn(self):
         with self.assertWarns(Warning):
             terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-            data = VectorData(name='foo', data=[0], description=TermSetWrapper(value='Homo sapiens', termset=terms))
+            VectorData(name='foo',
+                       data=[0],
+                       description=TermSetWrapper(value='Homo sapiens', termset=terms))
 
         unload_termset_config()

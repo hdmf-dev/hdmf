@@ -332,6 +332,12 @@ class TermSetConfigurator:
         """
         Load the configuration file for validation on the fields defined for the objects within the file.
         """
+        try:
+            import yaml
+        except ImportError:
+            msg = "Install yaml."
+            raise ValueError(msg)
+
         with open(config_path, 'r') as config:
             termset_config = yaml.load(config, Loader=yaml.FullLoader)
             if self.config is None: # set the initial config/load after config has been unloaded
@@ -347,14 +353,13 @@ class TermSetConfigurator:
                         if namespace not in self.config: # append namespace config if not present within self.config
                             self.config['namespaces'][namespace] = termset_config['namespaces'][namespace]
                         else: # check for any needed overrides within existing namespace configs
-                            breakpoint()
                             for data_type in termset_config['namespaces'][namespace]['data_types']:
                                 if data_type in self.config['namespaces'][namespace]['data_types']:
                                     replace_config = termset_config['namespaces'][namespace]['data_types'][data_type]
                                     self.config['namespaces'][namespace]['data_types'][data_type] = replace_config
                                 else: # append to config
-                                    new_data_type_config = termset_config['namespaces'][namespace]['data_types'][data_type]
-                                    self.config['namespaces'][namespace]['data_types'] = new_data_type_config
+                                    new_config = termset_config['namespaces'][namespace]['data_types'][data_type]
+                                    self.config['namespaces'][namespace]['data_types'] = new_config
 
                     # append path to self.path
                     self.path.append(config_path)

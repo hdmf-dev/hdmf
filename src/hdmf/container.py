@@ -143,7 +143,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
                         return val
                     # From the spec, get the corresponding constructor name
                     else:
-                        constr_name = obj_mapper.get_const_arg(spec)
                         termset_path = os.path.join(CUR_DIR, config_namespace['data_types'][object_name][attr])
                         termset = TermSet(term_schema_path=termset_path)
                         # If the val has been manually wrapped then skip checking the config for the attr
