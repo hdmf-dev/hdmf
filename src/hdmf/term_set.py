@@ -5,7 +5,6 @@ from .utils import docval
 import warnings
 import numpy as np
 from .data_utils import append_data, extend_data
-import yaml
 
 
 class TermSet:
@@ -163,6 +162,7 @@ class TermSet:
         This method returns a path to the new schema to be viewed via SchemaView.
         """
         try:
+            import yaml
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
         except ImportError:   # pragma: no cover
@@ -262,13 +262,6 @@ class TermSetWrapper:
         """
         return self.__value[val]
 
-    # uncomment when DataChunkIterator objects can be wrapped by TermSet
-    # def __next__(self):
-    #     """
-    #     Return the next item of a wrapped iterator.
-    #     """
-    #     return self.__value.__next__()
-    #
     def __len__(self):
         return len(self.__value)
 
@@ -313,6 +306,11 @@ class TermSetConfigurator:
     """
     @docval({'name': 'path', 'type': str, 'doc': 'Path to the configuration file.', 'default': None})
     def __init__(self, **kwargs):
+        try:
+            import yaml
+        except ImportError:
+            msg = "Install yaml"
+            raise ValueError(msg)
         self.config = None
         if kwargs['path'] is None:
             self.path = []

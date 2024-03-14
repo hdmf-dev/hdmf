@@ -36,9 +36,10 @@ from tests.unit.helpers.utils import (
 
 try:
     import linkml_runtime  # noqa: F401
-    LINKML_INSTALLED = True
+    import yaml
+    REQUIREMENTS_INSTALLED = True
 except ImportError:
-    LINKML_INSTALLED = False
+    REQUIREMENTS_INSTALLED = False
 
 
 class TestDynamicTable(TestCase):
@@ -135,7 +136,7 @@ class TestDynamicTable(TestCase):
         # now test that when we supply id's that the error goes away
         _ = DynamicTable(name="TestTable", description="", columns=[column], id=list(range(3)))
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_col_validate(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -154,7 +155,7 @@ class TestDynamicTable(TestCase):
         expected_df.index.name = 'id'
         pd.testing.assert_frame_equal(species.to_dataframe(), expected_df)
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_col_validate_bad_data(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -169,7 +170,7 @@ class TestDynamicTable(TestCase):
                                data=TermSetWrapper(value=['bad data'],
                                                    termset=terms))
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_row_validate(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -191,7 +192,7 @@ class TestDynamicTable(TestCase):
         expected_df.index.name = 'id'
         pd.testing.assert_frame_equal(species.to_dataframe(), expected_df)
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_row_validate_bad_data_one_col(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -208,7 +209,7 @@ class TestDynamicTable(TestCase):
         with self.assertRaises(ValueError):
             species.add_row(Species_1='bad', Species_2='Ursus arctos horribilis')
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_row_validate_bad_data_all_col(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -2786,7 +2787,7 @@ class ExtensionContainer(Container):
 
 class TestTermSetConfig(TestCase):
     def setUp(self):
-        if not LINKML_INSTALLED:
+        if not REQUIREMENTS_INSTALLED:
             self.skipTest("optional LinkML module is not installed")
 
         unload_termset_config()
