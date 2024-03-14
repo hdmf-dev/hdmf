@@ -314,8 +314,12 @@ class TermSetWrapper:
         This append resolves the wrapper to use the extend of the container using
         the wrapper.
         """
+        if isinstance(arg, np.ndarray):
+            values = arg[self.__field]
+        else:
+            values = [arg]
         bad_data = []
-        for item in arg:
+        for item in values:
             if not self.termset.validate(term=item):
                 bad_data.append(item)
 
