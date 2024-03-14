@@ -317,7 +317,7 @@ class TermSetWrapper:
         if isinstance(arg, np.ndarray):
             values = arg[self.__field]
         else:
-            values = [arg]
+            values = arg
         bad_data = []
         for item in values:
             if not self.termset.validate(term=item):
