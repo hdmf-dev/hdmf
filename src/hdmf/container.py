@@ -105,8 +105,11 @@ class AbstractContainer(metaclass=ExtenderMeta):
             The modificiations are not written to file, avoiding permanent modifications.
             """
             configurator = self.type_map.ts_config
-            CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
-            termset_config = configurator.config
+            if len(configurator.path)>0:
+                CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
+                termset_config = configurator.config
+            else:
+                return val
         except AttributeError: # This is for containers that are not registered, e.g., testing classes.
             return val
 

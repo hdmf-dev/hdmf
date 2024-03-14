@@ -2786,8 +2786,14 @@ class ExtensionContainer(Container):
 
 class TestTermSetConfig(TestCase):
     def setUp(self):
+        if not LINKML_INSTALLED:
+            self.skipTest("optional LinkML module is not installed")
+
         unload_termset_config()
         self.tm = load_termset_config(config_path='tests/unit/hdmf_config.yaml', return_map=True)
+
+    def tearDown(self):
+        unload_termset_config()
 
     def test_load_config(self):
         config = get_loaded_config()
@@ -2810,3 +2816,5 @@ class TestTermSetConfig(TestCase):
         with self.assertWarns(Warning):
             terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
             data = VectorData(name='foo', data=[0], description=TermSetWrapper(value='Homo sapiens', termset=terms))
+
+        unload_termset_config()
