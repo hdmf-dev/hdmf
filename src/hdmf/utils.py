@@ -954,6 +954,20 @@ def to_uint_array(arr):
     raise ValueError('Cannot convert array of dtype %s to uint.' % arr.dtype)
 
 
+def is_ragged(data):
+    """
+    Test whether a list of lists or array is ragged / jagged
+    """
+    if isinstance(data, (list, tuple)):
+        lengths = [len(sub_data) if isinstance(sub_data, (list, tuple)) else 1 for sub_data in data]
+        if len(set(lengths)) > 1:
+            return True  # ragged at this level
+
+        return any(is_ragged(sub_data) for sub_data in data)  # check next level
+
+    return False
+
+
 class LabelledDict(dict):
     """A dict wrapper that allows querying by an attribute of the values and running a callable on removed items.
 
