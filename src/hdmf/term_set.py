@@ -290,7 +290,7 @@ class TermSetWrapper:
         Note: Within HDMF append also includes numpy array append. This is not the same as list append.
         Numpy array append is essentially list extend. Now if a user appends an array, we need to
         support validating arrays with multiple items. This method has an internal bulk validation
-        check just for numpy arrays due to numpy array append. 
+        check just for numpy arrays due to numpy array append.
         """
         if isinstance(arg, np.ndarray):
             values = arg[self.__field]
