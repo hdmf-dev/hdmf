@@ -272,7 +272,6 @@ class TestDynamicTable(TestCase):
 
         np.testing.assert_array_equal(compound_vector_data.data.data, np.vstack((c_data, c_data2)))
 
-
     def test_constructor_bad_columns(self):
         columns = ['bad_column']
         msg = "'columns' must be a list of dict, VectorData, DynamicTableRegion, or VectorIndex"
