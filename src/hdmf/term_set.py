@@ -306,11 +306,6 @@ class TermSetConfigurator:
     """
     @docval({'name': 'path', 'type': str, 'doc': 'Path to the configuration file.', 'default': None})
     def __init__(self, **kwargs):
-        try:
-            import yaml
-        except ImportError:
-            msg = "Install yaml"
-            raise ValueError(msg)
         self.config = None
         if kwargs['path'] is None:
             self.path = []
