@@ -334,7 +334,7 @@ class TermSetConfigurator:
         """
         try:
             import yaml
-        except ImportError:
+        except ImportError: # pragma: no cover
             msg = "Install yaml."
             raise ValueError(msg)
 
