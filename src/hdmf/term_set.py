@@ -327,7 +327,7 @@ class TermSetConfigurator:
             msg = '%s was not found within the configuration for that namespace.' % object_name
             raise ValueError(msg)
 
-    @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.'})
+    @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'})
     def load_termset_config(self,config_path):
         """
         Load the configuration file for validation on the fields defined for the objects within the file.

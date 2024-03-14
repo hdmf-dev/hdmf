@@ -20,7 +20,7 @@ from ..container import _set_exp  # noqa: E402
 # a global type map
 global __TYPE_MAP
 
-@docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuartion file.'},
+@docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'},
         {'name': 'return_map', 'type': bool, 'doc': 'Bool to return type_map', 'default': False},
         is_method=False)
 def load_termset_config(**kwargs):
