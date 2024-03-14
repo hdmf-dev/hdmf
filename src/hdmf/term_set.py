@@ -350,7 +350,7 @@ class TermSetConfigurator:
                     raise ValueError(msg)
                 else:
                     for namespace in termset_config['namespaces']:
-                        if namespace not in self.config: # append namespace config if not present within self.config
+                        if namespace not in self.config['namespaces']: # append namespace config if not present
                             self.config['namespaces'][namespace] = termset_config['namespaces'][namespace]
                         else: # check for any needed overrides within existing namespace configs
                             for data_type in termset_config['namespaces'][namespace]['data_types']:
@@ -359,7 +359,7 @@ class TermSetConfigurator:
                                     self.config['namespaces'][namespace]['data_types'][data_type] = replace_config
                                 else: # append to config
                                     new_config = termset_config['namespaces'][namespace]['data_types'][data_type]
-                                    self.config['namespaces'][namespace]['data_types'] = new_config
+                                    self.config['namespaces'][namespace]['data_types'][data_type] = new_config
 
                     # append path to self.path
                     self.path.append(config_path)
