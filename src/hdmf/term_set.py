@@ -313,7 +313,14 @@ class TermSetConfigurator:
             self.path = [kwargs['path']]
             self.load_termset_config(config_path=self.path[0])
 
-    def get_config(self, object_name, namespace):
+    @docval({'name': 'data_type', 'type': str,
+             'doc': 'The desired data type within the configuration file.'},
+            {'name': 'namespace', 'type': str,
+             'doc': 'The namespace for the data type. '})
+    def get_config(self, data_type, namespace):
+        """
+        Return the config for that data type in the given namespace.
+        """
         try:
             namespace_config = self.config['namespaces'][namespace]
         except KeyError:
@@ -321,10 +328,10 @@ class TermSetConfigurator:
             raise ValueError(msg)
 
         try:
-            type_config = namespace_config['data_types'][object_name]
+            type_config = namespace_config['data_types'][data_type]
             return type_config
         except KeyError:
-            msg = '%s was not found within the configuration for that namespace.' % object_name
+            msg = '%s was not found within the configuration for that namespace.' % data_type
             raise ValueError(msg)
 
     @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'})

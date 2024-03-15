@@ -96,21 +96,23 @@ class AbstractContainer(metaclass=ExtenderMeta):
         This method will be called in the setter. The termset configuration will be used (if loaded)
         to check for a defined TermSet associated with the field. If found, the value of the field
         will be wrapped with a TermSetWrapper.
+
+        Even though the path field in the configurator can be a list of paths, the config
+        itself is only one file. When a user loads custom configs, the config is appended/modified.
+        The modificiations are not written to file, avoiding permanent modifications.
         """
         # load termset configuration file from global Config
         try:
-            """
-            Even though the path field in the configurator can be a list of paths, the config
-            itself is only one file. When a user loads custom configs, the config is appended/modified.
-            The modificiations are not written to file, avoiding permanent modifications.
-            """
             configurator = self.type_map.ts_config
             if len(configurator.path)>0:
+                # The type_map has a config always set; however, when toggled off, the config path path is empty.
                 CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
                 termset_config = configurator.config
             else:
                 return val
-        except AttributeError: # This is for containers that are not registered, e.g., testing classes.
+        except AttributeError:
+            # These are for classes that have not been registered, e.g., some test containers.
+            # Without register_class, the type_map parameter is not defined.
             return val
 
         # check to see that the namespace for the container is in the config
@@ -130,9 +132,9 @@ class AbstractContainer(metaclass=ExtenderMeta):
             else:
                 for attr in config_namespace['data_types'][object_name]:
                     obj_mapper = self.type_map.get_map(self)
+
                     # get the spec according to attr name in schema
                     # Note: this is the name for the field in the config
-
                     spec = obj_mapper.get_attr_spec(attr)
 
                     # In the case of dealing with datasets directly or not defined in the spec.

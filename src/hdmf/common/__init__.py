@@ -34,6 +34,9 @@ def load_termset_config(**kwargs):
         return __TYPE_MAP
 
 def get_loaded_config():
+    """
+    This method returns the entire config file.
+    """
     if __TYPE_MAP.ts_config.config is None:
         msg = "No configuration is loaded."
         raise ValueError(msg)
@@ -42,7 +45,7 @@ def get_loaded_config():
 
 def unload_termset_config():
     """
-    Remove validation.
+    Unload the configuration file.
     """
     return __TYPE_MAP.ts_config.unload_termset_config()
 
