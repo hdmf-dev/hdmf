@@ -4,7 +4,7 @@ import numpy as np
 from hdmf import Container
 from hdmf.term_set import TermSet, TermSetWrapper, TermSetConfigurator
 from hdmf.testing import TestCase, remove_test_file
-from hdmf.common import VectorData, unload_termset_config, get_loaded_config, load_termset_config
+from hdmf.common import VectorIndex, VectorData, unload_termset_config, get_loaded_config, load_termset_config
 from hdmf.utils import popargs
 
 
@@ -293,7 +293,6 @@ class TestTermSetConfigVectorData(TestCase):
         if not REQUIREMENTS_INSTALLED:
             self.skipTest("optional LinkML module is not installed")
 
-        unload_termset_config()
         self.tm = load_termset_config(config_path='tests/unit/hdmf_config.yaml', return_map=True)
 
     def tearDown(self):
@@ -331,3 +330,12 @@ class TestTermSetConfigVectorData(TestCase):
                        description=TermSetWrapper(value='Homo sapiens', termset=terms))
 
         unload_termset_config()
+
+    def test_warn_field_not_in_spec(self):
+        with self.assertWarns(Warning):
+            col1 = VectorData(name='col1',
+                              description='Homo sapiens',
+                              data=['1a', '1b', '1c', '2a'])
+            VectorIndex(name='col1_index',
+                        target=col1,
+                        data=[3, 4])
