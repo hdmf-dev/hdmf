@@ -768,7 +768,6 @@ class TypeMap:
         if manager is None:
             manager = BuildManager(self)
         builder = obj_mapper.build(container, manager, builder=builder, source=source, spec_ext=spec_ext, export=export)
-
         # add additional attributes (namespace, data_type, object_id) to builder
         namespace, data_type = self.get_container_ns_dt(container)
         builder.set_attribute('namespace', namespace)

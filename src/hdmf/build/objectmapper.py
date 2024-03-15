@@ -757,6 +757,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
                             raise Exception(msg) from ex
                         builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
+        if isinstance(builder, DatasetBuilder) and isinstance(builder.data, TermSetWrapper):
+            builder.data = builder.data.value
+        else:
+            pass
 
         # Add attributes from the specification extension to the list of attributes
         all_attrs = self.__spec.attributes + getattr(spec_ext, 'attributes', tuple())
