@@ -10,7 +10,11 @@ from hdmf.utils import docval, getargs
 
 from tests.unit.helpers.utils import CORE_NAMESPACE
 
-
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 # TODO: test build of extended group/dataset that modifies an attribute dtype (commented out below), shape, value, etc.
 # by restriction. also check that attributes cannot be deleted or scope expanded.
 # TODO: test build of extended dataset that modifies shape by restriction.
@@ -470,6 +474,7 @@ class TestBuildDatasetAddedAttrs(BuildDatasetExtAttrsMixin, TestCase):
         )
         return refined_spec
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_build_added_attr(self):
         """
         Test build of BarHolder which can contain multiple extended BarData objects, which have a new attribute.
