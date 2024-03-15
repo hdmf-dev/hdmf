@@ -229,10 +229,9 @@ class TestTermSetConfig(TestCase):
     def test_get_loaded_config(self):
         load_termset_config(config_path='tests/unit/hdmf_config.yaml', return_map=True)
         loaded_config = get_loaded_config()
-        config = {'namespaces':
-                 {'hdmf-common':
-                 {'version': '3.12.2',
-                 'data_types': {'VectorData': {'description': 'example_test_term_set.yaml'}}}}}
+        config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
+                  'data_types': {'VectorData': {'description': 'example_test_term_set.yaml'},
+                                 'VectorIndex': {'data': '...'}}}}}
 
         self.assertEqual(loaded_config, config)
 
@@ -302,7 +301,8 @@ class TestTermSetConfigVectorData(TestCase):
         config = get_loaded_config()
         self.assertEqual(config,
         {'namespaces': {'hdmf-common': {'version': '3.12.2',
-        'data_types': {'VectorData': {'description': 'example_test_term_set.yaml'}}}}})
+        'data_types': {'VectorData': {'description': 'example_test_term_set.yaml'},
+                       'VectorIndex': {'data': '...'}}}}})
 
     def test_validate_with_config(self):
         data = VectorData(name='foo', data=[0], description='Homo sapiens')
