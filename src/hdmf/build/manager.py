@@ -397,10 +397,9 @@ class TypeMap:
     """
 
     @docval({'name': 'namespaces', 'type': NamespaceCatalog, 'doc': 'the NamespaceCatalog to use', 'default': None},
-            {'name': 'mapper_cls', 'type': type, 'doc': 'the ObjectMapper class to use', 'default': None},
-            {'name': 'config_path', 'type': str, 'doc': 'The path to the TermSet config yaml.', 'default': None})
+            {'name': 'mapper_cls', 'type': type, 'doc': 'the ObjectMapper class to use', 'default': None})
     def __init__(self, **kwargs):
-        namespaces, mapper_cls, config_path = getargs('namespaces', 'mapper_cls', 'config_path', kwargs)
+        namespaces, mapper_cls = getargs('namespaces', 'mapper_cls', kwargs)
         if namespaces is None:
             namespaces = NamespaceCatalog()
         if mapper_cls is None:
@@ -413,7 +412,7 @@ class TypeMap:
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
         self.__class_generator = ClassGenerator()
-        self.ts_config = TermSetConfigurator(path=config_path)
+        self.ts_config = TermSetConfigurator()
         self.register_generator(CustomClassGenerator)
         self.register_generator(MCIClassGenerator)
 
