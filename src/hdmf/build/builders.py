@@ -145,7 +145,6 @@ class GroupBuilder(BaseBuilder):
         name, groups, datasets, links, attributes, parent, source = getargs(
             'name', 'groups', 'datasets', 'links', 'attributes', 'parent', 'source', kwargs)
         # NOTE: if groups, datasets, or links are dicts, their keys are unused
-        # breakpoint()
         groups = self.__to_list(groups)
         datasets = self.__to_list(datasets)
         links = self.__to_list(links)
