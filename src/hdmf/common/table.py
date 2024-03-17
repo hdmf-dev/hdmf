@@ -143,7 +143,8 @@ class VectorIndex(VectorData):
                     raise ValueError(msg)
                 self.__maxval = 2 ** nbits - 1
             self.__uint = np.dtype('uint%d' % nbits).type
-            # self.__adjust_precision(self.__uint) #TODO: Cannot adjust when wrapped with H5DataIO
+            if self.data is not None and not isinstance(self.data, DataIO):
+                self.__adjust_precision(self.__uint, self.data) #TODO: Cannot adjust when wrapped with H5DataIO
         return self.__uint(idx)
 
     def __adjust_precision(self, uint, data):
