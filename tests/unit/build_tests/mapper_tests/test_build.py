@@ -9,6 +9,7 @@ from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
 from tests.unit.helpers.utils import CORE_NAMESPACE
+import unittest
 
 try:
     import linkml_runtime  # noqa: F401
