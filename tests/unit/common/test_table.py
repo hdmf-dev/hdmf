@@ -84,10 +84,11 @@ class TestDynamicTable(TestCase):
         self.check_empty_table(table)
 
     def check_table(self, table):
+        # breakpoint()
         self.assertEqual(len(table), 5)
-        self.assertEqual(table.columns[0].data, [1, 2, 3, 4, 5])
-        self.assertEqual(table.columns[1].data, [10.0, 20.0, 30.0, 40.0, 50.0])
-        self.assertEqual(table.columns[2].data, ['cat', 'dog', 'bird', 'fish', 'lizard'])
+        self.assertEqual(table.columns[0].data.data, [1, 2, 3, 4, 5])
+        self.assertEqual(table.columns[1].data.data, [10.0, 20.0, 30.0, 40.0, 50.0])
+        self.assertEqual(table.columns[2].data.data, ['cat', 'dog', 'bird', 'fish', 'lizard'])
         self.assertEqual(table.id.data, [0, 1, 2, 3, 4])
         self.assertTrue(hasattr(table, 'baz'))
 
@@ -369,11 +370,11 @@ class TestDynamicTable(TestCase):
                          data=expected,
                          index=1)
         self.assertListEqual(table['qux'][:], expected)
-        self.assertListEqual(table.qux_index.data, [3, 7])
+        self.assertListEqual(table.qux_index.data.data, [3, 7])
         # Add more rows after we created the column
         table.add_row(foo=5, bar=50.0, baz='lizard', qux=[10, 11, 12])
         self.assertListEqual(table['qux'][:], expected + [[10, 11, 12], ])
-        self.assertListEqual(table.qux_index.data, [3, 7, 10])
+        self.assertListEqual(table.qux_index.data.data, [3, 7, 10])
 
     def test_add_column_auto_index_bool(self):
         """
@@ -389,13 +390,13 @@ class TestDynamicTable(TestCase):
                          description='qux column',
                          data=expected,
                          index=True)
-
+        # breakpoint()
         self.assertListEqual(table['qux'][:], expected)
-        self.assertListEqual(table.qux_index.data, [3, 7])
+        self.assertListEqual(table.qux_index.data.data, [3, 7])
         # Add more rows after we created the column
         table.add_row(foo=5, bar=50.0, baz='lizard', qux=[10, 11, 12])
         self.assertListEqual(table['qux'][:], expected + [[10, 11, 12], ])
-        self.assertListEqual(table.qux_index.data, [3, 7, 10])
+        self.assertListEqual(table.qux_index.data.data, [3, 7, 10])
 
     def test_add_column_auto_multi_index_int(self):
         """
@@ -412,13 +413,13 @@ class TestDynamicTable(TestCase):
                          data=expected,
                          index=2)
         self.assertListEqual(table['qux'][:], expected)
-        self.assertListEqual(table.qux_index_index.data, [2, 4])
-        self.assertListEqual(table.qux_index.data, [3, 4, 8, 10])
+        self.assertListEqual(table.qux_index_index.data.data, [2, 4])
+        self.assertListEqual(table.qux_index.data.data, [3, 4, 8, 10])
         # Add more rows after we created the column
         table.add_row(foo=5, bar=50.0, baz='lizard', qux=[[10, 11, 12], ])
         self.assertListEqual(table['qux'][:], expected + [[[10, 11, 12], ]])
-        self.assertListEqual(table.qux_index_index.data, [2, 4, 5])
-        self.assertListEqual(table.qux_index.data, [3, 4, 8, 10, 13])
+        self.assertListEqual(table.qux_index_index.data.data, [2, 4, 5])
+        self.assertListEqual(table.qux_index.data.data, [3, 4, 8, 10, 13])
 
     def test_add_column_auto_multi_index_int_bad_index_levels(self):
         """
@@ -466,13 +467,13 @@ class TestDynamicTable(TestCase):
                          data=expected,
                          index=2)
         self.assertListEqual(table['qux'][:], expected)
-        self.assertListEqual(table.qux_index_index.data, [2, 4])
-        self.assertListEqual(table.qux_index.data, [0, 0, 0, 0])
+        self.assertListEqual(table.qux_index_index.data.data, [2, 4])
+        self.assertListEqual(table.qux_index.data.data, [0, 0, 0, 0])
         # Add more rows after we created the column
         table.add_row(foo=5, bar=50.0, baz='lizard', qux=[[10, 11, 12], ])
         self.assertListEqual(table['qux'][:], expected + [[[10, 11, 12], ]])
-        self.assertListEqual(table.qux_index_index.data, [2, 4, 5])
-        self.assertListEqual(table.qux_index.data, [0, 0, 0, 0, 3])
+        self.assertListEqual(table.qux_index_index.data.data, [2, 4, 5])
+        self.assertListEqual(table.qux_index.data.data, [0, 0, 0, 0, 3])
 
     def test_auto_multi_index_required(self):
 
@@ -514,7 +515,7 @@ class TestDynamicTable(TestCase):
             ]
         ]
         self.assertListEqual(table['qux'][:], expected)
-        self.assertEqual(table.qux_index_index_index.data, [1, 2])
+        self.assertEqual(table.qux_index_index_index.data.data, [1, 2])
 
     def test_auto_multi_index(self):
 
@@ -556,7 +557,7 @@ class TestDynamicTable(TestCase):
             ]
         ]
         self.assertListEqual(table['qux'][:], expected)
-        self.assertEqual(table.qux_index_index_index.data, [1, 2])
+        self.assertEqual(table.qux_index_index_index.data.data, [1, 2])
 
     def test_getitem_row_num(self):
         table = self.with_spec()
@@ -1409,7 +1410,7 @@ class TestBadElementIdentifiers(TestCase):
         a = np.arange(30)
         dci = DataChunkIterator(data=a, buffer_size=1)
         e = ElementIdentifiers(name='ids', data=dci)  # test that no error is raised
-        self.assertIs(e.data, dci)
+        self.assertIs(e.data.data, dci)
 
     def test_dci_float_bad(self):
         a = np.arange(30.0)
@@ -1422,7 +1423,7 @@ class TestBadElementIdentifiers(TestCase):
         dci = DataChunkIterator(data=a, buffer_size=1)
         dio = H5DataIO(dci)
         e = ElementIdentifiers(name='ids', data=dio)  # test that no error is raised
-        self.assertIs(e.data, dio)
+        self.assertIs(e.data.data, dio)
 
 
 class SubTable(DynamicTable):
@@ -1606,7 +1607,7 @@ class TestDynamicTableClassColumns(TestCase):
         table = SubTable(name='subtable', description='subtable description')
         table.add_row(col1='a', col3='c', col5='e', col7='g')
         table.add_column(name='col2', description='column #2', data=('b', ))
-        self.assertTupleEqual(table.col2.data, ('b', ))
+        self.assertTupleEqual(table.col2.data.data, ('b', ))
 
     def test_add_opt_ind_column_after_data(self):
         """Test that adding an optional, indexed column from __columns__ with data works."""
@@ -1623,8 +1624,8 @@ class TestDynamicTableClassColumns(TestCase):
         self.assertTupleEqual(table.colnames, ('col1', 'col3', 'col5', 'col7', 'col2', 'col4'))
         self.assertEqual(table.col2.description, 'optional column')
         self.assertEqual(table.col4.description, 'optional, indexed column')
-        self.assertListEqual(table.col2.data, ['b', 'b2'])
-        # self.assertListEqual(table.col4.data, [('d1', 'd2'), ('d3', 'd4')])  # TODO this should work
+        self.assertListEqual(table.col2.data.data, ['b', 'b2'])
+        # self.assertListEqual(table.col4.data.data, [('d1', 'd2'), ('d3', 'd4')])  # TODO this should work
 
     def test_add_row_opt_column_after_data(self):
         """Test that adding a row with an optional column after adding a row without the column raises an error."""
@@ -1820,14 +1821,14 @@ class TestEnumData(TestCase):
         ed.add_row('b')
         ed.add_row('a')
         ed.add_row('c')
-        np.testing.assert_array_equal(ed.data, np.array([1, 0, 2], dtype=np.uint8))
+        np.testing.assert_array_equal(ed.data.data, np.array([1, 0, 2], dtype=np.uint8))
 
     def test_add_row_index(self):
         ed = EnumData(name='cv_data', description='a test EnumData', elements=['a', 'b', 'c'])
         ed.add_row(1, index=True)
         ed.add_row(0, index=True)
         ed.add_row(2, index=True)
-        np.testing.assert_array_equal(ed.data, np.array([1, 0, 2], dtype=np.uint8))
+        np.testing.assert_array_equal(ed.data.data, np.array([1, 0, 2], dtype=np.uint8))
 
 
 class TestIndexedEnumData(TestCase):
@@ -2295,12 +2296,12 @@ class TestVectorIndex(TestCase):
         self.assertEqual(foo_ind.name, 'foo_index')
         self.assertEqual(foo_ind.description, "Index for VectorData 'foo'")
         self.assertIs(foo_ind.target, foo)
-        self.assertListEqual(foo_ind.data, list())
+        self.assertListEqual(foo_ind.data.data, list())
 
     def test_init_data(self):
         foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c'])
         foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3])
-        self.assertListEqual(foo_ind.data, [2, 3])
+        self.assertListEqual(foo_ind.data.data, [2, 3])
         self.assertListEqual(foo_ind[0], ['a', 'b'])
         self.assertListEqual(foo_ind[1], ['c'])
 
@@ -2333,11 +2334,11 @@ class TestDoubleIndex(TestCase):
 
         foo_ind_ind.add_vector([['c11', 'c12', 'c13'], ['c21', 'c22']])
 
-        self.assertListEqual(foo.data, ['a11', 'a12', 'a21', 'b11', 'c11', 'c12', 'c13', 'c21', 'c22'])
-        self.assertListEqual(foo_ind.data, [2, 3, 4, 7, 9])
+        self.assertListEqual(foo.data.data, ['a11', 'a12', 'a21', 'b11', 'c11', 'c12', 'c13', 'c21', 'c22'])
+        self.assertListEqual(foo_ind.data.data, [2, 3, 4, 7, 9])
         self.assertListEqual(foo_ind[3], ['c11', 'c12', 'c13'])
         self.assertListEqual(foo_ind[4], ['c21', 'c22'])
-        self.assertListEqual(foo_ind_ind.data, [2, 3, 5])
+        self.assertListEqual(foo_ind_ind.data.data, [2, 3, 5])
         self.assertListEqual(foo_ind_ind[2], [['c11', 'c12', 'c13'], ['c21', 'c22']])
 
 
@@ -2706,6 +2707,7 @@ class TestVectorIndexDtype(TestCase):
     def test_array_inc_precision(self):
         index = self.set_up_array_index()
         index.add_vector(np.empty((255, )))
+        # breakpoint()
         self.assertEqual(index.data[0], 255)
         self.assertEqual(index.data.dtype, np.uint8)
 

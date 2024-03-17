@@ -104,16 +104,16 @@ class VectorIndex(VectorData):
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         target = popargs('target', kwargs)
+        self.__uint = np.uint8
+        self.__maxval = 255
+        if isinstance(kwargs['data'], (list, np.ndarray)):
+            if len(kwargs['data']) > 0:
+                self.__check_precision(len(target))
+            # adjust precision for types that we can adjust precision for
+            kwargs['data'] = self.__adjust_precision(self.__uint, kwargs['data'])
         kwargs['description'] = "Index for VectorData '%s'" % target.name
         super().__init__(**kwargs)
         self.target = target
-        self.__uint = np.uint8
-        self.__maxval = 255
-        if isinstance(self.data, (list, np.ndarray)):
-            if len(self.data) > 0:
-                self.__check_precision(len(self.target))
-            # adjust precision for types that we can adjust precision for
-            self.__adjust_precision(self.__uint)
 
     def add_vector(self, arg, **kwargs):
         """
@@ -143,21 +143,23 @@ class VectorIndex(VectorData):
                     raise ValueError(msg)
                 self.__maxval = 2 ** nbits - 1
             self.__uint = np.dtype('uint%d' % nbits).type
-            self.__adjust_precision(self.__uint)
+            # self.__adjust_precision(self.__uint) #TODO: Cannot adjust when wrapped with H5DataIO
         return self.__uint(idx)
 
-    def __adjust_precision(self, uint):
+    def __adjust_precision(self, uint, data):
         """
         Adjust precision of data to specified unsigned integer precision.
         """
-        if isinstance(self.data, list):
-            for i in range(len(self.data)):
-                self.data[i] = uint(self.data[i])
-        elif isinstance(self.data, np.ndarray):
+        if isinstance(data, list):
+            for i in range(len(data)):
+                data[i] = uint(data[i])
+        elif isinstance(data, np.ndarray):
             # use self._Data__data to work around restriction on resetting self.data
-            self._Data__data = self.data.astype(uint)
+            data = data.astype(uint)
         else:
             raise ValueError("cannot adjust precision of type %s to %s", (type(self.data), uint))
+
+        return data
 
     def add_row(self, arg, **kwargs):
         """
@@ -1045,6 +1047,7 @@ class DynamicTable(Container):
                     # return indices (in list, array, etc.) for DTR and ragged DTR
                     ret[name] = col.get(arg, df=False, index=True, **kwargs)
                 else:
+                    # breakpoint()
                     ret[name] = col.get(arg, df=df, index=index, **kwargs)
             return ret
         # if index is out of range, different errors can be generated depending on the dtype of the column

@@ -1082,7 +1082,10 @@ class DataIO:
         """Delegate slicing to the data object"""
         if not self.valid:
             raise InvalidDataIOError("Cannot get item from data. Data is not valid.")
-        return self.data[item]
+        if isinstance(item, (tuple, list, np.ndarray)):
+            return [self.data[i] for i in item]
+        else:
+            return self.data[item]
 
     def __array__(self):
         """
