@@ -1410,7 +1410,7 @@ class TestBadElementIdentifiers(TestCase):
         a = np.arange(30)
         dci = DataChunkIterator(data=a, buffer_size=1)
         e = ElementIdentifiers(name='ids', data=dci)  # test that no error is raised
-        self.assertIs(e.data.data, dci)
+        self.assertIs(e.data, dci)
 
     def test_dci_float_bad(self):
         a = np.arange(30.0)
@@ -1423,7 +1423,7 @@ class TestBadElementIdentifiers(TestCase):
         dci = DataChunkIterator(data=a, buffer_size=1)
         dio = H5DataIO(dci)
         e = ElementIdentifiers(name='ids', data=dio)  # test that no error is raised
-        self.assertIs(e.data.data, dio)
+        self.assertIs(e.data, dio)
 
 
 class SubTable(DynamicTable):
