@@ -143,7 +143,6 @@ data = VectorData(
     data=TermSetWrapper(value=c_data, termset=terms, field='species')
 )
 
-
 ######################################################
 # Validate Attributes with TermSetWrapper
 # ----------------------------------------------------
