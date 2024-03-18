@@ -308,7 +308,6 @@ class TermSetWrapper:
 
         self.__value = append_data(self.__value, arg)
 
-
     def extend(self, arg):
         """
         This append resolves the wrapper to use the extend of the container using
