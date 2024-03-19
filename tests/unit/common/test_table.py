@@ -233,7 +233,7 @@ class TestDynamicTable(TestCase):
 
         np.testing.assert_array_equal(compound_vector_data.data, np.append(c_data, c_data2))
 
-    def test_add_ref_compound_data_extend(self):
+    def test_compound_data_extend(self):
         c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
         c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
         compound_vector_data = VectorData(
