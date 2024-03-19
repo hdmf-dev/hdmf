@@ -5,6 +5,7 @@ from copy import copy
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
+from ..common import get_type_map()
 from ..term_set import TermSetConfigurator
 from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog
 from ..spec.spec import BaseStorageSpec
@@ -734,6 +735,7 @@ class TypeMap:
         self.__container_types.setdefault(namespace, dict())
         self.__container_types[namespace][data_type] = container_cls
         self.__data_types.setdefault(container_cls, (namespace, data_type))
+        container_cls.__type_map = get_type_map()
         if not isinstance(container_cls, TypeSource):
             setattr(container_cls, spec.type_key(), data_type)
             setattr(container_cls, 'namespace', namespace)

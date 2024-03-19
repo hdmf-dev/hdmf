@@ -65,14 +65,14 @@ def register_class(**kwargs):
         def _dec(cls):
             _set_exp(cls)
             __TYPE_MAP.register_container_type(namespace, data_type, cls)
-            cls.type_map = __TYPE_MAP
-            cls.namespace = namespace
+            # cls.type_map = __TYPE_MAP
+            # cls.namespace = namespace
             return cls
     else:
         def _dec(cls):
             __TYPE_MAP.register_container_type(namespace, data_type, cls)
-            cls.type_map = __TYPE_MAP
-            cls.namespace = namespace
+            # cls.type_map = __TYPE_MAP
+            # cls.namespace = namespace
             return cls
 
     if container_cls is None:
@@ -183,6 +183,9 @@ def get_type_map(**kwargs):
             type_map.load_namespaces(extensions)
         elif isinstance(extensions, TypeMap):
             type_map.merge(extensions)
+    global_config = __TYPE_MAP.ts_config
+    if global_config is not None:
+        type_map.ts_config = global_config
     return type_map
 
 
