@@ -105,7 +105,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         try:
             configurator = self.type_map.ts_config
             if len(configurator.path)>0:
-                # The type_map has a config always set; however, when toggled off, the config path path is empty.
+                # The type_map has a config always set; however, when toggled off, the config path is empty.
                 CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
                 termset_config = configurator.config
             else:
