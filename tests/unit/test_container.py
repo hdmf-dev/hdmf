@@ -58,6 +58,11 @@ class TestContainer(TestCase):
         self.assertFalse(child_obj._in_construct_mode)
         self.assertTrue(child_obj.modified)
 
+    def test_get_data_type(self):
+        obj = Container('obj1')
+        dt = obj.get_data_type()
+        self.assertEqual(dt, 'Container')
+
     def test_new_object_id_none(self):
         """Test that passing object_id=None to __new__ is OK and results in a non-None object ID being assigned.
         """

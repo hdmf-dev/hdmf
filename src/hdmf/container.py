@@ -90,6 +90,12 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
         return setter
 
+    def get_data_type(self):
+        """
+        Method that return data type.
+        """
+        return getattr(self, self._data_type_attr)
+
 
     def _field_config(self, arg_name, val):
         """
@@ -123,14 +129,14 @@ class AbstractContainer(metaclass=ExtenderMeta):
         else:
             # check to see that the container type is in the config under the namespace
             config_namespace = termset_config['namespaces'][self.namespace]
-            object_name = self.__class__.__name__
+            data_type = getattr(self, self._data_type_attr)
 
-            if object_name not in config_namespace['data_types']:
-                msg = '%s not found within the configuration for %s' % (object_name, self.namespace)
+            if data_type not in config_namespace['data_types']:
+                msg = '%s not found within the configuration for %s' % (data_type, self.namespace)
                 warn(msg)
                 return val
             else:
-                for attr in config_namespace['data_types'][object_name]:
+                for attr in config_namespace['data_types'][data_type]:
                     obj_mapper = self.type_map.get_map(self)
 
                     # get the spec according to attr name in schema
@@ -153,7 +159,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
                             # From the spec, get the mapped attribute name
                             mapped_attr_name = obj_mapper.get_attribute(spec)
                             termset_path = os.path.join(CUR_DIR,
-                                                        config_namespace['data_types'][object_name][mapped_attr_name])
+                                                        config_namespace['data_types'][data_type][mapped_attr_name])
                             termset = TermSet(term_schema_path=termset_path)
                             val = TermSetWrapper(value=val, termset=termset)
                             return val

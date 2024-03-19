@@ -274,7 +274,15 @@ class TestTermSetConfig(TestCase):
         path2 = 'tests/unit/hdmf_config2.yaml'
         tc = TermSetConfigurator(path=path)
         tc.load_termset_config(config_path=path2)
+        config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
+                  'data_types': {'VectorData': {'description': '...'},
+                                 'VectorIndex': {'data': '...'},
+                                 'Data': {'description': 'example_test_term_set.yaml'},
+                                 'EnumData': {'description': 'example_test_term_set.yaml'}}},
+                  'namespace2': {'version': 0,
+                  'data_types': {'MythicData': {'description': 'example_test_term_set.yaml'}}}}}
         self.assertEqual(tc.path, [path, path2])
+        self.assertEqual(tc.config, config)
 
 
 class ExtensionContainer(Container):
