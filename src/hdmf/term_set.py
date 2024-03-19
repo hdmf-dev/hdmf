@@ -361,6 +361,7 @@ class TermSetConfigurator:
                             self.config['namespaces'][namespace] = termset_config['namespaces'][namespace]
                         else: # check for any needed overrides within existing namespace configs
                             for data_type in termset_config['namespaces'][namespace]['data_types']:
+                                # NOTE: these two branches effectively do the same thing, but are split for clarity.
                                 if data_type in self.config['namespaces'][namespace]['data_types']:
                                     replace_config = termset_config['namespaces'][namespace]['data_types'][data_type]
                                     self.config['namespaces'][namespace]['data_types'][data_type] = replace_config

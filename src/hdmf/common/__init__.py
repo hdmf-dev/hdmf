@@ -26,7 +26,7 @@ def load_termset_config(**kwargs):
     """
     This method will either load the default config or the config provided by the path.
     """
-    config_path, return_map = kwargs['config_path'], kwargs['return_map']
+    config_path = kwargs['config_path']
     __TYPE_MAP.ts_config.load_termset_config(config_path)
 
 def get_loaded_config():
@@ -61,20 +61,20 @@ def register_class(**kwargs):
         def _dec(cls):
             _set_exp(cls)
             __TYPE_MAP.register_container_type(namespace, data_type, cls)
-            # cls.type_map = __TYPE_MAP
+            cls.type_map = __TYPE_MAP
             # cls.namespace = namespace
             return cls
     else:
         def _dec(cls):
             __TYPE_MAP.register_container_type(namespace, data_type, cls)
-            # cls.type_map = __TYPE_MAP
+            cls.type_map = __TYPE_MAP
             # cls.namespace = namespace
             return cls
 
     if container_cls is None:
         return _dec
     else:
-        container_cls.type_map = get_type_map()
+        # container_cls.type_map = get_type_map()
         _dec(container_cls)
 
 

@@ -292,7 +292,7 @@ class TestTermSetConfigVectorData(TestCase):
     def setUp(self):
         if not REQUIREMENTS_INSTALLED:
             self.skipTest("optional LinkML module is not installed")
-
+        load_termset_config(config_path='tests/unit/hdmf_config.yaml')
         self.tm = get_type_map()
 
     def tearDown(self):
