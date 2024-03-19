@@ -323,8 +323,8 @@ class TestTermSetConfigVectorData(TestCase):
                                description='Homo sapiens')
 
     def test_already_wrapped_warn(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         with self.assertWarns(Warning):
-            terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
             VectorData(name='foo',
                        data=[0],
                        description=TermSetWrapper(value='Homo sapiens', termset=terms))
