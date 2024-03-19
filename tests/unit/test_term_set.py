@@ -289,10 +289,10 @@ class ExtensionContainer(Container):
     __fields__ = ("description",)
 
     def __init__(self, **kwargs):
-        description, namespace, type_map = popargs('description', 'namespace', 'type_map', kwargs)
+        description, namespace = popargs('description', 'namespace', kwargs)
         super().__init__(**kwargs)
         self.namespace = namespace
-        self.type_map = type_map
+        self.type_map = get_type_map()
         self.description = description
 
 
@@ -301,7 +301,6 @@ class TestTermSetConfigVectorData(TestCase):
         if not REQUIREMENTS_INSTALLED:
             self.skipTest("optional LinkML module is not installed")
         load_termset_config(config_path='tests/unit/hdmf_config.yaml')
-        self.tm = get_type_map()
 
     def tearDown(self):
         unload_termset_config()
@@ -321,14 +320,12 @@ class TestTermSetConfigVectorData(TestCase):
         with self.assertWarns(Warning):
             ExtensionContainer(name='foo',
                                namespace='foo',
-                               type_map=self.tm,
                                description='Homo sapiens')
 
     def test_container_type_warn(self):
         with self.assertWarns(Warning):
             ExtensionContainer(name='foo',
                                namespace='hdmf-common',
-                               type_map=self.tm,
                                description='Homo sapiens')
 
     def test_already_wrapped_warn(self):
