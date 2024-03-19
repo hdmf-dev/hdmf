@@ -316,7 +316,7 @@ class TermSetConfigurator:
     @docval({'name': 'data_type', 'type': str,
              'doc': 'The desired data type within the configuration file.'},
             {'name': 'namespace', 'type': str,
-             'doc': 'The namespace for the data type. '})
+             'doc': 'The namespace for the data type.'})
     def get_config(self, data_type, namespace):
         """
         Return the config for that data type in the given namespace.
