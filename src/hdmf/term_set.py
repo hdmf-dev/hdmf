@@ -302,7 +302,7 @@ class TermSetConfigurator:
     """
     This class allows users to toggle on/off a global configuration for defined data types.
     When toggled on, every instance of a configuration file supported data type will be validated
-    according the corresponding TermSet.
+    according to the corresponding TermSet.
     """
     @docval({'name': 'path', 'type': str, 'doc': 'Path to the configuration file.', 'default': None})
     def __init__(self, **kwargs):
