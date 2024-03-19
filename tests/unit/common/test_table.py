@@ -221,7 +221,7 @@ class TestDynamicTable(TestCase):
         with self.assertRaises(ValueError):
             species.add_row(Species_1='bad data', Species_2='bad data')
 
-    def test_add_ref_compound_data_append(self):
+    def test_compound_data_append(self):
         c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
         c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
         compound_vector_data = VectorData(
