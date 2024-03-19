@@ -4,7 +4,8 @@ import numpy as np
 from hdmf import Container
 from hdmf.term_set import TermSet, TermSetWrapper, TermSetConfigurator
 from hdmf.testing import TestCase, remove_test_file
-from hdmf.common import VectorIndex, VectorData, unload_termset_config, get_loaded_config, load_termset_config
+from hdmf.common import (VectorIndex, VectorData, unload_termset_config, get_loaded_config, load_termset_config,
+                        get_type_map)
 from hdmf.utils import popargs
 
 
@@ -227,7 +228,7 @@ class TestTermSetConfig(TestCase):
         unload_termset_config()
 
     def test_get_loaded_config(self):
-        load_termset_config(config_path='tests/unit/hdmf_config.yaml', return_map=True)
+        load_termset_config(config_path='tests/unit/hdmf_config.yaml')
         loaded_config = get_loaded_config()
         config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
                   'data_types': {'VectorData': {'description': 'example_test_term_set.yaml'},
@@ -292,7 +293,7 @@ class TestTermSetConfigVectorData(TestCase):
         if not REQUIREMENTS_INSTALLED:
             self.skipTest("optional LinkML module is not installed")
 
-        self.tm = load_termset_config(config_path='tests/unit/hdmf_config.yaml', return_map=True)
+        self.tm = get_type_map()
 
     def tearDown(self):
         unload_termset_config()

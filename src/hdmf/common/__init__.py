@@ -21,7 +21,6 @@ from ..container import _set_exp  # noqa: E402
 global __TYPE_MAP
 
 @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'},
-        {'name': 'return_map', 'type': bool, 'doc': 'Bool to return type_map', 'default': False},
         is_method=False)
 def load_termset_config(**kwargs):
     """
@@ -29,9 +28,6 @@ def load_termset_config(**kwargs):
     """
     config_path, return_map = kwargs['config_path'], kwargs['return_map']
     __TYPE_MAP.ts_config.load_termset_config(config_path)
-
-    if return_map: # This helps with testing
-        return __TYPE_MAP
 
 def get_loaded_config():
     """
@@ -78,6 +74,7 @@ def register_class(**kwargs):
     if container_cls is None:
         return _dec
     else:
+        container_cls.type_map = get_type_map()
         _dec(container_cls)
 
 

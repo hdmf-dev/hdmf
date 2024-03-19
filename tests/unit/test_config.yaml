@@ -3,7 +3,7 @@ namespaces:
     version: TBD
     data_types:
       VectorData:
-        data: '/Users/mavaylon/Research/NWB/hdmf2/hdmf/tests/unit/example_test_term_set.yaml'
+        data: 'tests/unit/example_test_term_set.yaml'
         field2: '...'
       type2:
         field1: '...'
@@ -11,5 +11,5 @@ namespaces:
     version: TBD
     data_types:
       type1:
-        field1: '/Users/mavaylon/Research/NWB/hdmf2/hdmf/tests/unit/example_test_term_set.yaml'
+        field1: 'tests/unit/example_test_term_set.yaml'
         field2: '...'
