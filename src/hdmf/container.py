@@ -99,7 +99,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
         Even though the path field in the configurator can be a list of paths, the config
         itself is only one file. When a user loads custom configs, the config is appended/modified.
-        The modificiations are not written to file, avoiding permanent modifications.
+        The modifications are not written to file, avoiding permanent modifications.
         """
         # load termset configuration file from global Config
         try:
