@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
-from hdmf import Container, Data, TermSet, TermSetWrapper
+from hdmf import Container, Data
 from hdmf.build import ObjectMapper, BuildManager, TypeMap, GroupBuilder, DatasetBuilder
 from hdmf.build.warnings import DtypeConversionWarning
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, Spec
@@ -9,13 +9,8 @@ from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
 from tests.unit.helpers.utils import CORE_NAMESPACE
-import unittest
 
-try:
-    import linkml_runtime  # noqa: F401
-    LINKML_INSTALLED = True
-except ImportError:
-    LINKML_INSTALLED = False
+
 # TODO: test build of extended group/dataset that modifies an attribute dtype (commented out below), shape, value, etc.
 # by restriction. also check that attributes cannot be deleted or scope expanded.
 # TODO: test build of extended dataset that modifies shape by restriction.
@@ -411,6 +406,7 @@ class BuildDatasetExtAttrsMixin(TestCase, metaclass=ABCMeta):
         self.bar_data_spec = DatasetSpec(
             doc='A test dataset specification with a data type',
             data_type_def='BarData',
+            dtype='int',
             shape=[[None], [None, None]],
             attributes=[attr1_attr, attr2_attr],
         )
@@ -423,33 +419,6 @@ class BuildDatasetExtAttrsMixin(TestCase, metaclass=ABCMeta):
     @abstractmethod
     def get_refined_bar_data_spec(self):
         pass
-
-
-class BuildDatasetExtAttrsMixinDtype(BuildDatasetExtAttrsMixin, metaclass=ABCMeta):
-
-    def set_up_specs(self):
-        attr1_attr = AttributeSpec(
-            name='attr1',
-            dtype='text',
-            doc='an example string attribute',
-        )
-        attr2_attr = AttributeSpec(
-            name='attr2',
-            dtype='int',
-            doc='an example int attribute',
-        )
-        self.bar_data_spec = DatasetSpec(
-            doc='A test dataset specification with a data type',
-            data_type_def='BarData',
-            dtype='int', # Set dtype
-            shape=[[None], [None, None]],
-            attributes=[attr1_attr, attr2_attr],
-        )
-        self.bar_data_holder_spec = GroupSpec(
-            doc='A container of multiple extended BarData objects',
-            data_type_def='BarDataHolder',
-            datasets=[self.get_refined_bar_data_spec()],
-        )
 
 
 class TestBuildDatasetAddedAttrs(BuildDatasetExtAttrsMixin, TestCase):
@@ -475,15 +444,13 @@ class TestBuildDatasetAddedAttrs(BuildDatasetExtAttrsMixin, TestCase):
         )
         return refined_spec
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_build_added_attr(self):
         """
         Test build of BarHolder which can contain multiple extended BarData objects, which have a new attribute.
         """
-        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         ext_bar_data_inst = BarData(
             name='my_bar',
-            data=TermSetWrapper(value=['Homo sapiens'], termset= terms),
+            data=list(range(10)),
             attr1='a string',
             attr2=10,
             ext_attr=False,
@@ -495,7 +462,7 @@ class TestBuildDatasetAddedAttrs(BuildDatasetExtAttrsMixin, TestCase):
 
         expected_inner = DatasetBuilder(
             name='my_bar',
-            data=['Homo sapiens'],
+            data=list(range(10)),
             attributes={
                 'attr1': 'a string',
                 'attr2': 10,
@@ -583,7 +550,7 @@ class TestBuildDatasetRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
         self.assertEqual(builder.datasets['my_bar'].data.dtype, np.int64)
 
 
-class TestBuildDatasetNotRefinedDtype(BuildDatasetExtAttrsMixinDtype, TestCase):
+class TestBuildDatasetNotRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
     """
     If the spec defines a dataset data_type A (BarData) using 'data_type_def' and defines another data_type B
     (BarHolder) that includes A using 'data_type_inc', then the included A spec is an extended (or refined) spec of A -
