@@ -332,10 +332,10 @@ class TestTermSetConfigVectorData(TestCase):
         unload_termset_config()
 
     def test_warn_field_not_in_spec(self):
+        col1 = VectorData(name='col1',
+                                  description='Homo sapiens',
+                                  data=['1a', '1b', '1c', '2a'])
         with self.assertWarns(Warning):
-            col1 = VectorData(name='col1',
-                              description='Homo sapiens',
-                              data=['1a', '1b', '1c', '2a'])
             VectorIndex(name='col1_index',
                         target=col1,
                         data=[3, 4])
