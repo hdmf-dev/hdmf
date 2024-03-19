@@ -144,16 +144,16 @@ class AbstractContainer(metaclass=ExtenderMeta):
                         warn(msg)
                         return val
                     else:
-                        # From the spec, get the corresponding constructor name
-                        constr_name = obj_mapper.get_const_arg(spec)
-                        termset_path = os.path.join(CUR_DIR, config_namespace['data_types'][object_name][constr_name])
-                        termset = TermSet(term_schema_path=termset_path)
                         # If the val has been manually wrapped then skip checking the config for the attr
                         if type(val) == TermSetWrapper:
                             msg = "Field value already wrapped with TermSetWrapper."
                             warn(msg)
                             return val
                         else:
+                            # From the spec, get the corresponding constructor name
+                            constr_name = obj_mapper.get_const_arg(spec)
+                            termset_path = os.path.join(CUR_DIR, config_namespace['data_types'][object_name][constr_name])
+                            termset = TermSet(term_schema_path=termset_path)
                             val = TermSetWrapper(value=val, termset=termset)
                             return val
 
