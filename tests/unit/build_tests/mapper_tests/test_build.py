@@ -1,12 +1,13 @@
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
-from hdmf import Container, Data
 from hdmf.build import ObjectMapper, BuildManager, TypeMap, GroupBuilder, DatasetBuilder
+from hdmf import Container, Data, TermSet, TermSetWrapper
 from hdmf.build.warnings import DtypeConversionWarning
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, Spec
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
+from hdmf.common import get_type_map, VectorData
 
 from tests.unit.helpers.utils import CORE_NAMESPACE
 
@@ -549,6 +550,19 @@ class TestBuildDatasetRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
         np.testing.assert_array_equal(builder.datasets['my_bar'].data, expected.datasets['my_bar'].data)
         self.assertEqual(builder.datasets['my_bar'].data.dtype, np.int64)
 
+
+class TestUnwrapTermSetWrapperBuild(TestCase):
+    """
+    Test the unwrapping of TermSetWrapper on regular datasets within build.
+    """
+    def test_unwrap(self):
+        manager = BuildManager(get_type_map())
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        build = manager.build(VectorData(name='test_data',
+                                         descriptiont='description',
+                                         data=TermSetWrapper(value=['Homo sapiens'], termset= terms)))
+
+        self.assertEqual(build.data, ['Homo sapiens'])
 
 class TestBuildDatasetNotRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
     """
