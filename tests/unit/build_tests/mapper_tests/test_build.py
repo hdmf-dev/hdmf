@@ -569,7 +569,7 @@ class TestUnwrapTermSetWrapperBuild(TestCase):
         manager = BuildManager(get_type_map())
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         build = manager.build(VectorData(name='test_data',
-                                         descriptiont='description',
+                                         description='description',
                                          data=TermSetWrapper(value=['Homo sapiens'], termset= terms)))
 
         self.assertEqual(build.data, ['Homo sapiens'])
