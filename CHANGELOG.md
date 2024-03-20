@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.13.0 (Upcoming)
+## HDMF 3.13.0 (March 20, 2024)
 
 ### Enhancements
 - Unwrap `TermSetWrapper` within the builder to support different backends more efficiently. @mavaylon1 [#1070](https://github.com/hdmf-dev/hdmf/pull/1070)

@@ -10,7 +10,7 @@ Prepare for release of HDMF [version]
   and any other locations as needed
 - [ ] Update `pyproject.toml` as needed
 - [ ] Update `README.rst` as needed
-- [ ] Update `src/hdmf/common/hdmf-common-schema` submodule as needed. Check the version number and commit SHA manually
+- [ ] Update `src/hdmf/common/hdmf-common-schema` submodule as needed. Check the version number and commit SHA manually. Make sure we are using the latest release and not the latest commit on the `main` branch.
 - [ ] Update changelog (set release date) in `CHANGELOG.md` and any other docs as needed
 - [ ] Run tests locally including gallery tests, and inspect all warnings and outputs
   (`pytest && python test_gallery.py`)
