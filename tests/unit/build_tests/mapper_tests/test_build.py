@@ -12,6 +12,12 @@ from hdmf.common import get_type_map, VectorData
 from tests.unit.helpers.utils import CORE_NAMESPACE
 
 
+try:
+    from linkml_runtime.utils.schemaview import SchemaView  # noqa: F401
+    REQUIREMENTS_INSTALLED = True
+except ImportError:
+    REQUIREMENTS_INSTALLED = False
+
 # TODO: test build of extended group/dataset that modifies an attribute dtype (commented out below), shape, value, etc.
 # by restriction. also check that attributes cannot be deleted or scope expanded.
 # TODO: test build of extended dataset that modifies shape by restriction.
@@ -555,6 +561,10 @@ class TestUnwrapTermSetWrapperBuild(TestCase):
     """
     Test the unwrapping of TermSetWrapper on regular datasets within build.
     """
+    def setUp(self):
+        if not REQUIREMENTS_INSTALLED:
+            self.skipTest("optional LinkML module is not installed")
+
     def test_unwrap(self):
         manager = BuildManager(get_type_map())
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
