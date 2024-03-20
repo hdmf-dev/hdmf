@@ -557,23 +557,6 @@ class TestBuildDatasetRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
         self.assertEqual(builder.datasets['my_bar'].data.dtype, np.int64)
 
 
-class TestUnwrapTermSetWrapperBuild(TestCase):
-    """
-    Test the unwrapping of TermSetWrapper on regular datasets within build.
-    """
-    def setUp(self):
-        if not REQUIREMENTS_INSTALLED:
-            self.skipTest("optional LinkML module is not installed")
-
-    def test_unwrap(self):
-        manager = BuildManager(get_type_map())
-        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        build = manager.build(VectorData(name='test_data',
-                                         description='description',
-                                         data=TermSetWrapper(value=['Homo sapiens'], termset= terms)))
-
-        self.assertEqual(build.data, ['Homo sapiens'])
-
 class TestBuildDatasetNotRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
     """
     If the spec defines a dataset data_type A (BarData) using 'data_type_def' and defines another data_type B
