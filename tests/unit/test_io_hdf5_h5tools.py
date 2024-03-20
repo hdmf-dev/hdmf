@@ -27,6 +27,7 @@ from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.spec.spec import GroupSpec
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common.resources import HERD
+from hdmf.common import get_type_map, VectorData
 from hdmf.term_set import TermSet, TermSetWrapper
 
 
