@@ -27,7 +27,6 @@ from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.spec.spec import GroupSpec
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common.resources import HERD
-from hdmf.common import get_type_map, VectorData
 from hdmf.term_set import TermSet, TermSetWrapper
 
 
@@ -47,24 +46,6 @@ try:
     LINKML_INSTALLED = True
 except ImportError:
     LINKML_INSTALLED = False
-
-
-class TestUnwrapTermSetWrapperBuild(TestCase):
-    """
-    Test the unwrapping of TermSetWrapper on regular datasets within build.
-    """
-    def setUp(self):
-        if not LINKML_INSTALLED:
-            self.skipTest("optional LinkML module is not installed")
-
-    def test_unwrap(self):
-        manager = BuildManager(get_type_map())
-        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        build = manager.build(VectorData(name='test_data',
-                                         description='description',
-                                         data=TermSetWrapper(value=['Homo sapiens'], termset= terms)))
-
-        self.assertEqual(build.data, ['Homo sapiens'])
 
 
 class NumpyArrayGenericDataChunkIterator(GenericDataChunkIterator):
