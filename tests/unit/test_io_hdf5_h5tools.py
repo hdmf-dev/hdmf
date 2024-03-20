@@ -48,6 +48,24 @@ except ImportError:
     LINKML_INSTALLED = False
 
 
+class TestUnwrapTermSetWrapperBuild(TestCase):
+    """
+    Test the unwrapping of TermSetWrapper on regular datasets within build.
+    """
+    def setUp(self):
+        if not LINKML_INSTALLED:
+            self.skipTest("optional LinkML module is not installed")
+
+    def test_unwrap(self):
+        manager = BuildManager(get_type_map())
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        build = manager.build(VectorData(name='test_data',
+                                         description='description',
+                                         data=TermSetWrapper(value=['Homo sapiens'], termset= terms)))
+
+        self.assertEqual(build.data, ['Homo sapiens'])
+
+
 class NumpyArrayGenericDataChunkIterator(GenericDataChunkIterator):
     def __init__(self, array: np.ndarray, **kwargs):
         self.array = array
