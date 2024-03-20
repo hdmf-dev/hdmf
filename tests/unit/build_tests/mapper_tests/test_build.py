@@ -1,22 +1,15 @@
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
+from hdmf import Container, Data
 from hdmf.build import ObjectMapper, BuildManager, TypeMap, GroupBuilder, DatasetBuilder
-from hdmf import Container, Data, TermSet, TermSetWrapper
 from hdmf.build.warnings import DtypeConversionWarning
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, Spec
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
-from hdmf.common import get_type_map, VectorData
 
 from tests.unit.helpers.utils import CORE_NAMESPACE
 
-
-try:
-    from linkml_runtime.utils.schemaview import SchemaView  # noqa: F401
-    REQUIREMENTS_INSTALLED = True
-except ImportError:
-    REQUIREMENTS_INSTALLED = False
 
 # TODO: test build of extended group/dataset that modifies an attribute dtype (commented out below), shape, value, etc.
 # by restriction. also check that attributes cannot be deleted or scope expanded.
