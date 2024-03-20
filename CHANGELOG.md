@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.13.0 (Upcoming)
+## HDMF 3.13.0 (March 20, 2024)
 
 ### Enhancements
 - Added docs page that lists limitations of support for the HDMF specification language. @rly [#1069](https://github.com/hdmf-dev/hdmf/pull/1069)
