@@ -282,25 +282,30 @@ class TermSetWrapper:
         """
         return self.__value.__iter__()
 
+    def __multi_validation(self, data: list):
+        """
+        append_data includes numpy arrays. This is not the same as list append.
+        Numpy array append is essentially list extend. Now if a user appends an array, we need to
+        support validating arrays with multiple items. This method is an internal bulk validation
+        check for numpy arrays and extend.
+        """
+        bad_values = []
+        for item in data:
+            if not self.termset.validate(term=item):
+                bad_values.append(item)
+        return bad_values
+
     def append(self, arg):
         """
         This append resolves the wrapper to use the append of the container using
         the wrapper.
-
-        Note: append_data includes numpy arrays. This is not the same as list append.
-        Numpy array append is essentially list extend. Now if a user appends an array, we need to
-        support validating arrays with multiple items. This method has an internal bulk validation
-        check just for numpy arrays due to numpy array append.
         """
         if isinstance(arg, np.ndarray):
             values = arg[self.__field]
         else:
             values = [arg]
 
-        bad_values = []
-        for item in values:
-            if not self.termset.validate(term=item):
-                bad_values.append(item)
+        bad_values = self.__multi_validation(values)
 
         if len(bad_values)!=0:
             msg = ('"%s" is not in the term set.' % ', '.join([str(value) for value in bad_values]))
@@ -317,10 +322,8 @@ class TermSetWrapper:
             values = arg[self.__field]
         else:
             values = arg
-        bad_data = []
-        for item in values:
-            if not self.termset.validate(term=item):
-                bad_data.append(item)
+
+        bad_data = self.__multi_validation(values)
 
         if len(bad_data)==0:
             self.__value = extend_data(self.__value, arg)
