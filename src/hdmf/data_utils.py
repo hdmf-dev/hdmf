@@ -20,7 +20,11 @@ def append_data(data, arg):
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):
-        return np.append(data, arg)
+        if len(data.dtype)!=0:
+            # This is for compound data, i.e., structured arrays
+            return np.append(data, arg)
+        else:
+            return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
     elif isinstance(data, h5py.Dataset):
         shape = list(data.shape)
         shape[0] += 1
