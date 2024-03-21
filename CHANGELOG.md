@@ -1,9 +1,10 @@
 # HDMF Changelog
 
-## HDMF 3.13.0 (Upcoming)
+## HDMF 3.13.0 (March 20, 2024)
 
 ### Enhancements
 - Updated `TermSetWrapper` to support validating a single field within a compound array. @mavaylon1 [#1061](https://github.com/hdmf-dev/hdmf/pull/1061)
+- Unwrap `TermSetWrapper` within the builder to support different backends more efficiently. @mavaylon1 [#1070](https://github.com/hdmf-dev/hdmf/pull/1070)
 - Added docs page that lists limitations of support for the HDMF specification language. @rly [#1069](https://github.com/hdmf-dev/hdmf/pull/1069)
 - Added warning when using `add_row` or `add_column` to add a ragged array to `DynamicTable` without an index parameter. @stephprince [#1066](https://github.com/hdmf-dev/hdmf/pull/1066)
 
