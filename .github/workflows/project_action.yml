@@ -20,7 +20,7 @@ jobs:
       - name: Add to Developer Board
         env:
           TOKEN: ${{ steps.generate_token.outputs.token }}
-        uses: actions/add-to-project@v0.6.0
+        uses: actions/add-to-project@v0.6.1
         with:
           project-url: https://github.com/orgs/hdmf-dev/projects/7
           github-token: ${{ env.TOKEN }}
@@ -28,7 +28,7 @@ jobs:
       - name: Add to Community Board
         env:
           TOKEN: ${{ steps.generate_token.outputs.token }}
-        uses: actions/add-to-project@v0.6.0
+        uses: actions/add-to-project@v0.6.1
         with:
           project-url: https://github.com/orgs/hdmf-dev/projects/8
           github-token: ${{ env.TOKEN }}
