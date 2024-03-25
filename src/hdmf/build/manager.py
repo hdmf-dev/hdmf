@@ -398,7 +398,7 @@ class TypeMap:
 
     @docval({'name': 'namespaces', 'type': NamespaceCatalog, 'doc': 'the NamespaceCatalog to use', 'default': None},
             {'name': 'mapper_cls', 'type': type, 'doc': 'the ObjectMapper class to use', 'default': None},
-            {'name': 'type_config', 'type': TypeConfigurator, 'doc': 'The TypeConfigurator to use',
+            {'name': 'type_config', 'type': TypeConfigurator, 'doc': 'The TypeConfigurator to use.',
              'default': None})
     def __init__(self, **kwargs):
         namespaces, mapper_cls, type_config = getargs('namespaces', 'mapper_cls', 'type_config', kwargs)

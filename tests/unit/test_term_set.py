@@ -4,8 +4,7 @@ import numpy as np
 from hdmf import Container
 from hdmf.term_set import TermSet, TermSetWrapper, TypeConfigurator
 from hdmf.testing import TestCase, remove_test_file
-from hdmf.common import (VectorIndex, VectorData, unload_termset_config, get_loaded_config, load_termset_config,
-                        get_type_map)
+from hdmf.common import VectorIndex, VectorData, unload_type_config, get_loaded_config, load_type_config
 from hdmf.utils import popargs
 
 
@@ -225,10 +224,10 @@ class TestTermSetConfig(TestCase):
             self.skipTest("optional LinkML module is not installed")
 
     def tearDown(self):
-        unload_termset_config()
+        unload_type_config()
 
     def test_get_loaded_config(self):
-        load_termset_config(config_path='tests/unit/hdmf_config.yaml')
+        load_type_config(config_path='tests/unit/hdmf_config.yaml')
         loaded_config = get_loaded_config()
         config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
                   'data_types': {'VectorData': {'description': {'termset': 'example_test_term_set.yaml'}},
@@ -267,13 +266,13 @@ class TestTermSetConfig(TestCase):
         path = 'tests/unit/hdmf_config.yaml'
         tc = TypeConfigurator(path=path)
         with self.assertRaises(ValueError):
-            tc.load_termset_config(config_path=path)
+            tc.load_type_config(config_path=path)
 
     def test_load_two_unique_configs(self):
         path = 'tests/unit/hdmf_config.yaml'
         path2 = 'tests/unit/hdmf_config2.yaml'
         tc = TypeConfigurator(path=path)
-        tc.load_termset_config(config_path=path2)
+        tc.load_type_config(config_path=path2)
         config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
                   'data_types': {'VectorData': {'description': '...'},
                                  'VectorIndex': {'data': '...'},
@@ -291,8 +290,6 @@ class ExtensionContainer(Container):
     def __init__(self, **kwargs):
         description, namespace = popargs('description', 'namespace', kwargs)
         super().__init__(**kwargs)
-        self.namespace = namespace
-        self.type_map = get_type_map()
         self.description = description
 
 
@@ -300,10 +297,10 @@ class TestTermSetConfigVectorData(TestCase):
     def setUp(self):
         if not REQUIREMENTS_INSTALLED:
             self.skipTest("optional LinkML module is not installed")
-        load_termset_config(config_path='tests/unit/hdmf_config.yaml')
+        load_type_config(config_path='tests/unit/hdmf_config.yaml')
 
     def tearDown(self):
-        unload_termset_config()
+        unload_type_config()
 
     def test_load_config(self):
         config = get_loaded_config()
@@ -334,8 +331,6 @@ class TestTermSetConfigVectorData(TestCase):
             VectorData(name='foo',
                        data=[0],
                        description=TermSetWrapper(value='Homo sapiens', termset=terms))
-
-        unload_termset_config()
 
     def test_warn_field_not_in_spec(self):
         col1 = VectorData(name='col1',

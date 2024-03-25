@@ -313,7 +313,7 @@ class TypeConfigurator:
             self.path = []
         else:
             self.path = [kwargs['path']]
-            self.load_termset_config(config_path=self.path[0])
+            self.load_type_config(config_path=self.path[0])
 
     @docval({'name': 'data_type', 'type': str,
              'doc': 'The desired data type within the configuration file.'},
@@ -337,7 +337,7 @@ class TypeConfigurator:
             raise ValueError(msg)
 
     @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'})
-    def load_termset_config(self,config_path):
+    def load_type_config(self,config_path):
         """
         Load the configuration file for validation on the fields defined for the objects within the file.
         """
@@ -375,7 +375,7 @@ class TypeConfigurator:
                     # append path to self.path
                     self.path.append(config_path)
 
-    def unload_termset_config(self):
+    def unload_type_config(self):
         """
         Remove validation according to termset configuration file.
         """
