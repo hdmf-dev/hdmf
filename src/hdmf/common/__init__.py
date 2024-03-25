@@ -180,9 +180,6 @@ def get_type_map(**kwargs):
             type_map.load_namespaces(extensions)
         elif isinstance(extensions, TypeMap):
             type_map.merge(extensions)
-    global_config = __TYPE_MAP.ts_config
-    if global_config is not None:
-        type_map.ts_config = global_config
     return type_map
 
 

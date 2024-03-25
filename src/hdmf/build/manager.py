@@ -397,14 +397,18 @@ class TypeMap:
     """
 
     @docval({'name': 'namespaces', 'type': NamespaceCatalog, 'doc': 'the NamespaceCatalog to use', 'default': None},
-            {'name': 'mapper_cls', 'type': type, 'doc': 'the ObjectMapper class to use', 'default': None})
+            {'name': 'mapper_cls', 'type': type, 'doc': 'the ObjectMapper class to use', 'default': None},
+            {'name': 'type_config', 'type': TypeConfigurator, 'doc': 'The TypeConfigurator to use',
+             'default': None})
     def __init__(self, **kwargs):
-        namespaces, mapper_cls = getargs('namespaces', 'mapper_cls', kwargs)
+        namespaces, mapper_cls, type_config = getargs('namespaces', 'mapper_cls', 'type_config', kwargs)
         if namespaces is None:
             namespaces = NamespaceCatalog()
         if mapper_cls is None:
             from .objectmapper import ObjectMapper  # avoid circular import
             mapper_cls = ObjectMapper
+        if type_config is None:
+            type_config = TypeConfigurator()
         self.__ns_catalog = namespaces
         self.__mappers = dict()  # already constructed ObjectMapper classes
         self.__mapper_cls = dict()  # the ObjectMapper class to use for each container type
@@ -412,7 +416,8 @@ class TypeMap:
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
         self.__class_generator = ClassGenerator()
-        self.ts_config = TypeConfigurator()
+        self.ts_config = type_config
+
         self.register_generator(CustomClassGenerator)
         self.register_generator(MCIClassGenerator)
 
@@ -425,7 +430,7 @@ class TypeMap:
         return self.__container_types
 
     def __copy__(self):
-        ret = TypeMap(copy(self.__ns_catalog), self.__default_mapper_cls)
+        ret = TypeMap(copy(self.__ns_catalog), self.__default_mapper_cls, self.ts_config)
         ret.merge(self)
         return ret
 
