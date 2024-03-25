@@ -4,7 +4,7 @@ import numpy as np
 from hdmf import Container, Data, TermSet, TermSetWrapper
 from hdmf.common import VectorData, get_type_map
 from hdmf.build import ObjectMapper, BuildManager, TypeMap, GroupBuilder, DatasetBuilder
-from hdmf.build.warnings import DtypeConversionWarning
+from hdmf.build.warnings import DtypeConversionWarning, IncorrectDatasetShapeBuildWarning
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, Spec
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
@@ -650,3 +650,287 @@ class TestBuildDatasetNotRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
         msg = "could not resolve dtype for BarData 'my_bar'"
         with self.assertRaisesWith(Exception, msg):
             self.manager.build(bar_data_holder_inst, source='test.h5')
+
+
+class BuildDatasetShapeMixin(TestCase, metaclass=ABCMeta):
+
+    def setUp(self):
+        self.set_up_specs()
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(self.bar_data_spec, 'test.yaml')
+        spec_catalog.register_spec(self.bar_data_holder_spec, 'test.yaml')
+        namespace = SpecNamespace(
+            doc='a test namespace',
+            name=CORE_NAMESPACE,
+            schema=[{'source': 'test.yaml'}],
+            version='0.1.0',
+            catalog=spec_catalog
+        )
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(CORE_NAMESPACE, 'BarData', BarData)
+        type_map.register_container_type(CORE_NAMESPACE, 'BarDataHolder', BarDataHolder)
+        type_map.register_map(BarData, ExtBarDataMapper)
+        type_map.register_map(BarDataHolder, ObjectMapper)
+        self.manager = BuildManager(type_map)
+
+    def set_up_specs(self):
+        shape, dims = self.get_base_shape_dims()
+        self.bar_data_spec = DatasetSpec(
+            doc='A test dataset specification with a data type',
+            data_type_def='BarData',
+            dtype='int',
+            shape=shape,
+            dims=dims,
+        )
+        self.bar_data_holder_spec = GroupSpec(
+            doc='A container of multiple extended BarData objects',
+            data_type_def='BarDataHolder',
+            datasets=[self.get_dataset_inc_spec()],
+        )
+
+    @abstractmethod
+    def get_base_shape_dims(self):
+        pass
+
+    @abstractmethod
+    def get_dataset_inc_spec(self):
+        pass
+
+
+class TestBuildDatasetOneOptionBadShapeUnspecified1(BuildDatasetShapeMixin):
+    """Test dataset spec shape = 2D any length, data = 1D. Should raise warning and set dimension_labels to None."""
+
+    def get_base_shape_dims(self):
+        return [None, None], ['a', 'b']
+
+    def get_dataset_inc_spec(self):
+        dataset_inc_spec = DatasetSpec(
+            doc='A BarData',
+            data_type_inc='BarData',
+            quantity='*',
+        )
+        return dataset_inc_spec
+
+    def test_build(self):
+        """
+        Test build of BarDataHolder which contains a BarData.
+        """
+        # NOTE: attr1 doesn't map to anything but is required in the test container class
+        bar_data_inst = BarData(name='my_bar', data=[1, 2, 3], attr1='a string')
+        bar_data_holder_inst = BarDataHolder(
+            name='my_bar_holder',
+            bar_datas=[bar_data_inst],
+        )
+
+        msg = "Shape of data does not match shape in spec 'BarData'"
+        with self.assertWarnsWith(IncorrectDatasetShapeBuildWarning, msg):
+            builder = self.manager.build(bar_data_holder_inst, source='test.h5')
+        assert builder.datasets['my_bar'].dimension_labels is None
+
+
+class TestBuildDatasetOneOptionBadShapeUnspecified2(BuildDatasetShapeMixin):
+    """Test dataset spec shape = (any, 2), data = (3, 1). Should raise warning and set dimension_labels to None."""
+
+    def get_base_shape_dims(self):
+        return [None, 2], ['a', 'b']
+
+    def get_dataset_inc_spec(self):
+        dataset_inc_spec = DatasetSpec(
+            doc='A BarData',
+            data_type_inc='BarData',
+            quantity='*',
+        )
+        return dataset_inc_spec
+
+    def test_build(self):
+        """
+        Test build of BarDataHolder which contains a BarData.
+        """
+        # NOTE: attr1 doesn't map to anything but is required in the test container class
+        bar_data_inst = BarData(name='my_bar', data=[[1], [2], [3]], attr1='a string')
+        bar_data_holder_inst = BarDataHolder(
+            name='my_bar_holder',
+            bar_datas=[bar_data_inst],
+        )
+
+        msg = "Shape of data does not match shape in spec 'BarData'"
+        with self.assertWarnsWith(IncorrectDatasetShapeBuildWarning, msg):
+            builder = self.manager.build(bar_data_holder_inst, source='test.h5')
+        assert builder.datasets['my_bar'].dimension_labels is None
+
+
+class TestBuildDatasetTwoOptionsBadShapeUnspecified(BuildDatasetShapeMixin):
+    """Test dataset spec shape = (any, 2) or (any, 3), data = (3, 1).
+    Should raise warning and set dimension_labels to None.
+    """
+
+    def get_base_shape_dims(self):
+        return [[None, 2], [None, 3]], [['a', 'b1'], ['a', 'b2']]
+
+    def get_dataset_inc_spec(self):
+        dataset_inc_spec = DatasetSpec(
+            doc='A BarData',
+            data_type_inc='BarData',
+            quantity='*',
+        )
+        return dataset_inc_spec
+
+    def test_build(self):
+        """
+        Test build of BarDataHolder which contains a BarData.
+        """
+        # NOTE: attr1 doesn't map to anything but is required in the test container class
+        bar_data_inst = BarData(name='my_bar', data=[[1], [2], [3]], attr1='a string')
+        bar_data_holder_inst = BarDataHolder(
+            name='my_bar_holder',
+            bar_datas=[bar_data_inst],
+        )
+
+        msg = "Shape of data does not match any allowed shapes in spec 'BarData'"
+        with self.assertWarnsWith(IncorrectDatasetShapeBuildWarning, msg):
+            builder = self.manager.build(bar_data_holder_inst, source='test.h5')
+        assert builder.datasets['my_bar'].dimension_labels is None
+
+
+class TestBuildDatasetDimensionLabelsUnspecified(BuildDatasetShapeMixin):
+
+    def get_base_shape_dims(self):
+        return None, None
+
+    def get_dataset_inc_spec(self):
+        dataset_inc_spec = DatasetSpec(
+            doc='A BarData',
+            data_type_inc='BarData',
+            quantity='*',
+        )
+        return dataset_inc_spec
+
+    def test_build(self):
+        """
+        Test build of BarDataHolder which contains a BarData.
+        """
+        # NOTE: attr1 doesn't map to anything but is required in the test container class
+        bar_data_inst = BarData(name='my_bar', data=[[1, 2, 3], [4, 5, 6]], attr1='a string')
+        bar_data_holder_inst = BarDataHolder(
+            name='my_bar_holder',
+            bar_datas=[bar_data_inst],
+        )
+
+        builder = self.manager.build(bar_data_holder_inst, source='test.h5')
+        assert builder.datasets['my_bar'].dimension_labels is None
+
+
+class TestBuildDatasetDimensionLabelsOneOption(BuildDatasetShapeMixin):
+
+    def get_base_shape_dims(self):
+        return [None, None], ['a', 'b']
+
+    def get_dataset_inc_spec(self):
+        dataset_inc_spec = DatasetSpec(
+            doc='A BarData',
+            data_type_inc='BarData',
+            quantity='*',
+        )
+        return dataset_inc_spec
+
+    def test_build(self):
+        """
+        Test build of BarDataHolder which contains a BarData.
+        """
+        # NOTE: attr1 doesn't map to anything but is required in the test container class
+        bar_data_inst = BarData(name='my_bar', data=[[1, 2, 3], [4, 5, 6]], attr1='a string')
+        bar_data_holder_inst = BarDataHolder(
+            name='my_bar_holder',
+            bar_datas=[bar_data_inst],
+        )
+
+        builder = self.manager.build(bar_data_holder_inst, source='test.h5')
+        assert builder.datasets['my_bar'].dimension_labels == ('a', 'b')
+
+
+class TestBuildDatasetDimensionLabelsTwoOptionsOneMatch(BuildDatasetShapeMixin):
+
+    def get_base_shape_dims(self):
+        return [[None], [None, None]], [['a'], ['a', 'b']]
+
+    def get_dataset_inc_spec(self):
+        dataset_inc_spec = DatasetSpec(
+            doc='A BarData',
+            data_type_inc='BarData',
+            quantity='*',
+        )
+        return dataset_inc_spec
+
+    def test_build(self):
+        """
+        Test build of BarDataHolder which contains a BarData.
+        """
+        # NOTE: attr1 doesn't map to anything but is required in the test container class
+        bar_data_inst = BarData(name='my_bar', data=[[1, 2, 3], [4, 5, 6]], attr1='a string')
+        bar_data_holder_inst = BarDataHolder(
+            name='my_bar_holder',
+            bar_datas=[bar_data_inst],
+        )
+
+        builder = self.manager.build(bar_data_holder_inst, source='test.h5')
+        assert builder.datasets['my_bar'].dimension_labels == ('a', 'b')
+
+
+class TestBuildDatasetDimensionLabelsTwoOptionsTwoMatches(BuildDatasetShapeMixin):
+
+    def get_base_shape_dims(self):
+        return [[None, None], [None, 3]], [['a', 'b1'], ['a', 'b2']]
+
+    def get_dataset_inc_spec(self):
+        dataset_inc_spec = DatasetSpec(
+            doc='A BarData',
+            data_type_inc='BarData',
+            quantity='*',
+        )
+        return dataset_inc_spec
+
+    def test_build(self):
+        """
+        Test build of BarDataHolder which contains a BarData.
+        """
+        # NOTE: attr1 doesn't map to anything but is required in the test container class
+        bar_data_inst = BarData(name='my_bar', data=[[1, 2, 3], [4, 5, 6]], attr1='a string')
+        bar_data_holder_inst = BarDataHolder(
+            name='my_bar_holder',
+            bar_datas=[bar_data_inst],
+        )
+
+        builder = self.manager.build(bar_data_holder_inst, source='test.h5')
+        assert builder.datasets['my_bar'].dimension_labels == ('a', 'b2')
+
+
+class TestBuildDatasetDimensionLabelsOneOptionRefined(BuildDatasetShapeMixin):
+
+    def get_base_shape_dims(self):
+        return [None, None], ['a', 'b1']
+
+    def get_dataset_inc_spec(self):
+        dataset_inc_spec = DatasetSpec(
+            doc='A BarData',
+            data_type_inc='BarData',
+            quantity='*',
+            shape=[None, 3],
+            dims=['a', 'b2'],
+        )
+        return dataset_inc_spec
+
+    def test_build(self):
+        """
+        Test build of BarDataHolder which contains a BarData.
+        """
+        # NOTE: attr1 doesn't map to anything but is required in the test container class
+        bar_data_inst = BarData(name='my_bar', data=[[1, 2, 3], [4, 5, 6]], attr1='a string')
+        bar_data_holder_inst = BarDataHolder(
+            name='my_bar_holder',
+            bar_datas=[bar_data_inst],
+        )
+
+        builder = self.manager.build(bar_data_holder_inst, source='test.h5')
+        assert builder.datasets['my_bar'].dimension_labels == ('a', 'b2')

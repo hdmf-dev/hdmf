@@ -330,6 +330,10 @@ class DatasetBuilder(BaseBuilder):
              'doc': 'The datatype of this dataset.', 'default': None},
             {'name': 'attributes', 'type': dict,
              'doc': 'A dictionary of attributes to create in this dataset.', 'default': dict()},
+            {'name': 'dimension_labels', 'type': tuple,
+             'doc': ('A list of labels for each dimension of this dataset from the spec. Currently this is '
+                     'supplied only on build.'),
+             'default': None},
             {'name': 'maxshape', 'type': (int, tuple),
              'doc': 'The shape of this dataset. Use None for scalars.', 'default': None},
             {'name': 'chunks', 'type': bool, 'doc': 'Whether or not to chunk this dataset.', 'default': False},
@@ -337,11 +341,14 @@ class DatasetBuilder(BaseBuilder):
             {'name': 'source', 'type': str, 'doc': 'The source of the data in this builder.', 'default': None})
     def __init__(self, **kwargs):
         """ Create a Builder object for a dataset """
-        name, data, dtype, attributes, maxshape, chunks, parent, source = getargs(
-            'name', 'data', 'dtype', 'attributes', 'maxshape', 'chunks', 'parent', 'source', kwargs)
+        name, data, dtype, attributes, dimension_labels, maxshape, chunks, parent, source = getargs(
+            'name', 'data', 'dtype', 'attributes', 'dimension_labels', 'maxshape', 'chunks', 'parent', 'source',
+            kwargs
+        )
         super().__init__(name, attributes, parent, source)
         self['data'] = data
         self['attributes'] = _copy.copy(attributes)
+        self.__dimension_labels = dimension_labels
         self.__chunks = chunks
         self.__maxshape = maxshape
         if isinstance(data, BaseBuilder):
@@ -360,6 +367,11 @@ class DatasetBuilder(BaseBuilder):
         if self['data'] is not None:
             raise AttributeError("Cannot overwrite data.")
         self['data'] = val
+
+    @property
+    def dimension_labels(self):
+        """Labels for each dimension of this dataset from the spec."""
+        return self.__dimension_labels
 
     @property
     def chunks(self):

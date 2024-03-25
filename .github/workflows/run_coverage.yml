@@ -60,7 +60,7 @@ jobs:
 
       - name: Run tests and generate coverage report
         run: |
-          pytest --cov
+          pytest  # configured to run with coverage
           python -m coverage xml  # codecov uploader requires xml format
           python -m coverage report -m
 
