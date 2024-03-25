@@ -10,7 +10,7 @@ from ..build import Builder
 from ..common import validate as common_validate, get_manager
 from ..container import AbstractContainer, Container, Data
 from ..utils import get_docval_macro
-from ..data_utils import AbstractDataChunkIterator
+from ..data_utils import AbstractDataChunkIterator, DataIO
 
 
 class TestCase(unittest.TestCase):
@@ -148,10 +148,17 @@ class TestCase(unittest.TestCase):
         self.assertTrue(isinstance(data1, Data), message)
         self.assertTrue(isinstance(data2, Data), message)
         self.assertEqual(len(data1), len(data2), message)
-        self._assert_array_equal(data1.data, data2.data,
-                                 ignore_hdmf_attrs=ignore_hdmf_attrs,
-                                 ignore_string_to_byte=ignore_string_to_byte,
-                                 message=message)
+        # breakpoint()
+        if isinstance(data1.data, DataIO) and isinstance(data2.data, DataIO):
+            self._assert_array_equal(data1.data.data, data2.data.data,
+                                     ignore_hdmf_attrs=ignore_hdmf_attrs,
+                                     ignore_string_to_byte=ignore_string_to_byte,
+                                     message=message)
+        else:
+            self._assert_array_equal(data1.data, data2.data,
+                                     ignore_hdmf_attrs=ignore_hdmf_attrs,
+                                     ignore_string_to_byte=ignore_string_to_byte,
+                                     message=message)
         self.assertContainerEqual(container1=data1,
                                   container2=data2,
                                   ignore_hdmf_attrs=ignore_hdmf_attrs,
