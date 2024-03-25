@@ -1,7 +1,7 @@
 Prepare for release of HDMF [version]
 
 ### Before merging:
-- [ ] Make sure all PRs to be included in this release have been merged to `dev`
+- [ ] Make sure all PRs to be included in this release have been merged to `dev`.
 - [ ] Major and minor releases: Update package versions in `requirements.txt`, `requirements-dev.txt`,
   `requirements-doc.txt`, `requirements-opt.txt`, and `environment-ros3.yml` to the latest versions,
   and update dependency ranges in `pyproject.toml` and minimums in `requirements-min.txt` as needed.
