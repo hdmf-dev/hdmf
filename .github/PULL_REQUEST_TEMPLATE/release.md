@@ -15,7 +15,7 @@ Prepare for release of HDMF [version]
   manually. Make sure we are using the latest release and not the latest commit on the `main` branch.
 - [ ] Update changelog (set release date) in `CHANGELOG.md` and any other docs as needed
 - [ ] Run tests locally including gallery tests, and inspect all warnings and outputs
-  (`pytest && python test_gallery.py`). Try to remove all warnings. 
+  (`pytest && python test_gallery.py`). Try to remove all warnings.
 - [ ] Run PyNWB tests locally including gallery and validation tests, and inspect all warnings and outputs
   (`cd pynwb; git checkout dev; git pull; python test.py -v > out.txt 2>&1`)
 - [ ] Run HDMF-Zarr tests locally including gallery and validation tests, and inspect all warnings and outputs
