@@ -301,7 +301,7 @@ class TermSetWrapper:
         the wrapper.
         """
         if isinstance(arg, np.ndarray):
-            if len(arg.dtype)!=0: # check if compound array
+            if self.__field is not None: # compound array
                 values = arg[self.__field]
             else:
                 values = arg
@@ -322,7 +322,7 @@ class TermSetWrapper:
         the wrapper.
         """
         if isinstance(arg, np.ndarray):
-            if len(arg.dtype)!=0: # check if compound array
+            if self.__field is not None: # compound array
                 values = arg[self.__field]
             else:
                 values = arg
