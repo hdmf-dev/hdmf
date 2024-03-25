@@ -20,8 +20,7 @@ def append_data(data, arg):
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):
-        if len(data.dtype)!=0:
-            # This is for compound data, i.e., structured arrays
+        if isinstance(arg, np.ndarray):
             return np.append(data, arg)
         else:
             return np.append(data,  np.expand_dims(arg, axis=0), axis=0)

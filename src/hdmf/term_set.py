@@ -282,7 +282,7 @@ class TermSetWrapper:
         """
         return self.__value.__iter__()
 
-    def __multi_validation(self, data: list):
+    def __multi_validation(self, data):
         """
         append_data includes numpy arrays. This is not the same as list append.
         Numpy array append is essentially list extend. Now if a user appends an array, we need to
@@ -301,7 +301,10 @@ class TermSetWrapper:
         the wrapper.
         """
         if isinstance(arg, np.ndarray):
-            values = arg[self.__field]
+            if len(arg.dtype)!=0: # check if compound array
+                values = arg[self.__field]
+            else:
+                values = arg
         else:
             values = [arg]
 
@@ -319,7 +322,10 @@ class TermSetWrapper:
         the wrapper.
         """
         if isinstance(arg, np.ndarray):
-            values = arg[self.__field]
+            if len(arg.dtype)!=0: # check if compound array
+                values = arg[self.__field]
+            else:
+                values = arg
         else:
             values = arg
 
