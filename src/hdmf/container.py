@@ -108,21 +108,19 @@ class AbstractContainer(metaclass=ExtenderMeta):
         The modifications are not written to file, avoiding permanent modifications.
         """
         # load termset configuration file from global Config
-        try:
-            configurator = self.type_map.ts_config
-            if len(configurator.path)>0:
-                # The type_map has a config always set; however, when toggled off, the config path is empty.
-                CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
-                termset_config = configurator.config
-            else:
-                return val
-        except AttributeError:
-            # These are for classes that have not been registered, e.g., some test containers.
-            # Without register_class, the type_map parameter is not defined.
+        from hdmf.common import get_type_map # circular import
+        type_map = get_type_map()
+        configurator = type_map.ts_config
+
+        if len(configurator.path)>0:
+            # The type_map has a config always set; however, when toggled off, the config path is empty.
+            CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
+            termset_config = configurator.config
+        else:
             return val
 
         # check to see that the namespace for the container is in the config
-        if self.namespace not in self.type_map.container_types:
+        if self.namespace not in type_map.container_types:
             msg = "%s not found within loaded configuration." % self.namespace
             warn(msg)
             return val
@@ -137,7 +135,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 return val
             else:
                 for attr in config_namespace['data_types'][data_type]:
-                    obj_mapper = self.type_map.get_map(self)
+                    obj_mapper = type_map.get_map(self)
 
                     # get the spec according to attr name in schema
                     # Note: this is the name for the field in the config

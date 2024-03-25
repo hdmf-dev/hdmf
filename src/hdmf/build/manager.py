@@ -739,8 +739,6 @@ class TypeMap:
         self.__container_types.setdefault(namespace, dict())
         self.__container_types[namespace][data_type] = container_cls
         self.__data_types.setdefault(container_cls, (namespace, data_type))
-        # from hdmf.common import get_type_map # circular import
-        # container_cls.type_map = get_type_map()
         if not isinstance(container_cls, TypeSource):
             setattr(container_cls, spec.type_key(), data_type)
             setattr(container_cls, 'namespace', namespace)
