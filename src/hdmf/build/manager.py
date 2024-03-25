@@ -5,7 +5,7 @@ from copy import copy
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
-from ..term_set import TermSetConfigurator
+from ..term_set import TypeConfigurator
 from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog
 from ..spec.spec import BaseStorageSpec
 from ..utils import docval, getargs, ExtenderMeta, get_docval
@@ -412,7 +412,7 @@ class TypeMap:
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
         self.__class_generator = ClassGenerator()
-        self.ts_config = TermSetConfigurator()
+        self.ts_config = TypeConfigurator()
         self.register_generator(CustomClassGenerator)
         self.register_generator(MCIClassGenerator)
 

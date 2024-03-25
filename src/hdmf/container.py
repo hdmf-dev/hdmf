@@ -159,7 +159,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
                             # From the spec, get the mapped attribute name
                             mapped_attr_name = obj_mapper.get_attribute(spec)
                             termset_path = os.path.join(CUR_DIR,
-                                                        config_namespace['data_types'][data_type][mapped_attr_name])
+                                                        config_namespace['data_types'][data_type][mapped_attr_name]['termset'])
                             termset = TermSet(term_schema_path=termset_path)
                             val = TermSetWrapper(value=val, termset=termset)
                             return val

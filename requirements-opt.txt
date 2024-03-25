@@ -1,8 +1,7 @@
 # pinned dependencies that are optional. used to reproduce an entire development environment to use HDMF
 tqdm==4.66.1
 zarr==2.16.1
-linkml-runtime==1.6.0; python_version >= "3.9"
-schemasheets==0.1.24; python_version >= "3.9"
-oaklib==0.5.20; python_version >= "3.9"
-pydantic==1.10.13  # linkml-runtime 1.6.0 and related packages require pydantic<2
+linkml-runtime==1.7.4; python_version >= "3.9"
+schemasheets==0.2.1; python_version >= "3.9"
+oaklib==0.5.32; python_version >= "3.9"
 pyyaml==6.0.1; python_version >= "3.9"

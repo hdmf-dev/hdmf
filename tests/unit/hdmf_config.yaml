@@ -3,6 +3,7 @@ namespaces:
     version: 3.12.2
     data_types:
       VectorData:
-        description: example_test_term_set.yaml
+        description:
+          termset: example_test_term_set.yaml
       VectorIndex:
         data: ...

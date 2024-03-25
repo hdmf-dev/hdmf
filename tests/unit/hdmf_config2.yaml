@@ -3,13 +3,16 @@ namespaces:
     version: 3.12.2
     data_types:
       Data:
-        description: example_test_term_set.yaml
+        description:
+          termset: example_test_term_set.yaml
       EnumData:
-        description: example_test_term_set.yaml
+        description:
+          termset: example_test_term_set.yaml
       VectorData:
         description: ...
   namespace2:
     version: 0
     data_types:
       MythicData:
-        description: example_test_term_set.yaml
+        description:
+          termset: example_test_term_set.yaml

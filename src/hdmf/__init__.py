@@ -3,7 +3,7 @@ from .backends.hdf5.h5_utils import H5Dataset, H5RegionSlicer
 from .container import Container, Data, DataRegion, HERDManager
 from .region import ListSlicer
 from .utils import docval, getargs
-from .term_set import TermSet, TermSetWrapper, TermSetConfigurator
+from .term_set import TermSet, TermSetWrapper, TypeConfigurator
 
 
 @docval(

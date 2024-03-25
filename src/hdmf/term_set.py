@@ -162,12 +162,13 @@ class TermSet:
         This method returns a path to the new schema to be viewed via SchemaView.
         """
         try:
-            import yaml
+            from ruamel.yaml import YAML
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
         except ImportError:   # pragma: no cover
             msg = "Install schemasheets."
             raise ValueError(msg)
+
         schema_maker = SchemaMaker()
         tsv_file_paths = glob.glob(self.schemasheets_folder + "/*.tsv")
         schema = schema_maker.create_schema(tsv_file_paths)
@@ -175,6 +176,7 @@ class TermSet:
         schemasheet_schema_path = os.path.join(self.schemasheets_folder, f"{schema_dict['name']}.yaml")
 
         with open(schemasheet_schema_path, "w") as f:
+            yaml=YAML(typ='safe')
             yaml.dump(schema_dict, f)
 
         return schemasheet_schema_path
@@ -298,7 +300,7 @@ class TermSetWrapper:
             msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
             raise ValueError(msg)
 
-class TermSetConfigurator:
+class TypeConfigurator:
     """
     This class allows users to toggle on/off a global configuration for defined data types.
     When toggled on, every instance of a configuration file supported data type will be validated
@@ -340,13 +342,14 @@ class TermSetConfigurator:
         Load the configuration file for validation on the fields defined for the objects within the file.
         """
         try:
-            import yaml
+            from ruamel.yaml import YAML
         except ImportError: # pragma: no cover
             msg = "Install yaml."
             raise ValueError(msg)
 
         with open(config_path, 'r') as config:
-            termset_config = yaml.load(config, Loader=yaml.FullLoader)
+            yaml=YAML(typ='safe')
+            termset_config = yaml.load(config)
             if self.config is None: # set the initial config/load after config has been unloaded
                 self.config = termset_config
                 if len(self.path)==0: # for loading after an unloaded config

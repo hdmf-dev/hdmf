@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 from hdmf import Container
-from hdmf.term_set import TermSet, TermSetWrapper, TermSetConfigurator
+from hdmf.term_set import TermSet, TermSetWrapper, TypeConfigurator
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common import (VectorIndex, VectorData, unload_termset_config, get_loaded_config, load_termset_config,
                         get_type_map)
@@ -231,7 +231,7 @@ class TestTermSetConfig(TestCase):
         load_termset_config(config_path='tests/unit/hdmf_config.yaml')
         loaded_config = get_loaded_config()
         config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
-                  'data_types': {'VectorData': {'description': 'example_test_term_set.yaml'},
+                  'data_types': {'VectorData': {'description': {'termset': 'example_test_term_set.yaml'}},
                                  'VectorIndex': {'data': '...'}}}}}
 
         self.assertEqual(loaded_config, config)
@@ -242,45 +242,45 @@ class TestTermSetConfig(TestCase):
 
     def test_config_path(self):
         path = 'tests/unit/hdmf_config.yaml'
-        tc = TermSetConfigurator(path=path)
+        tc = TypeConfigurator(path=path)
         self.assertEqual(tc.path, [path])
 
     def test_get_config(self):
         path = 'tests/unit/hdmf_config.yaml'
-        tc = TermSetConfigurator(path=path)
+        tc = TypeConfigurator(path=path)
         self.assertEqual(tc.get_config('VectorData', 'hdmf-common'),
-                                      {'description': 'example_test_term_set.yaml'})
+                                      {'description': {'termset': 'example_test_term_set.yaml'}})
 
     def test_get_config_namespace_error(self):
         path = 'tests/unit/hdmf_config.yaml'
-        tc = TermSetConfigurator(path=path)
+        tc = TypeConfigurator(path=path)
         with self.assertRaises(ValueError):
             tc.get_config('VectorData', 'hdmf-common11')
 
     def test_get_config_container_error(self):
         path = 'tests/unit/hdmf_config.yaml'
-        tc = TermSetConfigurator(path=path)
+        tc = TypeConfigurator(path=path)
         with self.assertRaises(ValueError):
             tc.get_config('VectorData11', 'hdmf-common')
 
     def test_already_loaded_path_error(self):
         path = 'tests/unit/hdmf_config.yaml'
-        tc = TermSetConfigurator(path=path)
+        tc = TypeConfigurator(path=path)
         with self.assertRaises(ValueError):
             tc.load_termset_config(config_path=path)
 
     def test_load_two_unique_configs(self):
         path = 'tests/unit/hdmf_config.yaml'
         path2 = 'tests/unit/hdmf_config2.yaml'
-        tc = TermSetConfigurator(path=path)
+        tc = TypeConfigurator(path=path)
         tc.load_termset_config(config_path=path2)
         config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
                   'data_types': {'VectorData': {'description': '...'},
                                  'VectorIndex': {'data': '...'},
-                                 'Data': {'description': 'example_test_term_set.yaml'},
-                                 'EnumData': {'description': 'example_test_term_set.yaml'}}},
+                                 'Data': {'description': {'termset': 'example_test_term_set.yaml'}},
+                                 'EnumData': {'description': {'termset': 'example_test_term_set.yaml'}}}},
                   'namespace2': {'version': 0,
-                  'data_types': {'MythicData': {'description': 'example_test_term_set.yaml'}}}}}
+                  'data_types': {'MythicData': {'description': {'termset': 'example_test_term_set.yaml'}}}}}}
         self.assertEqual(tc.path, [path, path2])
         self.assertEqual(tc.config, config)
 
@@ -309,7 +309,7 @@ class TestTermSetConfigVectorData(TestCase):
         config = get_loaded_config()
         self.assertEqual(config,
         {'namespaces': {'hdmf-common': {'version': '3.12.2',
-        'data_types': {'VectorData': {'description': 'example_test_term_set.yaml'},
+        'data_types': {'VectorData': {'description': {'termset': 'example_test_term_set.yaml'}},
                        'VectorIndex': {'data': '...'}}}}})
 
     def test_validate_with_config(self):
