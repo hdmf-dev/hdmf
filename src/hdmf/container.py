@@ -127,7 +127,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         else:
             # check to see that the container type is in the config under the namespace
             config_namespace = termset_config['namespaces'][self.namespace]
-            data_type = get_data_type()
+            data_type = self.get_data_type()
 
             if data_type not in config_namespace['data_types']:
                 msg = '%s not found within the configuration for %s' % (data_type, self.namespace)
