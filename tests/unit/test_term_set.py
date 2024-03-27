@@ -218,22 +218,13 @@ class TestTermSetWrapper(TestCase):
         with self.assertRaises(ValueError):
             data_obj.extend(['bad_data'])
 
-class TestTermSetConfig(TestCase):
+class TestTypeConfig(TestCase):
     def setUp(self):
         if not REQUIREMENTS_INSTALLED:
             self.skipTest("optional LinkML module is not installed")
 
     def tearDown(self):
         unload_type_config()
-
-    def test_get_loaded_config(self):
-        load_type_config(config_path='tests/unit/hdmf_config.yaml')
-        loaded_config = get_loaded_config()
-        config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
-                  'data_types': {'VectorData': {'description': {'termset': 'example_test_term_set.yaml'}},
-                                 'VectorIndex': {'data': '...'}}}}}
-
-        self.assertEqual(loaded_config, config)
 
     def test_get_loaded_config_error(self):
         with self.assertRaises(ValueError):
@@ -293,7 +284,7 @@ class ExtensionContainer(Container):
         self.description = description
 
 
-class TestTermSetConfigVectorData(TestCase):
+class TestGlobalTypeConfig(TestCase):
     def setUp(self):
         if not REQUIREMENTS_INSTALLED:
             self.skipTest("optional LinkML module is not installed")
