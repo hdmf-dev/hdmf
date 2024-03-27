@@ -20,9 +20,9 @@ def append_data(data, arg):
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):
-        if isinstance(arg, np.ndarray):
+        if len(arg.dtype)>0: # arg is a structured array
             return np.append(data, arg)
-        else:
+        else: # arg is a scalar or arg is a row being appended to a matrix
             return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
     elif isinstance(data, h5py.Dataset):
         shape = list(data.shape)
