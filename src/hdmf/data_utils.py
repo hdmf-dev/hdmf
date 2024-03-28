@@ -20,7 +20,7 @@ def append_data(data, arg):
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):
-        if len(data.dtype)>0 or isinstance(arg, np.ndarray):
+        if len(data.dtype)>0 or data.ndim==arg.ndim:
             # arg is a structured array or an array with matching data
             # dimensions
             return np.append(data, arg)
