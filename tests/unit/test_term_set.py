@@ -281,6 +281,7 @@ class ExtensionContainer(Container):
 
     def __init__(self, **kwargs):
         description, namespace = popargs('description', 'namespace', kwargs)
+        self.namespace = namespace
         super().__init__(**kwargs)
         self.description = description
 

@@ -119,7 +119,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
             termset_config = configurator.config
         else:
             return val
-
         # check to see that the namespace for the container is in the config
         if self.namespace not in type_map.container_types:
             msg = "%s not found within loaded configuration." % self.namespace
