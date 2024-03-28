@@ -29,7 +29,7 @@ def load_type_config(**kwargs):
     config_path = kwargs['config_path']
     __TYPE_MAP.ts_config.load_type_config(config_path)
 
-def get_loaded_config():
+def get_loaded_type_config():
     """
     This method returns the entire config file.
     """
