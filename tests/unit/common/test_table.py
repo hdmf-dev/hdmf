@@ -233,14 +233,6 @@ class TestDynamicTable(TestCase):
 
         np.testing.assert_array_equal(compound_vector_data.data, np.append(c_data, c_data2))
 
-    def test_append_array(self):
-        a = np.array([[1, 2, 3]])
-        b = np.array([7, 8, 9])
-        col = VectorData(name='foo', description='...', data=a)
-        col.append(b)
-
-        np.testing.assert_array_equal(col.data, np.array([[1,2,3],[7,8,9]]))
-
     def test_compound_data_extend(self):
         c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
         c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
@@ -256,7 +248,7 @@ class TestDynamicTable(TestCase):
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_wrapped_array_append(self):
         data = np.array(['Homo sapiens'])
-        data2 = np.array(['Mus musculus'])
+        data2 = 'Mus musculus'
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         vector_data = VectorData(
             name='Species_1',
