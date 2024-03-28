@@ -1,9 +1,12 @@
 import os
-
-from hdmf.term_set import TermSet, TermSetWrapper
-from hdmf.testing import TestCase, remove_test_file
-from hdmf.common import VectorData
 import numpy as np
+
+from hdmf import Container
+from hdmf.term_set import TermSet, TermSetWrapper, TypeConfigurator
+from hdmf.testing import TestCase, remove_test_file
+from hdmf.common import (VectorIndex, VectorData, unload_type_config,
+                         get_loaded_type_config, load_type_config)
+from hdmf.utils import popargs
 
 
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -216,3 +219,118 @@ class TestTermSetWrapper(TestCase):
         data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
         with self.assertRaises(ValueError):
             data_obj.extend(['bad_data'])
+
+class TestTypeConfig(TestCase):
+    def setUp(self):
+        if not REQUIREMENTS_INSTALLED:
+            self.skipTest("optional LinkML module is not installed")
+
+    def tearDown(self):
+        unload_type_config()
+
+    def test_get_loaded_type_config_error(self):
+        with self.assertRaises(ValueError):
+            get_loaded_type_config()
+
+    def test_config_path(self):
+        path = 'tests/unit/hdmf_config.yaml'
+        tc = TypeConfigurator(path=path)
+        self.assertEqual(tc.path, [path])
+
+    def test_get_config(self):
+        path = 'tests/unit/hdmf_config.yaml'
+        tc = TypeConfigurator(path=path)
+        self.assertEqual(tc.get_config('VectorData', 'hdmf-common'),
+                                      {'description': {'termset': 'example_test_term_set.yaml'}})
+
+    def test_get_config_namespace_error(self):
+        path = 'tests/unit/hdmf_config.yaml'
+        tc = TypeConfigurator(path=path)
+        with self.assertRaises(ValueError):
+            tc.get_config('VectorData', 'hdmf-common11')
+
+    def test_get_config_container_error(self):
+        path = 'tests/unit/hdmf_config.yaml'
+        tc = TypeConfigurator(path=path)
+        with self.assertRaises(ValueError):
+            tc.get_config('VectorData11', 'hdmf-common')
+
+    def test_already_loaded_path_error(self):
+        path = 'tests/unit/hdmf_config.yaml'
+        tc = TypeConfigurator(path=path)
+        with self.assertRaises(ValueError):
+            tc.load_type_config(config_path=path)
+
+    def test_load_two_unique_configs(self):
+        path = 'tests/unit/hdmf_config.yaml'
+        path2 = 'tests/unit/hdmf_config2.yaml'
+        tc = TypeConfigurator(path=path)
+        tc.load_type_config(config_path=path2)
+        config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
+                  'data_types': {'VectorData': {'description': '...'},
+                                 'VectorIndex': {'data': '...'},
+                                 'Data': {'description': {'termset': 'example_test_term_set.yaml'}},
+                                 'EnumData': {'description': {'termset': 'example_test_term_set.yaml'}}}},
+                  'namespace2': {'version': 0,
+                  'data_types': {'MythicData': {'description': {'termset': 'example_test_term_set.yaml'}}}}}}
+        self.assertEqual(tc.path, [path, path2])
+        self.assertEqual(tc.config, config)
+
+
+class ExtensionContainer(Container):
+    __fields__ = ("description",)
+
+    def __init__(self, **kwargs):
+        description, namespace = popargs('description', 'namespace', kwargs)
+        self.namespace = namespace
+        super().__init__(**kwargs)
+        self.description = description
+
+
+class TestGlobalTypeConfig(TestCase):
+    def setUp(self):
+        if not REQUIREMENTS_INSTALLED:
+            self.skipTest("optional LinkML module is not installed")
+        load_type_config(config_path='tests/unit/hdmf_config.yaml')
+
+    def tearDown(self):
+        unload_type_config()
+
+    def test_load_config(self):
+        config = get_loaded_type_config()
+        self.assertEqual(config,
+        {'namespaces': {'hdmf-common': {'version': '3.12.2',
+        'data_types': {'VectorData': {'description': {'termset': 'example_test_term_set.yaml'}},
+                       'VectorIndex': {'data': '...'}}}}})
+
+    def test_validate_with_config(self):
+        data = VectorData(name='foo', data=[0], description='Homo sapiens')
+        self.assertEqual(data.description.value, 'Homo sapiens')
+
+    def test_namespace_warn(self):
+        with self.assertWarns(Warning):
+            ExtensionContainer(name='foo',
+                               namespace='foo',
+                               description='Homo sapiens')
+
+    def test_container_type_warn(self):
+        with self.assertWarns(Warning):
+            ExtensionContainer(name='foo',
+                               namespace='hdmf-common',
+                               description='Homo sapiens')
+
+    def test_already_wrapped_warn(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        with self.assertWarns(Warning):
+            VectorData(name='foo',
+                       data=[0],
+                       description=TermSetWrapper(value='Homo sapiens', termset=terms))
+
+    def test_warn_field_not_in_spec(self):
+        col1 = VectorData(name='col1',
+                                  description='Homo sapiens',
+                                  data=['1a', '1b', '1c', '2a'])
+        with self.assertWarns(Warning):
+            VectorIndex(name='col1_index',
+                        target=col1,
+                        data=[3, 4])

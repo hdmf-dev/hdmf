@@ -5,6 +5,7 @@ from .utils import docval
 import warnings
 import numpy as np
 from .data_utils import append_data, extend_data
+from ruamel.yaml import YAML
 
 
 class TermSet:
@@ -162,12 +163,12 @@ class TermSet:
         This method returns a path to the new schema to be viewed via SchemaView.
         """
         try:
-            import yaml
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
         except ImportError:   # pragma: no cover
             msg = "Install schemasheets."
             raise ValueError(msg)
+
         schema_maker = SchemaMaker()
         tsv_file_paths = glob.glob(self.schemasheets_folder + "/*.tsv")
         schema = schema_maker.create_schema(tsv_file_paths)
@@ -175,6 +176,7 @@ class TermSet:
         schemasheet_schema_path = os.path.join(self.schemasheets_folder, f"{schema_dict['name']}.yaml")
 
         with open(schemasheet_schema_path, "w") as f:
+            yaml=YAML(typ='safe')
             yaml.dump(schema_dict, f)
 
         return schemasheet_schema_path
@@ -336,3 +338,79 @@ class TermSetWrapper:
         else:
             msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
             raise ValueError(msg)
+
+class TypeConfigurator:
+    """
+    This class allows users to toggle on/off a global configuration for defined data types.
+    When toggled on, every instance of a configuration file supported data type will be validated
+    according to the corresponding TermSet.
+    """
+    @docval({'name': 'path', 'type': str, 'doc': 'Path to the configuration file.', 'default': None})
+    def __init__(self, **kwargs):
+        self.config = None
+        if kwargs['path'] is None:
+            self.path = []
+        else:
+            self.path = [kwargs['path']]
+            self.load_type_config(config_path=self.path[0])
+
+    @docval({'name': 'data_type', 'type': str,
+             'doc': 'The desired data type within the configuration file.'},
+            {'name': 'namespace', 'type': str,
+             'doc': 'The namespace for the data type.'})
+    def get_config(self, data_type, namespace):
+        """
+        Return the config for that data type in the given namespace.
+        """
+        try:
+            namespace_config = self.config['namespaces'][namespace]
+        except KeyError:
+            msg = 'The namespace %s was not found within the configuration.' % namespace
+            raise ValueError(msg)
+
+        try:
+            type_config = namespace_config['data_types'][data_type]
+            return type_config
+        except KeyError:
+            msg = '%s was not found within the configuration for that namespace.' % data_type
+            raise ValueError(msg)
+
+    @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'})
+    def load_type_config(self,config_path):
+        """
+        Load the configuration file for validation on the fields defined for the objects within the file.
+        """
+        with open(config_path, 'r') as config:
+            yaml=YAML(typ='safe')
+            termset_config = yaml.load(config)
+            if self.config is None: # set the initial config/load after config has been unloaded
+                self.config = termset_config
+                if len(self.path)==0: # for loading after an unloaded config
+                    self.path.append(config_path)
+            else: # append/replace to the existing config
+                if config_path in self.path:
+                    msg = 'This configuration file path already exists within the configurator.'
+                    raise ValueError(msg)
+                else:
+                    for namespace in termset_config['namespaces']:
+                        if namespace not in self.config['namespaces']: # append namespace config if not present
+                            self.config['namespaces'][namespace] = termset_config['namespaces'][namespace]
+                        else: # check for any needed overrides within existing namespace configs
+                            for data_type in termset_config['namespaces'][namespace]['data_types']:
+                                # NOTE: these two branches effectively do the same thing, but are split for clarity.
+                                if data_type in self.config['namespaces'][namespace]['data_types']:
+                                    replace_config = termset_config['namespaces'][namespace]['data_types'][data_type]
+                                    self.config['namespaces'][namespace]['data_types'][data_type] = replace_config
+                                else: # append to config
+                                    new_config = termset_config['namespaces'][namespace]['data_types'][data_type]
+                                    self.config['namespaces'][namespace]['data_types'][data_type] = new_config
+
+                    # append path to self.path
+                    self.path.append(config_path)
+
+    def unload_type_config(self):
+        """
+        Remove validation according to termset configuration file.
+        """
+        self.path = []
+        self.config = None

@@ -58,6 +58,11 @@ class TestContainer(TestCase):
         self.assertFalse(child_obj._in_construct_mode)
         self.assertTrue(child_obj.modified)
 
+    def test_get_data_type(self):
+        obj = Container('obj1')
+        dt = obj.data_type
+        self.assertEqual(dt, 'Container')
+
     def test_new_object_id_none(self):
         """Test that passing object_id=None to __new__ is OK and results in a non-None object ID being assigned.
         """
@@ -519,7 +524,7 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(EmptyFields.get_fields_conf(), tuple())
 
         props = TestAbstractContainerFieldsConf.find_all_properties(EmptyFields)
-        expected = ['all_objects', 'children', 'container_source', 'fields', 'modified',
+        expected = ['all_objects', 'children', 'container_source', 'data_type', 'fields', 'modified',
                     'name', 'object_id', 'parent', 'read_io']
         self.assertListEqual(props, expected)
 
@@ -540,8 +545,8 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(NamedFields.get_fields_conf(), expected)
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFields)
-        expected = ['all_objects', 'children', 'container_source', 'field1', 'field2',
-                    'fields', 'modified', 'name', 'object_id',
+        expected = ['all_objects', 'children', 'container_source', 'data_type',
+                    'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
                     'parent', 'read_io']
         self.assertListEqual(props, expected)
 
@@ -622,8 +627,8 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(NamedFieldsChild.get_fields_conf(), expected)
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFieldsChild)
-        expected = ['all_objects', 'children', 'container_source', 'field1', 'field2',
-                    'fields', 'modified', 'name', 'object_id',
+        expected = ['all_objects', 'children', 'container_source', 'data_type',
+                    'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
                     'parent', 'read_io']
         self.assertListEqual(props, expected)
 
