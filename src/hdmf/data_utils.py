@@ -21,12 +21,14 @@ def append_data(data, arg):
         return data
     elif isinstance(data, np.ndarray):
         if isinstance(arg, np.ndarray):
-            if data.ndim != arg.ndim:
-                return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
-            else:
+            if data.ndim == arg.ndim:
                 # arg is a structured array or an array with matching data
                 # dimensions
                 return np.append(data, arg)
+            else: # arg is a row vector
+                return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
+        else: # arg is a scalar
+            return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
     elif isinstance(data, h5py.Dataset):
         shape = list(data.shape)
         shape[0] += 1

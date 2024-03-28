@@ -236,10 +236,10 @@ class TestDynamicTable(TestCase):
     def test_append_array(self):
         a = np.array([[1, 2, 3]])
         b = np.array([7, 8, 9])
-        data = VectorData(name='foo', description='...', data=a)
-        data.append(b)
+        col = VectorData(name='foo', description='...', data=a)
+        col.append(b)
 
-        np.testing.assert_array_equal(data, np.array([[1,2,3],[7,8,9]]))
+        np.testing.assert_array_equal(col.data, np.array([[1,2,3],[7,8,9]]))
 
     def test_compound_data_extend(self):
         c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
