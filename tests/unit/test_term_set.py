@@ -4,7 +4,8 @@ import numpy as np
 from hdmf import Container
 from hdmf.term_set import TermSet, TermSetWrapper, TypeConfigurator
 from hdmf.testing import TestCase, remove_test_file
-from hdmf.common import VectorIndex, VectorData, unload_type_config, get_loaded_config, load_type_config
+from hdmf.common import (VectorIndex, VectorData, unload_type_config,
+                         get_loaded_type_config, load_type_config)
 from hdmf.utils import popargs
 
 
@@ -226,9 +227,9 @@ class TestTypeConfig(TestCase):
     def tearDown(self):
         unload_type_config()
 
-    def test_get_loaded_config_error(self):
+    def test_get_loaded_type_config_error(self):
         with self.assertRaises(ValueError):
-            get_loaded_config()
+            get_loaded_type_config()
 
     def test_config_path(self):
         path = 'tests/unit/hdmf_config.yaml'
@@ -294,7 +295,7 @@ class TestGlobalTypeConfig(TestCase):
         unload_type_config()
 
     def test_load_config(self):
-        config = get_loaded_config()
+        config = get_loaded_type_config()
         self.assertEqual(config,
         {'namespaces': {'hdmf-common': {'version': '3.12.2',
         'data_types': {'VectorData': {'description': {'termset': 'example_test_term_set.yaml'}},

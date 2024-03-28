@@ -430,7 +430,7 @@ class TypeMap:
         return self.__container_types
 
     def __copy__(self):
-        ret = TypeMap(copy(self.__ns_catalog), self.__default_mapper_cls, self.ts_config)
+        ret = TypeMap(copy(self.__ns_catalog), self.__default_mapper_cls, self.type_config)
         ret.merge(self)
         return ret
 

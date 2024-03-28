@@ -27,23 +27,23 @@ def load_type_config(**kwargs):
     This method will either load the default config or the config provided by the path.
     """
     config_path = kwargs['config_path']
-    __TYPE_MAP.ts_config.load_type_config(config_path)
+    __TYPE_MAP.type_config.load_type_config(config_path)
 
 def get_loaded_type_config():
     """
     This method returns the entire config file.
     """
-    if __TYPE_MAP.ts_config.config is None:
+    if __TYPE_MAP.type_config.config is None:
         msg = "No configuration is loaded."
         raise ValueError(msg)
     else:
-        return __TYPE_MAP.ts_config.config
+        return __TYPE_MAP.type_config.config
 
 def unload_type_config():
     """
     Unload the configuration file.
     """
-    return __TYPE_MAP.ts_config.unload_type_config()
+    return __TYPE_MAP.type_config.unload_type_config()
 
 # a function to register a container classes with the global map
 @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the spec for'},

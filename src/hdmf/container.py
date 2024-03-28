@@ -111,7 +111,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         # load termset configuration file from global Config
         from hdmf.common import get_type_map # circular import
         type_map = get_type_map()
-        configurator = type_map.ts_config
+        configurator = type_map.type_config
 
         if len(configurator.path)>0:
             # The type_map has a config always set; however, when toggled off, the config path is empty.
@@ -128,7 +128,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         else:
             # check to see that the container type is in the config under the namespace
             config_namespace = termset_config['namespaces'][self.namespace]
-            data_type = self.get_data_type()
+            data_type = self.data_type
 
             if data_type not in config_namespace['data_types']:
                 msg = '%s not found within the configuration for %s' % (data_type, self.namespace)

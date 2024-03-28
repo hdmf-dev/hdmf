@@ -20,6 +20,6 @@ class TestCommonTypeMap(TestCase):
                   'data_types': {'VectorData': {'description': {'termset': 'example_test_term_set.yaml'}},
                                  'VectorIndex': {'data': '...'}}}}}
 
-        self.assertEqual(tm.ts_config.config, config)
-        self.assertEqual(tm.ts_config.path, [path])
+        self.assertEqual(tm.type_config.config, config)
+        self.assertEqual(tm.type_config.path, [path])
         unload_type_config()
