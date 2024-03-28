@@ -416,7 +416,7 @@ class TypeMap:
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
         self.__class_generator = ClassGenerator()
-        self.ts_config = type_config
+        self.type_config = type_config
 
         self.register_generator(CustomClassGenerator)
         self.register_generator(MCIClassGenerator)
