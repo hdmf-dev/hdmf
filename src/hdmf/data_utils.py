@@ -20,8 +20,7 @@ def append_data(data, arg):
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):
-        if len(data.dtype)>0:
-            # data is a structured array
+        if len(data.dtype)>0: # data is a structured array
             return np.append(data, arg)
         else: # arg is a scalar or row vector
             return np.append(data,  np.expand_dims(arg, axis=0), axis=0)

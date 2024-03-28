@@ -272,7 +272,6 @@ class TestDynamicTable(TestCase):
 
         np.testing.assert_array_equal(vector_data.data.data, np.vstack((data, data2)))
 
-
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_wrapped_compound_data_append(self):
         c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
