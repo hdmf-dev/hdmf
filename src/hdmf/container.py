@@ -90,9 +90,10 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
         return setter
 
-    def get_data_type(self):
+    @property
+    def data_type(self):
         """
-        Method that return data type.
+        Return the spec data type associated with this container.
         """
         return getattr(self, self._data_type_attr)
 
