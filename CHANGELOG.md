@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.14.0 (Upcoming)
+
+### Enhancements
+- Added `TermSetConfigurator` to automatically wrap fields with `TermSetWrapper` according to a configuration file. @mavaylon1 [#1016](https://github.com/hdmf-dev/hdmf/pull/1016)
+
 ## HDMF 3.13.0 (March 20, 2024)
 
 ### Enhancements
