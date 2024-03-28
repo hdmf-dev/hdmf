@@ -155,21 +155,22 @@ class TestTermSetWrapper(TestCase):
         self.wrapped_array = TermSetWrapper(value=np.array(['Homo sapiens']), termset=self.termset)
         self.wrapped_list = TermSetWrapper(value=['Homo sapiens'], termset=self.termset)
 
+        c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        self.wrapped_comp_array = TermSetWrapper(value=c_data,
+                                                 termset=self.termset,
+                                                 field='species')
+
         self.np_data = VectorData(
             name='Species_1',
             description='...',
             data=self.wrapped_array
-        )
-        self.list_data = VectorData(
-            name='Species_1',
-            description='...',
-            data=self.wrapped_list
         )
 
     def test_properties(self):
         self.assertEqual(self.wrapped_array.value, ['Homo sapiens'])
         self.assertEqual(self.wrapped_array.termset.view_set, self.termset.view_set)
         self.assertEqual(self.wrapped_array.dtype, 'U12') # this covers __getattr__
+        self.assertEqual(self.wrapped_comp_array.field, 'species')
 
     def test_get_item(self):
         self.assertEqual(self.np_data.data[0], 'Homo sapiens')
