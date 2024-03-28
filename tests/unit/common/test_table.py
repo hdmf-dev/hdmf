@@ -244,7 +244,7 @@ class TestDynamicTable(TestCase):
 
         np.testing.assert_array_equal(compound_vector_data.data, np.vstack((c_data, c_data2)))
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_wrapped_array_append(self):
         data = np.array(['Homo sapiens'])
         data2 = 'Mus musculus'
@@ -258,7 +258,7 @@ class TestDynamicTable(TestCase):
 
         np.testing.assert_array_equal(vector_data.data.data, np.append(data, data2))
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_wrapped_array_extend(self):
         data = np.array(['Homo sapiens'])
         data2 = np.array(['Mus musculus'])
@@ -273,7 +273,7 @@ class TestDynamicTable(TestCase):
         np.testing.assert_array_equal(vector_data.data.data, np.vstack((data, data2)))
 
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_wrapped_compound_data_append(self):
         c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
         c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
@@ -287,7 +287,7 @@ class TestDynamicTable(TestCase):
 
         np.testing.assert_array_equal(compound_vector_data.data.data, np.append(c_data, c_data2))
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_wrapped_compound_data_extend(self):
         c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
         c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
