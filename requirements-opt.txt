@@ -1,5 +1,5 @@
 # pinned dependencies that are optional. used to reproduce an entire development environment to use HDMF
-tqdm==4.66.1
+tqdm==4.66.2
 zarr==2.16.1
 linkml-runtime==1.7.4; python_version >= "3.9"
 schemasheets==0.2.1; python_version >= "3.9"
