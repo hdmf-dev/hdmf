@@ -149,7 +149,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
                         return val
                     else:
                         # If the val has been manually wrapped then skip checking the config for the attr
-                        if type(val) == TermSetWrapper:
+                        if isinstance(val, TermSetWrapper):
                             msg = "Field value already wrapped with TermSetWrapper."
                             warn(msg)
                             return val
