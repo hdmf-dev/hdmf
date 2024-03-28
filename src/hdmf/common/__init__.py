@@ -25,6 +25,7 @@ global __TYPE_MAP
 def load_type_config(**kwargs):
     """
     This method will either load the default config or the config provided by the path.
+    NOTE: This config is global and shared across all type maps.
     """
     config_path = kwargs['config_path']
     __TYPE_MAP.type_config.load_type_config(config_path)
