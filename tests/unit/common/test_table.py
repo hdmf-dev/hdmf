@@ -238,7 +238,7 @@ class TestDynamicTable(TestCase):
         b = np.array([7, 8, 9])
         data = VectorData(name='foo', description='...', data=a)
         data.append(b)
-        
+
         np.testing.assert_array_equal(data, np.array([[1,2,3],[7,8,9]]))
 
     def test_compound_data_extend(self):
