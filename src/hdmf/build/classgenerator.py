@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import datetime, date
+import types
 
 import numpy as np
 
@@ -35,6 +36,8 @@ class ClassGenerator:
             {'name': 'spec', 'type': BaseStorageSpec, 'doc': ''},
             {'name': 'parent_cls', 'type': type, 'doc': ''},
             {'name': 'attr_names', 'type': dict, 'doc': ''},
+            {'name': 'post_init_method', 'type': types.FunctionType, 'default': None,
+             'doc': 'The function used as a post_init method to validate the class generation.'},
             {'name': 'type_map', 'type': 'hdmf.build.manager.TypeMap', 'doc': ''},
             returns='the class for the given namespace and data_type', rtype=type)
     def generate_class(self, **kwargs):
@@ -42,8 +45,8 @@ class ClassGenerator:
         If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
         created and returned.
         """
-        data_type, spec, parent_cls, attr_names, type_map = getargs('data_type', 'spec', 'parent_cls', 'attr_names',
-                                                                    'type_map', kwargs)
+        data_type, spec, parent_cls, attr_names, type_map, post_init_method = getargs('data_type', 'spec', 'parent_cls', 'attr_names',
+                                                                    'type_map', 'post_init_method', kwargs)
 
         not_inherited_fields = dict()
         for k, field_spec in attr_names.items():
@@ -82,6 +85,8 @@ class ClassGenerator:
                              + str(e)
                              + " Please define that type before defining '%s'." % name)
         cls = ExtenderMeta(data_type, tuple(bases), classdict)
+        if post_init_method is not None:
+            setattr(post_init_method, cls.__postinit, True)
         return cls
 
 

@@ -1,6 +1,7 @@
 import logging
 from collections import OrderedDict, deque
 from copy import copy
+import types
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
@@ -498,11 +499,14 @@ class TypeMap:
         created and returned.
         """
         # NOTE: this internally used function get_container_cls will be removed in favor of get_dt_container_cls
+        # Deprecated: Will be removed by HDMF 4.0
         namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
         return self.get_dt_container_cls(data_type, namespace, autogen)
 
     @docval({"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             {"name": "namespace", "type": str, "doc": "the namespace containing the data_type", "default": None},
+            {'name': 'post_init_method', 'type': types.FunctionType, 'default': None,
+            'doc': 'The function used as a post_init method to validate the class generation.'},
             {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
             returns='the class for the given namespace and data_type', rtype=type)
     def get_dt_container_cls(self, **kwargs):
@@ -513,7 +517,7 @@ class TypeMap:
         Replaces get_container_cls but namespace is optional. If namespace is unknown, it will be looked up from
         all namespaces.
         """
-        namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
+        namespace, data_type, post_init_method, autogen = getargs('namespace', 'data_type', 'post_init_method','autogen', kwargs)
 
         # namespace is unknown, so look it up
         if namespace is None:
@@ -532,7 +536,12 @@ class TypeMap:
             self.__check_dependent_types(spec, namespace)
             parent_cls = self.__get_parent_cls(namespace, data_type, spec)
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
-            cls = self.__class_generator.generate_class(data_type, spec, parent_cls, attr_names, self)
+            cls = self.__class_generator.generate_class(data_type=data_type,
+                                                        spec=spec,
+                                                        parent_cls=parent_cls,
+                                                        attr_names=attr_names,
+                                                        post_init_method=post_init_method,
+                                                        type_map=self)
             self.register_container_type(namespace, data_type, cls)
         return cls
 

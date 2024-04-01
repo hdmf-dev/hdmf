@@ -3,6 +3,7 @@ for reading and writing data in according to the HDMF-common specification
 '''
 import os.path
 from copy import deepcopy
+import types
 
 CORE_NAMESPACE = 'hdmf-common'
 EXP_NAMESPACE = 'hdmf-experimental'
@@ -136,12 +137,15 @@ def available_namespaces():
 @docval({'name': 'data_type', 'type': str,
          'doc': 'the data_type to get the Container class for'},
         {'name': 'namespace', 'type': str, 'doc': 'the namespace the data_type is defined in'},
+        {'name': 'post_init_method', 'type': types.FunctionType, 'default': None,
+        'doc': 'The function used as a post_init method to validate the class generation.'},
+        {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
         is_method=False)
 def get_class(**kwargs):
     """Get the class object of the Container subclass corresponding to a given neurdata_type.
     """
-    data_type, namespace = getargs('data_type', 'namespace', kwargs)
-    return __TYPE_MAP.get_dt_container_cls(data_type, namespace)
+    data_type, namespace, post_init_method = getargs('data_type', 'namespace', 'post_init_method', kwargs)
+    return __TYPE_MAP.get_dt_container_cls(data_type, namespace, post_init_method)
 
 
 @docval({'name': 'extensions', 'type': (str, TypeMap, list),
