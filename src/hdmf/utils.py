@@ -513,8 +513,6 @@ def __resolve_type(t):
             return t
     elif isinstance(t, type):
         return t
-    # elif isinstance(t, types.FunctionType):
-    #     return t
     elif isinstance(t, (list, tuple)):
         ret = list()
         for i in t:
