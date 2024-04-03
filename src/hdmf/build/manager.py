@@ -1,7 +1,7 @@
 import logging
 from collections import OrderedDict, deque
 from copy import copy
-import types
+import typing
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
@@ -505,7 +505,7 @@ class TypeMap:
 
     @docval({"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             {"name": "namespace", "type": str, "doc": "the namespace containing the data_type", "default": None},
-            {'name': 'post_init_method', 'type': types.Callable, 'default': None,
+            {'name': 'post_init_method', 'type': typing.Callable, 'default': None,
             'doc': 'The function used as a post_init method to validate the class generation.'},
             {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
             returns='the class for the given namespace and data_type', rtype=type)

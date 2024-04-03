@@ -1,6 +1,7 @@
 from copy import deepcopy
 from datetime import datetime, date
 import types
+import typing
 
 import numpy as np
 
@@ -36,7 +37,7 @@ class ClassGenerator:
             {'name': 'spec', 'type': BaseStorageSpec, 'doc': ''},
             {'name': 'parent_cls', 'type': type, 'doc': ''},
             {'name': 'attr_names', 'type': dict, 'doc': ''},
-            {'name': 'post_init_method', 'type': types.Callable, 'default': None,
+            {'name': 'post_init_method', 'type': typing.Callable, 'default': None,
              'doc': 'The function used as a post_init method to validate the class generation.'},
             {'name': 'type_map', 'type': 'hdmf.build.manager.TypeMap', 'doc': ''},
             returns='the class for the given namespace and data_type', rtype=type)
