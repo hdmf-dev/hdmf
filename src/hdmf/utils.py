@@ -876,6 +876,8 @@ class ExtenderMeta(ABCMeta):
         it = (a for a in it if hasattr(a, cls.__preinit))
         for func in it:
             func(name, bases, classdict)
+        if name == 'Container':
+            breakpoint()
         super().__init__(name, bases, classdict)
         it = (getattr(cls, n) for n in dir(cls))
         it = (a for a in it if hasattr(a, cls.__postinit))

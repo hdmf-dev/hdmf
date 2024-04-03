@@ -85,9 +85,15 @@ class ClassGenerator:
                              + str(e)
                              + " Please define that type before defining '%s'." % name)
         cls = ExtenderMeta(data_type, tuple(bases), classdict)
+        breakpoint()
         if post_init_method is not None:
             setattr(post_init_method, cls.__postinit, True)
         return cls
+
+        cls = ExtenderMeta(data_type, tuple(bases), classdict)
+        if post_init_method is not None:
+            setattr(A, 'post_init_method', post_init_method)
+
 
 
 class TypeDoesNotExistError(Exception):  # pragma: no cover
