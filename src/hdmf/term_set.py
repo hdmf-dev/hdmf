@@ -287,7 +287,7 @@ class TermSetWrapper:
     def __multi_validation(self, data):
         """
         append_data includes numpy arrays. This is not the same as list append.
-        Numpy array append is essentially list extend. Now if a user appends an array, we need to
+        Numpy array append is essentially list extend. Now if a user appends an array (for compound data), we need to
         support validating arrays with multiple items. This method is an internal bulk validation
         check for numpy arrays and extend.
         """
