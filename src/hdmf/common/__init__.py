@@ -3,7 +3,7 @@ for reading and writing data in according to the HDMF-common specification
 '''
 import os.path
 from copy import deepcopy
-import types as tp
+from collections.abc import Callable
 
 CORE_NAMESPACE = 'hdmf-common'
 EXP_NAMESPACE = 'hdmf-experimental'
@@ -137,7 +137,7 @@ def available_namespaces():
 @docval({'name': 'data_type', 'type': str,
          'doc': 'the data_type to get the Container class for'},
         {'name': 'namespace', 'type': str, 'doc': 'the namespace the data_type is defined in'},
-        {'name': 'post_init_method', 'type': tp.FunctionType, 'default': None,
+        {'name': 'post_init_method', 'type': Callable, 'default': None,
         'doc': 'The function used as a post_init method to validate the class generation.'},
         {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
         is_method=False)
