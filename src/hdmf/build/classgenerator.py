@@ -92,8 +92,9 @@ class ClassGenerator:
 
         cls = ExtenderMeta(data_type, tuple(bases), classdict)
         if post_init_method is not None:
-            setattr(A, 'post_init_method', post_init_method)
-
+            cls.post_init_method = MethodType(post_init_method, cls) # set as bounded method
+        else:
+            cls.post_init_method = post_init_method # set to None
 
 
 class TypeDoesNotExistError(Exception):  # pragma: no cover
@@ -353,6 +354,10 @@ class CustomClassGenerator:
             # because the setters do not allow setting the value
             for f in fixed_value_attrs_to_set:
                 self.fields[f] = getattr(not_inherited_fields[f], 'value')
+
+            if self.post_init_method is not None:
+                self.post_init_method(kwargs)
+
 
         classdict['__init__'] = __init__
 
