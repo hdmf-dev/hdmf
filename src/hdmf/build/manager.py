@@ -1,7 +1,7 @@
 import logging
 from collections import OrderedDict, deque
 from copy import copy
-import types
+import types as tp
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
@@ -505,7 +505,7 @@ class TypeMap:
 
     @docval({"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             {"name": "namespace", "type": str, "doc": "the namespace containing the data_type", "default": None},
-            {'name': 'post_init_method', 'type': types.FunctionType, 'default': None,
+            {'name': 'post_init_method', 'type': tp.FunctionType, 'default': None,
             'doc': 'The function used as a post_init method to validate the class generation.'},
             {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
             returns='the class for the given namespace and data_type', rtype=type)
@@ -517,7 +517,8 @@ class TypeMap:
         Replaces get_container_cls but namespace is optional. If namespace is unknown, it will be looked up from
         all namespaces.
         """
-        namespace, data_type, post_init_method, autogen = getargs('namespace', 'data_type', 'post_init_method','autogen', kwargs)
+        namespace, data_type, post_init_method, autogen = getargs('namespace', 'data_type',
+                                                                  'post_init_method','autogen', kwargs)
 
         # namespace is unknown, so look it up
         if namespace is None:
