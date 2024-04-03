@@ -137,7 +137,7 @@ def available_namespaces():
 @docval({'name': 'data_type', 'type': str,
          'doc': 'the data_type to get the Container class for'},
         {'name': 'namespace', 'type': str, 'doc': 'the namespace the data_type is defined in'},
-        {'name': 'post_init_method', 'type': types.FunctionType, 'default': None,
+        {'name': 'post_init_method', 'type': types.Callable, 'default': None,
         'doc': 'The function used as a post_init method to validate the class generation.'},
         {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
         is_method=False)
