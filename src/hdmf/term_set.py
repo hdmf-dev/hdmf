@@ -306,7 +306,8 @@ class TermSetWrapper:
             if self.__field is not None: # compound array
                 values = arg[self.__field]
             else:
-                values = arg
+                msg = "Array needs to be a compound array"
+                raise ValueError(msg)
         else:
             values = [arg]
 
