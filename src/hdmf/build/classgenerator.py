@@ -92,7 +92,7 @@ class ClassGenerator:
 
         cls = ExtenderMeta(data_type, tuple(bases), classdict)
         if post_init_method is not None:
-            cls.post_init_method = MethodType(post_init_method, cls) # set as bounded method
+            cls.post_init_method = types.MethodType(post_init_method, cls) # set as bounded method
         else:
             cls.post_init_method = post_init_method # set to None
 
