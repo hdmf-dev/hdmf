@@ -232,14 +232,18 @@ class TestDynamicTable(TestCase):
 
         np.testing.assert_array_equal(compound_vector_data.data, np.append(c_data, c_data2))
 
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_array_append_error(self):
         c_data = np.array(['Homo sapiens'])
-        c_data2 = np.array(['Mus musculus', 24])
+        c_data2 = np.array(['Mus musculus'])
+
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         compound_vector_data = VectorData(
             name='Species_1',
             description='...',
-            data=c_data
+            data=TermSetWrapper(value=c_data, termset=terms)
         )
+
         with self.assertRaises(ValueError):
             compound_vector_data.append(c_data2)
 
