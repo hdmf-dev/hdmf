@@ -532,6 +532,7 @@ class TypeMap:
             raise ValueError("Namespace could not be resolved.")
 
         cls = self.__get_container_cls(namespace, data_type)
+
         if cls is None and autogen:  # dynamically generate a class
             spec = self.__ns_catalog.get_spec(namespace, data_type)
             self.__check_dependent_types(spec, namespace)

@@ -93,7 +93,6 @@ class ClassGenerator:
             cls.post_init_method = tp.MethodType(post_init_method, cls) # set as bounded method
         else:
             cls.post_init_method = post_init_method # set to None
-
         return cls
 
 
@@ -330,6 +329,7 @@ class CustomClassGenerator:
 
         @docval(*docval_args, allow_positional=AllowPositional.WARNING)
         def __init__(self, **kwargs):
+            original_kwargs = dict(kwargs)
             if name is not None:  # force container name to be the fixed name in the spec
                 kwargs.update(name=name)
 
@@ -356,7 +356,7 @@ class CustomClassGenerator:
                 self.fields[f] = getattr(not_inherited_fields[f], 'value')
 
             if self.post_init_method is not None:
-                self.post_init_method(kwargs)
+                self.post_init_method(**original_kwargs)
 
 
         classdict['__init__'] = __init__

@@ -82,6 +82,58 @@ class TestClassGenerator(TestCase):
         self.assertTrue(hasattr(cls, '__init__'))
 
 
+class TestPostInitGetClass(TestCase):
+    def setUp(self):
+        # self.bar_spec = GroupSpec(
+        #     doc='A test group specification with a data type',
+        #     data_type_def='Bar',
+        #     datasets=[
+        #         DatasetSpec(
+        #             doc='a dataset',
+        #             dtype='int',
+        #             name='data',
+        #             attributes=[AttributeSpec(name='attr1', doc='an integer attribute', dtype='int')]
+        #         )
+        #     ])
+        # specs = [self.bar_spec]
+        # containers = {'Bar': Bar}
+        # from hdmf.common import get_type_map
+        # self.type_map = get_type_map()
+        # self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            attributes=[
+                AttributeSpec(name='attr1', doc='a int attribute', dtype='int')
+            ]
+        )
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(spec, 'test.yaml')
+        namespace = SpecNamespace(
+            doc='a test namespace',
+            name=CORE_NAMESPACE,
+            schema=[{'source': 'test.yaml'}],
+            version='0.1.0',
+            catalog=spec_catalog
+        )
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        self.type_map = TypeMap(namespace_catalog)
+
+
+    def test_post_init(self):
+        def post_init_method(self, **kwargs):
+            attr1 = kwargs['attr1']
+            if attr1<10:
+                msg = "attr1 should be >=10"
+                raise ValueError(msg)
+
+        cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE, post_init_method)
+
+        with self.assertRaises(ValueError):
+            instance = cls(name='instance', attr1=9)
+
 class TestDynamicContainer(TestCase):
 
     def setUp(self):
