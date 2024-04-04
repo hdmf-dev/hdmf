@@ -238,14 +238,14 @@ class TestDynamicTable(TestCase):
         c_data2 = np.array(['Mus musculus'])
 
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        compound_vector_data = VectorData(
+        vectordata_termset = VectorData(
             name='Species_1',
             description='...',
             data=TermSetWrapper(value=c_data, termset=terms)
         )
 
         with self.assertRaises(ValueError):
-            compound_vector_data.append(c_data2)
+            vectordata_termset.append(c_data2)
 
     def test_compound_data_extend(self):
         c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
