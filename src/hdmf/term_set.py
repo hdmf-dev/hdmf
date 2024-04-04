@@ -216,19 +216,26 @@ class TermSetWrapper:
             {'name': 'value',
              'type': (list, np.ndarray, dict, str, tuple),
              'doc': 'The target item that is wrapped, either data or attribute.'},
+            {'name': 'field', 'type': str, 'default': None,
+             'doc': 'The field within a compound array.'}
             )
     def __init__(self, **kwargs):
         self.__value = kwargs['value']
         self.__termset = kwargs['termset']
+        self.__field = kwargs['field']
         self.__validate()
 
     def __validate(self):
-        # check if list, tuple, array
-        if isinstance(self.__value, (list, np.ndarray, tuple)): # TODO: Future ticket on DataIO support
-            values = self.__value
-        # create list if none of those -> mostly for attributes
+        if self.__field is not None:
+            values = self.__value[self.__field]
         else:
-            values = [self.__value]
+            # check if list, tuple, array
+            if isinstance(self.__value, (list, np.ndarray, tuple)):
+                values = self.__value
+            # create list if none of those -> mostly for scalar attributes
+            else:
+                values = [self.__value]
+
         # iteratively validate
         bad_values = []
         for term in values:
@@ -242,6 +249,10 @@ class TermSetWrapper:
     @property
     def value(self):
         return self.__value
+
+    @property
+    def field(self):
+        return self.__field
 
     @property
     def termset(self):
@@ -273,26 +284,55 @@ class TermSetWrapper:
         """
         return self.__value.__iter__()
 
+    def __multi_validation(self, data):
+        """
+        append_data includes numpy arrays. This is not the same as list append.
+        Numpy array append is essentially list extend. Now if a user appends an array (for compound data), we need to
+        support validating arrays with multiple items. This method is an internal bulk validation
+        check for numpy arrays and extend.
+        """
+        bad_values = []
+        for item in data:
+            if not self.termset.validate(term=item):
+                bad_values.append(item)
+        return bad_values
+
     def append(self, arg):
         """
         This append resolves the wrapper to use the append of the container using
         the wrapper.
         """
-        if self.termset.validate(term=arg):
-            self.__value = append_data(self.__value, arg)
+        if isinstance(arg, np.ndarray):
+            if self.__field is not None: # compound array
+                values = arg[self.__field]
+            else:
+                msg = "Array needs to be a structured array with compound dtype. If this does not apply, use extend."
+                raise ValueError(msg)
         else:
-            msg = ('"%s" is not in the term set.' % arg)
+            values = [arg]
+
+        bad_values = self.__multi_validation(values)
+
+        if len(bad_values)!=0:
+            msg = ('"%s" is not in the term set.' % ', '.join([str(value) for value in bad_values]))
             raise ValueError(msg)
+
+        self.__value = append_data(self.__value, arg)
 
     def extend(self, arg):
         """
         This append resolves the wrapper to use the extend of the container using
         the wrapper.
         """
-        bad_data = []
-        for item in arg:
-            if not self.termset.validate(term=item):
-                bad_data.append(item)
+        if isinstance(arg, np.ndarray):
+            if self.__field is not None: # compound array
+                values = arg[self.__field]
+            else:
+                values = arg
+        else:
+            values = arg
+
+        bad_data = self.__multi_validation(values)
 
         if len(bad_data)==0:
             self.__value = extend_data(self.__value, arg)
