@@ -875,7 +875,7 @@ class DynamicTable(Container):
         if col in self.__uninit_cols:
             self.__uninit_cols.pop(col)
 
-        if col_cls is EnumData:
+        if issubclass(col_cls, EnumData):
             columns.append(col.elements)
             col.elements.parent = self
 
