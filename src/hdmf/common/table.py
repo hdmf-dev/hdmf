@@ -15,7 +15,7 @@ import itertools
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
-from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type
+from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type, is_ragged
 from ..term_set import TermSetWrapper
 from ..backends.hdf5.h5_utils import H5DataIO
 
@@ -647,12 +647,16 @@ class DynamicTable(Container):
             {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
             {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
              'default': False},
+            {'name': 'check_ragged', 'type': bool, 'default': True,
+             'doc': ('whether or not to check for ragged arrays when adding data to the table. '
+                     'Set to False to avoid checking every element if performance issues occur.')},
             allow_extra=True)
     def add_row(self, **kwargs):
         """
         Add a row to the table. If *id* is not provided, it will auto-increment.
         """
-        data, row_id, enforce_unique_id = popargs('data', 'id', 'enforce_unique_id', kwargs)
+        data, row_id, enforce_unique_id, check_ragged = popargs('data', 'id', 'enforce_unique_id', 'check_ragged',
+                                                                kwargs)
         data = data if data is not None else kwargs
 
         bad_data = []
@@ -717,6 +721,11 @@ class DynamicTable(Container):
                 c.add_vector(data[colname])
             else:
                 c.add_row(data[colname])
+                if check_ragged and is_ragged(c.data):
+                    warn(("Data has elements with different lengths and therefore cannot be coerced into an "
+                          "N-dimensional array. Use the 'index' argument when creating a column to add rows "
+                          "with different lengths."),
+                         stacklevel=2)
 
     def __eq__(self, other):
         """Compare if the two DynamicTables contain the same data.
@@ -756,6 +765,9 @@ class DynamicTable(Container):
              'doc': ('class to use to represent the column data. If table=True, this field is ignored and a '
                      'DynamicTableRegion object is used. If enum=True, this field is ignored and a EnumData '
                      'object is used.')},
+            {'name': 'check_ragged', 'type': bool, 'default': True,
+             'doc': ('whether or not to check for ragged arrays when adding data to the table. '
+                     'Set to False to avoid checking every element if performance issues occur.')},
             allow_extra=True)
     def add_column(self, **kwargs):  # noqa: C901
         """
@@ -768,7 +780,7 @@ class DynamicTable(Container):
         :raises ValueError: if the column has already been added to the table
         """
         name, data = getargs('name', 'data', kwargs)
-        index, table, enum, col_cls= popargs('index', 'table', 'enum', 'col_cls', kwargs)
+        index, table, enum, col_cls, check_ragged = popargs('index', 'table', 'enum', 'col_cls', 'check_ragged', kwargs)
 
         if isinstance(index, VectorIndex):
             warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
@@ -831,6 +843,14 @@ class DynamicTable(Container):
         # once we have created the column
         create_vector_index = None
         if ckwargs.get('data', None) is not None:
+
+            # if no index was provided, check that data is not ragged
+            if index is False and check_ragged and is_ragged(data):
+                warn(("Data has elements with different lengths and therefore cannot be coerced into an "
+                      "N-dimensional array. Use the 'index' argument when adding a column of data with "
+                      "different lengths."),
+                     stacklevel=2)
+
             # Check that we are asked to create an index
             if (isinstance(index, bool) or isinstance(index, int)) and index > 0 and len(data) > 0:
                 # Iteratively flatten the data we use for the column based on the depth of the index to generate.

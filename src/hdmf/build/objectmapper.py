@@ -752,7 +752,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                           % (container.__class__.__name__, container.name, repr(source)))
                         try:
                             # use spec_dtype from self.spec when spec_ext does not specify dtype
-                            bldr_data, dtype = self.convert_dtype(spec, container.data, spec_dtype=spec_dtype)
+                            if isinstance(container.data, TermSetWrapper):
+                                data = container.data.value
+                            else:
+                                data = container.data
+                            bldr_data, dtype = self.convert_dtype(spec, data, spec_dtype=spec_dtype)
                         except Exception as ex:
                             msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
                             raise Exception(msg) from ex
