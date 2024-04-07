@@ -49,6 +49,21 @@ class HDF5IO(HDMFIO):
         except IOError:
             return False
 
+    @staticmethod
+    def resolve_data_shape(data, options):
+        if 'dtype' not in options:
+            dtype = None
+        else:
+            dtype = options['dtype']
+
+        if hasattr(data, 'shape'):
+            data_shape = data.shape
+        elif isinstance(dtype, np.dtype):
+            data_shape = (len(data),)
+        else:
+            data_shape = get_data_shape(data)
+        return data_shape
+
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'mode', 'type': str,
              'doc': ('the mode to open the HDF5 file with, one of ("w", "r", "r+", "a", "w-", "x"). '
@@ -1102,6 +1117,18 @@ class HDF5IO(HDMFIO):
             data = data.data
         else:
             options['io_settings'] = {}
+
+        if 'maxshape' not in options['io_settings']:
+            if 'shape' in options['io_settings']:
+                shape =  options['io_settings']['shape']
+            else:
+                shape = HDF5IO.resolve_data_shape(data, options)
+
+            options['io_settings']['maxshape'] = tuple([None]*len(shape))
+        else:
+            pass
+            # We do not want to override user specified maxshape
+
         attributes = builder.attributes
         options['dtype'] = builder.dtype
         dset = None
@@ -1445,13 +1472,8 @@ class HDF5IO(HDMFIO):
         # define the data shape
         if 'shape' in io_settings:
             data_shape = io_settings.pop('shape')
-        elif hasattr(data, 'shape'):
-            data_shape = data.shape
-        elif isinstance(dtype, np.dtype):
-            data_shape = (len(data),)
         else:
-            data_shape = get_data_shape(data)
-
+            data_shape = HDF5IO.resolve_data_shape(data, options)
         # Create the dataset
         try:
             dset = parent.create_dataset(name, shape=data_shape, dtype=dtype, **io_settings)
