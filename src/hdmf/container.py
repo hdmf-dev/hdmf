@@ -100,8 +100,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         """
         Return the spec data type associated with this container.
         """
-        _type = getattr(self, self._data_type_attr)
-        return _type
+        return getattr(self, self._data_type_attr)
 
     def _field_config(self, arg_name, val, type_map):
         """
@@ -155,13 +154,14 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 mapped_attr_name = obj_mapper.get_attribute(spec)
 
                 try:
-                    termset_path = os.path.join(CUR_DIR,
-                                                config_namespace['data_types'][data_type][mapped_attr_name]['termset'])
-                    termset = TermSet(term_schema_path=termset_path)
-                    val = TermSetWrapper(value=val, termset=termset)
-                    return val
+                    config_termset_path = config_namespace['data_types'][data_type][mapped_attr_name]['termset']
                 except KeyError:
                     return val
+
+                termset_path = os.path.join(CUR_DIR, config_termset_path)
+                termset = TermSet(term_schema_path=termset_path)
+                val = TermSetWrapper(value=val, termset=termset)
+                return val
 
     @classmethod
     def _getter(cls, field):
