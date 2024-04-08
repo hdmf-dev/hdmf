@@ -4,7 +4,7 @@ import numpy as np
 from hdmf import Container
 from hdmf.term_set import TermSet, TermSetWrapper, TypeConfigurator
 from hdmf.testing import TestCase, remove_test_file
-from hdmf.common import (VectorIndex, VectorData, unload_type_config,
+from hdmf.common import (VectorData, unload_type_config,
                          get_loaded_type_config, load_type_config)
 from hdmf.utils import popargs
 
@@ -325,12 +325,3 @@ class TestGlobalTypeConfig(TestCase):
             VectorData(name='foo',
                        data=[0],
                        description=TermSetWrapper(value='Homo sapiens', termset=terms))
-
-    def test_warn_field_not_in_spec(self):
-        col1 = VectorData(name='col1',
-                                  description='Homo sapiens',
-                                  data=['1a', '1b', '1c', '2a'])
-        with self.assertWarns(Warning):
-            VectorIndex(name='col1_index',
-                        target=col1,
-                        data=[3, 4])
