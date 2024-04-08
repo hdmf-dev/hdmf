@@ -86,9 +86,15 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if name in self.fields:
                 msg = "can't set attribute '%s' -- already set" % name
                 raise AttributeError(msg)
-            self.fields[name] = self._field_config(arg_name=name, val=val)
-
+            # load termset configuration file from global Config
+            self.fields[name] = self._field_config(arg_name=name,
+                                                   val=val,
+                                                   type_map=self.__get_type_map())
         return setter
+
+    def __get_type_map(self):
+        from hdmf.common import get_type_map # circular import
+        return get_type_map()
 
     @property
     def data_type(self):
@@ -98,7 +104,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         return getattr(self, self._data_type_attr)
 
 
-    def _field_config(self, arg_name, val):
+    def _field_config(self, arg_name, val, type_map):
         """
         This method will be called in the setter. The termset configuration will be used (if loaded)
         to check for a defined TermSet associated with the field. If found, the value of the field
@@ -108,9 +114,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
         itself is only one file. When a user loads custom configs, the config is appended/modified.
         The modifications are not written to file, avoiding permanent modifications.
         """
-        # load termset configuration file from global Config
-        from hdmf.common import get_type_map # circular import
-        type_map = get_type_map()
         configurator = type_map.type_config
 
         if len(configurator.path)>0:
