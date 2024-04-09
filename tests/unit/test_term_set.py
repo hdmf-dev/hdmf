@@ -267,12 +267,13 @@ class TestTypeConfig(TestCase):
         tc = TypeConfigurator(path=path)
         tc.load_type_config(config_path=path2)
         config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
-                  'data_types': {'VectorData': {'description': '...'},
+                                 'data_types': {'VectorData': {'name': None},
                                  'VectorIndex': {'data': '...'},
                                  'Data': {'description': {'termset': 'example_test_term_set.yaml'}},
                                  'EnumData': {'description': {'termset': 'example_test_term_set.yaml'}}}},
                   'namespace2': {'version': 0,
-                  'data_types': {'MythicData': {'description': {'termset': 'example_test_term_set.yaml'}}}}}}
+                                 'data_types':
+                                 {'MythicData': {'description': {'termset': 'example_test_term_set.yaml'}}}}}}
         self.assertEqual(tc.path, [path, path2])
         self.assertEqual(tc.config, config)
 
