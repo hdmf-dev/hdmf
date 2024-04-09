@@ -3,7 +3,8 @@
 ## HDMF 3.14.0 (Upcoming)
 
 ### Enhancements
-- Added `TermSetConfigurator` to automatically wrap fields with `TermSetWrapper` according to a configuration file. @mavaylon1 [#1016](https://github.com/hdmf-dev/hdmf/pull/1016)
+- Updated `_field_config` to take `type_map` as an argument for APIs. @mavaylon1 [#1094](https://github.com/hdmf-dev/hdmf/pull/1094)
+- Added `TypeConfigurator` to automatically wrap fields with `TermSetWrapper` according to a configuration file. @mavaylon1 [#1016](https://github.com/hdmf-dev/hdmf/pull/1016)
 - Updated `TermSetWrapper` to support validating a single field within a compound array. @mavaylon1 [#1061](https://github.com/hdmf-dev/hdmf/pull/1061)
 
 ## HDMF 3.13.0 (March 20, 2024)
