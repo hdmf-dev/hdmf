@@ -147,18 +147,17 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
                 # Get the spec for the constructor arg
                 spec = obj_mapper.get_carg_spec(arg_name)
-                if spec is None:
-                    return val
 
                 # Get spec attr name
                 mapped_attr_name = obj_mapper.get_attribute(spec)
 
+                config_data_type = config_namespace['data_types'][data_type]
                 try:
-                    config_termset_path = config_namespace['data_types'][data_type][mapped_attr_name]['termset']
+                    config_termset_path = config_data_type[mapped_attr_name]
                 except KeyError:
                     return val
 
-                termset_path = os.path.join(CUR_DIR, config_termset_path)
+                termset_path = os.path.join(CUR_DIR, config_termset_path['termset'])
                 termset = TermSet(term_schema_path=termset_path)
                 val = TermSetWrapper(value=val, termset=termset)
                 return val

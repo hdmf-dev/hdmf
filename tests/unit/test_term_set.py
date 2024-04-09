@@ -278,7 +278,7 @@ class TestTypeConfig(TestCase):
 
 
 class ExtensionContainer(Container):
-    __fields__ = ("description",)
+    __fields__ = ("description", "data")
 
     def __init__(self, **kwargs):
         description, namespace = popargs('description', 'namespace', kwargs)
@@ -325,3 +325,9 @@ class TestGlobalTypeConfig(TestCase):
             VectorData(name='foo',
                        data=[0],
                        description=TermSetWrapper(value='Homo sapiens', termset=terms))
+
+    def test_field_not_in_config(self):
+        unload_type_config()
+        load_type_config(config_path='tests/unit/hdmf_config2.yaml')
+
+        VectorData(name='foo', data=[0], description='Homo sapiens')
