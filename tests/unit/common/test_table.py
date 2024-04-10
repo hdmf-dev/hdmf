@@ -220,6 +220,101 @@ class TestDynamicTable(TestCase):
         with self.assertRaises(ValueError):
             species.add_row(Species_1='bad data', Species_2='bad data')
 
+    def test_compound_data_append(self):
+        c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        compound_vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=c_data
+        )
+        compound_vector_data.append(c_data2)
+
+        np.testing.assert_array_equal(compound_vector_data.data, np.append(c_data, c_data2))
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_array_append_error(self):
+        c_data = np.array(['Homo sapiens'])
+        c_data2 = np.array(['Mus musculus'])
+
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        vectordata_termset = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=c_data, termset=terms)
+        )
+
+        with self.assertRaises(ValueError):
+            vectordata_termset.append(c_data2)
+
+    def test_compound_data_extend(self):
+        c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        compound_vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=c_data
+        )
+        compound_vector_data.extend(c_data2)
+
+        np.testing.assert_array_equal(compound_vector_data.data, np.vstack((c_data, c_data2)))
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_wrapped_array_append(self):
+        data = np.array(['Homo sapiens'])
+        data2 = 'Mus musculus'
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=data, termset=terms)
+        )
+        vector_data.append(data2)
+
+        np.testing.assert_array_equal(vector_data.data.data, np.append(data, data2))
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_wrapped_array_extend(self):
+        data = np.array(['Homo sapiens'])
+        data2 = np.array(['Mus musculus'])
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=data, termset=terms)
+        )
+        vector_data.extend(data2)
+
+        np.testing.assert_array_equal(vector_data.data.data, np.vstack((data, data2)))
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_wrapped_compound_data_append(self):
+        c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        compound_vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=c_data, field='species', termset=terms)
+        )
+        compound_vector_data.append(c_data2)
+
+        np.testing.assert_array_equal(compound_vector_data.data.data, np.append(c_data, c_data2))
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_wrapped_compound_data_extend(self):
+        c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        compound_vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=c_data, field='species', termset=terms)
+        )
+        compound_vector_data.extend(c_data2)
+
+        np.testing.assert_array_equal(compound_vector_data.data.data, np.vstack((c_data, c_data2)))
+
     def test_constructor_bad_columns(self):
         columns = ['bad_column']
         msg = "'columns' must be a list of dict, VectorData, DynamicTableRegion, or VectorIndex"
