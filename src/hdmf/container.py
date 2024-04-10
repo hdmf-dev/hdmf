@@ -128,7 +128,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
             return val
 
         # check to see that the namespace for the container is in the config
-        if self.namespace not in type_map.container_types:
+        if self.namespace not in termset_config['namespaces']:
             msg = "%s not found within loaded configuration." % self.namespace
             warn(msg)
             return val
@@ -147,6 +147,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
 
                 # Get the spec for the constructor arg
                 spec = obj_mapper.get_carg_spec(arg_name)
+                if spec is None:
+                    return val
 
                 # Get spec attr name
                 mapped_attr_name = obj_mapper.get_attribute(spec)

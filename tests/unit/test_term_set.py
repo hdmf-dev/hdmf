@@ -279,13 +279,20 @@ class TestTypeConfig(TestCase):
 
 
 class ExtensionContainer(Container):
-    __fields__ = ("description", "data")
+    __fields__ = ("description",)
 
     def __init__(self, **kwargs):
         description, namespace = popargs('description', 'namespace', kwargs)
         self.namespace = namespace
         super().__init__(**kwargs)
         self.description = description
+
+    @property
+    def data_type(self):
+        """
+        Return the spec data type associated with this container.
+        """
+        return "ExtensionContainer"
 
 
 class TestGlobalTypeConfig(TestCase):
@@ -332,3 +339,8 @@ class TestGlobalTypeConfig(TestCase):
         load_type_config(config_path='tests/unit/hdmf_config2.yaml')
 
         VectorData(name='foo', data=[0], description='Homo sapiens')
+
+    def test_spec_none(self):
+        ExtensionContainer(name='foo',
+                           namespace='foo_namespace',
+                           description='Homo sapiens')
