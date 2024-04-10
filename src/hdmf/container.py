@@ -937,7 +937,10 @@ class Data(AbstractContainer):
 
     def get(self, args):
         if isinstance(self.data, (tuple, list)) and isinstance(args, (tuple, list, np.ndarray)):
+            # try:
             return [self.data[i] for i in args]
+            # except:
+                # breakpoint()
         if isinstance(self.data, h5py.Dataset) and isinstance(args, np.ndarray):
             # This is needed for h5py 2.9 compatibility
             args = args.tolist()
