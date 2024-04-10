@@ -148,6 +148,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 # Get the spec for the constructor arg
                 spec = obj_mapper.get_carg_spec(arg_name)
                 if spec is None:
+                    msg = "Spec not found for %s." % arg_name
+                    warn(msg)
                     return val
 
                 # Get spec attr name

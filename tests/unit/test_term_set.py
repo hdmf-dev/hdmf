@@ -267,13 +267,15 @@ class TestTypeConfig(TestCase):
         tc = TypeConfigurator(path=path)
         tc.load_type_config(config_path=path2)
         config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
-                                 'data_types': {'VectorData': {'name': None},
-                                 'VectorIndex': {'data': '...'},
-                                 'Data': {'description': {'termset': 'example_test_term_set.yaml'}},
-                                 'EnumData': {'description': {'termset': 'example_test_term_set.yaml'}}}},
-                  'namespace2': {'version': 0,
-                                 'data_types':
-                                 {'MythicData': {'description': {'termset': 'example_test_term_set.yaml'}}}}}}
+                  'data_types': {'VectorData': {'name': None},
+                  'VectorIndex': {'data': '...'},
+                  'Data': {'description': {'termset': 'example_test_term_set.yaml'}},
+                  'EnumData': {'description': {'termset': 'example_test_term_set.yaml'}}}},
+                  'foo_namespace': {'version': '...',
+                  'data_types': {'ExtensionContainer': {'description': None}}},
+                  'namespace2': {'version': 0, 'data_types':
+                  {'MythicData': {'description':
+                  {'termset': 'example_test_term_set.yaml'}}}}}}
         self.assertEqual(tc.path, [path, path2])
         self.assertEqual(tc.config, config)
 
@@ -308,8 +310,12 @@ class TestGlobalTypeConfig(TestCase):
         config = get_loaded_type_config()
         self.assertEqual(config,
         {'namespaces': {'hdmf-common': {'version': '3.12.2',
-        'data_types': {'VectorData': {'description': {'termset': 'example_test_term_set.yaml'}},
-                       'VectorIndex': {'data': '...'}}}}})
+         'data_types': {'VectorData':
+        {'description': {'termset': 'example_test_term_set.yaml'}},
+         'VectorIndex': {'data': '...'}}}, 'foo_namespace':
+        {'version': '...', 'data_types':
+        {'ExtensionContainer': {'description': None}}}}}
+)
 
     def test_validate_with_config(self):
         data = VectorData(name='foo', data=[0], description='Homo sapiens')
@@ -341,6 +347,7 @@ class TestGlobalTypeConfig(TestCase):
         VectorData(name='foo', data=[0], description='Homo sapiens')
 
     def test_spec_none(self):
-        ExtensionContainer(name='foo',
-                           namespace='foo_namespace',
-                           description='Homo sapiens')
+        with self.assertWarns(Warning):
+            ExtensionContainer(name='foo',
+                               namespace='foo_namespace',
+                               description='Homo sapiens')
