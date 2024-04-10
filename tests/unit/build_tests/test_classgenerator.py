@@ -84,6 +84,14 @@ class TestClassGenerator(TestCase):
 
 class TestPostInitGetClass(TestCase):
     def setUp(self):
+        def post_init_method(self, **kwargs):
+            attr1 = kwargs['attr1']
+            if attr1<10:
+                msg = "attr1 should be >=10"
+                raise ValueError(msg)
+        self.post_init=post_init_method
+
+    def test_post_init(self):
         spec = GroupSpec(
             doc='A test group specification with a data type',
             data_type_def='Baz',
@@ -103,20 +111,50 @@ class TestPostInitGetClass(TestCase):
         )
         namespace_catalog = NamespaceCatalog()
         namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        self.type_map = TypeMap(namespace_catalog)
+        type_map = TypeMap(namespace_catalog)
 
 
-    def test_post_init(self):
-        def post_init_method(self, **kwargs):
-            attr1 = kwargs['attr1']
-            if attr1<10:
-                msg = "attr1 should be >=10"
-                raise ValueError(msg)
-
-        cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE, post_init_method)
+        cls = type_map.get_dt_container_cls('Baz', CORE_NAMESPACE, self.post_init)
 
         with self.assertRaises(ValueError):
             cls(name='instance', attr1=9)
+
+    def test_multi_container_post_init(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='a dataset',
+                    dtype='int',
+                    name='data',
+                    attributes=[AttributeSpec(name='attr2', doc='an integer attribute', dtype='int')]
+                )
+            ],
+            attributes=[AttributeSpec(name='attr1', doc='a string attribute', dtype='text')])
+
+        multi_spec = GroupSpec(doc='A test extension that contains a multi',
+                               data_type_def='Multi',
+                               groups=[GroupSpec(data_type_inc=bar_spec, doc='test multi', quantity='*')],
+                                attributes=[AttributeSpec(name='attr1', doc='a float attribute', dtype='float')])
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(bar_spec, 'test.yaml')
+        spec_catalog.register_spec(multi_spec, 'test.yaml')
+        namespace = SpecNamespace(
+            doc='a test namespace',
+            name=CORE_NAMESPACE,
+            schema=[{'source': 'test.yaml'}],
+            version='0.1.0',
+            catalog=spec_catalog
+        )
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        Multi = type_map.get_dt_container_cls('Multi', CORE_NAMESPACE, self.post_init)
+
+        with self.assertRaises(ValueError):
+            Multi(name='instance', attr1=9.1)
 
 class TestDynamicContainer(TestCase):
 
