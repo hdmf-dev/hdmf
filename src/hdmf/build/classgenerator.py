@@ -1,7 +1,6 @@
 from copy import deepcopy
 from datetime import datetime, date
 from collections.abc import Callable
-import types as tp
 
 import numpy as np
 
@@ -88,11 +87,8 @@ class ClassGenerator:
                              + str(e)
                              + " Please define that type before defining '%s'." % name)
         cls = ExtenderMeta(data_type, tuple(bases), classdict)
+        cls.post_init_method = post_init_method
 
-        if post_init_method is not None:
-            cls.post_init_method = tp.MethodType(post_init_method, cls) # set as bounded method
-        else:
-            cls.post_init_method = post_init_method # set to None
         return cls
 
 
@@ -358,7 +354,6 @@ class CustomClassGenerator:
             if self.post_init_method is not None:
                 self.post_init_method(**original_kwargs)
 
-
         classdict['__init__'] = __init__
 
 
@@ -433,6 +428,7 @@ class MCIClassGenerator(CustomClassGenerator):
             def __init__(self, **kwargs):
                 # store the values passed to init for each MCI attribute so that they can be added
                 # after calling __init__
+                original_kwargs = dict(kwargs)
                 new_kwargs = list()
                 for field_clsconf in classdict['__clsconf__']:
                     attr_name = field_clsconf['attr']
@@ -459,6 +455,9 @@ class MCIClassGenerator(CustomClassGenerator):
                 for new_kwarg in new_kwargs:
                     add_method = getattr(self, new_kwarg['add_method_name'])
                     add_method(new_kwarg['value'])
+
+                if self.post_init_method is not None:
+                    self.post_init_method(**original_kwargs)
 
             # override __init__
             classdict['__init__'] = __init__

@@ -84,22 +84,6 @@ class TestClassGenerator(TestCase):
 
 class TestPostInitGetClass(TestCase):
     def setUp(self):
-        # self.bar_spec = GroupSpec(
-        #     doc='A test group specification with a data type',
-        #     data_type_def='Bar',
-        #     datasets=[
-        #         DatasetSpec(
-        #             doc='a dataset',
-        #             dtype='int',
-        #             name='data',
-        #             attributes=[AttributeSpec(name='attr1', doc='an integer attribute', dtype='int')]
-        #         )
-        #     ])
-        # specs = [self.bar_spec]
-        # containers = {'Bar': Bar}
-        # from hdmf.common import get_type_map
-        # self.type_map = get_type_map()
-        # self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
         spec = GroupSpec(
             doc='A test group specification with a data type',
             data_type_def='Baz',
@@ -132,7 +116,7 @@ class TestPostInitGetClass(TestCase):
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE, post_init_method)
 
         with self.assertRaises(ValueError):
-            instance = cls(name='instance', attr1=9)
+            cls(name='instance', attr1=9)
 
 class TestDynamicContainer(TestCase):
 
