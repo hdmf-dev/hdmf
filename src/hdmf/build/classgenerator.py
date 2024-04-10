@@ -322,7 +322,7 @@ class CustomClassGenerator:
                 fixed_value_attrs_to_set.append(attr_name)
             elif attr_name not in attrs_not_to_set:
                 attrs_to_set.append(attr_name)
-        
+
         @docval(*docval_args, allow_positional=AllowPositional.WARNING)
         def __init__(self, **kwargs):
             original_kwargs = dict(kwargs)
