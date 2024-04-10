@@ -113,7 +113,6 @@ class TestPostInitGetClass(TestCase):
         namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
         type_map = TypeMap(namespace_catalog)
 
-
         cls = type_map.get_dt_container_cls('Baz', CORE_NAMESPACE, self.post_init)
 
         with self.assertRaises(ValueError):
