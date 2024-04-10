@@ -2,6 +2,7 @@ import numpy as np
 import os
 import shutil
 import tempfile
+from warnings import warn
 
 from hdmf.build import TypeMap, CustomClassGenerator
 from hdmf.build.classgenerator import ClassGenerator, MCIClassGenerator
@@ -88,7 +89,7 @@ class TestPostInitGetClass(TestCase):
             attr1 = kwargs['attr1']
             if attr1<10:
                 msg = "attr1 should be >=10"
-                raise ValueError(msg)
+                warn(msg)
         self.post_init=post_init_method
 
     def test_post_init(self):
@@ -115,7 +116,7 @@ class TestPostInitGetClass(TestCase):
 
         cls = type_map.get_dt_container_cls('Baz', CORE_NAMESPACE, self.post_init)
 
-        with self.assertRaises(ValueError):
+        with self.assertWarns(Warning):
             cls(name='instance', attr1=9)
 
     def test_multi_container_post_init(self):
@@ -152,7 +153,7 @@ class TestPostInitGetClass(TestCase):
         type_map = TypeMap(namespace_catalog)
         Multi = type_map.get_dt_container_cls('Multi', CORE_NAMESPACE, self.post_init)
 
-        with self.assertRaises(ValueError):
+        with self.assertWarns(Warning):
             Multi(name='instance', attr1=9.1)
 
 class TestDynamicContainer(TestCase):

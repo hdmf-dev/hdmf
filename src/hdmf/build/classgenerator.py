@@ -323,8 +323,16 @@ class CustomClassGenerator:
             elif attr_name not in attrs_not_to_set:
                 attrs_to_set.append(attr_name)
 
-        @docval(*docval_args, allow_positional=AllowPositional.WARNING)
+        @docval(*docval_args,
+                {'name': 'post_init_bool', 'type': bool, 'default': True,
+                 'doc': 'bool to skip post_init for MCIClassGenerator'},
+                allow_positional=AllowPositional.WARNING)
         def __init__(self, **kwargs):
+            try:
+                post_init_bool = popargs('post_init_bool', kwargs)
+            except KeyError:
+                post_init_bool = True
+
             original_kwargs = dict(kwargs)
             if name is not None:  # force container name to be the fixed name in the spec
                 kwargs.update(name=name)
@@ -351,7 +359,8 @@ class CustomClassGenerator:
             for f in fixed_value_attrs_to_set:
                 self.fields[f] = getattr(not_inherited_fields[f], 'value')
 
-            if self.post_init_method is not None:
+            if self.post_init_method is not None and post_init_bool:
+                #
                 self.post_init_method(**original_kwargs)
 
         classdict['__init__'] = __init__
@@ -449,6 +458,7 @@ class MCIClassGenerator(CustomClassGenerator):
                     kwargs[attr_name] = list()
 
                 # call the parent class init without the MCI attribute
+                kwargs['post_init_bool'] = False
                 previous_init(self, **kwargs)
 
                 # call the add method for each MCI attribute
@@ -457,6 +467,7 @@ class MCIClassGenerator(CustomClassGenerator):
                     add_method(new_kwarg['value'])
 
                 if self.post_init_method is not None:
+
                     self.post_init_method(**original_kwargs)
 
             # override __init__
