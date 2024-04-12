@@ -328,10 +328,7 @@ class CustomClassGenerator:
                  'doc': 'bool to skip post_init for MCIClassGenerator'},
                 allow_positional=AllowPositional.WARNING)
         def __init__(self, **kwargs):
-            try:
-                post_init_bool = popargs('post_init_bool', kwargs)
-            except KeyError:
-                post_init_bool = True
+            post_init_bool = popargs('post_init_bool', kwargs)
 
             original_kwargs = dict(kwargs)
             if name is not None:  # force container name to be the fixed name in the spec
