@@ -1,11 +1,11 @@
 """Object mapper definitions for types implemented in :py:mod:`~hdmf.common.resources`"""
 from .. import register_map
-from ..resources import ExternalResources, KeyTable, ResourceTable, ObjectTable, ObjectKeyTable, EntityTable
+from ..resources import HERD, KeyTable, FileTable, ObjectTable, ObjectKeyTable, EntityTable, EntityKeyTable
 from ...build import ObjectMapper
 
 
-@register_map(ExternalResources)
-class ExternalResourcesMap(ObjectMapper):
+@register_map(HERD)
+class HERDMap(ObjectMapper):
 
     def construct_helper(self, name, parent_builder, table_cls, manager):
         """Create a new instance of table_cls with data from parent_builder[name].
@@ -24,9 +24,9 @@ class ExternalResourcesMap(ObjectMapper):
     def keys(self, builder, manager):
         return self.construct_helper('keys', builder, KeyTable, manager)
 
-    @ObjectMapper.constructor_arg('resources')
-    def resources(self, builder, manager):
-        return self.construct_helper('resources', builder, ResourceTable, manager)
+    @ObjectMapper.constructor_arg('files')
+    def files(self, builder, manager):
+        return self.construct_helper('files', builder, FileTable, manager)
 
     @ObjectMapper.constructor_arg('entities')
     def entities(self, builder, manager):
@@ -39,3 +39,7 @@ class ExternalResourcesMap(ObjectMapper):
     @ObjectMapper.constructor_arg('object_keys')
     def object_keys(self, builder, manager):
         return self.construct_helper('object_keys', builder, ObjectKeyTable, manager)
+
+    @ObjectMapper.constructor_arg('entity_keys')
+    def entity_keys(self, builder, manager):
+        return self.construct_helper('entity_keys', builder, EntityKeyTable, manager)

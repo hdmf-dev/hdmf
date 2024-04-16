@@ -1,7 +1,7 @@
 import numpy as np
 from hdmf.testing import TestCase
 from hdmf.utils import (docval, fmt_docval_args, get_docval, getargs, popargs, AllowPositional, get_docval_macro,
-                        docval_macro)
+                        docval_macro, popargs_to_dict, call_docval_func)
 
 
 class MyTestClass(object):
@@ -137,14 +137,25 @@ class TestDocValidator(TestCase):
         with self.assertRaises(ValueError):
             method1(self, arg1=[[1, 1, 1]])
 
+    fmt_docval_warning_msg = (
+        "fmt_docval_args will be deprecated in a future version of HDMF. Instead of using fmt_docval_args, "
+        "call the function directly with the kwargs. Please note that fmt_docval_args "
+        "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
+        "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
+        "is set), then you will need to pop the extra arguments out of kwargs before calling the function."
+    )
+
     def test_fmt_docval_args(self):
-        """ Test that fmt_docval_args works """
+        """ Test that fmt_docval_args parses the args and strips extra args """
         test_kwargs = {
             'arg1': 'a string',
             'arg2': 1,
             'arg3': True,
+            'hello': 'abc',
+            'list': ['abc', 1, 2, 3]
         }
-        rec_args, rec_kwargs = fmt_docval_args(self.test_obj.basic_add2_kw, test_kwargs)
+        with self.assertWarnsWith(PendingDeprecationWarning, self.fmt_docval_warning_msg):
+            rec_args, rec_kwargs = fmt_docval_args(self.test_obj.basic_add2_kw, test_kwargs)
         exp_args = ['a string', 1]
         self.assertListEqual(rec_args, exp_args)
         exp_kwargs = {'arg3': True}
@@ -156,7 +167,8 @@ class TestDocValidator(TestCase):
             pass
 
         with self.assertRaisesRegex(ValueError, r"no docval found on .*method1.*"):
-            fmt_docval_args(method1, {})
+            with self.assertWarnsWith(PendingDeprecationWarning, self.fmt_docval_warning_msg):
+                fmt_docval_args(method1, {})
 
     def test_fmt_docval_args_allow_extra(self):
         """ Test that fmt_docval_args works """
@@ -167,11 +179,37 @@ class TestDocValidator(TestCase):
             'hello': 'abc',
             'list': ['abc', 1, 2, 3]
         }
-        rec_args, rec_kwargs = fmt_docval_args(self.test_obj.basic_add2_kw_allow_extra, test_kwargs)
+        with self.assertWarnsWith(PendingDeprecationWarning, self.fmt_docval_warning_msg):
+            rec_args, rec_kwargs = fmt_docval_args(self.test_obj.basic_add2_kw_allow_extra, test_kwargs)
         exp_args = ['a string', 1]
         self.assertListEqual(rec_args, exp_args)
         exp_kwargs = {'arg3': True, 'hello': 'abc', 'list': ['abc', 1, 2, 3]}
         self.assertDictEqual(rec_kwargs, exp_kwargs)
+
+    def test_call_docval_func(self):
+        """Test that call_docval_func strips extra args and calls the function."""
+        test_kwargs = {
+            'arg1': 'a string',
+            'arg2': 1,
+            'arg3': True,
+            'hello': 'abc',
+            'list': ['abc', 1, 2, 3]
+        }
+        msg = (
+            "call_docval_func will be deprecated in a future version of HDMF. Instead of using call_docval_func, "
+            "call the function directly with the kwargs. Please note that call_docval_func "
+            "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
+            "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
+            "is set), then you will need to pop the extra arguments out of kwargs before calling the function."
+        )
+        with self.assertWarnsWith(PendingDeprecationWarning, msg):
+            ret_kwargs = call_docval_func(self.test_obj.basic_add2_kw, test_kwargs)
+        exp_kwargs = {
+            'arg1': 'a string',
+            'arg2': 1,
+            'arg3': True
+        }
+        self.assertDictEqual(ret_kwargs, exp_kwargs)
 
     def test_docval_add(self):
         """Test that docval works with a single positional
@@ -269,7 +307,7 @@ class TestDocValidator(TestCase):
     def test_docval_add2_kw_default_sub(self):
         """Test that docval works with a four positional arguments and
            two keyword arguments, where two positional and one keyword
-           argument is specified in both the parent and sublcass implementations
+           argument is specified in both the parent and subclass implementations
         """
         kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', 200.0)
         expected = {'arg1': 'a string', 'arg2': 100,
@@ -280,7 +318,7 @@ class TestDocValidator(TestCase):
     def test_docval_add2_kw_default_sub_missing_args(self):
         """Test that docval catches missing arguments with a four positional arguments
            and two keyword arguments, where two positional and one keyword
-           argument is specified in both the parent and sublcass implementations,
+           argument is specified in both the parent and subclass implementations,
            when using default values for keyword arguments
         """
         with self.assertRaisesWith(TypeError, "MyTestSubclass.basic_add2_kw: missing argument 'arg5'"):
@@ -290,7 +328,7 @@ class TestDocValidator(TestCase):
         """Test that docval works when called with a four positional
            arguments and two keyword arguments, where two positional
            and one keyword argument is specified in both the parent
-           and sublcass implementations
+           and subclass implementations
         """
         kwargs = self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', 200.0, arg6=True)
         expected = {'arg1': 'a string', 'arg2': 100,
@@ -301,7 +339,7 @@ class TestDocValidator(TestCase):
     def test_docval_add2_kw_kwsyntax_sub_missing_args(self):
         """Test that docval catches missing arguments when called with a four positional
            arguments and two keyword arguments, where two positional and one keyword
-           argument is specified in both the parent and sublcass implementations
+           argument is specified in both the parent and subclass implementations
         """
         with self.assertRaisesWith(TypeError, "MyTestSubclass.basic_add2_kw: missing argument 'arg5'"):
             self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', arg6=True)
@@ -309,7 +347,7 @@ class TestDocValidator(TestCase):
     def test_docval_add2_kw_kwsyntax_sub_nonetype_arg(self):
         """Test that docval catches NoneType when called with a four positional
            arguments and two keyword arguments, where two positional and one keyword
-           argument is specified in both the parent and sublcass implementations
+           argument is specified in both the parent and subclass implementations
         """
         msg = "MyTestSubclass.basic_add2_kw: None is not allowed for 'arg5' (expected 'float', not None)"
         with self.assertRaisesWith(TypeError, msg):
@@ -585,7 +623,8 @@ class TestDocValidator(TestCase):
 
         # check that supplying a positional arg raises a warning
         msg = ('TestDocValidator.test_allow_positional_warn.<locals>.method: '
-               'Positional arguments are discouraged and may be forbidden in a future release.')
+               'Using positional arguments for this method is discouraged and will be deprecated in a future major '
+               'release. Please use keyword arguments to ensure future compatibility.')
         with self.assertWarnsWith(FutureWarning, msg):
             method(self, True)
 
@@ -601,9 +640,64 @@ class TestDocValidator(TestCase):
 
         # check that supplying a positional arg raises an error
         msg = ('TestDocValidator.test_allow_positional_error.<locals>.method: '
-               'Only keyword arguments (e.g., func(argname=value, ...)) are allowed.')
+               'Only keyword arguments (e.g., func(argname=value, ...)) are allowed for this method.')
         with self.assertRaisesWith(SyntaxError, msg):
             method(self, True)
+
+    def test_allow_none_false(self):
+        """Test that docval with allow_none=True and non-None default value works"""
+        @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool or None with a default', 'default': True,
+                 'allow_none': False})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        # if provided, None is not allowed
+        msg = ("TestDocValidator.test_allow_none_false.<locals>.method: incorrect type for 'arg1' "
+               "(got 'NoneType', expected 'bool')")
+        with self.assertRaisesWith(TypeError, msg):
+            res = method(self, arg1=None)
+
+        # if not provided, the default value is used
+        res = method(self)
+        self.assertTrue(res)
+
+    def test_allow_none(self):
+        """Test that docval with allow_none=True and non-None default value works"""
+        @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool or None with a default', 'default': True,
+                 'allow_none': True})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        # if provided, None is allowed
+        res = method(self, arg1=None)
+        self.assertIsNone(res)
+
+        # if not provided, the default value is used
+        res = method(self)
+        self.assertTrue(res)
+
+    def test_allow_none_redundant(self):
+        """Test that docval with allow_none=True and default=None works"""
+        @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool or None with a default', 'default': None,
+                 'allow_none': True})
+        def method(self, **kwargs):
+            return popargs('arg1', kwargs)
+
+        # if provided, None is allowed
+        res = method(self, arg1=None)
+        self.assertIsNone(res)
+
+        # if not provided, the default value is used
+        res = method(self)
+        self.assertIsNone(res)
+
+    def test_allow_none_no_default(self):
+        """Test that docval with allow_none=True and no default raises an error"""
+        msg = ("docval for arg1: allow_none=True can only be set if a default value is provided.")
+        with self.assertRaisesWith(Exception, msg):
+            @docval({'name': 'arg1', 'type': bool, 'doc': 'this is a bool or None with a default', 'allow_none': True})
+            def method(self, **kwargs):
+                return popargs('arg1', kwargs)
 
     def test_enum_str(self):
         """Test that the basic usage of an enum check on strings works"""
@@ -732,6 +826,17 @@ class TestDocValidator(TestCase):
             @docval({'name': 'arg1', 'type': bool, 'doc': 'an arg', 'enum': (True, [])})
             def method(self, **kwargs):
                 pass
+
+    def test_nested_return_types(self):
+        """Test that having nested tuple rtype creates valid sphinx references"""
+        @docval({'name': 'arg1', 'type': int, 'doc': 'an arg'},
+                returns='output', rtype=(list, (list, bool), (list, 'Test')))
+        def method(self, **kwargs):
+            return []
+
+        doc = ('method(arg1)\n\n\n\nArgs:\n    arg1 (:py:class:`~int`): an arg\n\nReturns:\n    '
+               ':py:class:`~list` or :py:class:`~list`, :py:class:`~bool` or :py:class:`~list`, ``Test``: output')
+        self.assertEqual(method.__doc__, doc)
 
 
 class TestDocValidatorChain(TestCase):
@@ -970,6 +1075,40 @@ class TestPopargs(TestCase):
             popargs('a', 'c', kwargs)
 
 
+class TestPopargsToDict(TestCase):
+    """Test the popargs_to_dict function and its error conditions."""
+
+    def test_one_arg_first(self):
+        kwargs = {'a': 1, 'b': None}
+        res = popargs_to_dict(['a'], kwargs)
+        self.assertDictEqual(res, {'a': 1})
+        self.assertDictEqual(kwargs, {'b': None})
+
+    def test_one_arg_second(self):
+        kwargs = {'a': 1, 'b': None}
+        res = popargs_to_dict(['b'], kwargs)
+        self.assertDictEqual(res, {'b': None})
+        self.assertDictEqual(kwargs, {'a': 1})
+
+    def test_many_args_pop_some(self):
+        kwargs = {'a': 1, 'b': None, 'c': 3}
+        res = popargs_to_dict(['a', 'c'], kwargs)
+        self.assertDictEqual(res, {'a': 1, 'c': 3})
+        self.assertDictEqual(kwargs, {'b': None})
+
+    def test_many_args_pop_all(self):
+        kwargs = {'a': 1, 'b': None, 'c': 3}
+        res = popargs_to_dict(['a', 'b', 'c'], kwargs)
+        self.assertDictEqual(res, {'a': 1, 'b': None, 'c': 3})
+        self.assertDictEqual(kwargs, {})
+
+    def test_arg_not_found_one_arg(self):
+        kwargs = {'a': 1, 'b': None}
+        msg = "Argument not found in dict: 'c'"
+        with self.assertRaisesWith(ValueError, msg):
+            popargs_to_dict(['c'], kwargs)
+
+
 class TestMacro(TestCase):
 
     def test_macro(self):
@@ -989,3 +1128,51 @@ class TestMacro(TestCase):
             pass
 
         self.assertTupleEqual(get_docval_macro('dummy'), (Dummy2, ))
+
+
+class TestStringType(TestCase):
+
+    class Dummy1:
+        pass
+
+    class Dummy2:
+        pass
+
+    def test_check_type(self):
+        @docval(
+            {
+                "name": "arg1",
+                "type": (int, np.ndarray, "Dummy1", "tests.unit.utils_test.test_docval.TestStringType.Dummy2"),
+                "doc": "doc"
+            },
+            is_method=False,
+        )
+        def myfunc(**kwargs):
+            return kwargs["arg1"]
+
+        dummy1 = TestStringType.Dummy1()
+        assert dummy1 is myfunc(dummy1)
+
+        dummy2 = TestStringType.Dummy2()
+        assert dummy2 is myfunc(dummy2)
+
+    def test_docstring(self):
+        @docval(
+            {
+                "name": "arg1",
+                "type": (int, np.ndarray, "Dummy1", "tests.unit.utils_test.test_docval.TestStringType.Dummy2"),
+                "doc": "doc"
+            },
+            is_method=False,
+        )
+        def myfunc(**kwargs):
+            return kwargs["arg1"]
+
+        expected = """myfunc(arg1)
+
+
+
+Args:
+    arg1 (:py:class:`~int` or :py:class:`~numpy.ndarray` or ``Dummy1`` or :py:class:`~tests.unit.utils_test.test_docval.TestStringType.Dummy2`): doc
+"""  # noqa: E501
+        assert myfunc.__doc__ == expected

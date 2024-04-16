@@ -4,7 +4,7 @@
 Installing HDMF
 ---------------
 
-HDMF requires having Python 3.6, 3.7, or 3.8 installed. If you don't have Python installed and want the simplest way to
+HDMF requires having Python 3.8, 3.9, 3.10, 3.11, or 3.12 installed. If you don't have Python installed and want the simplest way to
 get started, we recommend you install and use the `Anaconda Distribution`_. It includes Python, NumPy, and many other
 commonly used packages for scientific computing and data science.
 
@@ -29,4 +29,4 @@ You can also install HDMF using ``conda`` by running the following command in a 
 
    conda install -c conda-forge hdmf
 
-.. _Anaconda Distribution: https://www.anaconda.com/distribution
+.. _Anaconda Distribution: https://www.anaconda.com/products/distribution

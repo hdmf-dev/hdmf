@@ -83,6 +83,8 @@ class DynamicTableGenerator(CustomClassGenerator):
             # the spec does not know which table this DTR points to
             # the user must specify the table attribute on the DTR after it is generated
             column_conf['table'] = True
+        else:
+            column_conf['class'] = dtype
 
         index_counter = 0
         index_name = attr_name
@@ -98,16 +100,6 @@ class DynamicTableGenerator(CustomClassGenerator):
 
         # do not add DynamicTable columns to init docval
 
-        # add a specialized docval arg for __init__ for specifying targets for DTRs
-        target_tables_dvarg = dict(
-            name='target_tables',
-            doc=('dict mapping DynamicTableRegion column name to the table that the DTR points to. The column is '
-                 'added to the table if it is not already present (i.e., when it is optional).'),
-            type=dict,
-            default=None
-        )
-        cls._add_to_docval_args(docval_args, target_tables_dvarg)
-
     @classmethod
     def post_process(cls, classdict, bases, docval_args, spec):
         """Convert classdict['__columns__'] to tuple.
@@ -122,42 +114,10 @@ class DynamicTableGenerator(CustomClassGenerator):
             classdict['__columns__'] = tuple(columns)
 
     @classmethod
-    def set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
-        if '__columns__' not in classdict:
-            return
-
-        base_init = classdict.get('__init__')
-        if base_init is None:  # pragma: no cover
-            raise ValueError("Generated class dictionary is missing base __init__ method.")
-
-        @docval(*docval_args)
-        def __init__(self, **kwargs):
-            base_init(self, **kwargs)
-
-            # set target attribute on DTR
-            target_tables = kwargs.get('target_tables')
-            if target_tables:
-                for colname, table in target_tables.items():
-                    if colname not in self:  # column has not yet been added (it is optional)
-                        column_conf = None
-                        for conf in self.__columns__:
-                            if conf['name'] == colname:
-                                column_conf = conf
-                                break
-                        if column_conf is None:
-                            raise ValueError("'%s' is not the name of a predefined column of table %s."
-                                             % (colname, self))
-                        if not column_conf.get('table', False):
-                            raise ValueError("Column '%s' must be a DynamicTableRegion to have a target table."
-                                             % colname)
-                        self.add_column(name=column_conf['name'],
-                                        description=column_conf['description'],
-                                        index=column_conf.get('index', False),
-                                        table=True)
-                    if isinstance(self[colname], VectorIndex):
-                        col = self[colname].target
-                    else:
-                        col = self[colname]
-                    col.table = table
-
-        classdict['__init__'] = __init__
+    def _get_attrs_not_to_set_init(cls, classdict, parent_docval_args):
+        # exclude columns from the args that are set in __init__
+        attrs_not_to_set = parent_docval_args.copy()
+        if "__columns__" in classdict:
+            column_names = [column_conf["name"] for column_conf in classdict["__columns__"]]
+            attrs_not_to_set.update(column_names)
+        return attrs_not_to_set

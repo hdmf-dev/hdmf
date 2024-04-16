@@ -1,8 +1,8 @@
 name: Deploy release
 on:
   push:
-    tags:  # run only on new tags that follow semver
-      - '/^[0-9]+(\.[0-9]+)?(\.[0-9]+)?$/'
+    tags:  # run only on new tags that follow semver MAJOR.MINOR.PATCH
+      - '[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   deploy-release:
@@ -10,15 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required for versioneer to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
 
       - name: Install build dependencies
         run: |
@@ -28,28 +28,31 @@ jobs:
 
       - name: Run tox tests
         run: |
-          tox -e py310-upgraded
+          tox -e py312-upgraded
 
       - name: Build wheel and source distribution
         run: |
-          tox -e build-py310-upgraded
+          tox -e build
           ls -1 dist
 
       - name: Test installation from a wheel
         run: |
-          tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
+          tox -e wheelinstall --installpkg dist/*-none-any.whl
 
-      - name: Upload wheel and source distributions to PyPI  # TODO remove the --repository flag after testing
+      - name: Test installation from a source distribution
+        run: |
+          tox -e wheelinstall --installpkg dist/*.tar.gz
+
+      - name: Upload wheel and source distributions to PyPI
         run: |
           python -m pip install twine
           ls -1 dist
-          twine upload --repository testpypi -u ${{ secrets.BOT_PYPI_USER }} -p ${{ secrets.BOT_PYPI_PASSWORD }} --skip-existing dist/*
+          # twine upload --repository-url https://test.pypi.org/legacy/ -u ${{ secrets.BOT_PYPI_USER }} -p ${{ secrets.BOT_TEST_PYPI_PASSWORD }} --skip-existing dist/*
+          twine upload -u ${{ secrets.BOT_PYPI_USER }} -p ${{ secrets.BOT_PYPI_PASSWORD }} --skip-existing dist/*
 
       - name: Publish wheel and source distributions as a GitHub release
         run: |
-          # use click<8 until https://github.com/j0057/github-release/issues/62 is resolved
-          python -m pip install "click<8" githubrelease
-          githubrelease release hdmf-dev/hdmf \
+          python -m pip install "githubrelease>=1.5.9"
+          githubrelease --github-token ${{ secrets.BOT_GITHUB_TOKEN }} release hdmf-dev/hdmf \
             create ${{ github.ref_name }} --name ${{ github.ref_name }} \
-            --github-token ${{ secrets.BOT_GITHUB_TOKEN }} \
             --publish dist/*

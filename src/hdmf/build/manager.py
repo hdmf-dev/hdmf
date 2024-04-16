@@ -6,9 +6,10 @@ from copy import copy
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
-from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, SpecReader
+from ..term_set import TypeConfigurator
+from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog
 from ..spec.spec import BaseStorageSpec
-from ..utils import docval, getargs, call_docval_func, ExtenderMeta
+from ..utils import docval, getargs, ExtenderMeta, get_docval
 
 
 class Proxy:
@@ -253,6 +254,10 @@ class BuildManager:
                 self.__builders.pop(container_id)
                 self.__containers.pop(builder_id)
 
+    def clear_cache(self):
+        self.__builders.clear()
+        self.__containers.clear()
+
     @docval({"name": "container", "type": AbstractContainer, "doc": "the container to get the builder for"})
     def get_builder(self, **kwargs):
         """Return the prebuilt builder for the given container or None if it does not exist."""
@@ -388,18 +393,23 @@ class TypeSource:
 
 
 class TypeMap:
-    ''' A class to maintain the map between ObjectMappers and AbstractContainer classes
-    '''
+    """
+    A class to maintain the map between ObjectMappers and AbstractContainer classes
+    """
 
     @docval({'name': 'namespaces', 'type': NamespaceCatalog, 'doc': 'the NamespaceCatalog to use', 'default': None},
-            {'name': 'mapper_cls', 'type': type, 'doc': 'the ObjectMapper class to use', 'default': None})
+            {'name': 'mapper_cls', 'type': type, 'doc': 'the ObjectMapper class to use', 'default': None},
+            {'name': 'type_config', 'type': TypeConfigurator, 'doc': 'The TypeConfigurator to use.',
+             'default': None})
     def __init__(self, **kwargs):
-        namespaces, mapper_cls = getargs('namespaces', 'mapper_cls', kwargs)
+        namespaces, mapper_cls, type_config = getargs('namespaces', 'mapper_cls', 'type_config', kwargs)
         if namespaces is None:
             namespaces = NamespaceCatalog()
         if mapper_cls is None:
             from .objectmapper import ObjectMapper  # avoid circular import
             mapper_cls = ObjectMapper
+        if type_config is None:
+            type_config = TypeConfigurator()
         self.__ns_catalog = namespaces
         self.__mappers = dict()  # already constructed ObjectMapper classes
         self.__mapper_cls = dict()  # the ObjectMapper class to use for each container type
@@ -407,6 +417,8 @@ class TypeMap:
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
         self.__class_generator = ClassGenerator()
+        self.type_config = type_config
+
         self.register_generator(CustomClassGenerator)
         self.register_generator(MCIClassGenerator)
 
@@ -419,7 +431,7 @@ class TypeMap:
         return self.__container_types
 
     def __copy__(self):
-        ret = TypeMap(copy(self.__ns_catalog), self.__default_mapper_cls)
+        ret = TypeMap(copy(self.__ns_catalog), self.__default_mapper_cls, self.type_config)
         ret.merge(self)
         return ret
 
@@ -459,12 +471,7 @@ class TypeMap:
         generator = getargs('generator', kwargs)
         self.__class_generator.register_generator(generator)
 
-    @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},
-            {'name': 'resolve', 'type': bool,
-             'doc': 'whether or not to include objects from included/parent spec objects', 'default': True},
-            {'name': 'reader',
-             'type': SpecReader,
-             'doc': 'the class to user for reading specifications', 'default': None},
+    @docval(*get_docval(NamespaceCatalog.load_namespaces),
             returns="the namespaces loaded from the given file", rtype=dict)
     def load_namespaces(self, **kwargs):
         '''Load namespaces from a namespace file.
@@ -472,7 +479,7 @@ class TypeMap:
         it will process the return value to keep track of what types were included in the loaded namespaces. Calling
         load_namespaces here has the advantage of being able to keep track of type dependencies across namespaces.
         '''
-        deps = call_docval_func(self.__ns_catalog.load_namespaces, kwargs)
+        deps = self.__ns_catalog.load_namespaces(**kwargs)
         for new_ns, ns_deps in deps.items():
             for src_ns, types in ns_deps.items():
                 for dt in types:
@@ -517,6 +524,8 @@ class TypeMap:
                 if data_type in ns_data_types:
                     namespace = ns_key
                     break
+        if namespace is None:
+            raise ValueError("Namespace could not be resolved.")
 
         cls = self.__get_container_cls(namespace, data_type)
         if cls is None and autogen:  # dynamically generate a class

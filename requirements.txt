@@ -1,8 +1,8 @@
 # pinned dependencies to reproduce an entire development environment to use HDMF
-h5py==3.6.0
-jsonschema==4.3.3
-numpy==1.21.5  # note that numpy 1.22.0 dropped python 3.7 support
-pandas==1.3.5
-ruamel.yaml==0.17.20
-scipy==1.7.3
-setuptools==60.2.0
+h5py==3.10.0
+importlib-resources==6.1.0; python_version < "3.9"  # TODO: remove when minimum python version is 3.9
+jsonschema==4.19.1
+numpy==1.26.1
+pandas==2.1.2
+ruamel.yaml==0.18.2
+scipy==1.11.3

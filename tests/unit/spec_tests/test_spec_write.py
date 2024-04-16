@@ -50,8 +50,7 @@ class TestSpec(TestCase):
 
     def _test_extensions_file(self):
         with open(self.ext_source_path, 'r') as file:
-            match_str = \
-"""groups:
+            match_str = """groups:
 - data_type_def: MyDataSeries
   doc: A custom DataSeries interface
 - data_type_def: MyExtendedMyDataSeries
@@ -61,14 +60,13 @@ class TestSpec(TestCase):
   - name: testdata
     dtype: float
     doc: test
-"""  # noqa: E122
+"""
             nsstr = file.read()
             self.assertEqual(nsstr, match_str)
 
     def _test_namespace_file(self):
         with open(self.namespace_path, 'r') as file:
-            match_str = \
-"""namespaces:
+            match_str = """namespaces:
 - author: foo
   contact: foo@bar.com
   date: '%s'
@@ -196,8 +194,7 @@ class TestExportSpec(TestSpec):
 
     def _test_namespace_file(self):
         with open(self.namespace_path, 'r') as file:
-            match_str = \
-"""namespaces:
+            match_str = """namespaces:
 - author: foo
   contact: foo@bar.com
   date: '%s'

@@ -5,12 +5,12 @@ import tempfile
 
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.build import BuildManager, TypeMap
-from hdmf.common import get_type_map, DynamicTable
+from hdmf.common import get_type_map, DynamicTable, VectorData
 from hdmf.spec import GroupSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.testing import TestCase
 from hdmf.validate import ValidatorMap
 
-from tests.unit.utils import CORE_NAMESPACE
+from tests.unit.helpers.utils import CORE_NAMESPACE
 
 
 class TestDynamicDynamicTable(TestCase):
@@ -142,11 +142,12 @@ class TestDynamicDynamicTable(TestCase):
     def test_dynamic_table(self):
         assert issubclass(self.TestTable, DynamicTable)
 
-        assert self.TestTable.__columns__[0] == dict(
-            name='my_col',
-            description='a test column',
-            required=True
-        )
+        assert self.TestTable.__columns__[0] == {
+                'name': 'my_col',
+                'description': 'a test column',
+                'class': VectorData,
+                'required': True
+            }
 
     def test_forbids_incorrect_col(self):
         test_table = self.TestTable(name='test_table', description='my test table')
@@ -226,6 +227,13 @@ class TestDynamicDynamicTable(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             self.TestDTRTable(name='test_dtr_table', description='my table',
                               target_tables={'optional_col3': test_table})
+
+    def test_attribute(self):
+        test_table = self.TestTable(name='test_table', description='my test table')
+        assert test_table.my_col is not None
+        assert test_table.indexed_col is not None
+        assert test_table.my_col is test_table['my_col']
+        assert test_table.indexed_col is test_table['indexed_col'].target
 
     def test_roundtrip(self):
         # NOTE this does not use H5RoundTripMixin because this requires custom validation

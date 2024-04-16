@@ -1,0 +1,15 @@
+# pinned dependencies to reproduce an entire development environment to use PyNWB with ROS3 support
+name: ros3
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python==3.12
+  - h5py==3.10.0
+  - matplotlib==3.8.0
+  - numpy==1.26.0
+  - pandas==2.1.2
+  - python-dateutil==2.8.2
+  - pytest==7.4.3
+  - pytest-cov==4.1.0
+  - setuptools

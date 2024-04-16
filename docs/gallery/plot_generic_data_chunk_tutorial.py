@@ -5,31 +5,28 @@
 GenericDataChunkIterator Tutorial
 ==================================
 
-This is a tutorial for interacting with ``GenericDataChunkIterator`` objects. This tutorial
+This is a tutorial for interacting with :py:class:`~hdmf.data_utils.GenericDataChunkIterator` objects. This tutorial
 is written for beginners and does not describe the full capabilities and nuances
 of the functionality. This tutorial is designed to give
 you basic familiarity with how :py:class:`~hdmf.data_utils.GenericDataChunkIterator` works and help you get started
 with creating a specific instance for your data format or API access pattern.
 
+Introduction
+------------
+The :py:class:`~hdmf.data_utils.GenericDataChunkIterator` class represents a semi-abstract
+version of a :py:class:`~hdmf.data_utils.AbstractDataChunkIterator` that automatically handles the selection
+of buffer regions
+and resolves communication of compatible chunk regions within a H5DataIO wrapper. It does not,
+however, know how data (values) or metadata (data type, full shape) ought to be directly
+accessed. This is by intention to be fully agnostic to a range of indexing methods and
+format-independent APIs, rather than make strong assumptions about how data ranges are to be sliced.
+
+Constructing a simple child class
+---------------------------------
+We will begin with a simple example case of data access to a standard Numpy array.
+To create a :py:class:`~hdmf.data_utils.GenericDataChunkIterator` that accomplishes this,
+we begin by defining our child class.
 """
-
-###############################################################################
-# Introduction
-# ------------
-# The :py:class:`~hdmf.data_utils.GenericDataChunkIterator` class represents a semi-abstract
-# version of a :py:class:`~hdmf.data_utils.AbstractDataChunkIterator` that automatically handles the selection
-# of buffer regions
-# and resolves communication of compatible chunk regions within a H5DataIO wrapper. It does not,
-# however, know how data (values) or metadata (data type, full shape) ought to be directly
-# accessed. This is by intention to be fully agnostic to a range of indexing methods and
-# format-independent APIs, rather than make strong assumptions about how data ranges are to be sliced.
-
-###############################################################################
-# Constructing a simple child class
-# ---------------------------------
-# We will begin with a simple example case of data access to a standard Numpy array.
-# To create a :py:class:`~hdmf.data_utils.GenericDataChunkIterator` that accomplishes this,
-# we begin by defining our child class.
 
 # sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_generic_data_chunk_tutorial.png'
 import numpy as np
@@ -97,7 +94,8 @@ chunk_shape = (1000, 250)
 
 my_array = np.random.randint(low=0, high=10, size=maxshape, dtype="int32")
 my_custom_iterator = NumpyArrayDataChunkIterator(array=my_array, buffer_shape=buffer_shape, chunk_shape=chunk_shape)
-with h5py.File(name="my_temporary_test_file.hdf5", mode="w") as f:
+out_file = "my_temporary_test_file.hdf5"
+with h5py.File(name=out_file, mode="w") as f:
     dset = f.create_dataset(name="test", shape=maxshape, dtype="int16", chunks=my_custom_iterator.chunk_shape)
     for buffer in my_custom_iterator:
         dset[buffer.selection] = buffer.data
@@ -121,12 +119,18 @@ with h5py.File(name="my_temporary_test_file.hdf5", mode="w") as f:
 #   optimal performance  (typically 1 MB or less). In contrast, a :py:class:`~hdmf.data_utils.DataChunk` in
 #   HDMF acts as a block of data for writing data to dataset, and spans multiple HDF5 chunks to improve performance.
 #   This is achieved by avoiding repeat
-#   updates to the same `Chunk` in the HDF5 file, :py:class:`~hdmf.data_utils.DataChunk` objects for write
-#   should align with `Chunks` in the HDF5 file, i.e., the :py:class:`~hdmf.data_utils.DataChunk.selection`
-#   should fully cover one or more `Chunks`  in the HDF5 file to avoid repeat updates to the same
-#   `Chunks` in the HDF5 file. This is what the `buffer` of the :py:class`~hdmf.data_utils.GenericDataChunkIterator`
+#   updates to the same ``Chunk`` in the HDF5 file, :py:class:`~hdmf.data_utils.DataChunk` objects for write
+#   should align with ``Chunks`` in the HDF5 file, i.e., the ``DataChunk.selection``
+#   should fully cover one or more ``Chunks`` in the HDF5 file to avoid repeat updates to the same
+#   ``Chunks`` in the HDF5 file. This is what the `buffer` of the :py:class`~hdmf.data_utils.GenericDataChunkIterator`
 #   does, which upon each iteration returns a single
 #   :py:class:`~hdmf.data_utils.DataChunk` object (by default > 1 GB) that perfectly spans many HDF5 chunks
 #   (by default < 1 MB) to help reduce the number of small I/O operations
 #   and help improve performance. In practice, the `buffer` should usually be even larger than the default, i.e,
 #   as much free RAM as can be safely used.
+
+###############################################################################
+# Remove the test file
+import os
+if os.path.exists(out_file):
+    os.remove(out_file)

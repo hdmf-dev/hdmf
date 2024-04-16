@@ -10,7 +10,7 @@ from hdmf.testing import TestCase
 from abc import ABCMeta, abstractmethod
 import unittest
 
-from tests.unit.utils import CORE_NAMESPACE, create_test_type_map
+from tests.unit.helpers.utils import CORE_NAMESPACE, create_test_type_map
 
 
 class Bar(Container):

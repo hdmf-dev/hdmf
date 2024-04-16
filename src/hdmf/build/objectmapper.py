@@ -5,7 +5,6 @@ import re
 import warnings
 from collections import OrderedDict
 from copy import copy
-from datetime import datetime
 
 import numpy as np
 
@@ -15,6 +14,7 @@ from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBu
 from .manager import Proxy, BuildManager
 from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
 from ..container import AbstractContainer, Data, DataRegion
+from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
@@ -277,6 +277,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         Check edge cases in converting data to a dtype
         """
         if value is None:
+            # Data is missing. Determine dtype from spec
             dt = spec_dtype
             if isinstance(dt, RefSpec):
                 dt = dt.reftype
@@ -286,16 +287,26 @@ class ObjectMapper(metaclass=ExtenderMeta):
             # return the list of DtypeSpecs
             return value, spec_dtype
         if isinstance(value, DataIO):
-            return value, cls.convert_dtype(spec, value.data, spec_dtype)[1]
+            # data is wrapped for I/O via DataIO
+            if value.data is None:
+                # Data is missing so DataIO.dtype must be set to determine the dtype
+                return value, value.dtype
+            else:
+                # Determine the dtype from the DataIO.data
+                return value, cls.convert_dtype(spec, value.data, spec_dtype)[1]
         if spec_dtype is None or spec_dtype == 'numeric' or type(value) in cls.__no_convert:
             # infer type from value
-            if hasattr(value, 'dtype'):  # covers numpy types, AbstractDataChunkIterator
+            if hasattr(value, 'dtype'):  # covers numpy types, Zarr Array, AbstractDataChunkIterator
                 if spec_dtype == 'numeric':
                     cls.__check_convert_numeric(value.dtype.type)
                 if np.issubdtype(value.dtype, np.str_):
                     ret_dtype = 'utf8'
                 elif np.issubdtype(value.dtype, np.string_):
                     ret_dtype = 'ascii'
+                elif np.issubdtype(value.dtype, np.dtype('O')):
+                    # Only variable-length strings should ever appear as generic objects.
+                    # Everything else should have a well-defined type
+                    ret_dtype = 'utf8'
                 else:
                     ret_dtype = value.dtype.type
                 return value, ret_dtype
@@ -556,6 +567,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
                        % (container.__class__.__name__, container.name, attr_name, spec))
                 raise ContainerConfigurationError(msg)
+            if isinstance(attr_val, TermSetWrapper):
+                attr_val = attr_val.value
             if attr_val is not None:
                 attr_val = self.__convert_string(attr_val, spec)
                 spec_dt = self.__get_data_type(spec)
@@ -602,7 +615,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 elif 'ascii' in spec.dtype:
                     string_type = bytes
                 elif 'isodatetime' in spec.dtype:
-                    string_type = datetime.isoformat
+                    def string_type(x):
+                        return x.isoformat()  # method works for both date and datetime
                 if string_type is not None:
                     if spec.shape is not None or spec.dims is not None:
                         ret = list(map(string_type, value))
@@ -740,7 +754,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                           % (container.__class__.__name__, container.name, repr(source)))
                         try:
                             # use spec_dtype from self.spec when spec_ext does not specify dtype
-                            bldr_data, dtype = self.convert_dtype(spec, container.data, spec_dtype=spec_dtype)
+                            if isinstance(container.data, TermSetWrapper):
+                                data = container.data.value
+                            else:
+                                data = container.data
+                            bldr_data, dtype = self.convert_dtype(spec, data, spec_dtype=spec_dtype)
                         except Exception as ex:
                             msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
                             raise Exception(msg) from ex
@@ -928,7 +946,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if attr_value is None:
                     self.logger.debug("        Skipping empty attribute")
                     continue
-
             builder.set_attribute(spec.name, attr_value)
 
     def __set_attr_to_ref(self, builder, attr_value, build_manager, spec):
@@ -975,9 +992,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 self.logger.debug("        Skipping dataset - no attribute value")
                 continue
             attr_value = self.__check_ref_resolver(attr_value)
-            if isinstance(attr_value, DataIO) and attr_value.data is None:
-                self.logger.debug("        Skipping dataset - attribute is dataio or has no data")
-                continue
             if isinstance(attr_value, LinkBuilder):
                 self.logger.debug("        Adding %s '%s' for spec name: %s, %s: %s, %s: %s"
                                   % (attr_value.name, attr_value.__class__.__name__,
@@ -1256,8 +1270,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     def __new_container__(self, cls, container_source, parent, object_id, **kwargs):
         """A wrapper function for ensuring a container gets everything set appropriately"""
-        obj = cls.__new__(cls, container_source=container_source, parent=parent, object_id=object_id)
+        obj = cls.__new__(cls, container_source=container_source, parent=parent, object_id=object_id,
+                          in_construct_mode=True)
+        # obj has been created and is in construction mode, indicating that the object is being constructed by
+        # the automatic construct process during read, rather than by the user
         obj.__init__(**kwargs)
+        obj._in_construct_mode = False  # reset to False to indicate that the construction of the object is complete
         return obj
 
     @docval({'name': 'container', 'type': AbstractContainer,

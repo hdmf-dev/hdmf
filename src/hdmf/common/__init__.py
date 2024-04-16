@@ -9,7 +9,7 @@ EXP_NAMESPACE = 'hdmf-experimental'
 
 
 from ..spec import NamespaceCatalog  # noqa: E402
-from ..utils import docval, getargs, call_docval_func, get_docval, fmt_docval_args  # noqa: E402
+from ..utils import docval, getargs, get_docval  # noqa: E402
 from ..backends.io import HDMFIO  # noqa: E402
 from ..backends.hdf5 import HDF5IO  # noqa: E402
 from ..validate import ValidatorMap  # noqa: E402
@@ -20,6 +20,31 @@ from ..container import _set_exp  # noqa: E402
 # a global type map
 global __TYPE_MAP
 
+@docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'},
+        is_method=False)
+def load_type_config(**kwargs):
+    """
+    This method will either load the default config or the config provided by the path.
+    NOTE: This config is global and shared across all type maps.
+    """
+    config_path = kwargs['config_path']
+    __TYPE_MAP.type_config.load_type_config(config_path)
+
+def get_loaded_type_config():
+    """
+    This method returns the entire config file.
+    """
+    if __TYPE_MAP.type_config.config is None:
+        msg = "No configuration is loaded."
+        raise ValueError(msg)
+    else:
+        return __TYPE_MAP.type_config.config
+
+def unload_type_config():
+    """
+    Unload the configuration file.
+    """
+    return __TYPE_MAP.type_config.unload_type_config()
 
 # a function to register a container classes with the global map
 @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the spec for'},
@@ -76,12 +101,18 @@ def __get_resources():
 
     :returns: Dict with information about the available namespace YAML file(s)
     """
-    from pkg_resources import resource_filename
-    from os.path import join
+    try:
+        from importlib.resources import files
+    except ImportError:
+        # TODO: Remove when python 3.9 becomes the new minimum
+        from importlib_resources import files
+
+    __location_of_this_file = files(__name__)
     __core_ns_file_name = 'namespace.yaml'
+    __schema_dir = 'hdmf-common-schema/common'
 
     ret = dict()
-    ret['namespace_path'] = join(resource_filename(__name__, 'hdmf-common-schema/common'), __core_ns_file_name)
+    ret['namespace_path'] = str(__location_of_this_file / __schema_dir / __core_ns_file_name)
     return ret
 
 
@@ -158,17 +189,15 @@ def get_type_map(**kwargs):
     return type_map
 
 
-@docval({'name': 'extensions', 'type': (str, TypeMap, list),
-         'doc': 'a path to a namespace, a TypeMap, or a list consisting paths to namespaces and TypeMaps',
-         'default': None},
-        returns="the namespaces loaded from the given file", rtype=tuple,
+@docval(*get_docval(get_type_map),
+        returns="a build manager with namespaces loaded from the given file", rtype=BuildManager,
         is_method=False)
 def get_manager(**kwargs):
     '''
     Get a BuildManager to use for I/O using the given extensions. If no extensions are provided,
     return a BuildManager that uses the core namespace
     '''
-    type_map = call_docval_func(get_type_map, kwargs)
+    type_map = get_type_map(**kwargs)
     return BuildManager(type_map)
 
 
@@ -193,13 +222,12 @@ def validate(**kwargs):
 @docval(*get_docval(HDF5IO.__init__), is_method=False)
 def get_hdf5io(**kwargs):
     """
-    A convenience method for getting an HDF5IO object
+    A convenience method for getting an HDF5IO object using an HDMF-common build manager if none is provided.
     """
     manager = getargs('manager', kwargs)
     if manager is None:
         kwargs['manager'] = get_manager()
-    cargs, ckwargs = fmt_docval_args(HDF5IO.__init__, kwargs)
-    return HDF5IO(*cargs, **ckwargs)
+    return HDF5IO(**kwargs)
 
 
 # load the hdmf-common namespace
@@ -210,13 +238,13 @@ if os.path.exists(__resources['namespace_path']):
     load_namespaces(__resources['namespace_path'])
 
     # import these so the TypeMap gets populated
-    from . import io as __io  # noqa: F401,E402
+    from . import io as __io  # noqa: E402
 
-    from . import table  # noqa: F401,E402
-    from . import alignedtable  # noqa: F401,E402
-    from . import sparse  # noqa: F401,E402
-    from . import resources  # noqa: F401,E402
-    from . import multi  # noqa: F401,E402
+    from . import table  # noqa: E402
+    from . import alignedtable  # noqa: E402
+    from . import sparse  # noqa: E402
+    from . import resources  # noqa: E402
+    from . import multi  # noqa: E402
 
     # register custom class generators
     from .io.table import DynamicTableGenerator
@@ -237,6 +265,6 @@ ElementIdentifiers = get_class('ElementIdentifiers', CORE_NAMESPACE)
 DynamicTableRegion = get_class('DynamicTableRegion', CORE_NAMESPACE)
 EnumData = get_class('EnumData', EXP_NAMESPACE)
 CSRMatrix = get_class('CSRMatrix', CORE_NAMESPACE)
-ExternalResources = get_class('ExternalResources', EXP_NAMESPACE)
+HERD = get_class('HERD', EXP_NAMESPACE)
 SimpleMultiContainer = get_class('SimpleMultiContainer', CORE_NAMESPACE)
 AlignedDynamicTable = get_class('AlignedDynamicTable', CORE_NAMESPACE)

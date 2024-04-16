@@ -2,10 +2,11 @@
 Module for testing functions specific to tables containing DynamicTableRegion columns
 """
 
+import warnings
 import numpy as np
 from hdmf.common import DynamicTable, AlignedDynamicTable, VectorData, DynamicTableRegion, VectorIndex
 from hdmf.testing import TestCase
-from hdmf.utils import docval, popargs, get_docval, call_docval_func
+from hdmf.utils import docval, popargs, get_docval
 from hdmf.common.hierarchicaltable import to_hierarchical_dataframe, drop_id_columns, flatten_column_index
 from pandas.testing import assert_frame_equal
 
@@ -28,10 +29,11 @@ class DynamicTableSingleDTR(DynamicTable):
     def __init__(self, **kwargs):
         # Define default name and description settings
         kwargs['description'] = (kwargs['name'] + " DynamicTableSingleDTR")
+        child_table1 = popargs('child_table1', kwargs)
         # Initialize the DynamicTable
-        call_docval_func(super(DynamicTableSingleDTR, self).__init__, kwargs)
+        super().__init__(**kwargs)
         if self['child_table_ref1'].target.table is None:
-            self['child_table_ref1'].target.table = popargs('child_table1', kwargs)
+            self['child_table_ref1'].target.table = child_table1
 
 
 class DynamicTableMultiDTR(DynamicTable):
@@ -60,12 +62,14 @@ class DynamicTableMultiDTR(DynamicTable):
     def __init__(self, **kwargs):
         # Define default name and description settings
         kwargs['description'] = (kwargs['name'] + " DynamicTableSingleDTR")
+        child_table1 = popargs('child_table1', kwargs)
+        child_table2 = popargs('child_table2', kwargs)
         # Initialize the DynamicTable
-        call_docval_func(super(DynamicTableMultiDTR, self).__init__, kwargs)
+        super().__init__(**kwargs)
         if self['child_table_ref1'].target.table is None:
-            self['child_table_ref1'].target.table = popargs('child_table1', kwargs)
+            self['child_table_ref1'].target.table = child_table1
         if self['child_table_ref2'].target.table is None:
-            self['child_table_ref2'].target.table = popargs('child_table2', kwargs)
+            self['child_table_ref2'].target.table = child_table2
 
 
 class TestLinkedAlignedDynamicTables(TestCase):
@@ -73,7 +77,7 @@ class TestLinkedAlignedDynamicTables(TestCase):
     Test functionality specific to AlignedDynamicTables containing DynamicTableRegion columns.
 
     Since these functions only implements front-end convenient functions for DynamicTable
-    we do not need to worry about I/O here (that is tested elsewere), but it is sufficient if
+    we do not need to worry about I/O here (that is tested elsewhere), but it is sufficient if
     we test with container class. The only time I/O becomes relevant is on read in case that, e.g., a
     h5py.Dataset may behave differently than a numpy array.
     """
@@ -136,11 +140,16 @@ class TestLinkedAlignedDynamicTables(TestCase):
                                   description='filter value',
                                   index=False)
         # Aligned table
-        self.aligned_table = AlignedDynamicTable(name='my_aligned_table',
-                                                 description='my test table',
-                                                 columns=[VectorData(name='a1', description='a1', data=np.arange(3)), ],
-                                                 colnames=['a1', ],
-                                                 category_tables=[self.category0, self.category1])
+        with warnings.catch_warnings():
+            msg = "The linked table for DynamicTableRegion '.*' does not share an ancestor with the DynamicTableRegion."
+            warnings.filterwarnings("ignore", category=UserWarning, message=msg)
+            self.aligned_table = AlignedDynamicTable(
+                name='my_aligned_table',
+                description='my test table',
+                columns=[VectorData(name='a1', description='a1', data=np.arange(3)), ],
+                colnames=['a1', ],
+                category_tables=[self.category0, self.category1]
+            )
 
     def tearDown(self):
         del self.table_level0_0
@@ -238,13 +247,16 @@ class TestLinkedAlignedDynamicTables(TestCase):
                                   columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
                                            DynamicTableRegion(name='c2', description='c2',
                                                               data=np.arange(4), table=temp_table0)])
-        temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
-                                                 description='my test table',
-                                                 category_tables=[temp_table],
-                                                 colnames=['a1', 'a2'],
-                                                 columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
-                                                          DynamicTableRegion(name='a2', description='c2',
-                                                                             data=np.arange(4), table=temp_table)])
+        with warnings.catch_warnings():
+            msg = "The linked table for DynamicTableRegion '.*' does not share an ancestor with the DynamicTableRegion."
+            warnings.filterwarnings("ignore", category=UserWarning, message=msg)
+            temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
+                                                    description='my test table',
+                                                    category_tables=[temp_table],
+                                                    colnames=['a1', 'a2'],
+                                                    columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
+                                                            DynamicTableRegion(name='a2', description='c2',
+                                                                                data=np.arange(4), table=temp_table)])
         # We should get both the DynamicTableRegion from the main table and the category 't1'
         self.assertListEqual(temp_aligned_table.get_foreign_columns(), [(None, 'a2'), ('t1', 'c2')])
         # We should only get the column from the main table
@@ -272,12 +284,15 @@ class TestLinkedAlignedDynamicTables(TestCase):
                                   colnames=['c1', 'c2'],
                                   columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
                                            VectorData(name='c2', description='c2', data=np.arange(4))])
-        temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
-                                                 description='my test table',
-                                                 category_tables=[temp_table],
-                                                 colnames=['a1', 'a2'],
-                                                 columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
-                                                          VectorData(name='a2', description='c2', data=np.arange(4))])
+        with warnings.catch_warnings():
+            msg = "The linked table for DynamicTableRegion '.*' does not share an ancestor with the DynamicTableRegion."
+            warnings.filterwarnings("ignore", category=UserWarning, message=msg)
+            temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
+                                                    description='my test table',
+                                                    category_tables=[temp_table],
+                                                    colnames=['a1', 'a2'],
+                                                    columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
+                                                            VectorData(name='a2', description='c2', data=np.arange(4))])
         self.assertListEqual(temp_aligned_table.get_linked_tables(), [])
         self.assertListEqual(temp_aligned_table.get_linked_tables(ignore_category_tables=True), [])
 
@@ -291,13 +306,16 @@ class TestLinkedAlignedDynamicTables(TestCase):
                                   columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
                                            DynamicTableRegion(name='c2', description='c2',
                                                               data=np.arange(4), table=temp_table0)])
-        temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
-                                                 description='my test table',
-                                                 category_tables=[temp_table],
-                                                 colnames=['a1', 'a2'],
-                                                 columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
-                                                          DynamicTableRegion(name='a2', description='c2',
-                                                                             data=np.arange(4), table=temp_table)])
+        with warnings.catch_warnings():
+            msg = "The linked table for DynamicTableRegion '.*' does not share an ancestor with the DynamicTableRegion."
+            warnings.filterwarnings("ignore", category=UserWarning, message=msg)
+            temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
+                                                    description='my test table',
+                                                    category_tables=[temp_table],
+                                                    colnames=['a1', 'a2'],
+                                                    columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
+                                                            DynamicTableRegion(name='a2', description='c2',
+                                                                                data=np.arange(4), table=temp_table)])
         # NOTE: in this example templ_aligned_table both points to temp_table and at the
         #       same time contains temp_table as a category. This could lead to temp_table
         #       visited multiple times and we want to make sure this doesn't happen
@@ -323,17 +341,20 @@ class TestLinkedAlignedDynamicTables(TestCase):
                                    columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
                                             VectorData(name='c2', description='c2', data=np.arange(4))])
         temp_table = DynamicTable(name='t1', description='t1',
-                                  colnames=['c1', 'c2'],
-                                  columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
-                                           DynamicTableRegion(name='c2', description='c2',
-                                                              data=np.arange(4), table=temp_table0)])
-        temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
-                                                 description='my test table',
-                                                 category_tables=[temp_table],
-                                                 colnames=['a1', 'a2'],
-                                                 columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
-                                                          DynamicTableRegion(name='a2', description='c2',
-                                                                             data=np.arange(4), table=temp_table0)])
+                                colnames=['c1', 'c2'],
+                                columns=[VectorData(name='c1', description='c1', data=np.arange(4)),
+                                        DynamicTableRegion(name='c2', description='c2',
+                                                            data=np.arange(4), table=temp_table0)])
+        with warnings.catch_warnings():
+            msg = "The linked table for DynamicTableRegion '.*' does not share an ancestor with the DynamicTableRegion."
+            warnings.filterwarnings("ignore", category=UserWarning, message=msg)
+            temp_aligned_table = AlignedDynamicTable(name='my_aligned_table',
+                                                    description='my test table',
+                                                    category_tables=[temp_table],
+                                                    colnames=['a1', 'a2'],
+                                                    columns=[VectorData(name='a1', description='c1', data=np.arange(4)),
+                                                            DynamicTableRegion(name='a2', description='c2',
+                                                                                data=np.arange(4), table=temp_table0)])
         # NOTE: in this example temp_aligned_table and temp_table both point to temp_table0
         # We should get both the DynamicTableRegion from the main table and the category 't1'
         linked_tables = temp_aligned_table.get_linked_tables()
@@ -441,7 +462,7 @@ class TestHierarchicalTable(TestCase):
     def test_to_hierarchical_dataframe_indexed_data_nparray(self):
         # Test that we can convert a table that contains a VectorIndex column as regular data,
         # i.e., it is not our DynamicTableRegion column that is index but a regular data column.
-        # In this test the data is defined as an numpy nd.array so that an nd.array is injected
+        # In this test the data is defined as an numpy ndarray so that an ndarray is injected
         # into the MultiIndex of the table. As a numpy array is not hashable this would normally
         # create an error when creating the MultiIndex
         # Parent table
@@ -622,7 +643,7 @@ class TestLinkedDynamicTables(TestCase):
     Test functionality specific to DynamicTables containing DynamicTableRegion columns.
 
     Since these functions only implements front-end convenient functions for DynamicTable
-    we do not need to worry about I/O here (that is tested elsewere), ut it is sufficient if
+    we do not need to worry about I/O here (that is tested elsewhere), ut it is sufficient if
     we test with container class. The only time I/O becomes relevant is on read in case that, e.g., a
     h5py.Dataset may behave differently than a numpy array.
     """

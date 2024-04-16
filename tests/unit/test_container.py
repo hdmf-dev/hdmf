@@ -1,31 +1,145 @@
 import numpy as np
-from hdmf.container import AbstractContainer, Container, Data
+from uuid import uuid4, UUID
+import os
+
+from hdmf.container import AbstractContainer, Container, Data, HERDManager
+from hdmf.common.resources import HERD
 from hdmf.testing import TestCase
 from hdmf.utils import docval
+from hdmf.common import DynamicTable, VectorData, DynamicTableRegion
+from hdmf.backends.hdf5.h5tools import HDF5IO
 
 
 class Subcontainer(Container):
     pass
 
 
+class ContainerWithChild(Container):
+    __fields__ = ({'name': 'field1', 'child': True}, )
+
+    @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
+    def __init__(self, **kwargs):
+        super().__init__('test name')
+        self.field1 = kwargs['field1']
+
+
+class TestHERDManager(TestCase):
+    def test_link_and_get_resources(self):
+        em = HERDManager()
+        er = HERD()
+
+        em.link_resources(er)
+        er_get = em.get_linked_resources()
+        self.assertEqual(er, er_get)
+
+
 class TestContainer(TestCase):
 
-    def test_constructor(self):
-        """Test that constructor properly sets parent and both child and parent have an object_id
+    def setUp(self):
+        self.path = "test_container.h5"
+        self.path2 = "test_container2.h5"
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+        if os.path.exists(self.path2):
+            os.remove(self.path2)
+
+    def test_new(self):
+        """Test that __new__ properly sets parent and other fields.
         """
         parent_obj = Container('obj1')
-        child_obj = Container.__new__(Container, parent=parent_obj)
+        child_object_id = str(uuid4())
+        child_obj = Container.__new__(Container, parent=parent_obj, object_id=child_object_id,
+                                      container_source="test_source")
         self.assertIs(child_obj.parent, parent_obj)
         self.assertIs(parent_obj.children[0], child_obj)
-        self.assertIsNotNone(parent_obj.object_id)
-        self.assertIsNotNone(child_obj.object_id)
+        self.assertEqual(child_obj.object_id, child_object_id)
+        self.assertFalse(child_obj._in_construct_mode)
+        self.assertTrue(child_obj.modified)
 
-    def test_constructor_object_id_none(self):
-        """Test that setting object_id to None in __new__ is OK and the object ID is set on get
+    def test_get_data_type(self):
+        obj = Container('obj1')
+        dt = obj.data_type
+        self.assertEqual(dt, 'Container')
+
+    def test_new_object_id_none(self):
+        """Test that passing object_id=None to __new__ is OK and results in a non-None object ID being assigned.
         """
         parent_obj = Container('obj1')
         child_obj = Container.__new__(Container, parent=parent_obj, object_id=None)
         self.assertIsNotNone(child_obj.object_id)
+        UUID(child_obj.object_id, version=4)  # raises ValueError if invalid
+
+    def test_new_construct_mode(self):
+        """Test that passing in_construct_mode to __new__ sets _in_construct_mode and _in_construct_mode can be reset.
+        """
+        parent_obj = Container('obj1')
+        child_obj = Container.__new__(Container, parent=parent_obj, object_id=None, in_construct_mode=True)
+        self.assertTrue(child_obj._in_construct_mode)
+        child_obj._in_construct_mode = False
+        self.assertFalse(child_obj._in_construct_mode)
+
+    def test_init(self):
+        """Test that __init__ properly sets object ID and other fields.
+        """
+        obj = Container('obj1')
+        self.assertIsNotNone(obj.object_id)
+        UUID(obj.object_id, version=4)  # raises ValueError if invalid
+        self.assertFalse(obj._in_construct_mode)
+        self.assertTrue(obj.modified)
+        self.assertEqual(obj.children, tuple())
+        self.assertIsNone(obj.parent)
+        self.assertEqual(obj.name, 'obj1')
+        self.assertIsNone(obj.read_io)
+
+    def test_read_io_none(self):
+        """Test that __init__ properly sets read_io to None"""
+        obj = Container('obj1')
+        self.assertIsNone(obj.read_io)
+
+    def test_read_io_setter(self):
+        """Test setting the read IO property"""
+        obj = Container('obj1')
+        # Bad value for read_io
+        with self.assertRaises(TypeError):
+            obj.read_io = "test"
+        # Set read_io
+        with HDF5IO(self.path, mode='w') as temp_io:
+            obj.read_io = temp_io
+            self.assertIs(obj.read_io, temp_io)
+            # test that setting the read_io object to the same io object is OK
+            obj.read_io = temp_io
+            # Check that setting read_io to another io object fails
+            with HDF5IO(self.path2, mode='w') as temp_io2:
+                with self.assertRaises(ValueError):
+                    obj.read_io = temp_io2
+
+    def test_get_read_io_on_self(self):
+        """Test that get_read_io works when the container is set on the container"""
+        obj = Container('obj1')
+        self.assertIsNone(obj.get_read_io())
+        with HDF5IO(self.path, mode='w') as temp_io:
+            obj.read_io = temp_io
+            re_io = obj.get_read_io()
+            self.assertIs(re_io, temp_io)
+
+    def test_get_read_io_on_parent(self):
+        """Test that get_read_io works when the container is set on the parent"""
+        parent_obj = Container('obj1')
+        child_obj = Container('obj2')
+        child_obj.parent = parent_obj
+        with HDF5IO(self.path, mode='w') as temp_io:
+            parent_obj.read_io = temp_io
+            self.assertIsNone(child_obj.read_io)
+            self.assertIs(child_obj.get_read_io(), temp_io)
+
+    def test_del_read_io(self):
+        class TestContainer(AbstractContainer):
+            def __init__(self):
+                raise ValueError("Error")
+        with self.assertRaises(ValueError):
+            TestContainer()
 
     def test_set_parent(self):
         """Test that parent setter properly sets parent
@@ -77,6 +191,16 @@ class TestContainer(TestCase):
         child_obj.set_modified()
         self.assertTrue(child_obj.parent.modified)
 
+    def test_all_children(self):
+        col1 = VectorData(
+            name='Species_1',
+            description='...',
+            data=['Homo sapiens'],
+        )
+        species = DynamicTable(name='species', description='My species', columns=[col1])
+        obj = species.all_objects
+        self.assertEqual(sorted(list(obj.keys())), sorted([species.object_id, species.id.object_id, col1.object_id]))
+
     def test_add_child(self):
         """Test that add child creates deprecation warning and also properly sets child's parent and modified
         """
@@ -88,6 +212,47 @@ class TestContainer(TestCase):
         self.assertIs(child_obj.parent, parent_obj)
         self.assertTrue(parent_obj.modified)
         self.assertIs(parent_obj.children[0], child_obj)
+
+    def test_parent_set_link_warning(self):
+        col1 = VectorData(
+            name='col1',
+            description='column #1',
+            data=[1, 2],
+        )
+        col2 = VectorData(
+            name='col2',
+            description='column #2',
+            data=['a', 'b'],
+        )
+
+        # this table will have two rows with ids 0 and 1
+        table = DynamicTable(
+            name='my table',
+            description='an example table',
+            columns=[col1, col2],
+        )
+
+        dtr_col = DynamicTableRegion(
+            name='table1_ref',
+            description='references rows of earlier table',
+            data=[0, 1, 0, 0],  # refers to row indices of the 'table' variable
+            table=table
+        )
+
+        data_col = VectorData(
+            name='col2',
+            description='column #2',
+            data=['a', 'a', 'a', 'b'],
+        )
+
+        table2 = DynamicTable(
+            name='my_table',
+            description='an example table',
+            columns=[dtr_col, data_col],
+        )
+
+        with self.assertWarns(Warning):
+            table2.parent=ContainerWithChild()
 
     def test_set_parent_exists(self):
         """Test that setting a parent a second time does nothing
@@ -224,6 +389,72 @@ class TestContainer(TestCase):
         obj.reset_parent()
         self.assertIsNone(obj.parent)
 
+    def test_get_ancestors(self):
+        """Test that get_ancestors returns the correct ancestors.
+        """
+        grandparent_obj = Container('obj1')
+        parent_obj = Container('obj2')
+        child_obj = Container('obj3')
+        parent_obj.parent = grandparent_obj
+        child_obj.parent = parent_obj
+        self.assertTupleEqual(grandparent_obj.get_ancestors(), tuple())
+        self.assertTupleEqual(parent_obj.get_ancestors(), (grandparent_obj, ))
+        self.assertTupleEqual(child_obj.get_ancestors(), (parent_obj, grandparent_obj))
+
+
+class TestHTMLRepr(TestCase):
+
+    class ContainerWithChildAndData(Container):
+        __fields__ = (
+            {'name': 'child', 'child': True},
+            "data",
+            "str"
+        )
+
+        @docval(
+            {'name': 'child', 'doc': 'field1 doc', 'type': Container},
+            {'name': "data", "doc": 'data', 'type': list, "default": None},
+            {'name': "str", "doc": 'str', 'type': str, "default": None},
+
+        )
+        def __init__(self, **kwargs):
+            super().__init__('test name')
+            self.child = kwargs['child']
+            self.data = kwargs['data']
+            self.str = kwargs['str']
+
+    def test_repr_html_(self):
+        child_obj1 = Container('test child 1')
+        obj1 = self.ContainerWithChildAndData(child=child_obj1, data=[1, 2, 3], str="hello")
+        assert obj1._repr_html_() == (
+            '\n        <style>\n            .container-fields {\n                font-family: "Open Sans", Arial, '
+            'sans-serif;\n            }\n            .container-fields .field-value {\n                color: '
+            '#00788E;\n            }\n            .container-fields details > summary {\n                cursor: '
+            'pointer;\n                display: list-item;\n            }\n            .container-fields details > '
+            'summary:hover {\n                color: #0A6EAA;\n            }\n        </style>\n        \n        '
+            '<script>\n            function copyToClipboard(text) {\n                navigator.clipboard.writeText('
+            'text).then(function() {\n                    console.log(\'Copied to clipboard: \' + text);\n            '
+            '    }, function(err) {\n                    console.error(\'Could not copy text: \', err);\n             '
+            '   });\n            }\n\n            document.addEventListener(\'DOMContentLoaded\', function() {\n      '
+            '          let fieldKeys = document.querySelectorAll(\'.container-fields .field-key\');\n                '
+            'fieldKeys.forEach(function(fieldKey) {\n                    fieldKey.addEventListener(\'click\', '
+            'function() {\n                        let accessCode = fieldKey.getAttribute(\'title\').replace(\'Access '
+            'code: \', \'\');\n                        copyToClipboard(accessCode);\n                    });\n        '
+            '        });\n            });\n        </script>\n        <div class=\'container-wrap\'><div '
+            'class=\'container-header\'><div class=\'xr-obj-type\'><h3>test name ('
+            'ContainerWithChildAndData)</h3></div></div><details><summary style="display: list-item; margin-left: '
+            '0px;" class="container-fields field-key" '
+            'title=".child"><b>child</b></summary></details><details><summary style="display: list-item; margin-left: '
+            '0px;" class="container-fields field-key" title=".data"><b>data</b></summary><div style="margin-left: '
+            '20px;" class="container-fields"><span class="field-key" title=".data[0]">0: </span><span '
+            'class="field-value">1</span></div><div style="margin-left: 20px;" class="container-fields"><span '
+            'class="field-key" title=".data[0][1]">1: </span><span class="field-value">2</span></div><div '
+            'style="margin-left: 20px;" class="container-fields"><span class="field-key" title=".data[0][1][2]">2: '
+            '</span><span class="field-value">3</span></div></details><div style="margin-left: 0px;" '
+            'class="container-fields"><span class="field-key" title=".str">str: </span><span '
+            'class="field-value">hello</span></div></div>'
+        )
+
 
 class TestData(TestCase):
 
@@ -293,7 +524,8 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(EmptyFields.get_fields_conf(), tuple())
 
         props = TestAbstractContainerFieldsConf.find_all_properties(EmptyFields)
-        expected = ['children', 'container_source', 'fields', 'modified', 'name', 'object_id', 'parent']
+        expected = ['all_objects', 'children', 'container_source', 'data_type', 'fields', 'modified',
+                    'name', 'object_id', 'parent', 'read_io']
         self.assertListEqual(props, expected)
 
     def test_named_fields(self):
@@ -313,8 +545,9 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(NamedFields.get_fields_conf(), expected)
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFields)
-        expected = ['children', 'container_source', 'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
-                    'parent']
+        expected = ['all_objects', 'children', 'container_source', 'data_type',
+                    'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
+                    'parent', 'read_io']
         self.assertListEqual(props, expected)
 
         f1_doc = getattr(NamedFields, 'field1').__doc__
@@ -394,8 +627,9 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(NamedFieldsChild.get_fields_conf(), expected)
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFieldsChild)
-        expected = ['children', 'container_source', 'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
-                    'parent']
+        expected = ['all_objects', 'children', 'container_source', 'data_type',
+                    'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
+                    'parent', 'read_io']
         self.assertListEqual(props, expected)
 
     def test_inheritance_override(self):
@@ -469,14 +703,6 @@ class TestContainerFieldsConf(TestCase):
         self.assertIsNone(obj4.field1)
 
     def test_child(self):
-        class ContainerWithChild(Container):
-            __fields__ = ({'name': 'field1', 'child': True}, )
-
-            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
-            def __init__(self, **kwargs):
-                super().__init__('test name')
-                self.field1 = kwargs['field1']
-
         child_obj1 = Container('test child 1')
         obj1 = ContainerWithChild(child_obj1)
         self.assertIs(child_obj1.parent, obj1)
@@ -494,13 +720,6 @@ class TestContainerFieldsConf(TestCase):
         self.assertIsNone(obj2.field1)
 
     def test_setter_set_modified(self):
-        class ContainerWithChild(Container):
-            __fields__ = ({'name': 'field1', 'child': True}, )
-
-            @docval({'name': 'field1', 'doc': 'field1 doc', 'type': None, 'default': None})
-            def __init__(self, **kwargs):
-                super().__init__('test name')
-                self.field1 = kwargs['field1']
 
         child_obj1 = Container('test child 1')
         obj1 = ContainerWithChild()

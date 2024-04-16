@@ -11,9 +11,9 @@ from hdmf.spec import (AttributeSpec, DatasetSpec, DtypeSpec, GroupSpec, SpecCat
                        RefSpec)
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.testing import TestCase
-from hdmf.utils import docval, getargs, call_docval_func
+from hdmf.utils import docval, getargs
 
-from tests.unit.utils import Foo, CORE_NAMESPACE
+from tests.unit.helpers.utils import Foo, CORE_NAMESPACE
 
 
 class Baz(Data):
@@ -149,7 +149,7 @@ class BazScalar(Data):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this BazScalar'},
             {'name': 'data', 'type': int, 'doc': 'some data'})
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
 
 
 class TestDataMapScalar(TestCase):
@@ -203,7 +203,7 @@ class BazScalarCompound(Data):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this BazScalar'},
             {'name': 'data', 'type': 'array_data', 'doc': 'some data'})
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
 
 
 class TestDataMapScalarCompound(TestCase):

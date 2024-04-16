@@ -1,13 +1,13 @@
 """Module iplementing functionaltiy for automatically generating Container classes from type Specs"""
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, date
 
 import numpy as np
 
 from ..container import Container, Data, DataRegion, MultiContainerInterface
 from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
-from ..utils import docval, getargs, ExtenderMeta, get_docval, fmt_docval_args
+from ..utils import docval, getargs, ExtenderMeta, get_docval, popargs, AllowPositional
 
 
 class ClassGenerator:
@@ -36,7 +36,7 @@ class ClassGenerator:
             {'name': 'spec', 'type': BaseStorageSpec, 'doc': ''},
             {'name': 'parent_cls', 'type': type, 'doc': ''},
             {'name': 'attr_names', 'type': dict, 'doc': ''},
-            {'name': 'type_map', 'type': 'TypeMap', 'doc': ''},
+            {'name': 'type_map', 'type': 'hdmf.build.manager.TypeMap', 'doc': ''},
             returns='the class for the given namespace and data_type', rtype=type)
     def generate_class(self, **kwargs):
         """Get the container class from data type specification.
@@ -127,8 +127,8 @@ class CustomClassGenerator:
         'ascii': bytes,
         'bytes': bytes,
         'bool': (bool, np.bool_),
-        'isodatetime': datetime,
-        'datetime': datetime
+        'isodatetime': (datetime, date),
+        'datetime': (datetime, date)
     }
 
     @classmethod
@@ -223,9 +223,18 @@ class CustomClassGenerator:
                        'doc': field_spec['doc']}
         if cls._ischild(dtype) and issubclass(parent_cls, Container) and not isinstance(field_spec, LinkSpec):
             fields_conf['child'] = True
-        # if getattr(field_spec, 'value', None) is not None:  # TODO set the fixed value on the class?
-        #     fields_conf['settable'] = False
+        fixed_value = getattr(field_spec, 'value', None)
+        if fixed_value is not None:
+            fields_conf['settable'] = False
+        if isinstance(field_spec, BaseStorageSpec) and field_spec.data_type is not None:
+            # subgroups and datasets with data types can have fixed names
+            fixed_name = getattr(field_spec, 'name', None)
+            if fixed_name is not None:
+                fields_conf['required_name'] = fixed_name
         classdict.setdefault(parent_cls._fieldsname, list()).append(fields_conf)
+
+        if fixed_value is not None:  # field has fixed value - do not create arg on __init__
+            return
 
         docval_arg = dict(
             name=attr_name,
@@ -250,11 +259,13 @@ class CustomClassGenerator:
             return cls._check_spec_optional(field_spec.parent, spec)
 
     @classmethod
-    def _add_to_docval_args(cls, docval_args, arg):
-        """Add the docval arg to the list if not present. If present, overwrite it in place."""
+    def _add_to_docval_args(cls, docval_args, arg, err_if_present=False):
+        """Add the docval arg to the list if not present. If present, overwrite it in place or raise an error."""
         inserted = False
         for i, x in enumerate(docval_args):
             if x['name'] == arg['name']:
+                if err_if_present:
+                    raise ValueError("Argument %s already exists in docval args." % arg["name"])
                 docval_args[i] = arg
                 inserted = True
         if not inserted:
@@ -285,26 +296,54 @@ class CustomClassGenerator:
         cls._set_default_name(docval_args, spec.default_name)
 
     @classmethod
+    def _get_attrs_not_to_set_init(cls, classdict, parent_docval_args):
+        return parent_docval_args
+
+    @classmethod
     def set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
         # get docval arg names from superclass
         base = bases[0]
         parent_docval_args = set(arg['name'] for arg in get_docval(base.__init__))
-        new_args = list()
+        attrs_to_set = list()
+        fixed_value_attrs_to_set = list()
+        attrs_not_to_set = cls._get_attrs_not_to_set_init(classdict, parent_docval_args)
         for attr_name, field_spec in not_inherited_fields.items():
-            # auto-initialize arguments not found in superclass
-            if attr_name not in parent_docval_args:
-                new_args.append(attr_name)
+            # store arguments for fields that are not in the superclass and not in the superclass __init__ docval
+            # so that they are set after calling base.__init__
+            # except for fields that have fixed values -- these are set at the class level
+            fixed_value = getattr(field_spec, 'value', None)
+            if fixed_value is not None:
+                fixed_value_attrs_to_set.append(attr_name)
+            elif attr_name not in attrs_not_to_set:
+                attrs_to_set.append(attr_name)
 
-        @docval(*docval_args)
+        @docval(*docval_args, allow_positional=AllowPositional.WARNING)
         def __init__(self, **kwargs):
             if name is not None:  # force container name to be the fixed name in the spec
                 kwargs.update(name=name)
-            pargs, pkwargs = fmt_docval_args(base.__init__, kwargs)
-            base.__init__(self, *pargs, **pkwargs)  # special case: need to pass self to __init__
 
-            for f in new_args:
-                arg_val = kwargs.get(f, None)
+            # remove arguments from kwargs that correspond to fields that are new (not inherited)
+            # set these arguments after calling base.__init__
+            new_kwargs = dict()
+            for f in attrs_to_set:
+                new_kwargs[f] = popargs(f, kwargs) if f in kwargs else None
+
+            # NOTE: the docval of some constructors do not include all of the fields. the constructor may set
+            # some fields to fixed values. so only keep the kwargs that are used in the constructor docval
+            kwargs_to_pass = {k: v for k, v in kwargs.items() if k in parent_docval_args}
+
+            base.__init__(self, **kwargs_to_pass)  # special case: need to pass self to __init__
+            # TODO should super() be used above instead of base?
+
+            # set the fields that are new to this class (not inherited)
+            for f, arg_val in new_kwargs.items():
                 setattr(self, f, arg_val)
+
+            # set the fields that have fixed values using the fields dict directly
+            # because the setters do not allow setting the value
+            for f in fixed_value_attrs_to_set:
+                self.fields[f] = getattr(not_inherited_fields[f], 'value')
+
         classdict['__init__'] = __init__
 
 
@@ -360,4 +399,51 @@ class MCIClassGenerator(CustomClassGenerator):
                 if issubclass(b, MultiContainerInterface):
                     break
             else:
-                bases.insert(0, MultiContainerInterface)
+                if issubclass(MultiContainerInterface, bases[0]):
+                    # if bases[0] is Container or another superclass of MCI, then make sure MCI goes first
+                    # otherwise, MRO is ambiguous
+                    bases.insert(0, MultiContainerInterface)
+                else:
+                    # bases[0] is not a subclass of MCI and not a superclass of MCI. place that class first
+                    # before MCI. that class __init__ should call super().__init__ which will call the
+                    # MCI init
+                    bases.insert(1, MultiContainerInterface)
+
+    @classmethod
+    def set_init(cls, classdict, bases, docval_args, not_inherited_fields, name):
+        if '__clsconf__' in classdict:
+            previous_init = classdict['__init__']
+
+            @docval(*docval_args, allow_positional=AllowPositional.WARNING)
+            def __init__(self, **kwargs):
+                # store the values passed to init for each MCI attribute so that they can be added
+                # after calling __init__
+                new_kwargs = list()
+                for field_clsconf in classdict['__clsconf__']:
+                    attr_name = field_clsconf['attr']
+                    # do not store the value if it is None or not present
+                    if attr_name not in kwargs or kwargs[attr_name] is None:
+                        continue
+                    add_method_name = field_clsconf['add']
+                    new_kwarg = dict(
+                        attr_name=attr_name,
+                        value=popargs(attr_name, kwargs),
+                        add_method_name=add_method_name
+                    )
+                    new_kwargs.append(new_kwarg)
+
+                    # pass an empty list to previous_init in case attr_name field is required
+                    # (one or many). we do not want previous_init to set the attribute directly.
+                    # instead, we will use the add_method after previous_init is finished.
+                    kwargs[attr_name] = list()
+
+                # call the parent class init without the MCI attribute
+                previous_init(self, **kwargs)
+
+                # call the add method for each MCI attribute
+                for new_kwarg in new_kwargs:
+                    add_method = getattr(self, new_kwarg['add_method_name'])
+                    add_method(new_kwarg['value'])
+
+            # override __init__
+            classdict['__init__'] = __init__

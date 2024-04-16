@@ -76,7 +76,7 @@ customer_table = AlignedDynamicTable(
 # Initializing columns of the primary table
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #
-# The basic behavior of adding data and initalizing  :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable`
+# The basic behavior of adding data and initializing  :py:class:`~hdmf.common.alignedtable.AlignedDynamicTable`
 # is the same as in :py:class:`~hdmf.common.table.DynamicTable`. See the :ref:`dynamictable-howtoguide`
 # for details. E.g., using  the ``columns`` and ``colnames`` parameters (which are inherited from
 # :py:class:`~hdmf.common.table.DynamicTable`) we can define the columns of the primary table.

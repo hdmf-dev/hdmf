@@ -1,11 +1,11 @@
 from h5py import File
 
 from hdmf.backends.hdf5 import HDF5IO
-from hdmf.common import Container, get_manager
+from hdmf.common import Container, get_manager, get_hdf5io
 from hdmf.spec import NamespaceCatalog
 from hdmf.testing import TestCase, remove_test_file
 
-from tests.unit.utils import get_temp_filepath
+from tests.unit.helpers.utils import get_temp_filepath
 
 
 class TestCacheSpec(TestCase):
@@ -67,3 +67,23 @@ class TestCacheSpec(TestCase):
                             self.assertIsNotNone(cached_spec)
                         with self.subTest('Cached spec matches original spec'):
                             self.assertDictEqual(original_spec, cached_spec)
+
+
+class TestGetHdf5IO(TestCase):
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        remove_test_file(self.path)
+
+    def test_gethdf5io(self):
+        """Test the get_hdf5io convenience method with manager=None."""
+        with get_hdf5io(self.path, "w") as io:
+            self.assertIsNotNone(io.manager)
+
+    def test_gethdf5io_manager(self):
+        """Test the get_hdf5io convenience method with manager set."""
+        manager = get_manager()
+        with get_hdf5io(self.path, "w", manager=manager) as io:
+            self.assertIs(io.manager, manager)

@@ -2,7 +2,7 @@
 import scipy.sparse as sps
 from . import register_class
 from ..container import Container
-from ..utils import docval, getargs, call_docval_func, to_uint_array,  get_data_shape
+from ..utils import docval, popargs, to_uint_array,  get_data_shape, AllowPositional
 
 
 @register_class('CSRMatrix')
@@ -14,17 +14,17 @@ class CSRMatrix(Container):
             {'name': 'indices', 'type': 'array_data', 'doc': 'CSR index array', 'default': None},
             {'name': 'indptr', 'type': 'array_data', 'doc': 'CSR index pointer array', 'default': None},
             {'name': 'shape', 'type': 'array_data', 'doc': 'the shape of the matrix', 'default': None},
-            {'name': 'name', 'type': str, 'doc': 'the name to use for this when storing', 'default': 'csr_matrix'})
+            {'name': 'name', 'type': str, 'doc': 'the name to use for this when storing', 'default': 'csr_matrix'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
-        data = getargs('data', kwargs)
+        data, indices, indptr, shape = popargs('data', 'indices', 'indptr', 'shape', kwargs)
+        super().__init__(**kwargs)
         if not isinstance(data, sps.csr_matrix):
             temp_shape = get_data_shape(data)
             temp_ndim = len(temp_shape)
             if temp_ndim == 2:
                 data = sps.csr_matrix(data)
             elif temp_ndim == 1:
-                indptr, indices, shape = getargs('indptr', 'indices', 'shape', kwargs)
                 if any(_ is None for _ in (indptr, indices, shape)):
                     raise ValueError("Must specify 'indptr', 'indices', and 'shape' arguments when passing data array.")
                 indptr = self.__check_arr(indptr, 'indptr')

@@ -5,7 +5,7 @@ from collections import OrderedDict
 from copy import deepcopy
 from warnings import warn
 
-from ..utils import docval, getargs, popargs, get_docval, fmt_docval_args
+from ..utils import docval, getargs, popargs, get_docval
 
 NAME_WILDCARD = None  # this is no longer used, but kept for backward compatibility
 ZERO_OR_ONE = '?'
@@ -50,7 +50,7 @@ class DtypeHelper:
         'object': ['object'],
         'region': ['region'],
         'numeric': ['numeric'],
-        'isodatetime': ["isodatetime", "datetime"]
+        'isodatetime': ["isodatetime", "datetime", "date"]
     }
 
     # List of recommended primary dtype strings. These are the keys of primary_dtype_string_synonyms
@@ -115,7 +115,7 @@ class Spec(ConstructableDict):
     @docval({'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
             {'name': 'name', 'type': str, 'doc': 'The name of this attribute', 'default': None},
             {'name': 'required', 'type': bool, 'doc': 'whether or not this attribute is required', 'default': True},
-            {'name': 'parent', 'type': 'Spec', 'doc': 'the parent of this spec', 'default': None})
+            {'name': 'parent', 'type': 'hdmf.spec.spec.Spec', 'doc': 'the parent of this spec', 'default': None})
     def __init__(self, **kwargs):
         name, doc, required, parent = getargs('name', 'doc', 'required', 'parent', kwargs)
         super().__init__()
@@ -220,7 +220,7 @@ _attr_args = [
     {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
     {'name': 'required', 'type': bool,
      'doc': 'whether or not this attribute is required. ignored when "value" is specified', 'default': True},
-    {'name': 'parent', 'type': 'BaseStorageSpec', 'doc': 'the parent of this spec', 'default': None},
+    {'name': 'parent', 'type': 'hdmf.spec.spec.BaseStorageSpec', 'doc': 'the parent of this spec', 'default': None},
     {'name': 'value', 'type': None, 'doc': 'a constant value for this attribute', 'default': None},
     {'name': 'default_value', 'type': None, 'doc': 'a default value for this attribute', 'default': None}
 ]
@@ -328,7 +328,7 @@ class BaseStorageSpec(Spec):
         default_name = getargs('default_name', kwargs)
         if default_name:
             if name is not None:
-                warn("found 'default_name' with 'name' - ignoring 'default_name'")
+                warn("found 'default_name' with 'name' - ignoring 'default_name'", stacklevel=2)
             else:
                 self['default_name'] = default_name
         self.__attributes = dict()
@@ -382,7 +382,8 @@ class BaseStorageSpec(Spec):
         ''' Whether or not the this spec represents a required field '''
         return self.quantity not in (ZERO_OR_ONE, ZERO_OR_MANY)
 
-    @docval({'name': 'inc_spec', 'type': 'BaseStorageSpec', 'doc': 'the data type this specification represents'})
+    @docval({'name': 'inc_spec', 'type': 'hdmf.spec.spec.BaseStorageSpec',
+             'doc': 'the data type this specification represents'})
     def resolve_spec(self, **kwargs):
         """Add attributes from the inc_spec to this spec and track which attributes are new and overridden."""
         inc_spec = getargs('inc_spec', kwargs)
@@ -525,8 +526,7 @@ class BaseStorageSpec(Spec):
     @docval(*_attr_args)
     def add_attribute(self, **kwargs):
         ''' Add an attribute to this specification '''
-        pargs, pkwargs = fmt_docval_args(AttributeSpec.__init__, kwargs)
-        spec = AttributeSpec(*pargs, **pkwargs)
+        spec = AttributeSpec(**kwargs)
         self.set_attribute(spec)
         return spec
 
@@ -724,7 +724,8 @@ class DatasetSpec(BaseStorageSpec):
                 return False
             return new_prec >= orig_prec
 
-    @docval({'name': 'inc_spec', 'type': 'DatasetSpec', 'doc': 'the data type this specification represents'})
+    @docval({'name': 'inc_spec', 'type': 'hdmf.spec.spec.DatasetSpec',
+             'doc': 'the data type this specification represents'})
     def resolve_spec(self, **kwargs):
         inc_spec = getargs('inc_spec', kwargs)
         if isinstance(self.dtype, list):
@@ -1257,17 +1258,17 @@ class GroupSpec(BaseStorageSpec):
 
     @property
     def groups(self):
-        ''' The groups specificed in this GroupSpec '''
+        ''' The groups specified in this GroupSpec '''
         return tuple(self.get('groups', tuple()))
 
     @property
     def datasets(self):
-        ''' The datasets specificed in this GroupSpec '''
+        ''' The datasets specified in this GroupSpec '''
         return tuple(self.get('datasets', tuple()))
 
     @property
     def links(self):
-        ''' The links specificed in this GroupSpec '''
+        ''' The links specified in this GroupSpec '''
         return tuple(self.get('links', tuple()))
 
     @docval(*_group_args)
@@ -1310,7 +1311,7 @@ class GroupSpec(BaseStorageSpec):
         self.set_dataset(spec)
         return spec
 
-    @docval({'name': 'spec', 'type': 'DatasetSpec', 'doc': 'the specification for the dataset'})
+    @docval({'name': 'spec', 'type': 'hdmf.spec.spec.DatasetSpec', 'doc': 'the specification for the dataset'})
     def set_dataset(self, **kwargs):
         ''' Add the given specification for a dataset to this group specification '''
         spec = getargs('spec', kwargs)
@@ -1343,7 +1344,7 @@ class GroupSpec(BaseStorageSpec):
         self.set_link(spec)
         return spec
 
-    @docval({'name': 'spec', 'type': 'LinkSpec', 'doc': 'the specification for the object to link to'})
+    @docval({'name': 'spec', 'type': 'hdmf.spec.spec.LinkSpec', 'doc': 'the specification for the object to link to'})
     def set_link(self, **kwargs):
         ''' Add a given specification for a link to this group specification '''
         spec = getargs('spec', kwargs)

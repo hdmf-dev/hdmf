@@ -6,6 +6,8 @@ from io import BytesIO
 from pathlib import Path
 import shutil
 import tempfile
+from glob import glob
+import zipfile
 
 import h5py
 import numpy as np
@@ -18,13 +20,17 @@ from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
 from hdmf.container import Container
+from hdmf import Data, docval
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.spec.spec import GroupSpec
-from hdmf.testing import TestCase
+from hdmf.testing import TestCase, remove_test_file
+from hdmf.common.resources import HERD
+from hdmf.term_set import TermSet, TermSetWrapper
 
-from tests.unit.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
+
+from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
                               Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
                               CORE_NAMESPACE, get_temp_filepath, CacheSpecTestHelper,
                               CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
@@ -34,6 +40,12 @@ try:
     SKIP_ZARR_TESTS = False
 except ImportError:
     SKIP_ZARR_TESTS = True
+
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
 
 
 class NumpyArrayGenericDataChunkIterator(GenericDataChunkIterator):
@@ -85,11 +97,13 @@ class H5IOTest(TestCase):
             for iter_axis in iter_axis_opts:
                 for buffer_size in buffer_size_opts:
                     with self.subTest(data_type=data_type, iter_axis=iter_axis, buffer_size=buffer_size):
-                        with warnings.catch_warnings(record=True) as w:
+                        with warnings.catch_warnings(record=True):
+                            # init may throw UserWarning for iterating over not-first dim of a list. ignore here
+                            msg = ("Iterating over an axis other than the first dimension of list or tuple data "
+                                   "involves converting the data object to a numpy ndarray, which may incur a "
+                                   "computational cost.")
+                            warnings.filterwarnings("ignore", message=msg, category=UserWarning)
                             dci = DataChunkIterator(data=data, buffer_size=buffer_size, iter_axis=iter_axis)
-                            if len(w) <= 1:
-                                # init may throw UserWarning for iterating over not-first dim of a list. ignore here
-                                pass
 
                         dset_name = '%s, %d, %d' % (data_type, iter_axis, buffer_size)
                         my_dset = HDF5IO.__chunked_iter_fill__(self.f, dset_name, dci)
@@ -129,6 +143,17 @@ class H5IOTest(TestCase):
         if isinstance(read_a, bytes):
             read_a = read_a.decode('utf-8')
         self.assertEqual(read_a, a)
+
+    ##########################################
+    #  write_dataset tests: TermSetWrapper
+    ##########################################
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_write_dataset_TermSetWrapper(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        a = TermSetWrapper(value=['Homo sapiens'], termset=terms)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertEqual(dset[0].decode('utf-8'), a.value[0])
 
     ##########################################
     #  write_dataset tests: lists
@@ -211,13 +236,14 @@ class H5IOTest(TestCase):
         self.assertEqual(dset.compression, 'gzip')
 
     def test_write_dataset_list_disable_default_compress(self):
-        with warnings.catch_warnings(record=True) as w:
+        msg = ("Compression disabled by compression=False setting. compression_opts parameter will, therefore, "
+               "be ignored.")
+        with self.assertWarnsWith(UserWarning, msg):
             a = H5DataIO(np.arange(30).reshape(5, 2, 3),
                          compression=False,
                          compression_opts=5)
-            self.assertEqual(len(w), 1)  # We expect a warning that compression options are being ignored
-            self.assertFalse('compression_ops' in a.io_settings)
-            self.assertFalse('compression' in a.io_settings)
+        self.assertFalse('compression_ops' in a.io_settings)
+        self.assertFalse('compression' in a.io_settings)
 
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
         dset = self.f['test_dataset']
@@ -618,7 +644,7 @@ class H5IOTest(TestCase):
         # Make sure we warn when gzip with szip compression options is used
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='gzip', compression_opts=('ec', 16))
-        # Make sure we warn if gzip with a too high agression is used
+        # Make sure we warn if gzip with a too high aggression is used
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='gzip', compression_opts=100)
         # Make sure we warn if lzf with gzip compression option is used
@@ -633,20 +659,21 @@ class H5IOTest(TestCase):
         # Make sure szip raises a ValueError if bad options are used (odd compression option)
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='szip', compression_opts=('ec', 3))
-        # Make sure szip raises a ValueError if bad options are used (bad methos)
+        # Make sure szip raises a ValueError if bad options are used (bad methods)
         with self.assertRaises(ValueError):
             H5DataIO(np.arange(30), compression='szip', compression_opts=('bad_method', 16))
 
     def test_warning_on_linking_of_regular_array(self):
-        with warnings.catch_warnings(record=True) as w:
+        msg = "link_data parameter in H5DataIO will be ignored"
+        with self.assertWarnsWith(UserWarning, msg):
             dset = H5DataIO(np.arange(30),
                             link_data=True)
-            self.assertEqual(len(w), 1)
             self.assertEqual(dset.link_data, False)
 
     def test_warning_on_setting_io_options_on_h5dataset_input(self):
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', np.arange(10), attributes={}))
-        with warnings.catch_warnings(record=True) as w:
+        msg = "maxshape in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset"
+        with self.assertWarnsWith(UserWarning, msg):
             H5DataIO(self.f['test_dataset'],
                      compression='gzip',
                      compression_opts=4,
@@ -655,7 +682,6 @@ class H5IOTest(TestCase):
                      maxshape=(10, 20),
                      chunks=(10,),
                      fillvalue=100)
-            self.assertEqual(len(w), 7)
 
     def test_h5dataio_array_conversion_numpy(self):
         # Test that H5DataIO.__array__ is working when wrapping an ndarray
@@ -798,6 +824,42 @@ class TestRoundTrip(TestCase):
             self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_roundtrip_TermSetWrapper_dataset(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        foo = Foo(name="species", attr1='attr1', attr2=0,
+                  my_data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'],
+                                                         termset=terms))
+
+        foobucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=get_foo_buildmanager("text"), mode='w', herd_path='./HERD.zip') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=get_foo_buildmanager("text"), mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(foofile.buckets['bucket1'].foos['species'].my_data.value,
+                                 read_foofile.buckets['bucket1'].foos['species'].my_data[:].tolist())
+        remove_test_file('./HERD.zip')
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_roundtrip_TermSetWrapper_attribute(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        foo = Foo(name="species", attr1=TermSetWrapper(value='Homo sapiens', termset=terms),
+                  attr2=0, my_data=[1,2,3])
+        foobucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w', herd_path='./HERD.zip') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertEqual(foofile.buckets['bucket1'].foos['species'].attr1.value,
+                             read_foofile.buckets['bucket1'].foos['species'].attr1)
+            remove_test_file('./HERD.zip')
+
 
 class TestHDF5IO(TestCase):
 
@@ -826,9 +888,37 @@ class TestHDF5IO(TestCase):
             self.assertEqual(io.manager, self.manager)
             self.assertEqual(io.source, self.path)
 
+    def test_delete_with_incomplete_construction_missing_file(self):
+        """
+        Here we test what happens when `close` is called before `HDF5IO.__init__` has
+        been completed. In this case, self.__file is missing.
+        """
+        class MyHDF5IO(HDF5IO):
+            def __init__(self):
+                self.__open_links = []
+                raise ValueError("interrupt before HDF5IO.__file is initialized")
+
+        with self.assertRaisesWith(exc_type=ValueError, exc_msg="interrupt before HDF5IO.__file is initialized"):
+            with MyHDF5IO() as _:
+                pass
+
+    def test_delete_with_incomplete_construction_missing_open_files(self):
+        """
+        Here we test what happens when `close` is called before `HDF5IO.__init__` has
+        been completed. In this case, self.__open_files is missing.
+        """
+        class MyHDF5IO(HDF5IO):
+            def __init__(self):
+                self.__file = None
+                raise ValueError("interrupt before HDF5IO.__open_files is initialized")
+
+        with self.assertRaisesWith(exc_type=ValueError, exc_msg="interrupt before HDF5IO.__open_files is initialized"):
+            with MyHDF5IO() as _:
+                pass
+
     def test_set_file_mismatch(self):
         self.file_obj = File(get_temp_filepath(), 'w')
-        err_msg = ("You argued %s as this object's path, but supplied a file with filename: %s"
+        err_msg = ("You argued '%s' as this object's path, but supplied a file with filename: %s"
                    % (self.path, self.file_obj.filename))
         with self.assertRaisesWith(ValueError, err_msg):
             HDF5IO(self.path, manager=self.manager, mode='w', file=self.file_obj)
@@ -837,6 +927,10 @@ class TestHDF5IO(TestCase):
         pathlib_path = Path(self.path)
         with HDF5IO(pathlib_path, mode='w') as io:
             self.assertEqual(io.source, self.path)
+
+    def test_path_or_file(self):
+        with self.assertRaisesWith(ValueError, "Either the 'path' or 'file' argument must be supplied."):
+            HDF5IO()
 
 
 class TestCacheSpec(TestCase):
@@ -888,6 +982,133 @@ class TestNoCacheSpec(TestCase):
 
         with File(self.path, 'r') as f:
             self.assertNotIn('specifications', f)
+
+
+class TestHERDIO(TestCase):
+
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        self.foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(self.foofile)
+
+    def remove_er_files(self):
+        remove_test_file('./entities.tsv')
+        remove_test_file('./entity_keys.tsv')
+        remove_test_file('./objects.tsv')
+        remove_test_file('./object_keys.tsv')
+        remove_test_file('./keys.tsv')
+        remove_test_file('./files.tsv')
+        remove_test_file('./HERD.zip')
+
+    def child_tsv(self, herd):
+        for child in herd.children:
+            df = child.to_dataframe()
+            df.to_csv('./'+child.name+'.tsv', sep='\t', index=False)
+
+    def zip_child(self, zip_file):
+        files = glob('*.tsv')
+        with zipfile.ZipFile(zip_file, 'w') as zipF:
+          for file in files:
+              zipF.write(file)
+
+    def test_io_read_herd(self):
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=self.foofile,
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_zip(path='./HERD.zip')
+        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./HERD.zip') as io:
+            container = io.read()
+            self.assertIsInstance(io.herd, HERD)
+            self.assertIsInstance(container.get_linked_resources(), HERD)
+        self.remove_er_files()
+
+    def test_io_read_herd_file_warn(self):
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=self.foofile,
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_zip(path='./HERD.zip')
+
+        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='wrong_path') as io:
+            with self.assertWarns(Warning):
+                io.read()
+
+        self.remove_er_files()
+
+    def test_io_read_herd_value_warn(self):
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=self.foofile,
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_zip(path='./HERD.zip')
+
+        self.child_tsv(herd=er)
+
+        df = er.entities.to_dataframe()
+        df.at[0, ('keys_idx')] = 10  # Change key_ix 0 to 10
+        df.to_csv('./entities.tsv', sep='\t', index=False)
+
+        self.zip_child(zip_file='HERD.zip')
+        with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./HERD.zip') as io:
+            with self.assertWarns(Warning):
+                io.read()
+
+        self.remove_er_files()
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_io_write_extend_herd(self):
+        """
+        Test the optional write of HERD with extending an existing HERD instance.
+        """
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        foo = Foo(name="species", attr1='attr1', attr2=0,
+                  my_data=TermSetWrapper(value=['Homo sapiens'],
+                                                         termset=terms))
+
+        foobucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[foobucket])
+
+        er = HERD(type_map=self.manager.type_map)
+        er.add_ref(file=foofile,
+                   container=foofile,
+                   key='special',
+                   entity_id="id11",
+                   entity_uri='url11')
+
+        with HDF5IO(self.path, manager=get_foo_buildmanager("text"), mode='w', herd_path='./HERD.zip') as io:
+            io.write(foofile, herd=er)
+
+        with HDF5IO(self.path, manager=get_foo_buildmanager("text"), mode='r', herd_path='./HERD.zip') as io:
+            read_foofile = io.read()
+            read_herd = io.herd
+
+            self.assertListEqual(foofile.buckets['bucket1'].foos['species'].my_data.value,
+                                 read_foofile.buckets['bucket1'].foos['species'].my_data[:].tolist())
+
+            self.assertEqual(read_herd.keys.data, [('special',), ('Homo sapiens',)])
+            self.assertEqual(read_herd.entities.data[0], ('id11', 'url11'))
+            self.assertEqual(read_herd.entities.data[1], ('NCBI_TAXON:9606',
+            'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'))
+            self.assertEqual(read_herd.objects.data[0],
+            (0, read_foofile.object_id, 'FooFile', '', ''))
+
+        self.remove_er_files()
 
 
 class TestMultiWrite(TestCase):
@@ -1049,7 +1270,7 @@ class HDF5IOMultiFileTest(TestCase):
         # Close all the files
         for i in self.io:
             i.close()
-            del(i)
+            del i
         self.io = None
         self.f = None
         # Make sure the files have been deleted
@@ -1278,7 +1499,7 @@ class HDF5IOInitFileExistsTest(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
         if os.path.exists(self.path):
             os.remove(self.path)
 
@@ -1312,7 +1533,7 @@ class HDF5IOReadNoDataTest(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
 
         if os.path.exists(self.path):
             os.remove(self.path)
@@ -1354,7 +1575,7 @@ class HDF5IOReadData(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
         if os.path.exists(self.path):
             os.remove(self.path)
 
@@ -1386,7 +1607,7 @@ class HDF5IOReadBuilderClosed(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
 
         if os.path.exists(self.path):
             os.remove(self.path)
@@ -1455,7 +1676,7 @@ class HDF5IOWriteFileExists(TestCase):
     def tearDown(self):
         if self.io is not None:
             self.io.close()
-            del(self.io)
+            del self.io
         if os.path.exists(self.path):
             os.remove(self.path)
 
@@ -1464,7 +1685,7 @@ class HDF5IOWriteFileExists(TestCase):
             # even though foofile1 and foofile2 have different names, writing a
             # root object into a file that already has a root object, in r+ mode
             # should throw an error
-            with self.assertRaisesWith(ValueError, "Unable to create group (name already exists)"):
+            with self.assertRaisesRegex(ValueError, ".*(name already exists)"):
                 io.write(self.foofile2)
 
     def test_write_a(self):
@@ -1472,7 +1693,7 @@ class HDF5IOWriteFileExists(TestCase):
             # even though foofile1 and foofile2 have different names, writing a
             # root object into a file that already has a root object, in a mode
             # should throw an error
-            with self.assertRaisesWith(ValueError, "Unable to create group (name already exists)"):
+            with self.assertRaisesRegex(ValueError, ".*(name already exists)"):
                 io.write(self.foofile2)
 
     def test_write_w(self):
@@ -1693,8 +1914,7 @@ class TestReadLink(TestCase):
     def test_broken_link(self):
         """Test that opening a file with a broken link raises a warning but is still readable."""
         os.remove(self.target_path)
-        # with self.assertWarnsWith(BrokenLinkWarning, '/link_to_test_dataset'):  # can't check both warnings
-        with self.assertWarnsWith(BrokenLinkWarning, '/link_to_test_group'):
+        with self.assertWarnsWith(BrokenLinkWarning, 'Path to Group altered/broken at /link_to_test_group'):
             with HDF5IO(self.link_path, manager=get_foo_buildmanager(), mode='r') as read_io:
                 bldr = read_io.read_builder()
                 self.assertDictEqual(bldr.links, {})
@@ -1714,7 +1934,7 @@ class TestReadLink(TestCase):
                 write_io.write_builder(root2, link_data=True)
 
         os.remove(self.target_path)
-        with self.assertWarnsWith(BrokenLinkWarning, '/link_to_test_dataset'):
+        with self.assertWarnsWith(BrokenLinkWarning, 'Path to Group altered/broken at /link_to_test_dataset'):
             with HDF5IO(self.link_path, manager=get_foo_buildmanager(), mode='r') as read_io:
                 bldr = read_io.read_builder()
                 self.assertDictEqual(bldr.links, {})
@@ -1998,9 +2218,7 @@ class TestLoadNamespaces(TestCase):
 
         # load the namespace from file
         ns_catalog = NamespaceCatalog()
-        msg = "No cached namespaces found in %s" % self.path
-        with self.assertWarnsWith(UserWarning, msg):
-            ret = HDF5IO.load_namespaces(ns_catalog, self.path)
+        ret = HDF5IO.load_namespaces(ns_catalog, self.path)
         self.assertDictEqual(ret, {})
 
     def test_load_namespaces_resolve_custom_deps(self):
@@ -2214,9 +2432,7 @@ class TestGetNamespaces(TestCase):
             del f.attrs[SPEC_LOC_ATTR]
 
         # load the namespace from file
-        msg = "No cached namespaces found in %s" % self.path
-        with self.assertWarnsWith(UserWarning, msg):
-            ret = HDF5IO.get_namespaces(path=self.path)
+        ret = HDF5IO.get_namespaces(path=self.path)
         self.assertDictEqual(ret, {})
 
 
@@ -2318,6 +2534,27 @@ class TestExport(TestCase):
                 with self.assertRaisesWith(ValueError, msg):
                     export_io.export(src_io=read_io, container=dummy_file)
 
+    def test_cache_spec_true(self):
+        """Test that exporting with cache_spec works."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile = read_io.read()
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(
+                    src_io=read_io,
+                    container=read_foofile,
+                )
+
+        with File(self.paths[1], 'r') as f:
+            self.assertIn("test_core", f["specifications"])
+
     def test_cache_spec_false(self):
         """Test that exporting with cache_spec works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
@@ -2383,6 +2620,65 @@ class TestExport(TestCase):
             # make sure the linked dataset is within the same file
             self.assertEqual(read_foofile2.foofile_data.file.filename, self.paths[1])
 
+    def test_soft_link_group_modified(self):
+        """Test that exporting a written file with soft linked groups keeps links within the file."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket], foo_link=foo1)
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile2 = read_io.read()
+            read_foofile2.foo_link.set_modified()  # trigger a rebuild of foo_link and its parents
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_foofile2)
+
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked group is within the same file
+            self.assertEqual(read_foofile2.foo_link.container_source, self.paths[1])
+
+        # make sure the linked group is a soft link
+        with File(self.paths[1], 'r') as f:
+            self.assertEqual(f['links/foo_link'].file.filename, self.paths[1])
+            self.assertIsInstance(f.get('links/foo_link', getlink=True), h5py.SoftLink)
+
+    def test_soft_link_group_modified_rel_path(self):
+        """Test that exporting a written file with soft linked groups keeps links within the file."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket], foo_link=foo1)
+        # make temp files in relative path location
+        self.paths[0] = os.path.basename(self.paths[0])
+        self.paths[1] = os.path.basename(self.paths[1])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile2 = read_io.read()
+            read_foofile2.foo_link.set_modified()  # trigger a rebuild of foo_link and its parents
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_foofile2)
+
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked group is within the same file
+            self.assertEqual(read_foofile2.foo_link.container_source, os.path.abspath(self.paths[1]))
+
+        # make sure the linked group is a soft link
+        with File(self.paths[1], 'r') as f:
+            self.assertEqual(f['links/foo_link'].file.filename, self.paths[1])
+            self.assertIsInstance(f.get('links/foo_link', getlink=True), h5py.SoftLink)
+
     def test_external_link_group(self):
         """Test that exporting a written file with external linked groups maintains the links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
@@ -2403,7 +2699,6 @@ class TestExport(TestCase):
 
         with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
             self.ios.append(read_io)  # track IO objects for tearDown
-            read_foofile2 = read_io.read()
 
             with HDF5IO(self.paths[2], mode='w') as export_io:
                 export_io.export(src_io=read_io)
@@ -2414,6 +2709,41 @@ class TestExport(TestCase):
 
             # make sure the linked group is read from the first file
             self.assertEqual(read_foofile2.foo_link.container_source, self.paths[0])
+
+    def test_external_link_group_rel_path(self):
+        """Test that exporting a written file from a relative filepath works."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+        # make temp files in relative path location
+        self.paths[0] = os.path.basename(self.paths[0])
+        self.paths[1] = os.path.basename(self.paths[1])
+        self.paths[2] = os.path.basename(self.paths[2])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as read_io:
+            read_io.write(foofile)
+
+        manager = get_foo_buildmanager()
+        with HDF5IO(self.paths[0], manager=manager, mode='r') as read_io:
+            read_foofile = read_io.read()
+            # make external link to existing group
+            foofile2 = FooFile(foo_link=read_foofile.buckets['bucket1'].foos['foo1'])
+
+            with HDF5IO(self.paths[1], manager=manager, mode='w') as write_io:
+                write_io.write(foofile2)
+
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+
+            with HDF5IO(self.paths[2], mode='w') as export_io:
+                export_io.export(src_io=read_io)
+
+        with HDF5IO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked group is read from the first file
+            self.assertEqual(read_foofile2.foo_link.container_source, os.path.abspath(self.paths[0]))
 
     def test_external_link_dataset(self):
         """Test that exporting a written file with external linked datasets maintains the links."""
@@ -2484,6 +2814,31 @@ class TestExport(TestCase):
 
             # make sure the linked group is read from the first file
             self.assertEqual(read_foofile3.foo_link.container_source, self.paths[0])
+
+    def test_new_soft_link(self):
+        """Test that exporting a file with a newly created soft link makes the link internally."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        manager = get_foo_buildmanager()
+        with HDF5IO(self.paths[0], manager=manager, mode='r') as read_io:
+            read_foofile = read_io.read()
+            # make external link to existing group
+            read_foofile.foo_link = read_foofile.buckets['bucket1'].foos['foo1']
+
+            with HDF5IO(self.paths[1], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_foofile)
+
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            self.ios.append(read_io)  # track IO objects for tearDown
+            read_foofile2 = read_io.read()
+
+            # make sure the linked group is read from the exported file
+            self.assertEqual(read_foofile2.foo_link.container_source, self.paths[1])
 
     def test_attr_reference(self):
         """Test that exporting a written file with attribute references maintains the references."""
@@ -2712,6 +3067,149 @@ class TestExport(TestCase):
             self.assertEqual(f['buckets/bucket2/foo_holder/foo2/my_data'].file.filename, self.paths[2])
             self.assertEqual(f['foofile_data'].file.filename, self.paths[2])
 
+    def test_export_simple_link_data(self):
+        """Test simple exporting of data with a link with link_data=True links the data."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        # create new foofile with link from foo2.data to read foo1.data
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile1 = read_io.read()
+            foo2 = Foo('foo2', read_foofile1.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)
+            foobucket2 = FooBucket('bucket2', [foo2])
+            foofile2 = FooFile([foobucket2])
+
+            # also add link from foofile to new foo2.my_data dataset which is a link to foo1.my_data dataset
+            # this should make an external link within the exported file
+            foofile2.foofile_data = foo2.my_data
+
+            with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='w') as write_io:
+                write_io.write(foofile2)
+
+        # read the data with the linked dataset, do not modify it, and export it
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            with HDF5IO(self.paths[2], mode='w') as export_io:
+                export_io.export(src_io=read_io)
+
+        # read the exported file and confirm that the dataset is linked to the correct foofile1
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io1:
+            self.ios.append(read_io1)  # track IO objects for tearDown
+            read_foofile3 = read_io1.read()
+
+            with HDF5IO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io2:
+                self.ios.append(read_io2)  # track IO objects for tearDown
+                read_foofile4 = read_io2.read()
+
+                self.assertEqual(read_foofile4.buckets['bucket2'].foos['foo2'].my_data,
+                                 read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertEqual(read_foofile4.foofile_data, read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+
+        with File(self.paths[2], 'r') as f:
+            self.assertEqual(f['buckets/bucket2/foo_holder/foo2/my_data'].file.filename, self.paths[0])
+            self.assertEqual(f['foofile_data'].file.filename, self.paths[0])
+            self.assertIsInstance(f.get('buckets/bucket2/foo_holder/foo2/my_data', getlink=True),
+                                  h5py.ExternalLink)
+            self.assertIsInstance(f.get('foofile_data', getlink=True), h5py.ExternalLink)
+
+    def test_export_simple_link_data_false(self):
+        """Test simple exporting of data with a link with link_data=False copies the data."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        # create new foofile with link from foo2.data to read foo1.data
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile1 = read_io.read()
+            foo2 = Foo('foo2', read_foofile1.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)
+            foobucket2 = FooBucket('bucket2', [foo2])
+            foofile2 = FooFile([foobucket2])
+
+            # also add link from foofile to new foo2.my_data dataset which is a link to foo1.my_data dataset
+            # this should make an external link within the exported file
+            foofile2.foofile_data = foo2.my_data
+
+            with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='w') as write_io:
+                write_io.write(foofile2)
+
+        # read the data with the linked dataset, do not modify it, and export it
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            with HDF5IO(self.paths[2], mode='w') as export_io:
+                export_io.export(src_io=read_io, write_args={'link_data': False})
+
+        # read the exported file and confirm that the dataset is copied
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io1:
+            self.ios.append(read_io1)  # track IO objects for tearDown
+            read_foofile3 = read_io1.read()
+
+            with HDF5IO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io2:
+                self.ios.append(read_io2)  # track IO objects for tearDown
+                read_foofile4 = read_io2.read()
+
+                # check that file can be read
+                self.assertNotEqual(read_foofile4.buckets['bucket2'].foos['foo2'].my_data,
+                                    read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertNotEqual(read_foofile4.foofile_data, read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertNotEqual(read_foofile4.foofile_data, read_foofile4.buckets['bucket2'].foos['foo2'].my_data)
+
+        with File(self.paths[2], 'r') as f:
+            self.assertEqual(f['buckets/bucket2/foo_holder/foo2/my_data'].file.filename, self.paths[2])
+            self.assertEqual(f['foofile_data'].file.filename, self.paths[2])
+
+    def test_export_simple_with_container_link_data_false(self):
+        """Test simple exporting of data with a link with link_data=False copies the data."""
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile([foobucket])
+
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile)
+
+        # create new foofile with link from foo2.data to read foo1.data
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile1 = read_io.read()
+            foo2 = Foo('foo2', read_foofile1.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 17, 3.14)
+            foobucket2 = FooBucket('bucket2', [foo2])
+            foofile2 = FooFile([foobucket2])
+
+            # also add link from foofile to new foo2.my_data dataset which is a link to foo1.my_data dataset
+            # this should make an external link within the exported file
+            foofile2.foofile_data = foo2.my_data
+
+            with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='w') as write_io:
+                write_io.write(foofile2)
+
+        # read the data with the linked dataset, do not modify it, and export it
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io:
+            read_foofile2 = read_io.read()
+            with HDF5IO(self.paths[2], mode='w') as export_io:
+                export_io.export(src_io=read_io, container=read_foofile2, write_args={'link_data': False})
+
+        # read the exported file and confirm that the dataset is copied
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io1:
+            self.ios.append(read_io1)  # track IO objects for tearDown
+            read_foofile3 = read_io1.read()
+
+            with HDF5IO(self.paths[2], manager=get_foo_buildmanager(), mode='r') as read_io2:
+                self.ios.append(read_io2)  # track IO objects for tearDown
+                read_foofile4 = read_io2.read()
+
+                # check that file can be read
+                self.assertNotEqual(read_foofile4.buckets['bucket2'].foos['foo2'].my_data,
+                                    read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertNotEqual(read_foofile4.foofile_data, read_foofile3.buckets['bucket1'].foos['foo1'].my_data)
+                self.assertNotEqual(read_foofile4.foofile_data, read_foofile4.buckets['bucket2'].foos['foo2'].my_data)
+
+        with File(self.paths[2], 'r') as f:
+            self.assertEqual(f['buckets/bucket2/foo_holder/foo2/my_data'].file.filename, self.paths[2])
+            self.assertEqual(f['foofile_data'].file.filename, self.paths[2])
+
     def test_export_io(self):
         """Test that exporting a written container using HDF5IO.export_io works."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
@@ -2817,6 +3315,10 @@ class TestExport(TestCase):
 
         class OtherIO(HDMFIO):
 
+            @staticmethod
+            def can_read(path):
+                pass
+
             def read_builder(self):
                 pass
 
@@ -2845,6 +3347,10 @@ class TestExport(TestCase):
             write_io.write(foofile)
 
         class OtherIO(HDMFIO):
+
+            @staticmethod
+            def can_read(path):
+                pass
 
             def __init__(self, manager):
                 super().__init__(manager=manager)
@@ -3061,3 +3567,161 @@ class TestWriteHDF5withZarrInput(TestCase):
         self.assertEqual(dset.compression_opts, 5)
         self.assertEqual(dset.shuffle, True)
         self.assertEqual(dset.fletcher32, True)
+
+
+class HDF5IOEmptyDataset(TestCase):
+    """ Test if file does not exist, write in mode (w, w-, x, a) is ok """
+
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+        self.path2 = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+        if os.path.exists(self.path2):
+            os.remove(self.path2)
+
+    def test_write_empty_dataset(self):
+        dataio = H5DataIO(shape=(5,), dtype=int)
+        foo = Foo('foo1', dataio, "I am foo1", 17, 3.14)
+        bucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[bucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+            self.assertIs(foo.my_data, dataio)
+            self.assertIsNotNone(foo.my_data.dataset)
+            self.assertIsInstance(foo.my_data.dataset, h5py.Dataset)
+            np.testing.assert_array_equal(foo.my_data.dataset, np.zeros(5, dtype=int))
+
+    def test_overwrite_dataset(self):
+        dataio = H5DataIO(shape=(5,), dtype=int)
+        foo = Foo('foo1', dataio, "I am foo1", 17, 3.14)
+        bucket = FooBucket('bucket1', [foo])
+        foofile = FooFile(buckets=[bucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with self.assertRaisesRegex(ValueError, 'Cannot overwrite H5DataIO.dataset'):
+            with HDF5IO(self.path2, manager=self.manager, mode='w') as io:
+                io.write(foofile)
+
+
+class HDF5IOClassmethodTests(TestCase):
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        self.f = h5py.File(self.path, 'w')
+
+    def tearDown(self):
+        self.f.close()
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_setup_empty_dset(self):
+        dset = HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
+        self.assertEqual(dset.name, '/foo')
+        self.assertTupleEqual(dset.shape, (3, 3))
+        self.assertIs(dset.dtype.type, np.float32)
+
+    def test_setup_empty_dset_req_args(self):
+        with self.assertRaisesRegex(ValueError, 'Cannot setup empty dataset /foo without dtype'):
+            HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3)})
+
+        with self.assertRaisesRegex(ValueError, 'Cannot setup empty dataset /foo without shape'):
+            HDF5IO.__setup_empty_dset__(self.f, 'foo', {'dtype': np.float32})
+
+    def test_setup_empty_dset_create_exception(self):
+        HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
+        with self.assertRaisesRegex(Exception, "Could not create dataset foo in /"):
+            HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
+
+
+class H5DataIOTests(TestCase):
+
+    def _bad_arg_cm(self):
+        return self.assertRaisesRegex(ValueError, "Must specify 'dtype' and 'shape' "
+                                                  "if not specifying 'data'")
+
+    def test_dataio_bad_args(self):
+        with self._bad_arg_cm():
+            H5DataIO(shape=(10, 10))
+        with self._bad_arg_cm():
+            H5DataIO(dtype=int)
+        with self.assertWarnsRegex(UserWarning, "Argument 'dtype' is ignored when 'data' is specified"):
+            H5DataIO(data=np.zeros((10, 10)), dtype=int)
+        with self.assertWarnsRegex(UserWarning, "Argument 'shape' is ignored when 'data' is specified"):
+            H5DataIO(data=np.zeros((10, 10)), shape=(10, 10))
+
+    def test_dataio_len(self):
+        dataio = H5DataIO(shape=(10, 10), dtype=int)
+        self.assertEqual(len(dataio), 10)
+
+    def test_dataio_shape_then_data(self):
+        dataio = H5DataIO(shape=(10, 10), dtype=int)
+        with self.assertRaisesRegex(ValueError, "Setting data when dtype and shape are not None is not supported"):
+            dataio.data = list()
+
+
+def test_hdf5io_can_read():
+    assert not HDF5IO.can_read("not_a_file")
+    assert HDF5IO.can_read("tests/unit/back_compat_tests/1.0.5.h5")
+    assert not HDF5IO.can_read(__file__)  # this file is not an HDF5 file
+
+
+class TestContainerSetDataIO(TestCase):
+
+    def setUp(self) -> None:
+        class ContainerWithData(Container):
+            __fields__ = ('data1', 'data2')
+
+            @docval(
+                {"name": "name", "doc": "name", "type": str},
+                {'name': 'data1', 'doc': 'field1 doc', 'type': list},
+                {'name': 'data2', 'doc': 'field2 doc', 'type':  list, 'default': None}
+            )
+            def __init__(self, **kwargs):
+                super().__init__(name=kwargs["name"])
+                self.data1 = kwargs["data1"]
+                self.data2 = kwargs["data2"]
+
+        self.obj = ContainerWithData("name", [1, 2, 3, 4, 5], None)
+
+    def test_set_data_io(self):
+        self.obj.set_data_io("data1", H5DataIO, data_io_kwargs=dict(chunks=True))
+        assert isinstance(self.obj.data1, H5DataIO)
+        assert self.obj.data1.io_settings["chunks"]
+
+    def test_fail_set_data_io(self):
+        """Attempt to set a DataIO for a dataset that is missing."""
+        with self.assertRaisesWith(ValueError, "data2 is None and cannot be wrapped in a DataIO class"):
+            self.obj.set_data_io("data2", H5DataIO, data_io_kwargs=dict(chunks=True))
+
+    def test_set_data_io_old_api(self):
+        """Test that using the kwargs still works but throws a warning."""
+        msg = (
+            "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a dictionary to"
+            " the `data_io_kwargs` parameter instead."
+        )
+        with self.assertWarnsWith(DeprecationWarning, msg):
+            self.obj.set_data_io("data1", H5DataIO, chunks=True)
+        self.assertIsInstance(self.obj.data1, H5DataIO)
+        self.assertTrue(self.obj.data1.io_settings["chunks"])
+
+
+class TestDataSetDataIO(TestCase):
+
+    def setUp(self):
+        class MyData(Data):
+            pass
+
+        self.data = MyData("my_data", [1, 2, 3])
+
+    def test_set_data_io(self):
+        self.data.set_data_io(H5DataIO, dict(chunks=True))
+        assert isinstance(self.data.data, H5DataIO)
+        assert self.data.data.io_settings["chunks"]

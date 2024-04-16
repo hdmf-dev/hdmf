@@ -54,7 +54,7 @@ __pycache__/
 
 # coverage output
 /tests/coverage/htmlcov
-.coverage
+.coverage*
 coverage.xml
 
 # duecredit output
@@ -74,3 +74,6 @@ coverage.xml
 
 #sqlite
 .sqlite
+
+# Version
+_version.py

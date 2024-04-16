@@ -10,11 +10,13 @@ from warnings import warn
 
 import numpy as np
 import pandas as pd
+import itertools
 
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
-from ..utils import docval, getargs, ExtenderMeta, call_docval_func, popargs, pystr
+from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type, is_ragged
+from ..term_set import TermSetWrapper
 
 
 @register_class('VectorData')
@@ -36,10 +38,12 @@ class VectorData(Data):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
-             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()})
+             'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
-        self.description = getargs('description', kwargs)
+        description = popargs('description', kwargs)
+        super().__init__(**kwargs)
+        self.description = description
 
     @docval({'name': 'val', 'type': None, 'doc': 'the value to add to this column'})
     def add_row(self, **kwargs):
@@ -91,11 +95,12 @@ class VectorIndex(VectorData):
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a 1D dataset containing indexes that apply to VectorData object'},
             {'name': 'target', 'type': VectorData,
-             'doc': 'the target dataset that this index applies to'})
+             'doc': 'the target dataset that this index applies to'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
-        target = getargs('target', kwargs)
+        target = popargs('target', kwargs)
         kwargs['description'] = "Index for VectorData '%s'" % target.name
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         self.target = target
         self.__uint = np.uint8
         self.__maxval = 255
@@ -138,7 +143,7 @@ class VectorIndex(VectorData):
 
     def __adjust_precision(self, uint):
         """
-        Adjust precision of data to specificied unsigned integer precision.
+        Adjust precision of data to specified unsigned integer precision.
         """
         if isinstance(self.data, list):
             for i in range(len(self.data)):
@@ -206,10 +211,11 @@ class ElementIdentifiers(Data):
     """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this ElementIdentifiers'},
-            {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'a 1D dataset containing identifiers',
-             'default': list()})
+            {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'a 1D dataset containing integer identifiers',
+             'default': list(), 'shape': (None,)},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
 
     @docval({'name': 'other', 'type': (Data, np.ndarray, list, tuple, int),
              'doc': 'List of ids to search for in this ElementIdentifer object'},
@@ -230,6 +236,20 @@ class ElementIdentifiers(Data):
             search_ids = [search_ids]
         # Find all matching locations
         return np.in1d(self.data, search_ids).nonzero()[0]
+
+    def _validate_new_data(self, data):
+        # NOTE this may not cover all the many AbstractDataChunkIterator edge cases
+        if (isinstance(data, AbstractDataChunkIterator) or
+                (hasattr(data, "data") and isinstance(data.data, AbstractDataChunkIterator))):
+            if not np.issubdtype(data.dtype, np.integer):
+                raise ValueError("ElementIdentifiers must contain integers")
+        elif hasattr(data, "__len__") and len(data):
+            self._validate_new_data_element(data[0])
+
+    def _validate_new_data_element(self, arg):
+        if not check_type(arg, int):
+            raise ValueError("ElementIdentifiers must contain integers")
+        super()._validate_new_data_element(arg)
 
 
 @register_class('DynamicTable')
@@ -272,11 +292,17 @@ class DynamicTable(Container):
             msg = "'__columns__' must be of type tuple, found %s" % type(cls.__columns__)
             raise TypeError(msg)
 
-        if (len(bases) and 'DynamicTable' in globals() and issubclass(bases[-1], Container)
-                and bases[-1].__columns__ is not cls.__columns__):
-            new_columns = list(cls.__columns__)
-            new_columns[0:0] = bases[-1].__columns__  # prepend superclass columns to new_columns
-            cls.__columns__ = tuple(new_columns)
+        if len(bases) and 'DynamicTable' in globals():
+            for item in bases[::-1]: # look for __columns__ in the base classes, closest first
+                if issubclass(item, Container):
+                    try:
+                        if item.__columns__ is not cls.__columns__:
+                            new_columns = list(cls.__columns__)
+                            new_columns[0:0] = item.__columns__  # prepend superclass columns to new_columns
+                            cls.__columns__ = tuple(new_columns)
+                            break
+                    except AttributeError:   # raises error when "__columns__" is not an attr of item
+                        continue
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},  # noqa: C901
             {'name': 'description', 'type': str, 'doc': 'a description of what is in this table'},
@@ -285,10 +311,17 @@ class DynamicTable(Container):
             {'name': 'columns', 'type': (tuple, list), 'doc': 'the columns in this table', 'default': None},
             {'name': 'colnames', 'type': 'array_data',
              'doc': 'the ordered names of the columns in this table. columns must also be provided.',
-             'default': None})
+             'default': None},
+            {'name': 'target_tables',
+             'doc': ('dict mapping DynamicTableRegion column name to the table that the DTR points to. The column is '
+                     'added to the table if it is not already present (i.e., when it is optional).'),
+             'type': dict,
+             'default': None},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):  # noqa: C901
         id, columns, desc, colnames = popargs('id', 'columns', 'description', 'colnames', kwargs)
-        call_docval_func(super().__init__, kwargs)
+        target_tables = popargs('target_tables', kwargs)
+        super().__init__(**kwargs)
         self.description = desc
 
         # hold names of optional columns that are defined in __columns__ that are not yet initialized
@@ -297,11 +330,12 @@ class DynamicTable(Container):
 
         # All tables must have ElementIdentifiers (i.e. a primary key column)
         # Here, we figure out what to do for that
-        if id is not None:
+        user_provided_ids = (id is not None)
+        if user_provided_ids:
             if not isinstance(id, ElementIdentifiers):
-                id = ElementIdentifiers('id', data=id)
+                id = ElementIdentifiers(name='id', data=id)
         else:
-            id = ElementIdentifiers('id')
+            id = ElementIdentifiers(name='id')
 
         if columns is not None and len(columns) > 0:
             # If columns have been passed in, check them over and process accordingly
@@ -340,13 +374,22 @@ class DynamicTable(Container):
                 if isinstance(_data, AbstractDataChunkIterator):
                     colset.pop(c.name, None)
             lens = [len(c) for c in colset.values()]
+            all_columns_are_iterators = (len(lens) == 0)
+
             if not all(i == lens[0] for i in lens):
-                raise ValueError("columns must be the same length")
-            if len(lens) > 0 and lens[0] != len(id):
-                # the first part of this conditional is needed in the
-                # event that all columns are AbstractDataChunkIterators
-                if len(id) > 0:
-                    raise ValueError("must provide same number of ids as length of columns")
+                raise ValueError("Columns must be the same length")
+            # If we have columns given, but all columns are AbstractDataChunkIterator's, then we
+            # cannot determine how many elements the id column will need. I.e., in this case the
+            # user needs to provide the id's as otherwise we may create an invalid table with an
+            # empty Id column but data in the rows. See: https://github.com/hdmf-dev/hdmf/issues/952
+            if all_columns_are_iterators and not user_provided_ids:
+                raise ValueError("Cannot determine row id's for table. Must provide ids with same length "
+                                 "as the columns when all columns are specified via DataChunkIterator objects.")
+            # If we have columns with a known length but the length (i.e., number of rows)
+            # does not match the number of id's then initialize the id's
+            if not all_columns_are_iterators and lens[0] != len(id):
+                if user_provided_ids and len(id) > 0:
+                    raise ValueError("Must provide same number of ids as length of columns")
                 else:  # set ids to: 0 to length of columns - 1
                     id.data.extend(range(lens[0]))
 
@@ -451,12 +494,16 @@ class DynamicTable(Container):
         self.__colids = {name: i + 1 for i, name in enumerate(self.colnames)}
         self._init_class_columns()
 
+        if target_tables:
+            self._set_dtr_targets(target_tables)
+
+
     def __set_table_attr(self, col):
         if hasattr(self, col.name) and col.name not in self.__uninit_cols:
             msg = ("An attribute '%s' already exists on %s '%s' so this column cannot be accessed as an attribute, "
                    "e.g., table.%s; it can only be accessed using other methods, e.g., table['%s']."
                    % (col.name, self.__class__.__name__, self.name, col.name, col.name))
-            warn(msg)
+            warn(msg, stacklevel=2)
         else:
             setattr(self, col.name, col)
 
@@ -499,6 +546,40 @@ class DynamicTable(Container):
                         self.__uninit_cols[col['name'] + '_elements'] = col
                         setattr(self, col['name'] + '_elements', None)
 
+    def _set_dtr_targets(self, target_tables: dict):
+        """Set the target tables for DynamicTableRegion columns.
+
+        If a column is not yet initialized, it is initialized with the target table.
+        """
+        for colname, table in target_tables.items():
+            if colname not in self:  # column has not yet been added (it is optional)
+                column_conf = None
+                for conf in self.__columns__:
+                    if conf['name'] == colname:
+                        column_conf = conf
+                        break
+                if column_conf is None:
+                    raise ValueError("'%s' is not the name of a predefined column of table %s."
+                                        % (colname, self))
+                if not column_conf.get('table', False):
+                    raise ValueError("Column '%s' must be a DynamicTableRegion to have a target table."
+                                        % colname)
+                self.add_column(name=column_conf['name'],
+                                description=column_conf['description'],
+                                index=column_conf.get('index', False),
+                                table=True)
+            if isinstance(self[colname], VectorIndex):
+                col = self[colname].target
+            else:
+                col = self[colname]
+            if not isinstance(col, DynamicTableRegion):
+                raise ValueError("Column '%s' must be a DynamicTableRegion to have a target table." % colname)
+            # if columns are passed in, then the "table" attribute may have already been set
+            if col.table is not None and col.table is not table:
+                raise ValueError("Column '%s' already has a target table that is not the passed table." % colname)
+            if col.table is None:
+                col.table = table
+
     @staticmethod
     def __build_columns(columns, df=None):
         """
@@ -528,8 +609,8 @@ class DynamicTable(Container):
                     for d in data:
                         tmp_data.extend(d)
                     data = tmp_data
-                vdata = col_cls(name, desc, data=data)
-                vindex = VectorIndex("%s_index" % name, index_data, target=vdata)
+                vdata = col_cls(name=name, description=desc, data=data)
+                vindex = VectorIndex(name="%s_index" % name, data=index_data, target=vdata)
                 tmp.append(vindex)
                 tmp.append(vdata)
             elif d.get('enum', False):
@@ -547,7 +628,7 @@ class DynamicTable(Container):
                     data = list()
                 if d.get('table', False):
                     col_cls = DynamicTableRegion
-                tmp.append(col_cls(name, desc, data=data))
+                tmp.append(col_cls(name=name, description=desc, data=data))
         return tmp
 
     def __len__(self):
@@ -558,16 +639,38 @@ class DynamicTable(Container):
             {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
             {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
              'default': False},
+            {'name': 'check_ragged', 'type': bool, 'default': True,
+             'doc': ('whether or not to check for ragged arrays when adding data to the table. '
+                     'Set to False to avoid checking every element if performance issues occur.')},
             allow_extra=True)
     def add_row(self, **kwargs):
         """
         Add a row to the table. If *id* is not provided, it will auto-increment.
         """
-        data, row_id, enforce_unique_id = popargs('data', 'id', 'enforce_unique_id', kwargs)
+        data, row_id, enforce_unique_id, check_ragged = popargs('data', 'id', 'enforce_unique_id', 'check_ragged',
+                                                                kwargs)
         data = data if data is not None else kwargs
 
+        bad_data = []
         extra_columns = set(list(data.keys())) - set(list(self.__colids.keys()))
         missing_columns = set(list(self.__colids.keys())) - set(list(data.keys()))
+
+        for colname, colnum in self.__colids.items():
+            if colname not in data:
+                raise ValueError("column '%s' missing" % colname)
+            col = self.__df_cols[colnum]
+            if isinstance(col, VectorIndex):
+                continue
+            else:
+                if isinstance(col.data, TermSetWrapper):
+                    if col.data.termset.validate(term=data[colname]):
+                        continue
+                    else:
+                        bad_data.append(data[colname])
+
+        if len(bad_data)!=0:
+            msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+            raise ValueError(msg)
 
         # check to see if any of the extra columns just need to be added
         if extra_columns:
@@ -610,6 +713,11 @@ class DynamicTable(Container):
                 c.add_vector(data[colname])
             else:
                 c.add_row(data[colname])
+                if check_ragged and is_ragged(c.data):
+                    warn(("Data has elements with different lengths and therefore cannot be coerced into an "
+                          "N-dimensional array. Use the 'index' argument when creating a column to add rows "
+                          "with different lengths."),
+                         stacklevel=2)
 
     def __eq__(self, other):
         """Compare if the two DynamicTables contain the same data.
@@ -648,21 +756,27 @@ class DynamicTable(Container):
             {'name': 'col_cls', 'type': type, 'default': VectorData,
              'doc': ('class to use to represent the column data. If table=True, this field is ignored and a '
                      'DynamicTableRegion object is used. If enum=True, this field is ignored and a EnumData '
-                     'object is used.')}, )
+                     'object is used.')},
+            {'name': 'check_ragged', 'type': bool, 'default': True,
+             'doc': ('whether or not to check for ragged arrays when adding data to the table. '
+                     'Set to False to avoid checking every element if performance issues occur.')},
+            allow_extra=True)
     def add_column(self, **kwargs):  # noqa: C901
         """
         Add a column to this table.
 
         If data is provided, it must contain the same number of rows as the current state of the table.
 
+        Extra keyword arguments will be passed to the constructor of the column class ("col_cls").
+
         :raises ValueError: if the column has already been added to the table
         """
         name, data = getargs('name', 'data', kwargs)
-        index, table, enum, col_cls = popargs('index', 'table', 'enum', 'col_cls', kwargs)
+        index, table, enum, col_cls, check_ragged = popargs('index', 'table', 'enum', 'col_cls', 'check_ragged', kwargs)
 
         if isinstance(index, VectorIndex):
             warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
-                 "deprecated in a future version of HDMF.", FutureWarning)
+                 "deprecated in a future version of HDMF.", category=FutureWarning, stacklevel=2)
 
         if name in self.__colids:  # column has already been added
             msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
@@ -679,7 +793,7 @@ class DynamicTable(Container):
                        "Please ensure the new column complies with the spec. "
                        "This will raise an error in a future version of HDMF."
                        % (name, self.__class__.__name__, spec_table))
-                warn(msg)
+                warn(msg, stacklevel=2)
 
             index_bool = index or not isinstance(index, bool)
             spec_index = self.__uninit_cols[name].get('index', False)
@@ -689,7 +803,7 @@ class DynamicTable(Container):
                        "Please ensure the new column complies with the spec. "
                        "This will raise an error in a future version of HDMF."
                        % (name, self.__class__.__name__, spec_index))
-                warn(msg)
+                warn(msg, stacklevel=2)
 
             spec_col_cls = self.__uninit_cols[name].get('class', VectorData)
             if col_cls != spec_col_cls:
@@ -698,7 +812,7 @@ class DynamicTable(Container):
                        "Please ensure the new column complies with the spec. "
                        "This will raise an error in a future version of HDMF."
                        % (name, self.__class__.__name__, spec_col_cls))
-                warn(msg)
+                warn(msg, stacklevel=2)
 
         ckwargs = dict(kwargs)
 
@@ -715,6 +829,43 @@ class DynamicTable(Container):
             if isinstance(enum, (list, tuple, np.ndarray, VectorData)):
                 ckwargs['elements'] = enum
 
+        # If the user provided a list of lists that needs to be indexed, then we now need to flatten the data
+        # We can only create the index actual VectorIndex once we have the VectorData column so we compute
+        # the index and flatten the data here and then create the VectorIndex later from create_vector_index
+        # once we have created the column
+        create_vector_index = None
+        if ckwargs.get('data', None) is not None:
+
+            # if no index was provided, check that data is not ragged
+            if index is False and check_ragged and is_ragged(data):
+                warn(("Data has elements with different lengths and therefore cannot be coerced into an "
+                      "N-dimensional array. Use the 'index' argument when adding a column of data with "
+                      "different lengths."),
+                     stacklevel=2)
+
+            # Check that we are asked to create an index
+            if (isinstance(index, bool) or isinstance(index, int)) and index > 0 and len(data) > 0:
+                # Iteratively flatten the data we use for the column based on the depth of the index to generate.
+                # Also, for each level compute the data for the VectorIndex for that level
+                flatten_data = data
+                create_vector_index = []
+                for i in range(index):
+                    try:
+                        create_vector_index.append(np.cumsum([len(c) for c in flatten_data]).tolist())
+                    except TypeError as e:
+                        raise ValueError("Cannot automatically construct VectorIndex for nested array. "
+                                         "Invalid data array element found.") from e
+                    flatten_data = list(itertools.chain.from_iterable(flatten_data))
+                # if our data still is an array (e.g., a list or numpy array) then warn that the index parameter
+                # may be incorrect.
+                if len(flatten_data) > 0 and isinstance(flatten_data[0], (np.ndarray, list, tuple)):
+                    raise ValueError("Cannot automatically construct VectorIndex for nested array. "
+                                     "Column data contains arrays as cell values. Please check the 'data' and 'index' "
+                                     "parameters. 'index=%s' may be too small for the given data." % str(index))
+                # overwrite the data to be used for the VectorData column with the flattened data
+                ckwargs['data'] = flatten_data
+
+        # Create the VectorData column
         col = col_cls(**ckwargs)
         col.parent = self
         columns = [col]
@@ -731,26 +882,41 @@ class DynamicTable(Container):
             if isinstance(index, VectorIndex):
                 col_index = index
                 self.__add_column_index_helper(col_index)
-            elif isinstance(index, bool):  # make empty VectorIndex
-                if len(col) > 0:
-                    raise ValueError("cannot pass empty index with non-empty data to index")
-                col_index = VectorIndex(name + "_index", list(), col)
+            elif isinstance(index, bool):
+                # create empty index for empty column
+                if create_vector_index is None:
+                    assert len(col) == 0, ValueError("cannot pass empty index with non-empty data to index")
+                    col_index = VectorIndex(name=name + "_index", data=list(), target=col)
+                # create single-level VectorIndex from the data based on the create_vector_index we computed earlier
+                else:
+                    col_index = VectorIndex(name=name + "_index", data=create_vector_index[0], target=col)
+                # add the column with the index
                 self.__add_column_index_helper(col_index)
             elif isinstance(index, int):
-                assert index > 0, ValueError("integer index value must be greater than 0")
-                assert len(col) == 0, ValueError("cannot pass empty index with non-empty data to index")
-                index_name = name
-                for i in range(index):
-                    index_name = index_name + "_index"
-                    col_index = VectorIndex(index_name, list(), col)
-                    self.__add_column_index_helper(col_index)
-                    if i < index - 1:
-                        columns.insert(0, col_index)
-                        col = col_index
+                if create_vector_index is None:
+                    assert index > 0, ValueError("integer index value must be greater than 0")
+                    assert len(col) == 0, ValueError("cannot pass empty index with non-empty data to index")
+                    index_name = name
+                    for i in range(index):
+                        index_name = index_name + "_index"
+                        col_index = VectorIndex(name=index_name, data=list(), target=col)
+                        self.__add_column_index_helper(col_index)
+                        if i < index - 1:
+                            columns.insert(0, col_index)
+                            col = col_index
+                # Create the nested VectorIndex from the create_vector_index we computed above
+                else:
+                    index_name = name
+                    for i in range(index):
+                        index_name = index_name + "_index"
+                        col_index = VectorIndex(name=index_name, data=create_vector_index[-(i+1)], target=col)
+                        self.__add_column_index_helper(col_index)
+                        if i < index - 1:
+                            columns.insert(0, col_index)
+                            col = col_index
             else:  # make VectorIndex with supplied data
-                if len(col) == 0:
-                    raise ValueError("cannot pass non-empty index with empty data to index")
-                col_index = VectorIndex(name + "_index", index, col)
+                assert len(col) > 0, ValueError("cannot pass non-empty index with empty data to index")
+                col_index = VectorIndex(name=name + "_index", data=index, target=col)
                 self.__add_column_index_helper(col_index)
             columns.insert(0, col_index)
             col = col_index
@@ -795,7 +961,7 @@ class DynamicTable(Container):
                                      + str(len(self)))
         desc = getargs('description', kwargs)
         name = getargs('name', kwargs)
-        return DynamicTableRegion(name, region, desc, self)
+        return DynamicTableRegion(name=name, data=region, description=desc, table=self)
 
     def __getitem__(self, key):
         ret = self.get(key)
@@ -939,7 +1105,7 @@ class DynamicTable(Container):
                 df_input[k] = [coldata[k]]
             else:  # scalar, don't wrap
                 df_input[k] = coldata[k]
-        ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index))
+        ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index, dtype=np.int64))
         ret.name = self.name
         return ret
 
@@ -964,7 +1130,7 @@ class DynamicTable(Container):
                 df_input[k] = [coldata[k].iloc[[i]] for i in range(len(coldata[k]))]
             else:
                 df_input[k] = coldata[k]
-        ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index))
+        ret = pd.DataFrame(df_input, index=pd.Index(name=self.id.name, data=id_index, dtype=np.int64))
         ret.name = self.name
         return ret
 
@@ -1059,6 +1225,35 @@ class DynamicTable(Container):
         sel = self.__get_selection_as_dict(arg, df=True, **kwargs)
         ret = self.__get_selection_as_df(sel)
         return ret
+
+    def _repr_html_(self) -> str:
+        """Generates the HTML representation of the object."""
+        header_text = self.name if self.name == self.__class__.__name__ else f"{self.name} ({self.__class__.__name__})"
+        html_repr = self.css_style + self.js_script
+        html_repr += "<div class='container-wrap'>"
+        html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
+        html_repr += self.generate_html_repr()
+        html_repr += "</div>"
+        return html_repr
+
+    def generate_html_repr(self, level: int = 0, access_code: str = "", nrows: int = 4):
+        out = ""
+        for key, value in self.fields.items():
+            if key not in ("id", "colnames", "columns"):
+                out += self._generate_field_html(key, value, level, access_code)
+
+        inside = f"{self[:min(nrows, len(self))].to_html()}"
+
+        if len(self) == nrows + 1:
+            inside += "<p>... and 1 more row.</p>"
+        elif len(self) > nrows + 1:
+            inside += f"<p>... and {len(self) - nrows} more rows.</p>"
+
+        out += (
+            f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
+            f'class="container-fields field-key" title="{access_code}"><b>table</b></summary>{inside}</details>'
+        )
+        return out
 
     @classmethod
     @docval(
@@ -1170,10 +1365,11 @@ class DynamicTableRegion(VectorData):
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors'},
             {'name': 'description', 'type': str, 'doc': 'a description of what this region represents'},
             {'name': 'table', 'type': DynamicTable,
-             'doc': 'the DynamicTable this region applies to', 'default': None})
+             'doc': 'the DynamicTable this region applies to', 'default': None},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         t = popargs('table', kwargs)
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         self.table = t
 
     @property
@@ -1324,6 +1520,26 @@ class DynamicTableRegion(VectorData):
                                                               id(self.table))
         return template
 
+    def _validate_on_set_parent(self):
+        # when this DynamicTableRegion is added to a parent, check:
+        # 1) if the table was read from a written file, no need to validate further
+        p = self.table
+        while p is not None:
+            if p.container_source is not None:
+                return super()._validate_on_set_parent()
+            p = p.parent
+
+        # 2) if none of the ancestors are ancestors of the linked-to table, then when this is written, the table
+        # field will point to a table that is not in the file
+        table_ancestor_ids = [id(x) for x in self.table.get_ancestors()]
+        self_ancestor_ids = [id(x) for x in self.get_ancestors()]
+
+        if set(table_ancestor_ids).isdisjoint(self_ancestor_ids):
+            msg = (f"The linked table for DynamicTableRegion '{self.name}' does not share an ancestor with the "
+                   "DynamicTableRegion.")
+            warn(msg, stacklevel=2)
+        return super()._validate_on_set_parent()
+
 
 def _uint_precision(elements):
     """ Calculate the uint precision needed to encode a set of elements """
@@ -1351,12 +1567,13 @@ class EnumData(VectorData):
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'integers that index into elements for the value of each row', 'default': list()},
             {'name': 'elements', 'type': ('array_data', 'data', VectorData), 'default': list(),
-             'doc': 'lookup values for each integer in ``data``'})
+             'doc': 'lookup values for each integer in ``data``'},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         elements = popargs('elements', kwargs)
         super().__init__(**kwargs)
         if not isinstance(elements, VectorData):
-            elements = VectorData('%s_elements' % self.name, data=elements,
+            elements = VectorData(name='%s_elements' % self.name, data=elements,
                                   description='fixed set of elements referenced by %s' % self.name)
         self.elements = elements
         if len(self.elements) > 0:

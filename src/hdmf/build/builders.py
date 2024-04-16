@@ -4,7 +4,7 @@ import itertools as _itertools
 import posixpath as _posixpath
 from abc import ABCMeta
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import datetime, date
 
 import numpy as np
 from h5py import RegionReference
@@ -16,7 +16,8 @@ class Builder(dict, metaclass=ABCMeta):
     """Base interface class for all Builder types"""
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the group'},
-            {'name': 'parent', 'type': 'Builder', 'doc': 'the parent builder of this Builder', 'default': None},
+            {'name': 'parent', 'type': 'hdmf.build.builders.Builder', 'doc': 'the parent builder of this Builder',
+             'default': None},
             {'name': 'source', 'type': str,
              'doc': 'the source of the data in this builder e.g. file name', 'default': None})
     def __init__(self, **kwargs):
@@ -83,7 +84,8 @@ class BaseBuilder(Builder, metaclass=ABCMeta):
     @docval({'name': 'name', 'type': str, 'doc': 'The name of the builder.'},
             {'name': 'attributes', 'type': dict, 'doc': 'A dictionary of attributes to create in this builder.',
              'default': dict()},
-            {'name': 'parent', 'type': 'GroupBuilder', 'doc': 'The parent builder of this builder.', 'default': None},
+            {'name': 'parent', 'type': 'hdmf.build.builders.GroupBuilder', 'doc': 'The parent builder of this builder.',
+             'default': None},
             {'name': 'source', 'type': str,
              'doc': 'The source of the data represented in this builder', 'default': None})
     def __init__(self, **kwargs):
@@ -138,7 +140,8 @@ class GroupBuilder(BaseBuilder):
              'doc': ('A dictionary or list of links to add to this group. If a dict is provided, only the '
                      'values are used.'),
              'default': dict()},
-            {'name': 'parent', 'type': 'GroupBuilder', 'doc': 'The parent builder of this builder.', 'default': None},
+            {'name': 'parent', 'type': 'hdmf.build.builders.GroupBuilder', 'doc': 'The parent builder of this builder.',
+             'default': None},
             {'name': 'source', 'type': str,
              'doc': 'The source of the data represented in this builder.', 'default': None})
     def __init__(self, **kwargs):
@@ -217,19 +220,22 @@ class GroupBuilder(BaseBuilder):
             raise ValueError("'%s' already exists in %s.%s, cannot set in %s."
                              % (name, self.name, self.obj_type[name], obj_type))
 
-    @docval({'name': 'builder', 'type': 'GroupBuilder', 'doc': 'The GroupBuilder to add to this group.'})
+    @docval({'name': 'builder', 'type': 'hdmf.build.builders.GroupBuilder',
+             'doc': 'The GroupBuilder to add to this group.'})
     def set_group(self, **kwargs):
         """Add a subgroup to this group."""
         builder = getargs('builder', kwargs)
         self.__set_builder(builder, GroupBuilder.__group)
 
-    @docval({'name': 'builder', 'type': 'DatasetBuilder', 'doc': 'The DatasetBuilder to add to this group.'})
+    @docval({'name': 'builder', 'type': 'hdmf.build.builders.DatasetBuilder',
+             'doc': 'The DatasetBuilder to add to this group.'})
     def set_dataset(self, **kwargs):
         """Add a dataset to this group."""
         builder = getargs('builder', kwargs)
         self.__set_builder(builder, GroupBuilder.__dataset)
 
-    @docval({'name': 'builder', 'type': 'LinkBuilder', 'doc': 'The LinkBuilder to add to this group.'})
+    @docval({'name': 'builder', 'type': 'hdmf.build.builders.LinkBuilder',
+             'doc': 'The LinkBuilder to add to this group.'})
     def set_link(self, **kwargs):
         """Add a link to this group."""
         builder = getargs('builder', kwargs)
@@ -322,7 +328,7 @@ class DatasetBuilder(BaseBuilder):
 
     @docval({'name': 'name', 'type': str, 'doc': 'The name of the dataset.'},
             {'name': 'data',
-             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', 'RegionBuilder', Iterable, datetime),
+             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', 'RegionBuilder', Iterable, datetime, date),
              'doc': 'The data in this dataset.', 'default': None},
             {'name': 'dtype', 'type': (type, np.dtype, str, list),
              'doc': 'The datatype of this dataset.', 'default': None},

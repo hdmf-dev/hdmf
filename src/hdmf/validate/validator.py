@@ -13,7 +13,7 @@ from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
 from ..spec import SpecNamespace
 from ..spec.spec import BaseStorageSpec, DtypeHelper
-from ..utils import docval, getargs, call_docval_func, pystr, get_data_shape
+from ..utils import docval, getargs, pystr, get_data_shape
 from ..query import ReferenceResolver
 
 
@@ -42,7 +42,7 @@ for dt, dt_syn in __synonyms.items():
 __allowable['numeric'] = set(chain.from_iterable(__allowable[k] for k in __allowable if 'int' in k or 'float' in k))
 
 
-def check_type(expected, received):
+def check_type(expected, received, string_format=None):
     '''
     *expected* should come from the spec
     *received* should come from the data
@@ -52,6 +52,12 @@ def check_type(expected, received):
             raise ValueError('compound type shorter than expected')
         for i, exp in enumerate(DtypeHelper.simplify_cpd_type(expected)):
             rec = received[i]
+            if exp == "isodatetime":  # short circuit for isodatetime
+                sub_string_format = string_format[i]
+                return (
+                    rec in __allowable[exp] or
+                    rec in ("utf", "ascii") and sub_string_format == "isodatetime"
+                )
             if rec not in __allowable[exp]:
                 return False
         return True
@@ -71,6 +77,11 @@ def check_type(expected, received):
                 received = received.name
         elif isinstance(received, type):
             received = received.__name__
+        if expected == "isodatetime":  # short circuit for isodatetime
+            return (
+                received in __allowable[expected] or
+                (received in ("utf", "ascii") and string_format == "isodatetime")
+            )
         if isinstance(expected, RefSpec):
             expected = expected.reftype
         elif isinstance(expected, type):
@@ -79,56 +90,93 @@ def check_type(expected, received):
 
 
 def get_iso8601_regex():
-    isodate_re = (r'^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):'
-                  r'([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?$')
+    isodate_re = (
+        r'^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])'  # date
+        r'(T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?)?$'  # time
+    )
     return re.compile(isodate_re)
 
 
 _iso_re = get_iso8601_regex()
 
 
-def _check_isodatetime(s, default=None):
+def get_string_format(data):
+    """Return the string format of the given data. Possible outputs are "isodatetime" and None.
+    """
+    assert isinstance(data, (str, bytes))
     try:
-        if _iso_re.match(pystr(s)) is not None:
+        if _iso_re.match(pystr(data)) is not None:
             return 'isodatetime'
     except Exception:
         pass
-    return default
+    return None
 
 
 class EmptyArrayError(Exception):
     pass
 
 
-def get_type(data):
+def get_type(data, builder_dtype=None):
+    """Return a tuple of (the string representation of the type, the format of the string data) for the given data."""
+    # String data
     if isinstance(data, str):
-        return _check_isodatetime(data, 'utf')
+        return 'utf', get_string_format(data)
+    # Bytes data
     elif isinstance(data, bytes):
-        return _check_isodatetime(data, 'ascii')
+        return 'ascii', get_string_format(data)
+    # RegionBuilder data
     elif isinstance(data, RegionBuilder):
-        return 'region'
+        return 'region', None
+    # ReferenceBuilder data
     elif isinstance(data, ReferenceBuilder):
-        return 'object'
+        return 'object', None
+    # ReferenceResolver data
     elif isinstance(data, ReferenceResolver):
-        return data.dtype
+        return data.dtype, None
+    # Numpy nd-array data
     elif isinstance(data, np.ndarray):
-        if data.size == 0:
+        if data.size > 0:
+            return get_type(data[0], builder_dtype)
+        else:
             raise EmptyArrayError()
-        return get_type(data[0])
+    # Numpy bool data
     elif isinstance(data, np.bool_):
-        return 'bool'
+        return 'bool', None
     if not hasattr(data, '__len__'):
-        return type(data).__name__
+        return type(data).__name__, None
+    # Case for h5py.Dataset and other I/O specific array types
     else:
+        # Compound dtype
+        if builder_dtype and isinstance(builder_dtype, list):
+            dtypes = []
+            string_formats = []
+            for i in range(len(builder_dtype)):
+                dtype, string_format = get_type(data[0][i])
+                dtypes.append(dtype)
+                string_formats.append(string_format)
+            return dtypes, string_formats
+        # Object has 'dtype' attribute, e.g., an h5py.Dataset
         if hasattr(data, 'dtype'):
-            if isinstance(data.dtype, list):
-                return [get_type(data[0][i]) for i in range(len(data.dtype))]
             if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
-                return get_type(data[0])
-            return data.dtype
-        if len(data) == 0:
+                # Try to determine dtype from the first array element
+                if len(data) > 0:
+                    return get_type(data[0], builder_dtype)
+                # Empty array
+                else:
+                    # Empty string array
+                    if data.dtype.metadata["vlen"] == str:
+                        return "utf", None
+                    # Undetermined variable length data type.
+                    else:                        # pragma: no cover
+                        raise EmptyArrayError()  # pragma: no cover
+            # Standard data type (i.e., not compound or vlen)
+            else:
+                return data.dtype, None
+        # If all else has failed, try to determine the datatype from the first element of the array
+        if len(data) > 0:
+            return get_type(data[0], builder_dtype)
+        else:
             raise EmptyArrayError()
-        return get_type(data[0])
 
 
 def check_shape(expected, received):
@@ -291,7 +339,7 @@ class AttributeValidator(Validator):
     @docval({'name': 'spec', 'type': AttributeSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
 
     @docval({'name': 'value', 'type': None, 'doc': 'the value to validate'},
             returns='a list of Errors', rtype=list)
@@ -308,7 +356,7 @@ class AttributeValidator(Validator):
                 if not isinstance(value, BaseBuilder):
                     expected = '%s reference' % spec.dtype.reftype
                     try:
-                        value_type = get_type(value)
+                        value_type, _ = get_type(value)
                         ret.append(DtypeError(self.get_spec_loc(spec), expected, value_type))
                     except EmptyArrayError:
                         # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
@@ -321,8 +369,8 @@ class AttributeValidator(Validator):
                         ret.append(IncorrectDataType(self.get_spec_loc(spec), spec.dtype.target_type, data_type))
             else:
                 try:
-                    dtype = get_type(value)
-                    if not check_type(spec.dtype, dtype):
+                    dtype, string_format = get_type(value)
+                    if not check_type(spec.dtype, dtype, string_format):
                         ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
                 except EmptyArrayError:
                     # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
@@ -342,7 +390,7 @@ class BaseStorageValidator(Validator):
     @docval({'name': 'spec', 'type': BaseStorageSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         self.__attribute_validators = dict()
         for attr in self.spec.attributes:
             self.__attribute_validators[attr.name] = AttributeValidator(attr, self.vmap)
@@ -373,7 +421,7 @@ class DatasetValidator(BaseStorageValidator):
     @docval({'name': 'spec', 'type': DatasetSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
 
     @docval({"name": "builder", "type": DatasetBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
@@ -383,14 +431,17 @@ class DatasetValidator(BaseStorageValidator):
         data = builder.data
         if self.spec.dtype is not None:
             try:
-                dtype = get_type(data)
-                if not check_type(self.spec.dtype, dtype):
+                dtype, string_format = get_type(data, builder.dtype)
+                if not check_type(self.spec.dtype, dtype, string_format):
                     ret.append(DtypeError(self.get_spec_loc(self.spec), self.spec.dtype, dtype,
                                           location=self.get_builder_loc(builder)))
             except EmptyArrayError:
                 # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                 pass
-        shape = get_data_shape(data)
+        if isinstance(builder.dtype, list):
+            shape = (len(builder.data), )  # only 1D datasets with compound types are supported
+        else:
+            shape = get_data_shape(data)
         if not check_shape(self.spec.shape, shape):
             if shape is None:
                 ret.append(ExpectedArrayError(self.get_spec_loc(self.spec), self.spec.shape, str(data),
@@ -413,7 +464,7 @@ class GroupValidator(BaseStorageValidator):
     @docval({'name': 'spec', 'type': GroupSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
 
     @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},  # noqa: C901
             returns='a list of Errors', rtype=list)
@@ -494,7 +545,8 @@ class GroupValidator(BaseStorageValidator):
                 yield self.__construct_illegal_link_error(child_spec, parent_builder)
                 return  # do not validate illegally linked objects
             child_builder = child_builder.builder
-        for child_validator in self.__get_child_validators(child_spec):
+        child_builder_data_type = child_builder.attributes.get(self.spec.type_key())
+        for child_validator in self.__get_child_validators(child_spec, child_builder_data_type):
             yield from child_validator.validate(child_builder)
 
     def __construct_illegal_link_error(self, child_spec, parent_builder):
@@ -506,7 +558,7 @@ class GroupValidator(BaseStorageValidator):
     def __cannot_be_link(spec):
         return not isinstance(spec, LinkSpec) and not spec.linkable
 
-    def __get_child_validators(self, spec):
+    def __get_child_validators(self, spec, builder_data_type):
         """Returns the appropriate list of validators for a child spec
 
         Due to the fact that child specs can both inherit a data type via data_type_inc
@@ -521,9 +573,21 @@ class GroupValidator(BaseStorageValidator):
         returned. If the spec is a LinkSpec, no additional Validator is returned
         because the LinkSpec cannot add or modify fields and the target_type will be
         validated by the Validator returned from the ValidatorMap.
+
+        For example, if the spec is:
+        {'doc': 'Acquired, raw data.', 'quantity': '*', 'data_type_inc': 'NWBDataInterface'}
+        then the returned validators will be:
+        - a validator for the spec for the builder data type
+        - a validator for the spec for data_type_def: NWBDataInterface
+        - a validator for the above spec which might have extended properties
+          on top of data_type_def: NWBDataInterface
         """
-        if _resolve_data_type(spec) is not None:
-            yield self.vmap.get_validator(_resolve_data_type(spec))
+        if builder_data_type is not None:
+            yield self.vmap.get_validator(builder_data_type)
+
+        spec_data_type = _resolve_data_type(spec)
+        if spec_data_type is not None:
+            yield self.vmap.get_validator(spec_data_type)
 
         if isinstance(spec, GroupSpec):
             yield GroupValidator(spec, self.vmap)
@@ -584,7 +648,7 @@ class SpecMatcher:
 
     @property
     def spec_matches(self):
-        """Returns a list of tuples of: (spec, assigned builders)"""
+        """Returns a list of tuples of (spec, assigned builders)"""
         return [(sm.spec, sm.builders) for sm in self._spec_matches]
 
     def assign_to_specs(self, builders):

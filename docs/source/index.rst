@@ -3,7 +3,7 @@ The Hierarchical Data Modeling Framework
 
 HDMF is a Python package for working with standardizing, reading, and writing hierarchical object data.
 
-HDMF is a by-product of the `Neurodata Without Borders (NWB) <http://www.nwb.org/>`_ project.
+HDMF is a by-product of the `Neurodata Without Borders (NWB) <https://www.nwb.org/>`_ project.
 The goal of NWB was to enable collaborative science within the neurophysiology and systems neuroscience communities
 through data standardization. The team of neuroscientists and software developers involved with NWB
 recognize that adoption of a unified data format is an important step toward breaking down the barriers to
@@ -45,6 +45,7 @@ If you use HDMF in your research, please use the following citation:
    building_api
    export
    validation
+   spec_language_support
 
 .. toctree::
    :hidden:

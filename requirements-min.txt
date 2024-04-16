@@ -1,8 +1,15 @@
 # minimum versions of package dependencies for installing HDMF
 h5py==2.10  # support for selection of datasets with list of indices added in 2.10
-jsonschema==2.6.0
-numpy==1.16
-pandas==1.0.5
+importlib-resources==5.12.0; python_version < "3.9"  # TODO: remove when when minimum python version is 3.9
+jsonschema==3.2.0
+numpy==1.18
+pandas==1.0.5  # when this is changed to >=1.5.0, see TODO items referenced in #762
 ruamel.yaml==0.16
-scipy==1.1
-setuptools
+scipy==1.4
+# this file is currently used to test only python~=3.8 so these dependencies are not needed
+# linkml-runtime==1.5.5; python_version >= "3.9"
+# schemasheets==0.1.23; python_version >= "3.9"
+# oaklib==0.5.12; python_version >= "3.9"
+# pyyaml==6.0.1; python_version >= "3.9"
+tqdm==4.41.0
+zarr==2.12.0

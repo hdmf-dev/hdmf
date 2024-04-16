@@ -4,66 +4,77 @@
 Installing HDMF for Developers
 ------------------------------
 
+
 Set up a virtual environment
 ----------------------------
 
 For development, we recommend installing HDMF in a virtual environment in editable mode. You can use
-the virtualenv_ tool to create a new virtual environment. Or you can use the
+the venv_ tool that comes packaged with Python to create a new virtual environment. Or you can use the
 `conda package and environment management system`_ for managing virtual environments.
 
-.. _virtualenv: https://virtualenv.pypa.io/en/stable/
+.. _venv: https://docs.python.org/3/library/venv.html
 .. _conda package and environment management system: https://conda.io/projects/conda/en/latest/index.html
 
-Option 1: Using virtualenv
-^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-First, install the latest version of the ``virtualenv`` tool and use it to create a new virtual environment. This
-virtual environment will be stored in the ``venv`` directory in the current directory.
+Option 1: Using venv
+^^^^^^^^^^^^^^^^^^^^
+
+First, create a new virtual environment using the ``venv`` tool. This
+virtual environment will be stored in a new directory called ``"hdmf-env"`` in the current directory.
 
 .. code:: bash
 
-    pip install -U virtualenv
-    virtualenv venv
+    venv hdmf-env
 
 On macOS or Linux, run the following to activate your new virtual environment:
 
 .. code:: bash
 
-    source venv/bin/activate
+    source hdmf-env/bin/activate
 
 On Windows, run the following to activate your new virtual environment:
 
 .. code:: batch
 
-    venv\Scripts\activate
+    hdmf-env\Scripts\activate
 
 This virtual environment is a space where you can install Python packages that are isolated from other virtual
 environments. This is especially useful when working on multiple Python projects that have different package
 requirements and for testing Python code with different sets of installed packages or versions of Python.
 
 Activate your newly created virtual environment using the above command whenever you want to work on HDMF. You can also
-deactivate it using the ``deactivate`` command to return to the base environment.
+deactivate it using the ``deactivate`` command to return to the base environment. And you can delete the virtual
+environment by deleting the directory that was created.
+
 
 Option 2: Using conda
 ^^^^^^^^^^^^^^^^^^^^^
 
+The `conda package and environment management system`_ is an alternate way of managing virtual environments.
 First, install Anaconda_ to install the ``conda`` tool. Then create and
-activate a new virtual environment called "venv" with Python 3.8 installed.
+activate a new virtual environment called ``"hdmf-env"`` with Python 3.12 installed.
 
 .. code:: bash
 
-    conda create --name venv python=3.8
-    conda activate venv
+    conda create --name hdmf-env python=3.12
+    conda activate hdmf-env
 
-Similar to a virtual environment created with ``virtualenv``, a conda environment
+Similar to a virtual environment created with ``venv``, a conda environment
 is a space where you can install Python packages that are isolated from other virtual
 environments. In general, you should use ``conda install`` instead of ``pip install`` to install packages
 in a conda environment.
 
 Activate your newly created virtual environment using the above command whenever you want to work on HDMF. You can also
-deactivate it using the ``conda deactivate`` command to return to the base environment.
+deactivate it using the ``conda deactivate`` command to return to the base environment. And you can delete the virtual
+environment by using the ``conda remove --name hdmf-venv --all`` command.
 
-.. _Anaconda: https://www.anaconda.com/distribution
+.. note::
+
+    For advanced users, we recommend using Mambaforge_, a faster version of the conda package manager
+    that includes conda-forge as a default channel.
+
+.. _Anaconda: https://www.anaconda.com/products/distribution
+.. _Mambaforge: https://github.com/conda-forge/miniforge
 
 Install from GitHub
 -------------------
@@ -83,37 +94,19 @@ package requirements using the pip_ Python package manager, and install HDMF in 
 .. note::
 
    When using ``conda``, you may use ``pip install`` to install dependencies as shown above; however, it is generally
-   recommended that dependencies should be installed via ``conda install``, e.g.,
+   recommended that dependencies should be installed via ``conda install``.
 
-   .. code:: bash
-
-      conda install --file=requirements.txt --file=requirements-dev.txt --file=requirements-doc.txt \
-      --file=requirements-opt.txt
 
 Run tests
 ---------
 
-You can run the full test suite with the following command:
-
-.. code:: bash
-
-    python test.py
-
-You could also run the full test suite by installing and running the ``pytest`` tool,
-a popular testing tool that provides more options for configuring test runs.
-
-First, install ``pytest``:
-
-.. code:: bash
-
-    pip install pytest
-
-Then run the full test suite:
+You can run the full test suite by running:
 
 .. code:: bash
 
     pytest
 
+This will run all the tests and compute the test coverage. The coverage report can be found in ``/htmlcov``.
 You can also run a specific test module or class, or you can configure ``pytest`` to start the
 Python debugger (PDB) prompt on an error, e.g.,
 
@@ -125,16 +118,23 @@ Python debugger (PDB) prompt on an error, e.g.,
     pytest --pdb tests/unit/test_container.py                             # start pdb on error
 
 
-Finally, you can run tests across multiple Python versions using the tox_ automated testing tool. Running ``tox`` will
-create a virtual environment, install dependencies, and run the test suite for Python 3.7, 3.8, 3.9, and 3.10.
+You can run tests across multiple Python versions using the tox_ automated testing tool. Running ``tox`` will
+create a virtual environment, install dependencies, and run the test suite for different versions of Python.
 This can take some time to run.
 
 .. _pytest: https://docs.pytest.org/
-.. _tox: https://tox.readthedocs.io/en/latest/
+.. _tox: https://tox.wiki/en/latest/
 
 .. code:: bash
 
     tox
+
+You can also test that the Sphinx Gallery files run without warnings or errors by running:
+
+.. code:: bash
+
+    python test_gallery.py
+
 
 Install latest pre-release
 --------------------------

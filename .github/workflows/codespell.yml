@@ -1,0 +1,14 @@
+name: Codespell
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  codespell:
+    name: Check for spelling errors
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Codespell
+        uses: codespell-project/actions-codespell@v2

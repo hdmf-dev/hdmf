@@ -11,10 +11,10 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
 import os
-import sphinx_rtd_theme
+import sys
 
+import sphinx_rtd_theme
 
 # -- Support building doc without install --------------------------------------
 
@@ -30,16 +30,15 @@ project_root = os.path.dirname(os.path.dirname(cwd))
 # Insert the project root dir as the first element in the PYTHONPATH.
 # This lets us ensure that the source package is imported, and that its
 # version is used.
-sys.path.insert(0, os.path.join(project_root, 'src'))
+sys.path.insert(0, os.path.join(project_root, "src"))
 
-from hdmf._version import get_versions
-
+import hdmf
 
 # -- Autodoc configuration -----------------------------------------------------
 
-autoclass_content = 'both'
+autoclass_content = "both"
 autodoc_docstring_signature = True
-autodoc_member_order = 'bysource'
+autodoc_member_order = "bysource"
 
 # -- General configuration -----------------------------------------------------
 
@@ -49,34 +48,36 @@ autodoc_member_order = 'bysource'
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.intersphinx',
-    'sphinx_gallery.gen_gallery',
-    'sphinx_copybutton'
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.intersphinx",
+    "sphinx_gallery.gen_gallery",
+    "sphinx_copybutton",
+    "sphinxcontrib.jquery",  # can be removed as soon as the theme no longer depends on jQuery
 ]
 
 from sphinx_gallery.sorting import ExplicitOrder
 
 sphinx_gallery_conf = {
     # path to your examples scripts
-    'examples_dirs': ['../gallery'],
+    "examples_dirs": ["../gallery"],
     # path where to save gallery generated examples
-    'gallery_dirs': ['tutorials'],
+    "gallery_dirs": ["tutorials"],
     # 'subsection_order': ExplicitOrder(['../gallery/section1', '../gallery/section2']),
-    'backreferences_dir': 'gen_modules/backreferences',
-    'min_reported_time': 5,
-    'remove_config_comments': True
+    "backreferences_dir": "gen_modules/backreferences",
+    "min_reported_time": 5,
+    "remove_config_comments": True,
 }
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3.10', None),
-    'numpy': ('https://numpy.org/doc/stable/', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
-    'matplotlib': ('https://matplotlib.org', None),
-    'h5py': ('https://docs.h5py.org/en/latest/', None),
-    'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
+    "python": ("https://docs.python.org/3.12", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
+    "h5py": ("https://docs.h5py.org/en/latest/", None),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
+    "zarr": ("https://zarr.readthedocs.io/en/stable/", None),
 }
 
 # Enable sphinx.ext.autosummary to generate automatic summary for pynwb API docs
@@ -84,35 +85,43 @@ autosummary_generate = True
 
 # these links cannot be checked in github actions
 linkcheck_ignore = [
-    'https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key',
-    'https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request',
+    "https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key",
+    "https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request",
 ]
 
+nitpicky = True
+nitpick_ignore = [('py:class', 'Intracomm'),
+                  ('py:class', 'h5py.RegionReference'),
+                  ('py:class', 'h5py._hl.dataset.Dataset'),
+                  ('py:class', 'function'),
+                  ('py:class', 'unittest.case.TestCase'),
+                  ]
+
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # The suffix of source filenames.
-source_suffix = '.rst'
+source_suffix = ".rst"
 
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = 'source/index'
-master_doc = 'index'
+master_doc = "source/index"
+master_doc = "index"
 
 # General information about the project.
-project = u'HDMF'
-copyright = u'2017-2022, Hierarchical Data Modeling Framework'
+project = "HDMF"
+copyright = "2017-2024, Hierarchical Data Modeling Framework"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = '{}'.format(get_versions()['version'])
+version = hdmf.__version__
 # The full version, including alpha/beta/rc tags.
-release = '{}'.format(get_versions()['version'])
+release = hdmf.__version__
 
 # The language for content autogenerated by Sphinx. Refer to documentation
 # for a list of supported languages.
@@ -126,7 +135,7 @@ release = '{}'.format(get_versions()['version'])
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build', 'test.py']
+exclude_patterns = ["_build", "test.py"]
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 # default_role = None
@@ -143,7 +152,7 @@ add_function_parentheses = False
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = "sphinx"
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
@@ -176,17 +185,17 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
 # html_logo = None
-html_logo = 'hdmf_logo.png'
+html_logo = "hdmf_logo.png"
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-html_favicon = 'hdmf_logo-180x180.png'
+html_favicon = "hdmf_logo-180x180.png"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -230,7 +239,7 @@ html_static_path = ['_static']
 # html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'sampledoc'
+htmlhelp_basename = "sampledoc"
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -238,10 +247,8 @@ htmlhelp_basename = 'sampledoc'
 latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     # 'papersize': 'letterpaper',
-
     # The font size ('10pt', '11pt' or '12pt').
     # 'pointsize': '10pt',
-
     # Additional stuff for the LaTeX preamble.
     # 'print()reamble': '',
 }
@@ -255,7 +262,7 @@ latex_elements = {
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-latex_logo = 'hdmf_logo.pdf'
+latex_logo = "hdmf_logo.pdf"
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.
@@ -314,20 +321,24 @@ latex_logo = 'hdmf_logo.pdf'
 # see http://www.sphinx-doc.org/en/master/extdev/appapi.html
 #
 
+
 def run_apidoc(_):
-    from sphinx.ext.apidoc import main as apidoc_main
     import os
     import sys
+
+    from sphinx.ext.apidoc import main as apidoc_main
+
     out_dir = os.path.dirname(__file__)
-    src_dir = os.path.join(out_dir, '../../src')
+    src_dir = os.path.join(out_dir, "../../src")
     sys.path.append(src_dir)
-    apidoc_main(['-f', '-e', '--no-toc', '-o', out_dir, src_dir])
+    apidoc_main(["-f", "-e", "--no-toc", "-o", out_dir, src_dir])
 
 
 from abc import abstractproperty
 
+
 def skip(app, what, name, obj, skip, options):
-    if isinstance(obj, abstractproperty) or getattr(obj, '__isabstractmethod__', False):
+    if isinstance(obj, abstractproperty) or getattr(obj, "__isabstractmethod__", False):
         return False
     elif name == "__getitem__":
         return False
@@ -335,6 +346,6 @@ def skip(app, what, name, obj, skip, options):
 
 
 def setup(app):
-    app.connect('builder-inited', run_apidoc)
+    app.connect("builder-inited", run_apidoc)
     app.add_css_file("theme_overrides.css")
     app.connect("autodoc-skip-member", skip)

@@ -8,7 +8,7 @@ import pandas as pd
 
 from . import register_class
 from .table import DynamicTable
-from ..utils import docval, getargs, call_docval_func, popargs, get_docval
+from ..utils import docval, getargs, popargs, get_docval, AllowPositional
 
 
 @register_class('AlignedDynamicTable')
@@ -29,11 +29,12 @@ class AlignedDynamicTable(DynamicTable):
 
     @docval(*get_docval(DynamicTable.__init__),
             {'name': 'category_tables', 'type': list,
-             'doc': 'List of DynamicTables to be added to the container. NOTE: Only regular '
+             'doc': 'List of DynamicTables to be added to the container. NOTE - Only regular '
                     'DynamicTables are allowed. Using AlignedDynamicTable as a category for '
                     'AlignedDynamicTable is currently not supported.', 'default': None},
             {'name': 'categories', 'type': 'array_data',
-             'doc': 'List of names with the ordering of category tables', 'default': None})
+             'doc': 'List of names with the ordering of category tables', 'default': None},
+            allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):  # noqa: C901
         in_category_tables = popargs('category_tables', kwargs)
         in_categories = popargs('categories', kwargs)
@@ -45,7 +46,7 @@ class AlignedDynamicTable(DynamicTable):
                 if isinstance(v, AlignedDynamicTable):
                     raise ValueError("Category table with index %i is an AlignedDynamicTable. "
                                      "Nesting of AlignedDynamicTable is currently not supported." % i)
-        # set in_categories from the in_category_tables if it is empy
+        # set in_categories from the in_category_tables if it is empty
         if in_categories is None and in_category_tables is not None:
             in_categories = [tab.name for tab in in_category_tables]
         # check that if categories is given that we also have category_tables
@@ -57,7 +58,7 @@ class AlignedDynamicTable(DynamicTable):
                 raise ValueError("%s category_tables given but %s categories specified" %
                                  (len(in_category_tables), len(in_categories)))
         # Initialize the main dynamic table
-        call_docval_func(super().__init__, kwargs)
+        super().__init__(**kwargs)
         # Create and set all sub-categories
         dts = OrderedDict()
         # Add the custom categories given as inputs
@@ -171,7 +172,7 @@ class AlignedDynamicTable(DynamicTable):
         category_name = popargs('category', kwargs)
         if category_name is None:
             # Add the column to our main table
-            call_docval_func(super().add_column, kwargs)
+            super().add_column(**kwargs)
         else:
             # Add the column to a sub-category table
             try:
@@ -207,7 +208,7 @@ class AlignedDynamicTable(DynamicTable):
         # Add the data to our main dynamic table
         data['id'] = row_id
         data['enforce_unique_id'] = enforce_unique_id
-        call_docval_func(super().add_row, data)
+        super().add_row(**data)
 
         # Add the data to all out dynamic table categories
         for category, values in category_data.items():

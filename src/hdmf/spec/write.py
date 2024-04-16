@@ -124,7 +124,7 @@ class NamespaceBuilder:
         ns_cls = popargs('namespace_cls', kwargs)
         if kwargs['version'] is None:
             # version is required on write as of HDMF 1.5. this check should prevent the writing of namespace files
-            # without a verison
+            # without a version
             raise ValueError("Namespace '%s' missing key 'version'. Please specify a version for the extension."
                              % kwargs['name'])
         self.__ns_args = copy.deepcopy(kwargs)
@@ -245,14 +245,14 @@ def export_spec(ns_builder, new_data_types, output_dir):
     the given data type specs.
 
     Args:
-        ns_builder - NamespaceBuilder instance used to build the
+        ns_builder: NamespaceBuilder instance used to build the
                      namespace and extension
-        new_data_types - Iterable of specs that represent new data types
+        new_data_types: Iterable of specs that represent new data types
                          to be added
     """
 
     if len(new_data_types) == 0:
-        warnings.warn('No data types specified. Exiting.')
+        warnings.warn('No data types specified. Exiting.', stacklevel=2)
         return
 
     ns_path = ns_builder.name + '.namespace.yaml'

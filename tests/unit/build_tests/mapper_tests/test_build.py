@@ -1,15 +1,39 @@
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
-from hdmf import Container, Data
+from hdmf import Container, Data, TermSet, TermSetWrapper
+from hdmf.common import VectorData, get_type_map
 from hdmf.build import ObjectMapper, BuildManager, TypeMap, GroupBuilder, DatasetBuilder
 from hdmf.build.warnings import DtypeConversionWarning
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, Spec
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
-from tests.unit.utils import CORE_NAMESPACE
+from tests.unit.helpers.utils import CORE_NAMESPACE
 
+try:
+    import linkml_runtime  # noqa: F401
+    LINKML_INSTALLED = True
+except ImportError:
+    LINKML_INSTALLED = False
+
+
+class TestUnwrapTermSetWrapperBuild(TestCase):
+    """
+    Test the unwrapping of TermSetWrapper on regular datasets within build.
+    """
+    def setUp(self):
+        if not LINKML_INSTALLED:
+            self.skipTest("optional LinkML module is not installed")
+
+    def test_unwrap(self):
+        manager = BuildManager(get_type_map())
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        build = manager.build(VectorData(name='test_data',
+                                         description='description',
+                                         data=TermSetWrapper(value=['Homo sapiens'], termset= terms)))
+
+        self.assertEqual(build.data, ['Homo sapiens'])
 
 # TODO: test build of extended group/dataset that modifies an attribute dtype (commented out below), shape, value, etc.
 # by restriction. also check that attributes cannot be deleted or scope expanded.

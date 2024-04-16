@@ -8,10 +8,10 @@ from hdmf.build.classgenerator import ClassGenerator, MCIClassGenerator
 from hdmf.container import Container, Data, MultiContainerInterface, AbstractContainer
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec
 from hdmf.testing import TestCase
-from hdmf.utils import get_docval
+from hdmf.utils import get_docval, docval
 
 from .test_io_map import Bar
-from tests.unit.utils import CORE_NAMESPACE, create_test_type_map, create_load_namespace_yaml
+from tests.unit.helpers.utils import CORE_NAMESPACE, create_test_type_map, create_load_namespace_yaml
 
 
 class TestClassGenerator(TestCase):
@@ -149,7 +149,7 @@ class TestDynamicContainer(TestCase):
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
         # TODO: test that constructor works!
-        inst = cls('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+        inst = cls(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0)
         self.assertEqual(inst.name, 'My Baz')
         self.assertEqual(inst.data, [1, 2, 3, 4])
         self.assertEqual(inst.attr1, 'string attribute')
@@ -168,9 +168,9 @@ class TestDynamicContainer(TestCase):
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
 
         with self.assertRaises(TypeError):
-            inst = cls('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+            inst = cls(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0)
 
-        inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+        inst = cls(data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0)
         self.assertEqual(inst.name, 'A fixed name')
         self.assertEqual(inst.data, [1, 2, 3, 4])
         self.assertEqual(inst.attr1, 'string attribute')
@@ -190,7 +190,7 @@ class TestDynamicContainer(TestCase):
             self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
             cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
 
-            inst = cls([1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0)
+            inst = cls(data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0)
             self.assertEqual(inst.name, 'A fixed name')
 
     def test_dynamic_container_composition(self):
@@ -208,14 +208,15 @@ class TestDynamicContainer(TestCase):
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
         Baz2 = self.type_map.get_dt_container_cls('Baz2', CORE_NAMESPACE)
         Baz1 = self.type_map.get_dt_container_cls('Baz1', CORE_NAMESPACE)
-        Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
-             baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
+        Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0,
+             baz2=Baz2(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0))
 
         Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
-        bar = Bar('My Bar', [1, 2, 3, 4], 'string attribute', 1000)
+        bar = Bar(name='My Bar', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000)
 
         with self.assertRaises(TypeError):
-            Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
+            Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0,
+                 baz2=bar)
 
     def test_dynamic_container_composition_reverse_order(self):
         baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
@@ -232,14 +233,15 @@ class TestDynamicContainer(TestCase):
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
         Baz1 = self.type_map.get_dt_container_cls('Baz1', CORE_NAMESPACE)
         Baz2 = self.type_map.get_dt_container_cls('Baz2', CORE_NAMESPACE)
-        Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0,
-             baz2=Baz2('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0))
+        Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0,
+             baz2=Baz2(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000, attr3=98.6, attr4=1.0))
 
         Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
-        bar = Bar('My Bar', [1, 2, 3, 4], 'string attribute', 1000)
+        bar = Bar(name='My Bar', data=[1, 2, 3, 4], attr1='string attribute', attr2=1000)
 
         with self.assertRaises(TypeError):
-            Baz1('My Baz', [1, 2, 3, 4], 'string attribute', 1000, attr3=98.6, attr4=1.0, baz2=bar)
+            Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute',
+                 attr2=1000, attr3=98.6, attr4=1.0, baz2=bar)
 
     def test_dynamic_container_composition_missing_type(self):
         baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc=self.bar_spec,
@@ -258,8 +260,42 @@ class TestDynamicContainer(TestCase):
                              data_type_def='Baz', data_type_inc=self.bar_spec, name='Baz')
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         Baz = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        obj = Baz([1, 2, 3, 4], 'string attribute', attr2=1000)
+        obj = Baz(data=[1, 2, 3, 4], attr1='string attribute', attr2=1000)
         self.assertEqual(obj.name, 'Baz')
+
+    def test_dynamic_container_super_init_fixed_value(self):
+        """Test that dynamic class generation when the superclass init does not include all fields works"""
+
+        class FixedAttrBar(Bar):
+            @docval({'name': 'name', 'type': str, 'doc': 'the name of this Bar'},
+                    {'name': 'data', 'type': ('data', 'array_data'), 'doc': 'some data'},
+                    {'name': 'attr2', 'type': int, 'doc': 'another attribute'},
+                    {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14},
+                    {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None})
+            def __init__(self, **kwargs):
+                kwargs["attr1"] = "fixed_attr1"
+                super().__init__(**kwargs)
+
+        # overwrite the "Bar" to Bar class mapping from setUp()
+        self.type_map.register_container_type(CORE_NAMESPACE, "Bar", FixedAttrBar)
+
+        baz_spec = GroupSpec('A test extension with no Container class',
+                             data_type_def='Baz', data_type_inc=self.bar_spec,
+                             attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
+                                         AttributeSpec('attr4', 'another float attribute', 'float')])
+        self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
+        cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
+        expected_args = {'name', 'data', 'attr2', 'attr3', 'attr4'}
+        received_args = set()
+        for x in get_docval(cls.__init__):
+            if x['name'] != 'foo':
+                received_args.add(x['name'])
+                with self.subTest(name=x['name']):
+                    self.assertNotIn('default', x)
+        self.assertSetEqual(expected_args, received_args)
+        self.assertTrue(issubclass(cls, FixedAttrBar))
+        inst = cls(name="My Baz", data=[1, 2, 3, 4], attr2=1000, attr3=98.6, attr4=1.0)
+        self.assertEqual(inst.attr1, "fixed_attr1")
 
     def test_multi_container_spec(self):
         multi_spec = GroupSpec(
@@ -288,11 +324,253 @@ class TestDynamicContainer(TestCase):
 
         multi = Multi(
             name='my_multi',
-            bars=[Bar('my_bar', list(range(10)), 'value1', 10)],
+            bars=[Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)],
             attr3=5.
         )
-        assert multi.bars['my_bar'] == Bar('my_bar', list(range(10)), 'value1', 10)
+        assert multi.bars['my_bar'] == Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)
         assert multi.attr3 == 5.
+
+    def test_multi_container_spec_with_inc(self):
+        multi_spec = GroupSpec(
+            doc='A test extension that contains a multi',
+            data_type_def='Multi',
+            data_type_inc=self.bar_spec,
+            groups=[
+                GroupSpec(data_type_inc=self.bar_spec, doc='test multi', quantity='*')
+            ],
+            attributes=[
+                AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
+            ]
+        )
+        self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
+        Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
+        Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
+        assert issubclass(Multi, MultiContainerInterface)
+        assert issubclass(Multi, Bar)
+        assert Multi.__mro__ == (Multi, Bar, MultiContainerInterface, Container, AbstractContainer, object)
+        assert Multi.__clsconf__ == [
+            dict(
+                attr='bars',
+                type=Bar,
+                add='add_bars',
+                get='get_bars',
+                create='create_bars'
+            )
+        ]
+
+        multi = Multi(
+            name='my_multi',
+            bars=[Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)],
+            data=list(range(10)),  # from data_type_inc: Bar
+            attr1='value1',  # from data_type_inc: Bar
+            attr2=10,  # from data_type_inc: Bar
+            attr3=5.
+        )
+        assert multi.data == list(range(10))
+        assert multi.attr1 == 'value1'
+        assert multi.attr2 == 10
+        assert multi.bars['my_bar'] == Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)
+        assert multi.attr3 == 5.
+
+    def test_multi_container_spec_zero_or_more(self):
+        multi_spec = GroupSpec(
+            doc='A test extension that contains a multi',
+            data_type_def='Multi',
+            groups=[
+                GroupSpec(data_type_inc=self.bar_spec, doc='test multi', quantity='*')
+            ],
+            attributes=[
+                AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
+            ]
+        )
+        self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
+        Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
+        multi = Multi(
+            name='my_multi',
+            attr3=5.
+        )
+        assert len(multi.bars) == 0
+
+    def test_multi_container_spec_one_or_more_missing(self):
+        multi_spec = GroupSpec(
+            doc='A test extension that contains a multi',
+            data_type_def='Multi',
+            groups=[
+                GroupSpec(data_type_inc=self.bar_spec, doc='test multi', quantity='+')
+            ],
+            attributes=[
+                AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
+            ]
+        )
+        self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
+        Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
+        with self.assertRaisesWith(TypeError, "MCIClassGenerator.set_init.<locals>.__init__: missing argument 'bars'"):
+            Multi(
+                name='my_multi',
+                attr3=5.
+            )
+
+    def test_multi_container_spec_one_or_more_ok(self):
+        multi_spec = GroupSpec(
+            doc='A test extension that contains a multi',
+            data_type_def='Multi',
+            groups=[
+                GroupSpec(data_type_inc=self.bar_spec, doc='test multi', quantity='+')
+            ],
+            attributes=[
+                AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
+            ]
+        )
+        self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
+        Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
+        multi = Multi(
+            name='my_multi',
+            bars=[Bar(name='my_bar', data=list(range(10)), attr1='value1', attr2=10)],
+            attr3=5.
+        )
+        assert len(multi.bars) == 1
+
+
+class TestDynamicContainerFixedValue(TestCase):
+
+    def setUp(self):
+        self.baz_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            attributes=[AttributeSpec(name='attr1', doc='a string attribute', dtype='text', value="fixed")]
+        )
+        self.type_map = create_test_type_map([], {})  # empty typemap
+        self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
+        self.spec_catalog.register_spec(self.baz_spec, 'extension.yaml')
+
+    def test_init_docval(self):
+        cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)  # generate the class
+        expected_args = {'name'}  # 'attr1' should not be included
+        received_args = set()
+        for x in get_docval(cls.__init__):
+            received_args.add(x['name'])
+        self.assertSetEqual(expected_args, received_args)
+
+    def test_init_fields(self):
+        cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)  # generate the class
+        self.assertEqual(cls.get_fields_conf(), ({'name': 'attr1', 'doc': 'a string attribute', 'settable': False},))
+
+    def test_init_object(self):
+        cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)  # generate the class
+        obj = cls(name="test")
+        self.assertEqual(obj.attr1, "fixed")
+
+    def test_set_value(self):
+        cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)  # generate the class
+        obj = cls(name="test")
+        with self.assertRaises(AttributeError):
+            obj.attr1 = "new"
+
+
+class TestDynamicContainerIncludingFixedName(TestCase):
+
+    def setUp(self):
+        self.baz_spec1 = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz1',
+        )
+        self.baz_spec2 = GroupSpec(
+            doc='A test dataset specification with a data type',
+            data_type_def='Baz2',
+        )
+        self.baz_spec3 = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz3',
+            groups=[
+                GroupSpec(
+                    doc='A composition inside with a fixed name',
+                    name="my_baz1",
+                    data_type_inc='Baz1'
+                ),
+            ],
+            datasets=[
+                DatasetSpec(
+                    doc='A composition inside with a fixed name',
+                    name="my_baz2",
+                    data_type_inc='Baz2'
+                ),
+            ],
+            links=[
+                LinkSpec(
+                    doc='A composition inside without a fixed name',
+                    name="my_baz1_link",
+                    target_type='Baz1'
+                ),
+            ],
+        )
+        self.type_map = create_test_type_map([], {})  # empty typemap
+        self.spec_catalog = self.type_map.namespace_catalog.get_namespace(CORE_NAMESPACE).catalog
+        self.spec_catalog.register_spec(self.baz_spec1, 'extension.yaml')
+        self.spec_catalog.register_spec(self.baz_spec2, 'extension.yaml')
+        self.spec_catalog.register_spec(self.baz_spec3, 'extension.yaml')
+
+    def test_gen_parent_class(self):
+        baz1_cls = self.type_map.get_dt_container_cls('Baz1', CORE_NAMESPACE)  # generate the class
+        baz2_cls = self.type_map.get_dt_container_cls('Baz2', CORE_NAMESPACE)
+        baz3_cls = self.type_map.get_dt_container_cls('Baz3', CORE_NAMESPACE)
+        self.assertEqual(get_docval(baz3_cls.__init__), (
+            {'name': 'name', 'type': str, 'doc': 'the name of this container'},
+            {'name': 'my_baz1', 'doc': 'A composition inside with a fixed name', 'type': baz1_cls},
+            {'name': 'my_baz2', 'doc': 'A composition inside with a fixed name', 'type': baz2_cls},
+            {'name': 'my_baz1_link', 'doc': 'A composition inside without a fixed name', 'type': baz1_cls},
+        ))
+
+    def test_init_fields(self):
+        cls = self.type_map.get_dt_container_cls('Baz3', CORE_NAMESPACE)  # generate the class
+        self.assertEqual(cls.get_fields_conf(), (
+            {
+                'name': 'my_baz1',
+                'doc': 'A composition inside with a fixed name',
+                'child': True,
+                'required_name': 'my_baz1'
+            },
+            {
+                'name': 'my_baz2',
+                'doc': 'A composition inside with a fixed name',
+                'child': True,
+                'required_name': 'my_baz2'
+            },
+            {
+                'name': 'my_baz1_link',
+                'doc': 'A composition inside without a fixed name',
+            },
+        ))
+
+    def test_set_field(self):
+        baz1_cls = self.type_map.get_dt_container_cls('Baz1', CORE_NAMESPACE)  # generate the class
+        baz2_cls = self.type_map.get_dt_container_cls('Baz2', CORE_NAMESPACE)
+        baz3_cls = self.type_map.get_dt_container_cls('Baz3', CORE_NAMESPACE)
+        baz1 = baz1_cls(name="my_baz1")
+        baz2 = baz2_cls(name="my_baz2")
+        baz1_link = baz1_cls(name="any_name")
+        baz3 = baz3_cls(name="test", my_baz1=baz1, my_baz2=baz2, my_baz1_link=baz1_link)
+        self.assertEqual(baz3.my_baz1, baz1)
+        self.assertEqual(baz3.my_baz2, baz2)
+        self.assertEqual(baz3.my_baz1_link, baz1_link)
+
+    def test_set_field_bad(self):
+        baz1_cls = self.type_map.get_dt_container_cls('Baz1', CORE_NAMESPACE)  # generate the class
+        baz2_cls = self.type_map.get_dt_container_cls('Baz2', CORE_NAMESPACE)
+        baz3_cls = self.type_map.get_dt_container_cls('Baz3', CORE_NAMESPACE)
+
+        baz1 = baz1_cls(name="test")
+        baz2 = baz2_cls(name="my_baz2")
+        baz1_link = baz1_cls(name="my_baz1_link")
+        msg = "Field 'my_baz1' on Baz3 must be named 'my_baz1'."
+        with self.assertRaisesWith(ValueError, msg):
+            baz3_cls(name="test", my_baz1=baz1, my_baz2=baz2, my_baz1_link=baz1_link)
+
+        baz1 = baz1_cls(name="my_baz1")
+        baz2 = baz2_cls(name="test")
+        baz1_link = baz1_cls(name="my_baz1_link")
+        msg = "Field 'my_baz2' on Baz3 must be named 'my_baz2'."
+        with self.assertRaisesWith(ValueError, msg):
+            baz3_cls(name="test", my_baz1=baz1, my_baz2=baz2, my_baz1_link=baz1_link)
 
 
 class TestGetClassSeparateNamespace(TestCase):
@@ -885,7 +1163,7 @@ class TestMCIProcessFieldSpec(TestCase):
         MCIClassGenerator.process_field_spec(
             classdict=classdict,
             docval_args=docval_args,
-            parent_cls=Container,
+            parent_cls=Bar,
             attr_name='empty_bars',
             not_inherited_fields=not_inherited_fields,
             type_map=self.type_map,
@@ -914,10 +1192,10 @@ class TestMCIProcessFieldSpec(TestCase):
                 )
             ]
         )
-        bases = [Container]
+        bases = [Bar]
         docval_args = []
         MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
-        self.assertEqual(bases, [MultiContainerInterface, Container])
+        self.assertEqual(bases, [Bar, MultiContainerInterface])
 
     def test_post_process_already_multi(self):
         class Multi1(MultiContainerInterface):
@@ -946,3 +1224,30 @@ class TestMCIProcessFieldSpec(TestCase):
         docval_args = []
         MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
         self.assertEqual(bases, [Multi1])
+
+    def test_post_process_container(self):
+        class Multi1(MultiContainerInterface):
+            pass
+
+        multi_spec = GroupSpec(
+            doc='A test extension that contains a multi and extends a multi',
+            data_type_def='Multi1',
+            groups=[
+                GroupSpec(data_type_inc='EmptyBar', doc='test multi', quantity='*')
+            ],
+        )
+        classdict = dict(
+            __clsconf__=[
+                dict(
+                    attr='empty_bars',
+                    type=EmptyBar,
+                    add='add_empty_bars',
+                    get='get_empty_bars',
+                    create='create_empty_bars'
+                )
+            ]
+        )
+        bases = [Container]
+        docval_args = []
+        MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
+        self.assertEqual(bases, [MultiContainerInterface, Container])

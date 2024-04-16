@@ -7,17 +7,21 @@ on:
       - 'latest'
       - 'latest-tmp'
   pull_request:
+  workflow_dispatch:
 
 jobs:
   run-coverage:
     name: ${{ matrix.os }}, opt reqs ${{ matrix.opt_req }}
     runs-on: ${{ matrix.os }}
-    # TODO
+    # TODO handle forks
     # run pipeline on either a push event or a PR event on a fork
     # if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
     defaults:
       run:
         shell: bash
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.os }}-${{ matrix.opt_req }}
+      cancel-in-progress: true
     strategy:
       matrix:
         include:
@@ -25,24 +29,20 @@ jobs:
           - { os: ubuntu-latest , opt_req: false }
           - { os: windows-latest, opt_req: false }
           - { os: macos-latest  , opt_req: false }
-    env:
+    env:  # used by codecov-action
       OS: ${{ matrix.os }}
-      PYTHON: '3.10'
+      PYTHON: '3.11'  # TODO update to 3.12 when optional reqs (e.g., oaklib) support 3.12
     steps:
-      - name: Cancel any previous incomplete runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          all_but_latest: true
-          access_token: ${{ github.token }}
-
-      - uses: actions/checkout@v3
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: ${{ env.PYTHON }}
 
       - name: Install dependencies
         run: |
@@ -60,11 +60,13 @@ jobs:
 
       - name: Run tests and generate coverage report
         run: |
-          python -m coverage run test.py -u
+          pytest --cov
           python -m coverage xml  # codecov uploader requires xml format
           python -m coverage report -m
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

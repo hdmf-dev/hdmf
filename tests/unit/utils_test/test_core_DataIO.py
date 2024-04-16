@@ -8,12 +8,6 @@ from hdmf.testing import TestCase
 
 class DataIOTests(TestCase):
 
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
     def test_copy(self):
         obj = DataIO(data=[1., 2., 3.])
         obj_copy = copy(obj)
@@ -55,3 +49,16 @@ class DataIOTests(TestCase):
         container = Data('wrapped_data', data)
         with self.assertRaisesWith(ValueError, "cannot overwrite 'data' on DataIO"):
             container.set_dataio(dataio)
+
+    def test_dataio_options(self):
+        """
+        Test that either data or dtype+shape are specified exclusively
+        """
+        with self.assertWarnsRegex(UserWarning, "Argument 'dtype' is ignored when 'data' is specified"):
+            DataIO(data=np.arange(5), dtype=int)
+        with self.assertWarnsRegex(UserWarning, "Argument 'shape' is ignored when 'data' is specified"):
+            DataIO(data=np.arange(5), shape=(3,))
+
+        dataio = DataIO(shape=(3,), dtype=int)
+        with self.assertRaisesRegex(ValueError, "Setting data when dtype and shape are not None is not supported"):
+            dataio.data = np.arange(5)

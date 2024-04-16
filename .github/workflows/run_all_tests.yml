@@ -5,6 +5,7 @@ on:
   push:
     tags:  # run only on new tags that follow semver
       - '/^[0-9]+(\.[0-9]+)?(\.[0-9]+)?$/'
+  workflow_dispatch:
 
 jobs:
   run-all-tests:
@@ -17,41 +18,46 @@ jobs:
     defaults:
       run:
         shell: bash
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.7-minimum      , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: ubuntu-latest }
-          - { name: linux-python3.7              , test-tox-env: py37            , build-tox-env: build-py37            , python-ver: "3.7" , os: ubuntu-latest }
-          - { name: linux-python3.8              , test-tox-env: py38            , build-tox-env: build-py38            , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: linux-python3.9              , test-tox-env: py39            , build-tox-env: build-py39            , python-ver: "3.9" , os: ubuntu-latest }
-          - { name: linux-python3.10             , test-tox-env: py310           , build-tox-env: build-py310           , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-python3.10-optional    , test-tox-env: py310-optional  , build-tox-env: build-py310-optional  , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-python3.10-upgraded    , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-python3.10-prerelease  , test-tox-env: py310-prerelease, build-tox-env: build-py310-prerelease, python-ver: "3.10", os: ubuntu-latest }
-          - { name: windows-python3.7-minimum    , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: windows-latest }
-          - { name: windows-python3.7            , test-tox-env: py37            , build-tox-env: build-py37            , python-ver: "3.7" , os: windows-latest }
-          - { name: windows-python3.8            , test-tox-env: py38            , build-tox-env: build-py38            , python-ver: "3.8" , os: windows-latest }
-          - { name: windows-python3.9            , test-tox-env: py39            , build-tox-env: build-py39            , python-ver: "3.9" , os: windows-latest }
-          - { name: windows-python3.10           , test-tox-env: py310           , build-tox-env: build-py310           , python-ver: "3.10", os: windows-latest }
-          - { name: windows-python3.10-optional  , test-tox-env: py310-optional  , build-tox-env: build-py310-optional  , python-ver: "3.10", os: windows-latest }
-          - { name: windows-python3.10-upgraded  , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: windows-latest }
-          - { name: windows-python3.10-prerelease, test-tox-env: py310-prerelease, build-tox-env: build-py310-prerelease, python-ver: "3.10", os: windows-latest }
-          - { name: macos-python3.7-minimum      , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: macos-latest }
-          - { name: macos-python3.7              , test-tox-env: py37            , build-tox-env: build-py37            , python-ver: "3.7" , os: macos-latest }
-          - { name: macos-python3.8              , test-tox-env: py38            , build-tox-env: build-py38            , python-ver: "3.8" , os: macos-latest }
-          - { name: macos-python3.9              , test-tox-env: py39            , build-tox-env: build-py39            , python-ver: "3.9" , os: macos-latest }
-          - { name: macos-python3.10             , test-tox-env: py310           , build-tox-env: build-py310           , python-ver: "3.10", os: macos-latest }
-          - { name: macos-python3.10-optional    , test-tox-env: py310-optional  , build-tox-env: build-py310-optional  , python-ver: "3.10", os: macos-latest }
-          - { name: macos-python3.10-upgraded    , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: macos-latest }
-          - { name: macos-python3.10-prerelease  , test-tox-env: py310-prerelease, build-tox-env: build-py310-prerelease, python-ver: "3.10", os: macos-latest }
+          - { name: linux-python3.8-minimum       , test-tox-env: pytest-py38-minimum          , python-ver: "3.8" , os: ubuntu-latest }
+          - { name: linux-python3.9               , test-tox-env: pytest-py39-pinned           , python-ver: "3.9" , os: ubuntu-latest }
+          - { name: linux-python3.10              , test-tox-env: pytest-py310-pinned          , python-ver: "3.10", os: ubuntu-latest }
+          - { name: linux-python3.11              , test-tox-env: pytest-py311-pinned          , python-ver: "3.11", os: ubuntu-latest }
+          - { name: linux-python3.11-optional     , test-tox-env: pytest-py311-optional-pinned , python-ver: "3.11", os: ubuntu-latest }
+          - { name: linux-python3.12              , test-tox-env: pytest-py312-pinned          , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-python3.12-upgraded     , test-tox-env: pytest-py312-upgraded        , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-python3.12-prerelease   , test-tox-env: pytest-py312-prerelease      , python-ver: "3.12", os: ubuntu-latest }
+          - { name: windows-python3.8-minimum     , test-tox-env: pytest-py38-minimum          , python-ver: "3.8" , os: windows-latest }
+          - { name: windows-python3.9             , test-tox-env: pytest-py39-pinned           , python-ver: "3.9" , os: windows-latest }
+          - { name: windows-python3.10            , test-tox-env: pytest-py310-pinned          , python-ver: "3.10", os: windows-latest }
+          - { name: windows-python3.11            , test-tox-env: pytest-py311-pinned          , python-ver: "3.11", os: windows-latest }
+          - { name: windows-python3.11-optional   , test-tox-env: pytest-py311-optional-pinned , python-ver: "3.11", os: windows-latest }
+          - { name: windows-python3.12            , test-tox-env: pytest-py312-pinned          , python-ver: "3.12", os: windows-latest }
+          - { name: windows-python3.12-upgraded   , test-tox-env: pytest-py312-upgraded        , python-ver: "3.12", os: windows-latest }
+          - { name: windows-python3.12-prerelease , test-tox-env: pytest-py312-prerelease      , python-ver: "3.12", os: windows-latest }
+          - { name: macos-python3.8-minimum       , test-tox-env: pytest-py38-minimum          , python-ver: "3.8" , os: macos-latest }
+          - { name: macos-python3.9               , test-tox-env: pytest-py39-pinned           , python-ver: "3.9" , os: macos-latest }
+          - { name: macos-python3.10              , test-tox-env: pytest-py310-pinned          , python-ver: "3.10", os: macos-latest }
+          - { name: macos-python3.11              , test-tox-env: pytest-py311-pinned          , python-ver: "3.11", os: macos-latest }
+          - { name: macos-python3.11-optional     , test-tox-env: pytest-py311-optional-pinned , python-ver: "3.11", os: macos-latest }
+          - { name: macos-python3.12              , test-tox-env: pytest-py312-pinned          , python-ver: "3.12", os: macos-latest }
+          - { name: macos-python3.12-upgraded     , test-tox-env: pytest-py312-upgraded        , python-ver: "3.12", os: macos-latest }
+          - { name: macos-python3.12-prerelease   , test-tox-env: pytest-py312-prerelease      , python-ver: "3.12", os: macos-latest }
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-ver }}
 
@@ -67,12 +73,16 @@ jobs:
 
       - name: Build wheel and source distribution
         run: |
-          tox -e ${{ matrix.build-tox-env }}
+          tox -e build
           ls -1 dist
 
       - name: Test installation from a wheel
         run: |
-          tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
+          tox -e wheelinstall --installpkg dist/*-none-any.whl
+
+      - name: Test installation from a source distribution
+        run: |
+          tox -e wheelinstall --installpkg dist/*.tar.gz
 
   run-all-gallery-tests:
     name: ${{ matrix.name }}
@@ -80,31 +90,34 @@ jobs:
     defaults:
       run:
         shell: bash
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-gallery-python3.7-minimum      , test-tox-env: gallery-py37-minimum    , python-ver: "3.7" , os: ubuntu-latest }
-          - { name: linux-gallery-python3.10-upgraded    , test-tox-env: gallery-py310-upgraded  , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-gallery-python3.10-prerelease  , test-tox-env: gallery-py310-prerelease, python-ver: "3.10", os: ubuntu-latest }
-          - { name: windows-gallery-python3.7-minimum    , test-tox-env: gallery-py37-minimum    , python-ver: "3.7" , os: windows-latest }
-          - { name: windows-gallery-python3.10-upgraded  , test-tox-env: gallery-py310-upgraded  , python-ver: "3.10", os: windows-latest }
-          - { name: windows-gallery-python3.10-prerelease, test-tox-env: gallery-py310-prerelease, python-ver: "3.10", os: windows-latest }
-          - { name: macos-gallery-python3.7-minimum      , test-tox-env: gallery-py37-minimum    , python-ver: "3.7" , os: macos-latest }
-          - { name: macos-gallery-python3.10-upgraded    , test-tox-env: gallery-py310-upgraded  , python-ver: "3.10", os: macos-latest }
-          - { name: macos-gallery-python3.10-prerelease  , test-tox-env: gallery-py310-prerelease, python-ver: "3.10", os: macos-latest }
+          - { name: linux-gallery-python3.8-minimum      , test-tox-env: gallery-py38-minimum          , python-ver: "3.8" , os: ubuntu-latest }
+          - { name: linux-gallery-python3.11-optional    , test-tox-env: gallery-py311-optional-pinned , python-ver: "3.11", os: ubuntu-latest }
+          - { name: linux-gallery-python3.12-upgraded    , test-tox-env: gallery-py312-upgraded        , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-gallery-python3.12-prerelease  , test-tox-env: gallery-py312-prerelease      , python-ver: "3.12", os: ubuntu-latest }
+          - { name: windows-gallery-python3.8-minimum    , test-tox-env: gallery-py38-minimum          , python-ver: "3.8" , os: windows-latest }
+          - { name: windows-gallery-python3.11-optional  , test-tox-env: gallery-py311-optional-pinned , python-ver: "3.11", os: windows-latest }
+          - { name: windows-gallery-python3.12-upgraded  , test-tox-env: gallery-py312-upgraded        , python-ver: "3.12", os: windows-latest }
+          - { name: windows-gallery-python3.12-prerelease, test-tox-env: gallery-py312-prerelease      , python-ver: "3.12", os: windows-latest }
+          - { name: macos-gallery-python3.8-minimum      , test-tox-env: gallery-py38-minimum          , python-ver: "3.8" , os: macos-latest }
+          - { name: macos-gallery-python3.11-optional    , test-tox-env: gallery-py311-optional-pinned , python-ver: "3.11", os: macos-latest }
+          - { name: macos-gallery-python3.12-upgraded    , test-tox-env: gallery-py312-upgraded        , python-ver: "3.12", os: macos-latest }
+          - { name: macos-gallery-python3.12-prerelease  , test-tox-env: gallery-py312-prerelease      , python-ver: "3.12", os: macos-latest }
     steps:
-      - name: Cancel any previous incomplete runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
-
-      - uses: actions/checkout@v3
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-ver }}
 
@@ -124,53 +137,111 @@ jobs:
     defaults:
      run:
        shell: bash -l {0}  # needed for conda environment to work
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.7-minimum    , test-tox-env: py37-minimum    , build-tox-env: build-py37-minimum    , python-ver: "3.7" , os: ubuntu-latest }
-          - { name: linux-python3.7            , test-tox-env: py37            , build-tox-env: build-py37            , python-ver: "3.7" , os: ubuntu-latest }
-          - { name: linux-python3.8            , test-tox-env: py38            , build-tox-env: build-py38            , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: linux-python3.9            , test-tox-env: py39            , build-tox-env: build-py39            , python-ver: "3.9" , os: ubuntu-latest }
-          - { name: linux-python3.10           , test-tox-env: py310           , build-tox-env: build-py310           , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-python3.10-optional  , test-tox-env: py310-optional  , build-tox-env: build-py310-optional  , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-python3.10-upgraded  , test-tox-env: py310-upgraded  , build-tox-env: build-py310-upgraded  , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-python3.10-prerelease, test-tox-env: py310-prerelease, build-tox-env: build-py310-prerelease, python-ver: "3.10", os: ubuntu-latest }
+          - { name: conda-linux-python3.8-minimum     , test-tox-env: pytest-py38-minimum          , python-ver: "3.8" , os: ubuntu-latest }
+          - { name: conda-linux-python3.9             , test-tox-env: pytest-py39-pinned           , python-ver: "3.9" , os: ubuntu-latest }
+          - { name: conda-linux-python3.10            , test-tox-env: pytest-py310-pinned          , python-ver: "3.10", os: ubuntu-latest }
+          - { name: conda-linux-python3.11            , test-tox-env: pytest-py311-pinned          , python-ver: "3.11", os: ubuntu-latest }
+          - { name: conda-linux-python3.11-optional   , test-tox-env: pytest-py311-optional-pinned , python-ver: "3.11", os: ubuntu-latest }
+          - { name: conda-linux-python3.12            , test-tox-env: pytest-py312-pinned          , python-ver: "3.12", os: ubuntu-latest }
+          - { name: conda-linux-python3.12-upgraded   , test-tox-env: pytest-py312-upgraded        , python-ver: "3.12", os: ubuntu-latest }
+          - { name: conda-linux-python3.12-prerelease , test-tox-env: pytest-py312-prerelease      , python-ver: "3.12", os: ubuntu-latest }
     steps:
-      - name: Cancel any previous incomplete runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
-
-      - uses: actions/checkout@v3
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
-          auto-activate-base: true
-          activate-environment: ""
+          python-version: ${{ matrix.python-ver }}
+          channels: conda-forge
+          mamba-version: "*"
 
       - name: Install build dependencies
         run: |
-          conda update -n base -c defaults conda
           conda config --set always_yes yes --set changeps1 no
-          conda config --add channels conda-forge
-          conda install python=${{ matrix.python-ver }}
-          conda install tox
-          conda list
+          conda info
+          mamba install -c conda-forge "tox>=4"
 
+      - name: Conda reporting
+        run: |
+          conda info
+          conda config --show-sources
+          conda list --show-channel-urls
+
+      # NOTE tox installs packages from PyPI not conda-forge...
       - name: Run tox tests
         run: |
           tox -e ${{ matrix.test-tox-env }}
 
       - name: Build wheel and source distribution
         run: |
-          tox -e ${{ matrix.build-tox-env }}
+          tox -e build
           ls -1 dist
 
       - name: Test installation from a wheel
         run: |
-          tox -e wheelinstall --recreate --installpkg dist/*-none-any.whl
+          tox -e wheelinstall --installpkg dist/*-none-any.whl
+
+      - name: Test installation from a source distribution
+        run: |
+          tox -e wheelinstall --installpkg dist/*.tar.gz
+
+  run-gallery-ros3-tests:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}  # necessary for conda
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-gallery-python3.12-ros3   , python-ver: "3.12", os: ubuntu-latest }
+          - { name: windows-gallery-python3.12-ros3 , python-ver: "3.12", os: windows-latest }
+          - { name: macos-gallery-python3.12-ros3   , python-ver: "3.12", os: macos-latest }
+    steps:
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0  # tags are required to determine the version
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          activate-environment: ros3
+          environment-file: environment-ros3.yml
+          python-version: ${{ matrix.python-ver }}
+          channels: conda-forge
+          auto-activate-base: false
+          mamba-version: "*"
+
+      - name: Install run dependencies
+        run: |
+          pip install -e .
+          pip list
+
+      - name: Conda reporting
+        run: |
+          conda info
+          conda config --show-sources
+          conda list --show-channel-urls
+
+      - name: Run ros3 tests  # TODO include gallery tests after they are written
+        run: |
+          pytest tests/unit/test_io_hdf5_streaming.py
