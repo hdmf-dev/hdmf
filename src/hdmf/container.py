@@ -711,7 +711,9 @@ class Container(AbstractContainer):
             for index, item in enumerate(fields):
                 access_code += f'[{index}]'
                 html_repr += self._generate_field_html(index, item, level, access_code)
-        elif isinstance(fields, np.ndarray):
+        elif isinstance(fields, (np.ndarray, h5py.Dataset)):
+            html_repr += self._generate_array_html(fields, level)
+        elif hasattr(fields, "store") and hasattr(fields, "shape"):  # Duck typing for zarr array
             html_repr += self._generate_array_html(fields, level)
         else:
             pass
@@ -727,19 +729,23 @@ class Container(AbstractContainer):
         if isinstance(value, (int, float, str, bool)):
             return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
                    f' title="{access_code}">{key}: </span><span class="field-value">{value}</span></div>'
-
-        if hasattr(value, "generate_html_repr"):
+        
+        if isinstance(value, (np.ndarray, h5py.Dataset)):
+            html_content = self._generate_array_html(value, level + 1)
+        elif hasattr(value, "store") and hasattr(value, "shape"):  # Duck typing for zarr array
+            html_content = self._generate_array_html(value, level + 1)
+        elif hasattr(value, "generate_html_repr"):
             html_content = value.generate_html_repr(level + 1, access_code)
-
         elif hasattr(value, '__repr_html__'):
             html_content = value.__repr_html__()
-
         elif hasattr(value, "fields"):
             html_content = self._generate_html_repr(value.fields, level + 1, access_code, is_field=True)
         elif isinstance(value, (list, dict, np.ndarray)):
             html_content = self._generate_html_repr(value, level + 1, access_code, is_field=False)
         else:
             html_content = f'<span class="field-key">{value}</span>'
+        
+        
         html_repr = (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
             f'class="container-fields field-key" title="{access_code}"><b>{key}</b></summary>'
@@ -749,10 +755,55 @@ class Container(AbstractContainer):
 
         return html_repr
 
+
     def _generate_array_html(self, array, level):
         """Generates HTML for a NumPy array."""
-        str_ = str(array).replace("\n", "</br>")
-        return f'<div style="margin-left: {level * 20}px;" class="container-fields">{str_}</div>'
+        
+        # This is a placeholder function, you should define your own conversion
+        def convert_bytes_to_str(bytes_size):
+            # Example conversion function
+            suffixes = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
+            i = 0
+            while bytes_size >= 1024 and i < len(suffixes)-1:
+                bytes_size /= 1024.
+                i += 1
+            return f"{bytes_size:.2f} {suffixes[i]}"
+        
+        array_size_in_bytes = array.nbytes
+        array_size_repr = convert_bytes_to_str(array_size_in_bytes)
+        array_info = f"shape: {array.shape} - dtype: {array.dtype} - {array_size_repr}"
+
+        if isinstance(array, np.ndarray):
+            head = "NumPy Array"
+            backend_info = str(array)
+
+        if isinstance(array, h5py.Dataset):
+            hdf5_dataset = array
+            chunks = hdf5_dataset.chunks
+            compression = hdf5_dataset.compression
+            uncompressed_size = hdf5_dataset.nbytes
+            compression_opts = hdf5_dataset.compression_opts
+            compressed_size = hdf5_dataset.id.get_storage_size()
+            compression_ratio = uncompressed_size / compressed_size
+
+            head = "HDF5 Dataset"
+            backend_info = f"chunks: {chunks} - compression: {compression} - compression_opts: {compression_opts} - compression ratio: {compression_ratio:.2f}"
+            
+        if hasattr(array, "store") and hasattr(array, "shape"):  # Duck typing for zarr array
+            head = ""
+            array_info = ""
+            backend_info = array.info._repr_html_()  # Native HTML representation of the zarr array
+
+        # Add <br> tags and concatenate the components
+        head = head + "<br>" if head else ""
+        array_info = array_info + "<br>" if array_info else ""
+        repr_html = head + array_info + backend_info
+        
+        # Display data for small datasets
+        if array_size_in_bytes < 1024 * 0.1: # 10 % a kilobyte to display the array
+            repr_html += "<br>" + str(np.asarray(array))
+
+        return f'<div style="margin-left: {level * 20}px;" class="container-fields">{repr_html}</div>'
 
     @staticmethod
     def __smart_str(v, num_indent):
