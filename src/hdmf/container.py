@@ -729,7 +729,7 @@ class Container(AbstractContainer):
         if isinstance(value, (int, float, str, bool)):
             return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
                    f' title="{access_code}">{key}: </span><span class="field-value">{value}</span></div>'
-        
+
         if isinstance(value, (np.ndarray, h5py.Dataset)):
             html_content = self._generate_array_html(value, level + 1)
         elif hasattr(value, "store") and hasattr(value, "shape"):  # Duck typing for zarr array
@@ -744,8 +744,8 @@ class Container(AbstractContainer):
             html_content = self._generate_html_repr(value, level + 1, access_code, is_field=False)
         else:
             html_content = f'<span class="field-key">{value}</span>'
-        
-        
+
+
         html_repr = (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
             f'class="container-fields field-key" title="{access_code}"><b>{key}</b></summary>'
@@ -758,7 +758,7 @@ class Container(AbstractContainer):
 
     def _generate_array_html(self, array, level):
         """Generates HTML for a NumPy array."""
-        
+
         # This is a placeholder function, you should define your own conversion
         def convert_bytes_to_str(bytes_size):
             # Example conversion function
@@ -768,7 +768,7 @@ class Container(AbstractContainer):
                 bytes_size /= 1024.
                 i += 1
             return f"{bytes_size:.2f} {suffixes[i]}"
-        
+
         array_size_in_bytes = array.nbytes
         array_size_repr = convert_bytes_to_str(array_size_in_bytes)
         array_info = f"shape: {array.shape} - dtype: {array.dtype} - {array_size_repr}"
@@ -788,7 +788,7 @@ class Container(AbstractContainer):
 
             head = "HDF5 Dataset"
             backend_info = f"chunks: {chunks} - compression: {compression} - compression_opts: {compression_opts} - compression ratio: {compression_ratio:.2f}"
-            
+
         if hasattr(array, "store") and hasattr(array, "shape"):  # Duck typing for zarr array
             head = ""
             array_info = ""
@@ -798,7 +798,7 @@ class Container(AbstractContainer):
         head = head + "<br>" if head else ""
         array_info = array_info + "<br>" if array_info else ""
         repr_html = head + array_info + backend_info
-        
+
         # Display data for small datasets
         if array_size_in_bytes < 1024 * 0.1: # 10 % a kilobyte to display the array
             repr_html += "<br>" + str(np.asarray(array))
