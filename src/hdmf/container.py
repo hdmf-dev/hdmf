@@ -787,7 +787,10 @@ class Container(AbstractContainer):
             compression_ratio = uncompressed_size / compressed_size
 
             head = "HDF5 Dataset"
-            backend_info = f"chunks: {chunks} - compression: {compression} - compression_opts: {compression_opts} - compression ratio: {compression_ratio:.2f}"
+            backend_info = (
+                f"chunks: {chunks} - compression: {compression} - "
+                f"compression_opts: {compression_opts} - compression ratio: {compression_ratio:.2f}"
+            )
 
         if hasattr(array, "store") and hasattr(array, "shape"):  # Duck typing for zarr array
             head = ""
