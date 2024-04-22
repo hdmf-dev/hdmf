@@ -1,7 +1,6 @@
 import re
 from abc import ABCMeta
 from collections import OrderedDict
-from copy import deepcopy
 from warnings import warn
 
 from ..utils import docval, getargs, popargs, get_docval
@@ -84,7 +83,7 @@ class ConstructableDict(dict, metaclass=ABCMeta):
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this ConstructableDict class from a dictionary '''
         # main use cases are when spec_dict is a ConstructableDict or a spec dict read from a file
-        return deepcopy(spec_dict)
+        return spec_dict.copy()
 
     @classmethod
     def build_spec(cls, spec_dict):
