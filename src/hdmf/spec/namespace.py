@@ -466,6 +466,9 @@ class NamespaceCatalog:
         return included_types
 
     def __register_type(self, ndt, inc_ns, catalog, registered_types):
+        if ndt in registered_types:
+            # already registered
+            return
         spec = inc_ns.get_spec(ndt)
         spec_file = inc_ns.catalog.get_spec_source_file(ndt)
         self.__register_dependent_types(spec, inc_ns, catalog, registered_types)
