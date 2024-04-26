@@ -802,17 +802,17 @@ class Container(AbstractContainer):
             compression_ratio = uncompressed_size / compressed_size
 
             head = "HDF5 Dataset"
-            hdf5_info_dict = {"chunks": chunks, "compression": compression, "compression_opts": compression_opts, 
+            hdf5_info_dict = {"chunks": chunks, "compression": compression, "compression_opts": compression_opts,
                               "compression_ratio": compression_ratio}
             backend_info_dict = {**basic_array_info_dict, **hdf5_info_dict}
 
         if hasattr(array, "store") and hasattr(array, "shape"):  # Duck typing for zarr array
             head = "Zarr Array"
-            zarr_info_dict = {k:v for k, v in array.info_items()} 
+            zarr_info_dict = {k:v for k, v in array.info_items()}
             backend_info_dict = zarr_info_dict
-            
+
         # Add <br> tags and concatenate the components
-        head_html = head 
+        head_html = head
         backend_info_html = html_table(backend_info_dict)
         repr_html = head_html + "<br>" + backend_info_html
 
