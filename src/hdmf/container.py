@@ -738,7 +738,7 @@ class Container(AbstractContainer):
             html_content = value.generate_html_repr(level + 1, access_code)
         elif hasattr(value, '__repr_html__'):
             html_content = value.__repr_html__()
-        elif hasattr(value, "fields"):
+        elif hasattr(value, "fields"):  # Note that h5py.Dataset has a fields attribute so there is an implicit order
             html_content = self._generate_html_repr(value.fields, level + 1, access_code, is_field=True)
         elif isinstance(value, (list, dict, np.ndarray)):
             html_content = self._generate_html_repr(value, level + 1, access_code, is_field=False)
@@ -756,12 +756,12 @@ class Container(AbstractContainer):
         return html_repr
 
 
+
+
     def _generate_array_html(self, array, level):
         """Generates HTML for a NumPy array."""
 
-        # This is a placeholder function, you should define your own conversion
         def convert_bytes_to_str(bytes_size):
-            # Example conversion function
             suffixes = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
             i = 0
             while bytes_size >= 1024 and i < len(suffixes)-1:
@@ -769,13 +769,28 @@ class Container(AbstractContainer):
                 i += 1
             return f"{bytes_size:.2f} {suffixes[i]}"
 
+        # Generates an html report for the backend info, inspired on zarr info html representation
+        def html_table(item_dicts) -> str:
+            report = '<table class="zarr-info">'
+            report += "<tbody>"
+            for k, v in item_dicts.items():
+                report += (
+                    f"<tr>"
+                    f'<th style="text-align: left">{k}</th>'
+                    f'<td style="text-align: left">{v}</td>'
+                    f"</tr>"
+                )
+            report += "</tbody>"
+            report += "</table>"
+            return report
+
         array_size_in_bytes = array.nbytes
         array_size_repr = convert_bytes_to_str(array_size_in_bytes)
-        array_info = f"shape: {array.shape} - dtype: {array.dtype} - {array_size_repr}"
+        basic_array_info_dict = {"shape": array.shape, "dtype": array.dtype,  "Array size": array_size_repr}
 
         if isinstance(array, np.ndarray):
             head = "NumPy Array"
-            backend_info = str(array)
+            backend_info_dict = basic_array_info_dict
 
         if isinstance(array, h5py.Dataset):
             hdf5_dataset = array
@@ -787,23 +802,23 @@ class Container(AbstractContainer):
             compression_ratio = uncompressed_size / compressed_size
 
             head = "HDF5 Dataset"
-            backend_info = (
-                f"chunks: {chunks} - compression: {compression} - "
-                f"compression_opts: {compression_opts} - compression ratio: {compression_ratio:.2f}"
-            )
+            hdf5_info_dict = {"chunks": chunks, "compression": compression, "compression_opts": compression_opts, 
+                              "compression_ratio": compression_ratio}
+            backend_info_dict = {**basic_array_info_dict, **hdf5_info_dict}
 
         if hasattr(array, "store") and hasattr(array, "shape"):  # Duck typing for zarr array
-            head = ""
-            array_info = ""
-            backend_info = array.info._repr_html_()  # Native HTML representation of the zarr array
-
+            head = "Zarr Array"
+            zarr_info_dict = {k:v for k, v in array.info_items()} 
+            backend_info_dict = zarr_info_dict
+            
         # Add <br> tags and concatenate the components
-        head = head + "<br>" if head else ""
-        array_info = array_info + "<br>" if array_info else ""
-        repr_html = head + array_info + backend_info
+        head_html = head 
+        backend_info_html = html_table(backend_info_dict)
+        repr_html = head_html + "<br>" + backend_info_html
 
         # Display data for small datasets
-        if array_size_in_bytes < 1024 * 0.1: # 10 % a kilobyte to display the array
+        array_is_small = array_size_in_bytes < 1024 * 0.1  # 10 % a kilobyte to display the array
+        if array_is_small or isinstance(array, np.ndarray):
             repr_html += "<br>" + str(np.asarray(array))
 
         return f'<div style="margin-left: {level * 20}px;" class="container-fields">{repr_html}</div>'
