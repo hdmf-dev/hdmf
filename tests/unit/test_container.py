@@ -483,7 +483,7 @@ class TestHTMLRepr(TestCase):
         with h5py.File('data.h5', 'w') as file:
 
             # Create a dataset
-            data = [1, 2, 3, 4, 5]
+            data = [1, 2, 3, 4]
             dataset = file.create_dataset(name='my_dataset', data=data)
 
             # Close the file
@@ -526,7 +526,19 @@ class TestHTMLRepr(TestCase):
                 '        });\n'
                 '    });\n'
                 '</script>\n'
-                '<div class=\'container-wrap\'><div class=\'container-header\'><div class=\'xr-obj-type\'><h3>test name (ContainerWithData)</h3></div></div><details><summary style="display: list-item; margin-left: 0px;" class="container-fields field-key" title=".data"><b>data</b></summary><div style="margin-left: 20px;" class="container-fields">HDF5 Dataset<br><table class="zarr-info"><tbody><tr><th style="text-align: left">shape</th><td style="text-align: left">(5,)</td></tr><tr><th style="text-align: left">dtype</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Array size</th><td style="text-align: left">40.00 bytes</td></tr><tr><th style="text-align: left">chunks</th><td style="text-align: left">None</td></tr><tr><th style="text-align: left">compression</th><td style="text-align: left">None</td></tr><tr><th style="text-align: left">compression_opts</th><td style="text-align: left">None</td></tr><tr><th style="text-align: left">compression_ratio</th><td style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4 5]</div></details><div style="margin-left: 0px;" class="container-fields"><span class="field-key" title=".str">str: </span><span class="field-value">hello</span></div></div>'
+                '<div class=\'container-wrap\'><div class=\'container-header\'><div class=\'xr-obj-type\'>'
+                '<h3>test name (ContainerWithData)</h3></div></div><details><summary style="display: list-item; '
+                'margin-left: 0px;" class="container-fields field-key" title=".data"><b>data</b></summary><div '
+                'style="margin-left: 20px;" class="container-fields">HDF5 Dataset<br><table class="zarr-info">'
+                '<tbody><tr><th style="text-align: left">shape</th><td style="text-align: left">(5,)</td></tr>'
+                '<tr><th style="text-align: left">dtype</th><td style="text-align: left">int64</td></tr>'
+                '<tr><th style="text-align: left">Array size</th><td style="text-align: left">40.00 bytes</td></tr>'
+                '<tr><th style="text-align: left">chunks</th><td style="text-align: left">None</td></tr>'
+                '<tr><th style="text-align: left">compression</th><td style="text-align: left">None</td></tr>'
+                '<tr><th style="text-align: left">compression_opts</th><td style="text-align: left">None</td></tr>'
+                '<tr><th style="text-align: left">compression_ratio</th><td style="text-align: left">1.0</td></tr>'
+                '</tbody></table><br>[1 2 3 4]</div></details><div style="margin-left: 0px;" class="container-fields">'
+                '<span class="field-key" title=".str">str: </span><span class="field-value">hello</span></div></div>'
             )
 
             assert html_repr == expected_html
