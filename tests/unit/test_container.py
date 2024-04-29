@@ -422,9 +422,9 @@ class TestHTMLRepr(TestCase):
             self.child = kwargs['child']
             self.data = kwargs['data']
             self.str = kwargs['str']
-            
+
     class ContainerWithData(Container):
-        
+
         __fields__ = (
             "data",
             "str"
@@ -439,9 +439,9 @@ class TestHTMLRepr(TestCase):
             super().__init__('test name')
             self.data = kwargs['data']
             self.str = kwargs['str']
-            
-        
-    
+
+
+
     def test_repr_html_(self):
         child_obj1 = Container('test child 1')
         obj1 = self.ContainerWithChildAndData(child=child_obj1, data=[1, 2, 3], str="hello")
@@ -474,9 +474,9 @@ class TestHTMLRepr(TestCase):
             'class="field-value">hello</span></div></div>'
         )
 
-    
+
     def test_repr_html_hdf5_dataset(self):
-        
+
         import h5py
 
         # Open an HDF5 file in write mode
@@ -491,7 +491,7 @@ class TestHTMLRepr(TestCase):
 
             obj = self.ContainerWithData(data=dataset, str="hello")
             html_repr = obj._repr_html_()
-            
+
             expected_html = (
                 '<style>\n'
                 '    .container-fields {\n'
