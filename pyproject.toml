@@ -77,7 +77,6 @@ packages = ["src/hdmf"]
 # verbose = 1
 
 [tool.pytest.ini_options]
-addopts = "--cov=hdmf --cov-report html"
 norecursedirs = "tests/unit/helpers"
 
 [tool.codespell]
@@ -86,16 +85,16 @@ ignore-words-list = "datas"
 
 [tool.coverage.run]
 branch = true
-source = ["src/"]
-omit = [
-    "src/hdmf/_due.py",
-    "src/hdmf/testing/*",
-]
+source = ["src"]
 
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
     "@abstract"
+]
+omit = [
+    "*/hdmf/_due.py",
+    "*/hdmf/testing/*",
 ]
 
 # [tool.black]
