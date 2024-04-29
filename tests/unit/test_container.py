@@ -422,7 +422,26 @@ class TestHTMLRepr(TestCase):
             self.child = kwargs['child']
             self.data = kwargs['data']
             self.str = kwargs['str']
+            
+    class ContainerWithData(Container):
+        
+        __fields__ = (
+            "data",
+            "str"
+        )
 
+        @docval(
+            {'name': "data", "doc": 'data', 'type': list, "default": None},
+            {'name': "str", "doc": 'str', 'type': str, "default": None},
+
+        )
+        def __init__(self, **kwargs):
+            super().__init__('test name')
+            self.data = kwargs['data']
+            self.str = kwargs['str']
+            
+        
+    
     def test_repr_html_(self):
         child_obj1 = Container('test child 1')
         obj1 = self.ContainerWithChildAndData(child=child_obj1, data=[1, 2, 3], str="hello")
@@ -455,6 +474,62 @@ class TestHTMLRepr(TestCase):
             'class="field-value">hello</span></div></div>'
         )
 
+    
+    def test_repr_html_hdf5_dataset(self):
+        
+        import h5py
+
+        # Open an HDF5 file in write mode
+        with h5py.File('data.h5', 'w') as file:
+
+            # Create a dataset
+            data = [1, 2, 3, 4, 5]
+            dataset = file.create_dataset(name='my_dataset', data=data)
+
+            # Close the file
+
+
+            obj = self.ContainerWithData(data=dataset, str="hello")
+            html_repr = obj._repr_html_()
+            
+            expected_html = (
+                '<style>\n'
+                '    .container-fields {\n'
+                '        font-family: "Open Sans", Arial, sans-serif;\n'
+                '    }\n'
+                '    .container-fields .field-value {\n'
+                '        color: #00788E;\n'
+                '    }\n'
+                '    .container-fields details > summary {\n'
+                '        cursor: pointer;\n'
+                '        display: list-item;\n'
+                '    }\n'
+                '    .container-fields details > summary:hover {\n'
+                '        color: #0A6EAA;\n'
+                '    }\n'
+                '</style>\n'
+                '<script>\n'
+                '    function copyToClipboard(text) {\n'
+                '        navigator.clipboard.writeText(text).then(function() {\n'
+                '            console.log(\'Copied to clipboard: \' + text);\n'
+                '        }, function(err) {\n'
+                '            console.error(\'Could not copy text: \', err);\n'
+                '        });\n'
+                '    }\n'
+                '    document.addEventListener(\'DOMContentLoaded\', function() {\n'
+                '        let fieldKeys = document.querySelectorAll(\'.container-fields .field-key\');\n'
+                '        fieldKeys.forEach(function(fieldKey) {\n'
+                '            fieldKey.addEventListener(\'click\', function() {\n'
+                '                let accessCode = fieldKey.getAttribute(\'title\').replace(\'Access code: \', \'\');\n'
+                '                copyToClipboard(accessCode);\n'
+                '            });\n'
+                '        });\n'
+                '    });\n'
+                '</script>\n'
+                '<div class=\'container-wrap\'><div class=\'container-header\'><div class=\'xr-obj-type\'><h3>test name (ContainerWithData)</h3></div></div><details><summary style="display: list-item; margin-left: 0px;" class="container-fields field-key" title=".data"><b>data</b></summary><div style="margin-left: 20px;" class="container-fields">HDF5 Dataset<br><table class="zarr-info"><tbody><tr><th style="text-align: left">shape</th><td style="text-align: left">(5,)</td></tr><tr><th style="text-align: left">dtype</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Array size</th><td style="text-align: left">40.00 bytes</td></tr><tr><th style="text-align: left">chunks</th><td style="text-align: left">None</td></tr><tr><th style="text-align: left">compression</th><td style="text-align: left">None</td></tr><tr><th style="text-align: left">compression_opts</th><td style="text-align: left">None</td></tr><tr><th style="text-align: left">compression_ratio</th><td style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4 5]</div></details><div style="margin-left: 0px;" class="container-fields"><span class="field-key" title=".str">str: </span><span class="field-value">hello</span></div></div>'
+            )
+
+            assert html_repr == expected_html
 
 class TestData(TestCase):
 
