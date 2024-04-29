@@ -77,7 +77,7 @@ packages = ["src/hdmf"]
 # verbose = 1
 
 [tool.pytest.ini_options]
-addopts = "--cov=src/hdmf --cov-report html"
+addopts = "--cov=hdmf --cov-report html"
 norecursedirs = "tests/unit/helpers"
 
 [tool.codespell]
