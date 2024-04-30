@@ -756,8 +756,6 @@ class Container(AbstractContainer):
         return html_repr
 
 
-
-
     def _generate_array_html(self, array, level):
         """Generates HTML for a NumPy array."""
 
@@ -799,7 +797,7 @@ class Container(AbstractContainer):
             uncompressed_size = hdf5_dataset.nbytes
             compression_opts = hdf5_dataset.compression_opts
             compressed_size = hdf5_dataset.id.get_storage_size()
-            compression_ratio = uncompressed_size / compressed_size
+            compression_ratio = uncompressed_size / compressed_size if compressed_size != 0 else "undefined"
 
             head = "HDF5 Dataset"
             hdf5_info_dict = {"chunks": chunks, "compression": compression, "compression_opts": compression_opts,
