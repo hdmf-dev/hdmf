@@ -4,7 +4,7 @@ import numpy as np
 from hdmf import Container
 from hdmf.term_set import TermSet, TermSetWrapper, TypeConfigurator
 from hdmf.testing import TestCase, remove_test_file
-from hdmf.common import (VectorIndex, VectorData, unload_type_config,
+from hdmf.common import (VectorData, unload_type_config,
                          get_loaded_type_config, load_type_config)
 from hdmf.utils import popargs
 
@@ -267,12 +267,15 @@ class TestTypeConfig(TestCase):
         tc = TypeConfigurator(path=path)
         tc.load_type_config(config_path=path2)
         config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
-                  'data_types': {'VectorData': {'description': '...'},
-                                 'VectorIndex': {'data': '...'},
-                                 'Data': {'description': {'termset': 'example_test_term_set.yaml'}},
-                                 'EnumData': {'description': {'termset': 'example_test_term_set.yaml'}}}},
-                  'namespace2': {'version': 0,
-                  'data_types': {'MythicData': {'description': {'termset': 'example_test_term_set.yaml'}}}}}}
+                  'data_types': {'VectorData': {'name': None},
+                  'VectorIndex': {'data': '...'},
+                  'Data': {'description': {'termset': 'example_test_term_set.yaml'}},
+                  'EnumData': {'description': {'termset': 'example_test_term_set.yaml'}}}},
+                  'foo_namespace': {'version': '...',
+                  'data_types': {'ExtensionContainer': {'description': None}}},
+                  'namespace2': {'version': 0, 'data_types':
+                  {'MythicData': {'description':
+                  {'termset': 'example_test_term_set.yaml'}}}}}}
         self.assertEqual(tc.path, [path, path2])
         self.assertEqual(tc.config, config)
 
@@ -285,6 +288,13 @@ class ExtensionContainer(Container):
         self.namespace = namespace
         super().__init__(**kwargs)
         self.description = description
+
+    @property
+    def data_type(self):
+        """
+        Return the spec data type associated with this container.
+        """
+        return "ExtensionContainer"
 
 
 class TestGlobalTypeConfig(TestCase):
@@ -300,8 +310,12 @@ class TestGlobalTypeConfig(TestCase):
         config = get_loaded_type_config()
         self.assertEqual(config,
         {'namespaces': {'hdmf-common': {'version': '3.12.2',
-        'data_types': {'VectorData': {'description': {'termset': 'example_test_term_set.yaml'}},
-                       'VectorIndex': {'data': '...'}}}}})
+         'data_types': {'VectorData':
+        {'description': {'termset': 'example_test_term_set.yaml'}},
+         'VectorIndex': {'data': '...'}}}, 'foo_namespace':
+        {'version': '...', 'data_types':
+        {'ExtensionContainer': {'description': None}}}}}
+)
 
     def test_validate_with_config(self):
         data = VectorData(name='foo', data=[0], description='Homo sapiens')
@@ -326,11 +340,14 @@ class TestGlobalTypeConfig(TestCase):
                        data=[0],
                        description=TermSetWrapper(value='Homo sapiens', termset=terms))
 
-    def test_warn_field_not_in_spec(self):
-        col1 = VectorData(name='col1',
-                                  description='Homo sapiens',
-                                  data=['1a', '1b', '1c', '2a'])
+    def test_field_not_in_config(self):
+        unload_type_config()
+        load_type_config(config_path='tests/unit/hdmf_config2.yaml')
+
+        VectorData(name='foo', data=[0], description='Homo sapiens')
+
+    def test_spec_none(self):
         with self.assertWarns(Warning):
-            VectorIndex(name='col1_index',
-                        target=col1,
-                        data=[3, 4])
+            ExtensionContainer(name='foo',
+                               namespace='foo_namespace',
+                               description='Homo sapiens')

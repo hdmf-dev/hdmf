@@ -17,8 +17,11 @@ class TestCommonTypeMap(TestCase):
         load_type_config(config_path=path)
         tm = get_type_map()
         config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
-                  'data_types': {'VectorData': {'description': {'termset': 'example_test_term_set.yaml'}},
-                                 'VectorIndex': {'data': '...'}}}}}
+                  'data_types': {'VectorData':
+                 {'description': {'termset': 'example_test_term_set.yaml'}},
+                  'VectorIndex': {'data': '...'}}}, 'foo_namespace':
+                 {'version': '...', 'data_types':
+                 {'ExtensionContainer': {'description': None}}}}}
 
         self.assertEqual(tm.type_config.config, config)
         self.assertEqual(tm.type_config.path, [path])

@@ -93,6 +93,8 @@ nitpick_ignore = [('py:class', 'Intracomm'),
                   ('py:class', 'unittest.case.TestCase'),
                   ]
 
+suppress_warnings = ["config.cache"]
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
