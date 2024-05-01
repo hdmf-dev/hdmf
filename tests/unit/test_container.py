@@ -481,7 +481,7 @@ class TestHTMLRepr(TestCase):
     def test_repr_html_array(self):
         obj = self.ContainerWithData(data=np.array([1, 2, 3, 4]), str="hello")
         expected_html_table = (
-            'class="container-fields">NumPy Array<br><table class="zarr-info"><tbody><tr><th style="text-align: '
+            'class="container-fields">NumPy Array<br><table class="data-info"><tbody><tr><th style="text-align: '
             'left">shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">dtype</'
             'th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Array size</th><td '
             'style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]</div></details><div '
@@ -495,7 +495,7 @@ class TestHTMLRepr(TestCase):
         obj = self.ContainerWithData(data=z_arr, str="hello")
         expected_html_table = (
             'class="container-fields">Zarr '
-            'Array<br><table class="zarr-info"><tbody><tr><th style="text-align: left">Type</th><td style="text-align: '
+            'Array<br><table class="data-info"><tbody><tr><th style="text-align: left">Type</th><td style="text-align: '
             'left">zarr.core.Array</td></tr><tr><th style="text-align: left">Data type</th><td style="text-align: '
             'left">int64</td></tr><tr><th style="text-align: left">Shape</th><td style="text-align: left">(4,)</td></'
             'tr><tr><th style="text-align: left">Chunk shape</th><td style="text-align: left">(4,)</td></tr><tr><th '
@@ -519,7 +519,7 @@ class TestHTMLRepr(TestCase):
             dataset = file.create_dataset(name='my_dataset', data=[1, 2, 3, 4])
             obj = self.ContainerWithData(data=dataset, str="hello")
             expected_html_table = (
-                'class="container-fields">HDF5 Dataset<br><table class="zarr-info"><tbody><tr><th style="text-align: '
+                'class="container-fields">HDF5 Dataset<br><table class="data-info"><tbody><tr><th style="text-align: '
                 'left">shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">dtype</'
                 'th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Array size</th><td '
                 'style="text-align: left">32.00 bytes</td></tr><tr><th style="text-align: left">chunks</th><td '

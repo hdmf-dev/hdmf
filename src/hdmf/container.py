@@ -757,7 +757,7 @@ class Container(AbstractContainer):
 
 
     def _generate_array_html(self, array, level):
-        """Generates HTML for a NumPy array."""
+        """Generates HTML for a NumPy array, h5py Dataset, or Zarr array."""
 
         def convert_bytes_to_str(bytes_size):
             suffixes = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
@@ -769,7 +769,7 @@ class Container(AbstractContainer):
 
         # Generates an html report for the backend info, inspired on zarr info html representation
         def html_table(item_dicts) -> str:
-            report = '<table class="zarr-info">'
+            report = '<table class="data-info">'
             report += "<tbody>"
             for k, v in item_dicts.items():
                 report += (
