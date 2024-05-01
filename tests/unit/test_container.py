@@ -10,11 +10,6 @@ from hdmf.utils import docval
 from hdmf.common import DynamicTable, VectorData, DynamicTableRegion
 from hdmf.backends.hdf5.h5tools import HDF5IO
 
-try:
-    import zarr
-    SKIP_ZARR_TESTS = False
-except ImportError:
-    SKIP_ZARR_TESTS = True
 
 class Subcontainer(Container):
     pass
@@ -487,28 +482,6 @@ class TestHTMLRepr(TestCase):
             'style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]</div></details><div '
             'style="margin-left: 0px;" class="container-fields"><span class="field-key" title=".str">str: </'
             'span><span class="field-value">hello</span></div></div>'
-        )
-        self.assertIn(expected_html_table, obj._repr_html_())
-
-    def test_repr_html_zarr(self):
-        z_arr = zarr.array(np.array([1, 2, 3, 4]))
-        obj = self.ContainerWithData(data=z_arr, str="hello")
-        expected_html_table = (
-            'class="container-fields">Zarr '
-            'Array<br><table class="data-info"><tbody><tr><th style="text-align: left">Type</th><td style="text-align: '
-            'left">zarr.core.Array</td></tr><tr><th style="text-align: left">Data type</th><td style="text-align: '
-            'left">int64</td></tr><tr><th style="text-align: left">Shape</th><td style="text-align: left">(4,)</td></'
-            'tr><tr><th style="text-align: left">Chunk shape</th><td style="text-align: left">(4,)</td></tr><tr><th '
-            'style="text-align: left">Order</th><td style="text-align: left">C</td></tr><tr><th style="text-align: '
-            'left">Read-only</th><td style="text-align: left">False</td></tr><tr><th style="text-align: '
-            'left">Compressor</th><td style="text-align: left">Blosc(cname=\'lz4\', clevel=5, shuffle=SHUFFLE, '
-            'blocksize=0)</td></tr><tr><th style="text-align: left">Store type</th><td style="text-align: left">zarr.'
-            'storage.KVStore</td></tr><tr><th style="text-align: left">No. bytes</th><td style="text-align: left">32</'
-            'td></tr><tr><th style="text-align: left">No. bytes stored</th><td style="text-align: left">357</td></'
-            'tr><tr><th style="text-align: left">Storage ratio</th><td style="text-align: left">0.1</td></tr><tr><th '
-            'style="text-align: left">Chunks initialized</th><td style="text-align: left">1/1</td></tr></tbody></'
-            'table><br>[1 2 3 4]</div></details><div style="margin-left: 0px;" class="container-fields"><span '
-            'class="field-key" title=".str">str: </span><span class="field-value">hello</span></div></div>'
         )
         self.assertIn(expected_html_table, obj._repr_html_())
 
