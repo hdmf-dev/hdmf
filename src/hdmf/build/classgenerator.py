@@ -434,11 +434,6 @@ class MCIClassGenerator(CustomClassGenerator):
         if '__clsconf__' in classdict:
             previous_init = classdict['__init__']
 
-            # We want to use the skip_post_init of the current class and not the parent class
-            for item in docval_args:
-                if item['name'] == 'skip_post_init':
-                    docval_args.remove(item)
-
             @docval(*docval_args, allow_positional=AllowPositional.WARNING)
             def __init__(self, **kwargs):
                 # store the values passed to init for each MCI attribute so that they can be added
