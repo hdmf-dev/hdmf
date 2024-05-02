@@ -474,7 +474,7 @@ class TestHTMLRepr(TestCase):
         )
 
     def test_repr_html_array(self):
-        obj = self.ContainerWithData(data=np.array([1, 2, 3, 4]), str="hello")
+        obj = self.ContainerWithData(data=np.array([1, 2, 3, 4], dtype=np.int64), str="hello")
         expected_html_table = (
             'class="container-fields">NumPy Array<br><table class="data-info"><tbody><tr><th style="text-align: '
             'left">shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">dtype</'
@@ -489,7 +489,7 @@ class TestHTMLRepr(TestCase):
 
         # Open an HDF5 file in write mode
         with h5py.File('data.h5', 'w') as file:
-            dataset = file.create_dataset(name='my_dataset', data=[1, 2, 3, 4])
+            dataset = file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
             obj = self.ContainerWithData(data=dataset, str="hello")
             expected_html_table = (
                 'class="container-fields">HDF5 Dataset<br><table class="data-info"><tbody><tr><th style="text-align: '
