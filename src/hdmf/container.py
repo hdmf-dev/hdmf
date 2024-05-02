@@ -782,7 +782,7 @@ class Container(AbstractContainer):
             report += "</table>"
             return report
 
-        if hasattr(array, "nbytes"):
+        if hasattr(array, "nbytes"):  # TODO: Remove this after h5py minimal version is larger than 3.0
             array_size_in_bytes = array.nbytes
         else:
             array_size_in_bytes = array.size * array.dtype.itemsize
