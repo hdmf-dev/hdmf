@@ -86,9 +86,12 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if name in self.fields:
                 msg = "can't set attribute '%s' -- already set" % name
                 raise AttributeError(msg)
+
             self.fields[name] = self._field_config(arg_name=name,
                                                    val=val,
                                                    type_map=self._get_type_map())
+            # if name == 'electrodes':
+            #     breakpoint()
         return setter
 
     def _get_type_map(self):
@@ -265,7 +268,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
             field_conf.setdefault('doc', docs.get(pname))
             if not hasattr(cls, pname):
                 setattr(cls, pname, property(cls._getter(field_conf), cls._setter(field_conf)))
-
+        # if cls.__name__ == 'NWBFile':
+        #     breakpoint()
         cls._set_fields(tuple(field_conf['name'] for field_conf in all_fields_conf))
         cls.__fieldsconf = tuple(all_fields_conf)
 

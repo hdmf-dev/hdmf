@@ -784,6 +784,9 @@ class TypeMap:
         builder.set_attribute(obj_mapper.spec.id_key(), container.object_id)
         return builder
 
+    def modify_builder(self, builder):
+        pass
+
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
              'doc': 'the builder to construct the AbstractContainer from'},
             {'name': 'build_manager', 'type': BuildManager,
@@ -795,6 +798,9 @@ class TypeMap:
         builder, build_manager, parent = getargs('builder', 'build_manager', 'parent', kwargs)
         if build_manager is None:
             build_manager = BuildManager(self)
+        m_builder = self.modify_builder(builder)
+        if m_builder is not None:
+            builder = m_builder
         obj_mapper = self.get_map(builder)
         if obj_mapper is None:
             dt = builder.attributes[self.namespace_catalog.group_spec_cls.type_key()]
