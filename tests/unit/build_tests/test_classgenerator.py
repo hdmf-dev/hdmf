@@ -183,13 +183,15 @@ class TestDynamicContainer(TestCase):
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4'}
+        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'skip_post_init'}
         received_args = set()
+
         for x in get_docval(cls.__init__):
             if x['name'] != 'foo':
                 received_args.add(x['name'])
                 with self.subTest(name=x['name']):
-                    self.assertNotIn('default', x)
+                    if x['name'] != 'skip_post_init':
+                        self.assertNotIn('default', x)
         self.assertSetEqual(expected_args, received_args)
         self.assertEqual(cls.__name__, 'Baz')
         self.assertTrue(issubclass(cls, Bar))
@@ -209,7 +211,7 @@ class TestDynamicContainer(TestCase):
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo'}
+        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo', 'skip_post_init'}
         received_args = set(map(lambda x: x['name'], get_docval(cls.__init__)))
         self.assertSetEqual(expected_args, received_args)
         self.assertEqual(cls.__name__, 'Baz')
@@ -359,13 +361,14 @@ class TestDynamicContainer(TestCase):
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        expected_args = {'name', 'data', 'attr2', 'attr3', 'attr4'}
+        expected_args = {'name', 'data', 'attr2', 'attr3', 'attr4', 'skip_post_init'}
         received_args = set()
         for x in get_docval(cls.__init__):
             if x['name'] != 'foo':
                 received_args.add(x['name'])
                 with self.subTest(name=x['name']):
-                    self.assertNotIn('default', x)
+                    if x['name'] != 'skip_post_init':
+                        self.assertNotIn('default', x)
         self.assertSetEqual(expected_args, received_args)
         self.assertTrue(issubclass(cls, FixedAttrBar))
         inst = cls(name="My Baz", data=[1, 2, 3, 4], attr2=1000, attr3=98.6, attr4=1.0)
@@ -519,7 +522,7 @@ class TestDynamicContainerFixedValue(TestCase):
 
     def test_init_docval(self):
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)  # generate the class
-        expected_args = {'name'}  # 'attr1' should not be included
+        expected_args = {'name', 'skip_post_init'}  # 'attr1' should not be included
         received_args = set()
         for x in get_docval(cls.__init__):
             received_args.add(x['name'])
@@ -592,6 +595,8 @@ class TestDynamicContainerIncludingFixedName(TestCase):
             {'name': 'my_baz1', 'doc': 'A composition inside with a fixed name', 'type': baz1_cls},
             {'name': 'my_baz2', 'doc': 'A composition inside with a fixed name', 'type': baz2_cls},
             {'name': 'my_baz1_link', 'doc': 'A composition inside without a fixed name', 'type': baz1_cls},
+            {'name': 'skip_post_init', 'type': bool, 'default': False,
+             'doc': 'bool to skip post_init'}
         ))
 
     def test_init_fields(self):

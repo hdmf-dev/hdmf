@@ -323,12 +323,17 @@ class CustomClassGenerator:
             elif attr_name not in attrs_not_to_set:
                 attrs_to_set.append(attr_name)
 
+        # We want to use the skip_post_init of the current class and not the parent class
+        for item in docval_args:
+            if item['name'] == 'skip_post_init':
+                docval_args.remove(item)
+
         @docval(*docval_args,
-                {'name': 'post_init_bool', 'type': bool, 'default': True,
-                 'doc': 'bool to skip post_init for MCIClassGenerator'},
+                {'name': 'skip_post_init', 'type': bool, 'default': False,
+                 'doc': 'bool to skip post_init'},
                 allow_positional=AllowPositional.WARNING)
         def __init__(self, **kwargs):
-            post_init_bool = popargs('post_init_bool', kwargs)
+            skip_post_init = popargs('skip_post_init', kwargs)
 
             original_kwargs = dict(kwargs)
             if name is not None:  # force container name to be the fixed name in the spec
@@ -356,8 +361,7 @@ class CustomClassGenerator:
             for f in fixed_value_attrs_to_set:
                 self.fields[f] = getattr(not_inherited_fields[f], 'value')
 
-            if self.post_init_method is not None and post_init_bool:
-                #
+            if self.post_init_method is not None and not skip_post_init:
                 self.post_init_method(**original_kwargs)
 
         classdict['__init__'] = __init__
@@ -430,6 +434,11 @@ class MCIClassGenerator(CustomClassGenerator):
         if '__clsconf__' in classdict:
             previous_init = classdict['__init__']
 
+            # We want to use the skip_post_init of the current class and not the parent class
+            for item in docval_args:
+                if item['name'] == 'skip_post_init':
+                    docval_args.remove(item)
+
             @docval(*docval_args, allow_positional=AllowPositional.WARNING)
             def __init__(self, **kwargs):
                 # store the values passed to init for each MCI attribute so that they can be added
@@ -455,7 +464,7 @@ class MCIClassGenerator(CustomClassGenerator):
                     kwargs[attr_name] = list()
 
                 # call the parent class init without the MCI attribute
-                kwargs['post_init_bool'] = False
+                kwargs['skip_post_init'] = True
                 previous_init(self, **kwargs)
 
                 # call the add method for each MCI attribute
