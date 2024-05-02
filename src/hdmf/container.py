@@ -794,7 +794,10 @@ class Container(AbstractContainer):
             hdf5_dataset = array
             chunks = hdf5_dataset.chunks
             compression = hdf5_dataset.compression
-            uncompressed_size = hdf5_dataset.nbytes
+            if hasattr(hdf5_dataset, "nbytes"):  # TODO, remove if statement when and if h5py 3.0 is minimal
+                uncompressed_size = hdf5_dataset.nbytes
+            else:
+                uncompressed_size = hdf5_dataset.size * hdf5_dataset.dtype.itemsize
             compression_opts = hdf5_dataset.compression_opts
             compressed_size = hdf5_dataset.id.get_storage_size()
             compression_ratio = uncompressed_size / compressed_size if compressed_size != 0 else "undefined"
