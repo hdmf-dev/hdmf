@@ -139,7 +139,6 @@ def available_namespaces():
         {'name': 'namespace', 'type': str, 'doc': 'the namespace the data_type is defined in'},
         {'name': 'post_init_method', 'type': Callable, 'default': None,
         'doc': 'The function used as a post_init method to validate the class generation.'},
-        {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
         is_method=False)
 def get_class(**kwargs):
     """Get the class object of the Container subclass corresponding to a given neurdata_type.
