@@ -468,7 +468,6 @@ class MCIClassGenerator(CustomClassGenerator):
                     add_method(new_kwarg['value'])
 
                 if self.post_init_method is not None:
-
                     self.post_init_method(**original_kwargs)
 
             # override __init__
