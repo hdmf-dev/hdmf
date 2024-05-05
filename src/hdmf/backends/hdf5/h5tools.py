@@ -51,18 +51,20 @@ class HDF5IO(HDMFIO):
 
     @staticmethod
     def resolve_data_shape(data, options):
-        if 'dtype' not in options:
-            dtype = None
-        else:
-            dtype = options['dtype']
-
-        if hasattr(data, 'shape'):
-            data_shape = data.shape
-        elif isinstance(dtype, np.dtype):
+        """
+        This method is used to get the dimensions of the data in order to setup
+        the maxshape.
+        """
+        if isinstance(options['dtype'], np.dtype):
             data_shape = (len(data),)
         else:
             data_shape = get_data_shape(data)
-        return data_shape
+
+        if data_shape is None:
+            msg = "Could not resolve the shape of the data."
+            raise ValueError(msg)
+        else:
+            return data_shape
 
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'mode', 'type': str,
@@ -1118,17 +1120,6 @@ class HDF5IO(HDMFIO):
         else:
             options['io_settings'] = {}
 
-        if 'maxshape' not in options['io_settings']:
-            if 'shape' in options['io_settings']:
-                shape =  options['io_settings']['shape']
-            else:
-                shape = HDF5IO.resolve_data_shape(data, options)
-
-            options['io_settings']['maxshape'] = tuple([None]*len(shape))
-        else:
-            pass
-            # We do not want to override user specified maxshape
-
         attributes = builder.attributes
         options['dtype'] = builder.dtype
         dset = None
@@ -1473,7 +1464,9 @@ class HDF5IO(HDMFIO):
         if 'shape' in io_settings:
             data_shape = io_settings.pop('shape')
         else:
-            data_shape = HDF5IO.resolve_data_shape(data, options)
+            data_shape = get_data_shape(data, options)
+        if 'maxshape' in io_settings:
+            breakpoint()
         # Create the dataset
         try:
             dset = parent.create_dataset(name, shape=data_shape, dtype=dtype, **io_settings)
