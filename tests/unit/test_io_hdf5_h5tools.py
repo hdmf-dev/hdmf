@@ -781,6 +781,13 @@ class TestExpand(TestCase):
             with HDF5IO(self.path, manager=self.manager, mode='w') as io:
                 io.write(foofile, expandable=False)
 
+        io = HDF5IO(self.path, manager=self.manager, mode='r')
+        read_foofile = io.read()
+        self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
+                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+        self.assertEqual(get_data_shape(read_foofile.buckets['bucket1'].foos['foo1'].my_data),
+                        (5,))
+
 
 class TestRoundTrip(TestCase):
 
