@@ -766,6 +766,22 @@ class H5IOTest(TestCase):
                                  '<HDF5 dataset "test_dataset": shape (5,), type "|O">')
 
 
+class TestExpand(TestCase):
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+
+    def test_expand_false(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with self.assertWarns(Warning):
+            with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+                io.write(foofile, expandable=False)
+
+
 class TestRoundTrip(TestCase):
 
     def setUp(self):

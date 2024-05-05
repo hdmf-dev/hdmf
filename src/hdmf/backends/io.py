@@ -84,7 +84,6 @@ class HDMFIO(metaclass=ABCMeta):
     def write(self, **kwargs):
         container = popargs('container', kwargs)
         herd = popargs('herd', kwargs)
-
         """Optional: Write HERD."""
         if self.herd_path is not None:
             # If HERD is not provided, create a new one, else extend existing one

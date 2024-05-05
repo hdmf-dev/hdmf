@@ -815,13 +815,12 @@ class HDF5IO(HDMFIO):
                                                         'exhaust_dci',
                                                         'export_source',
                                                         kwargs)
-        expandable = popargs('expandable', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to path '%s' with kwargs=%s"
                           % (f_builder.name, self.source, kwargs))
         for name, gbldr in f_builder.groups.items():
             self.write_group(self.__file, gbldr, **kwargs)
         for name, dbldr in f_builder.datasets.items():
-            self.write_dataset(self.__file, dbldr, expandable, **kwargs)
+            self.write_dataset(self.__file, dbldr, **kwargs)
         for name, lbldr in f_builder.links.items():
             self.write_link(self.__file, lbldr, export_source=kwargs.get("export_source"))
         self.set_attributes(self.__file, f_builder.attributes)
@@ -986,6 +985,8 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
+            {'name': 'expandable', 'type': bool, 'default': True,
+             'doc': 'Bool to set whether datasets are expandable through chunking by default.'},
             returns='the Group that was created', rtype=Group)
     def write_group(self, **kwargs):
         parent, builder = popargs('parent', 'builder', kwargs)
@@ -1468,6 +1469,9 @@ class HDF5IO(HDMFIO):
             else:
                 # Don't override existing settings
                 pass
+        else:
+            msg = "Datasets written using user defined parameters. Default expandable via chunking: False"
+            warnings.warn(msg)
         # Create the dataset
         try:
             dset = parent.create_dataset(name, shape=data_shape, dtype=dtype, **io_settings)
