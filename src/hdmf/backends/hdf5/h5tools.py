@@ -815,12 +815,13 @@ class HDF5IO(HDMFIO):
                                                         'exhaust_dci',
                                                         'export_source',
                                                         kwargs)
+        expandable = popargs('expandable', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to path '%s' with kwargs=%s"
                           % (f_builder.name, self.source, kwargs))
         for name, gbldr in f_builder.groups.items():
             self.write_group(self.__file, gbldr, **kwargs)
         for name, dbldr in f_builder.datasets.items():
-            self.write_dataset(self.__file, dbldr, **kwargs)
+            self.write_dataset(self.__file, dbldr, expandable, **kwargs)
         for name, lbldr in f_builder.links.items():
             self.write_link(self.__file, lbldr, export_source=kwargs.get("export_source"))
         self.set_attributes(self.__file, f_builder.attributes)
