@@ -78,8 +78,6 @@ class HDMFIO(metaclass=ABCMeta):
             {'name': 'herd', 'type': 'hdmf.common.resources.HERD',
              'doc': 'A HERD object to populate with references.',
              'default': None},
-            {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': 'Bool to set whether datasets are expandable through chunking by default.'},
             allow_extra=True)
     def write(self, **kwargs):
         container = popargs('container', kwargs)
