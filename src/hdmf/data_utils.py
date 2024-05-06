@@ -180,6 +180,12 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             default=False,
         ),
         dict(
+            name="progress_bar_class",
+            type=callable,
+            doc="The progress bar class to use. Defaults to tqdm.tqdm if the TQDM package is installed.",
+            default=None,
+        ),
+        dict(
             name="progress_bar_options",
             type=None,
             doc="Dictionary of keyword arguments to be passed directly to tqdm.",
@@ -277,11 +283,13 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             try:
                 from tqdm import tqdm
 
+                progress_bar_class = progress_bar_class or tqdm
+
                 if "total" in self.progress_bar_options:
                     warn("Option 'total' in 'progress_bar_options' is not allowed to be over-written! Ignoring.")
                     self.progress_bar_options.pop("total")
 
-                self.progress_bar = tqdm(total=self.num_buffers, **self.progress_bar_options)
+                self.progress_bar = progress_bar_class(total=self.num_buffers, **self.progress_bar_options)
             except ImportError:
                 warn(
                     "You must install tqdm to use the progress bar feature (pip install tqdm)! "
