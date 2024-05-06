@@ -771,10 +771,6 @@ class TestExpand(TestCase):
         self.manager = get_foo_buildmanager()
         self.path = get_temp_filepath()
 
-    def tearDown(self):
-        if os.path.exists(self.path):
-            os.remove(self.path)
-
     def test_expand_false(self):
         # Setup all the data we need
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
