@@ -28,6 +28,7 @@ from hdmf.spec.spec import GroupSpec
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common.resources import HERD
 from hdmf.term_set import TermSet, TermSetWrapper
+from hdmf.utils import get_data_shape
 
 
 from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
@@ -163,6 +164,7 @@ class H5IOTest(TestCase):
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a.tolist(), attributes={}))
         dset = self.f['test_dataset']
         self.assertTrue(np.all(dset[:] == a))
+        self.assertEqual(get_data_shape(dset), (None, None, None))
 
     def test_write_dataset_list_compress_gzip(self):
         a = H5DataIO(np.arange(30).reshape(5, 2, 3),
@@ -266,9 +268,9 @@ class H5IOTest(TestCase):
         self.assertEqual(dset.fillvalue, -1)
 
     ##########################################
-    #  write_dataset tests: tables
+    #  write_dataset tests: cmpd_dt
     ##########################################
-    def test_write_table(self):
+    def test_write_cmpd_dt(self):
         cmpd_dt = np.dtype([('a', np.int32), ('b', np.float64)])
         data = np.zeros(10, dtype=cmpd_dt)
         data['a'][1] = 101
@@ -279,8 +281,9 @@ class H5IOTest(TestCase):
         dset = self.f['test_dataset']
         self.assertEqual(dset['a'].tolist(), data['a'].tolist())
         self.assertEqual(dset['b'].tolist(), data['b'].tolist())
+        self.assertEqual(get_data_shape(dset), (None,))
 
-    def test_write_table_nested(self):
+    def test_write_cmpd_dt_nested(self):
         b_cmpd_dt = np.dtype([('c', np.int32), ('d', np.float64)])
         cmpd_dt = np.dtype([('a', np.int32), ('b', b_cmpd_dt)])
         data = np.zeros(10, dtype=cmpd_dt)
@@ -739,12 +742,12 @@ class H5IOTest(TestCase):
                              self.f['test_copy'][:].tolist())
 
     def test_list_fill_empty(self):
-        dset = self.io.__list_fill__(self.f, 'empty_dataset', [], options={'dtype': int, 'io_settings': {}})
+        dset = self.io.__list_fill__(self.f, 'empty_dataset', [], True, options={'dtype': int, 'io_settings': {}})
         self.assertTupleEqual(dset.shape, (0,))
 
     def test_list_fill_empty_no_dtype(self):
         with self.assertRaisesRegex(Exception, r"cannot add \S+ to [/\S]+ - could not determine type"):
-            self.io.__list_fill__(self.f, 'empty_dataset', [])
+            self.io.__list_fill__(self.f, 'empty_dataset', [], True)
 
     def test_read_str(self):
         a = ['a', 'bb', 'ccc', 'dddd', 'e']
@@ -761,6 +764,28 @@ class H5IOTest(TestCase):
             else:
                 self.assertEqual(str(bldr['test_dataset'].data),
                                  '<HDF5 dataset "test_dataset": shape (5,), type "|O">')
+
+
+class TestExpand(TestCase):
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+
+    def test_expand_false(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile, expandable=False)
+
+        io = HDF5IO(self.path, manager=self.manager, mode='r')
+        read_foofile = io.read()
+        self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
+                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+        self.assertEqual(get_data_shape(read_foofile.buckets['bucket1'].foos['foo1'].my_data),
+                        (5,))
 
 
 class TestRoundTrip(TestCase):
