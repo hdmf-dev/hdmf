@@ -27,7 +27,8 @@ jobs:
           cd pynwb
           python -m pip install -r requirements-dev.txt  # do not install the pinned install requirements
           python -m pip install .  # this will install a different version of hdmf from the current one
-
+          python -m pip list
+          
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
         with:
