@@ -53,10 +53,10 @@ jobs:
       #     cd ..
       #     python -m pip uninstall -y hdmf  # uninstall the other version of hdmf
       #     python -m pip install .  # reinstall current branch of hdmf
-      #     python -m pip list
+          # python -m pip list
 
       - name: Run PyNWB tests on PyNWB dev branch
         run: |
           ls
-          cd pynwb
+          pip list
           python test.py -v
