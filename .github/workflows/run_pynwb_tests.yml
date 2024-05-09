@@ -28,9 +28,6 @@ jobs:
           python -m pip install -r requirements-dev.txt  # do not install the pinned install requirements
           python -m pip install .  # this will install a different version of hdmf from the current one
           python -m pip list
-          cd ..
-          ls
-
 
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
@@ -60,5 +57,6 @@ jobs:
 
       - name: Run PyNWB tests on PyNWB dev branch
         run: |
+          ls
           cd pynwb
           python test.py -v
