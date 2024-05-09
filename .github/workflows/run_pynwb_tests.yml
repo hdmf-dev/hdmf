@@ -12,12 +12,6 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
-      - name: Checkout repo with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-          fetch-depth: 0  # tags are required to determine the version
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -33,10 +27,32 @@ jobs:
           cd pynwb
           python -m pip install -r requirements-dev.txt  # do not install the pinned install requirements
           python -m pip install .  # this will install a different version of hdmf from the current one
-          cd ..
-          python -m pip uninstall -y hdmf  # uninstall the other version of hdmf
-          python -m pip install .  # reinstall current branch of hdmf
-          python -m pip list
+
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0  # tags are required to determine the version
+
+      # - name: Set up Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.12'
+
+      # - name: Update pip
+      #   run: python -m pip install --upgrade pip
+
+      # - name: Clone PyNWB and install dev branch of HDMF
+      #   run: |
+      #     python -m pip list
+      #     git clone https://github.com/NeurodataWithoutBorders/pynwb.git --recurse-submodules
+      #     cd pynwb
+      #     python -m pip install -r requirements-dev.txt  # do not install the pinned install requirements
+      #     python -m pip install .  # this will install a different version of hdmf from the current one
+      #     cd ..
+      #     python -m pip uninstall -y hdmf  # uninstall the other version of hdmf
+      #     python -m pip install .  # reinstall current branch of hdmf
+      #     python -m pip list
 
       - name: Run PyNWB tests on PyNWB dev branch
         run: |
