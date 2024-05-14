@@ -225,5 +225,5 @@ class TestHDF5Writer(GroupBuilderTestCase):
         io.write_builder(self.builder)
         builder = io.read_builder()
         dset = builder['test_bucket']['foo_holder']['foo1']['my_data'].data
-        self.assertEqual(get_data_shape(dset), (None,))
+        self.assertEqual(get_data_shape(dset), (10,))
         io.close()

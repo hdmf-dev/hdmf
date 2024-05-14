@@ -8,7 +8,6 @@
 - Updated `TermSetWrapper` to support validating a single field within a compound array. @mavaylon1 [#1061](https://github.com/hdmf-dev/hdmf/pull/1061)
 - Updated testing to not install in editable mode and not run `coverage` by default. @rly [#1107](https://github.com/hdmf-dev/hdmf/pull/1107)
 - Add `post_init_method` parameter when generating classes to perform post-init functionality, i.e., validation. @mavaylon1 [#1089](https://github.com/hdmf-dev/hdmf/pull/1089)
-- Updated the default behavior for writing HDF5 datasets to be expandandable datasets with chunking enabled by default. This does not override user set chunking parameters. @mavaylon1 [#1093](https://github.com/hdmf-dev/hdmf/pull/1093)
 
 ## HDMF 3.13.0 (March 20, 2024)
 
