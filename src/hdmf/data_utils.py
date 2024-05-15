@@ -181,7 +181,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         ),
         dict(
             name="progress_bar_class",
-            type=None,  # Would prefer callable, but docval can't handle
+            type=Callable,
             doc="The progress bar class to use. Defaults to tqdm.tqdm if the TQDM package is installed.",
             default=None,
         ),
