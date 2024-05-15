@@ -219,6 +219,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             "chunk_mb",
             "chunk_shape",
             "display_progress",
+            "progress_bar_class",
             "progress_bar_options",
             kwargs,
         )
