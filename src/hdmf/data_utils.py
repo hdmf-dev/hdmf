@@ -205,8 +205,22 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         HDF5 recommends chunk size in the range of 2 to 16 MB for optimal cloud performance.
         https://youtu.be/rcS5vt-mKok?t=621
         """
-        buffer_gb, buffer_shape, chunk_mb, chunk_shape, self.display_progress, progress_bar_options = getargs(
-            "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", "display_progress", "progress_bar_options", kwargs
+        (
+            buffer_gb,
+            buffer_shape,
+            chunk_mb,
+            chunk_shape,
+            self.display_progress,
+            progress_bar_class,
+            progress_bar_options,
+        ) = getargs(
+            "buffer_gb",
+            "buffer_shape",
+            "chunk_mb",
+            "chunk_shape",
+            "display_progress",
+            "progress_bar_options",
+            kwargs,
         )
         self.progress_bar_options = progress_bar_options or dict()
 
