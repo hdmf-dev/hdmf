@@ -1,10 +1,12 @@
 import logging
 from collections import OrderedDict, deque
 from copy import copy
+from collections.abc import Callable
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
+from ..term_set import TypeConfigurator
 from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog
 from ..spec.spec import BaseStorageSpec
 from ..utils import docval, getargs, ExtenderMeta, get_docval
@@ -391,18 +393,23 @@ class TypeSource:
 
 
 class TypeMap:
-    ''' A class to maintain the map between ObjectMappers and AbstractContainer classes
-    '''
+    """
+    A class to maintain the map between ObjectMappers and AbstractContainer classes
+    """
 
     @docval({'name': 'namespaces', 'type': NamespaceCatalog, 'doc': 'the NamespaceCatalog to use', 'default': None},
-            {'name': 'mapper_cls', 'type': type, 'doc': 'the ObjectMapper class to use', 'default': None})
+            {'name': 'mapper_cls', 'type': type, 'doc': 'the ObjectMapper class to use', 'default': None},
+            {'name': 'type_config', 'type': TypeConfigurator, 'doc': 'The TypeConfigurator to use.',
+             'default': None})
     def __init__(self, **kwargs):
-        namespaces, mapper_cls = getargs('namespaces', 'mapper_cls', kwargs)
+        namespaces, mapper_cls, type_config = getargs('namespaces', 'mapper_cls', 'type_config', kwargs)
         if namespaces is None:
             namespaces = NamespaceCatalog()
         if mapper_cls is None:
             from .objectmapper import ObjectMapper  # avoid circular import
             mapper_cls = ObjectMapper
+        if type_config is None:
+            type_config = TypeConfigurator()
         self.__ns_catalog = namespaces
         self.__mappers = dict()  # already constructed ObjectMapper classes
         self.__mapper_cls = dict()  # the ObjectMapper class to use for each container type
@@ -410,6 +417,8 @@ class TypeMap:
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
         self.__class_generator = ClassGenerator()
+        self.type_config = type_config
+
         self.register_generator(CustomClassGenerator)
         self.register_generator(MCIClassGenerator)
 
@@ -422,7 +431,7 @@ class TypeMap:
         return self.__container_types
 
     def __copy__(self):
-        ret = TypeMap(copy(self.__ns_catalog), self.__default_mapper_cls)
+        ret = TypeMap(copy(self.__ns_catalog), self.__default_mapper_cls, self.type_config)
         ret.merge(self)
         return ret
 
@@ -490,11 +499,14 @@ class TypeMap:
         created and returned.
         """
         # NOTE: this internally used function get_container_cls will be removed in favor of get_dt_container_cls
+        # Deprecated: Will be removed by HDMF 4.0
         namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
         return self.get_dt_container_cls(data_type, namespace, autogen)
 
     @docval({"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             {"name": "namespace", "type": str, "doc": "the namespace containing the data_type", "default": None},
+            {'name': 'post_init_method', 'type': Callable, 'default': None,
+            'doc': 'The function used as a post_init method to validate the class generation.'},
             {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
             returns='the class for the given namespace and data_type', rtype=type)
     def get_dt_container_cls(self, **kwargs):
@@ -505,7 +517,8 @@ class TypeMap:
         Replaces get_container_cls but namespace is optional. If namespace is unknown, it will be looked up from
         all namespaces.
         """
-        namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
+        namespace, data_type, post_init_method, autogen = getargs('namespace', 'data_type',
+                                                                  'post_init_method','autogen', kwargs)
 
         # namespace is unknown, so look it up
         if namespace is None:
@@ -519,12 +532,18 @@ class TypeMap:
             raise ValueError("Namespace could not be resolved.")
 
         cls = self.__get_container_cls(namespace, data_type)
+
         if cls is None and autogen:  # dynamically generate a class
             spec = self.__ns_catalog.get_spec(namespace, data_type)
             self.__check_dependent_types(spec, namespace)
             parent_cls = self.__get_parent_cls(namespace, data_type, spec)
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
-            cls = self.__class_generator.generate_class(data_type, spec, parent_cls, attr_names, self)
+            cls = self.__class_generator.generate_class(data_type=data_type,
+                                                        spec=spec,
+                                                        parent_cls=parent_cls,
+                                                        attr_names=attr_names,
+                                                        post_init_method=post_init_method,
+                                                        type_map=self)
             self.register_container_type(namespace, data_type, cls)
         return cls
 

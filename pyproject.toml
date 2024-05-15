@@ -21,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: BSD License",
     "Development Status :: 5 - Production/Stable",
     "Operating System :: OS Independent",
@@ -76,7 +77,6 @@ packages = ["src/hdmf"]
 # verbose = 1
 
 [tool.pytest.ini_options]
-addopts = "--cov --cov-report html"
 norecursedirs = "tests/unit/helpers"
 
 [tool.codespell]
@@ -85,16 +85,16 @@ ignore-words-list = "datas"
 
 [tool.coverage.run]
 branch = true
-source = ["src/"]
-omit = [
-    "src/hdmf/_due.py",
-    "src/hdmf/testing/*",
-]
+source = ["hdmf"]
 
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
     "@abstract"
+]
+omit = [
+    "*/hdmf/_due.py",
+    "*/hdmf/testing/*",
 ]
 
 # [tool.black]

@@ -17,7 +17,6 @@ from ..warnings import BrokenLinkWarning
 from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
                       ReferenceBuilder, TypeMap, ObjectMapper)
 from ...container import Container
-from ...term_set import TermSetWrapper
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset
@@ -1120,10 +1119,6 @@ class HDF5IO(HDMFIO):
             data = data.data
         else:
             options['io_settings'] = {}
-        if isinstance(data, TermSetWrapper):
-            # This is for when the wrapped item is a dataset
-            # (refer to objectmapper.py for wrapped attributes)
-            data = data.value
         attributes = builder.attributes
         options['dtype'] = builder.dtype
         dset = None

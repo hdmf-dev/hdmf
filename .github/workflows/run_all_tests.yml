@@ -41,8 +41,8 @@ jobs:
           - { name: windows-python3.12            , test-tox-env: pytest-py312-pinned          , python-ver: "3.12", os: windows-latest }
           - { name: windows-python3.12-upgraded   , test-tox-env: pytest-py312-upgraded        , python-ver: "3.12", os: windows-latest }
           - { name: windows-python3.12-prerelease , test-tox-env: pytest-py312-prerelease      , python-ver: "3.12", os: windows-latest }
-          - { name: macos-python3.8-minimum       , test-tox-env: pytest-py38-minimum          , python-ver: "3.8" , os: macos-latest }
-          - { name: macos-python3.9               , test-tox-env: pytest-py39-pinned           , python-ver: "3.9" , os: macos-latest }
+          - { name: macos-python3.8-minimum       , test-tox-env: pytest-py38-minimum          , python-ver: "3.8" , os: macos-13 }
+          - { name: macos-python3.9               , test-tox-env: pytest-py39-pinned           , python-ver: "3.9" , os: macos-13 }
           - { name: macos-python3.10              , test-tox-env: pytest-py310-pinned          , python-ver: "3.10", os: macos-latest }
           - { name: macos-python3.11              , test-tox-env: pytest-py311-pinned          , python-ver: "3.11", os: macos-latest }
           - { name: macos-python3.11-optional     , test-tox-env: pytest-py311-optional-pinned , python-ver: "3.11", os: macos-latest }
@@ -105,7 +105,7 @@ jobs:
           - { name: windows-gallery-python3.11-optional  , test-tox-env: gallery-py311-optional-pinned , python-ver: "3.11", os: windows-latest }
           - { name: windows-gallery-python3.12-upgraded  , test-tox-env: gallery-py312-upgraded        , python-ver: "3.12", os: windows-latest }
           - { name: windows-gallery-python3.12-prerelease, test-tox-env: gallery-py312-prerelease      , python-ver: "3.12", os: windows-latest }
-          - { name: macos-gallery-python3.8-minimum      , test-tox-env: gallery-py38-minimum          , python-ver: "3.8" , os: macos-latest }
+          - { name: macos-gallery-python3.8-minimum      , test-tox-env: gallery-py38-minimum          , python-ver: "3.8" , os: macos-13 }
           - { name: macos-gallery-python3.11-optional    , test-tox-env: gallery-py311-optional-pinned , python-ver: "3.11", os: macos-latest }
           - { name: macos-gallery-python3.12-upgraded    , test-tox-env: gallery-py312-upgraded        , python-ver: "3.12", os: macos-latest }
           - { name: macos-gallery-python3.12-prerelease  , test-tox-env: gallery-py312-prerelease      , python-ver: "3.12", os: macos-latest }
@@ -233,7 +233,7 @@ jobs:
 
       - name: Install run dependencies
         run: |
-          pip install -e .
+          pip install .
           pip list
 
       - name: Conda reporting
