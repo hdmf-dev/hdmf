@@ -1,9 +1,9 @@
 import copy
 import math
 from abc import ABCMeta, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Callable
 from warnings import warn
-from typing import Tuple, Callable
+from typing import Tuple
 from itertools import product, chain
 
 import h5py
