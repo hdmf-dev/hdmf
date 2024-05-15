@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import datetime, date
+from collections.abc import Callable
 
 import numpy as np
 
@@ -35,6 +36,8 @@ class ClassGenerator:
             {'name': 'spec', 'type': BaseStorageSpec, 'doc': ''},
             {'name': 'parent_cls', 'type': type, 'doc': ''},
             {'name': 'attr_names', 'type': dict, 'doc': ''},
+            {'name': 'post_init_method', 'type': Callable, 'default': None,
+             'doc': 'The function used as a post_init method to validate the class generation.'},
             {'name': 'type_map', 'type': 'hdmf.build.manager.TypeMap', 'doc': ''},
             returns='the class for the given namespace and data_type', rtype=type)
     def generate_class(self, **kwargs):
@@ -42,8 +45,10 @@ class ClassGenerator:
         If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
         created and returned.
         """
-        data_type, spec, parent_cls, attr_names, type_map = getargs('data_type', 'spec', 'parent_cls', 'attr_names',
-                                                                    'type_map', kwargs)
+        data_type, spec, parent_cls, attr_names, type_map, post_init_method = getargs('data_type', 'spec',
+                                                                                      'parent_cls', 'attr_names',
+                                                                                      'type_map',
+                                                                                      'post_init_method', kwargs)
 
         not_inherited_fields = dict()
         for k, field_spec in attr_names.items():
@@ -82,6 +87,8 @@ class ClassGenerator:
                              + str(e)
                              + " Please define that type before defining '%s'." % name)
         cls = ExtenderMeta(data_type, tuple(bases), classdict)
+        cls.post_init_method = post_init_method
+
         return cls
 
 
@@ -316,8 +323,19 @@ class CustomClassGenerator:
             elif attr_name not in attrs_not_to_set:
                 attrs_to_set.append(attr_name)
 
-        @docval(*docval_args, allow_positional=AllowPositional.WARNING)
+        # We want to use the skip_post_init of the current class and not the parent class
+        for item in docval_args:
+            if item['name'] == 'skip_post_init':
+                docval_args.remove(item)
+
+        @docval(*docval_args,
+                {'name': 'skip_post_init', 'type': bool, 'default': False,
+                 'doc': 'bool to skip post_init'},
+                allow_positional=AllowPositional.WARNING)
         def __init__(self, **kwargs):
+            skip_post_init = popargs('skip_post_init', kwargs)
+
+            original_kwargs = dict(kwargs)
             if name is not None:  # force container name to be the fixed name in the spec
                 kwargs.update(name=name)
 
@@ -342,6 +360,9 @@ class CustomClassGenerator:
             # because the setters do not allow setting the value
             for f in fixed_value_attrs_to_set:
                 self.fields[f] = getattr(not_inherited_fields[f], 'value')
+
+            if self.post_init_method is not None and not skip_post_init:
+                self.post_init_method(**original_kwargs)
 
         classdict['__init__'] = __init__
 
@@ -417,6 +438,7 @@ class MCIClassGenerator(CustomClassGenerator):
             def __init__(self, **kwargs):
                 # store the values passed to init for each MCI attribute so that they can be added
                 # after calling __init__
+                original_kwargs = dict(kwargs)
                 new_kwargs = list()
                 for field_clsconf in classdict['__clsconf__']:
                     attr_name = field_clsconf['attr']
@@ -437,12 +459,16 @@ class MCIClassGenerator(CustomClassGenerator):
                     kwargs[attr_name] = list()
 
                 # call the parent class init without the MCI attribute
+                kwargs['skip_post_init'] = True
                 previous_init(self, **kwargs)
 
                 # call the add method for each MCI attribute
                 for new_kwarg in new_kwargs:
                     add_method = getattr(self, new_kwarg['add_method_name'])
                     add_method(new_kwarg['value'])
+
+                if self.post_init_method is not None:
+                    self.post_init_method(**original_kwargs)
 
             # override __init__
             classdict['__init__'] = __init__
