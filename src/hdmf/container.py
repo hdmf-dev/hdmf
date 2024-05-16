@@ -112,12 +112,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
         itself is only one file. When a user loads custom configs, the config is appended/modified.
         The modifications are not written to file, avoiding permanent modifications.
         """
-        # If the val has been manually wrapped then skip checking the config for the attr
-        if isinstance(val, TermSetWrapper):
-            msg = "Field value already wrapped with TermSetWrapper."
-            warn(msg)
-            return val
-
         configurator = type_map.type_config
 
         if len(configurator.path)>0:
@@ -127,6 +121,12 @@ class AbstractContainer(metaclass=ExtenderMeta):
         else:
             return val
 
+        # If the val has been manually wrapped then skip checking the config for the attr
+        if isinstance(val, TermSetWrapper):
+            msg = "Field value already wrapped with TermSetWrapper."
+            warn(msg)
+            return val
+            
         # check to see that the namespace for the container is in the config
         if self.namespace not in termset_config['namespaces']:
             msg = "%s not found within loaded configuration." % self.namespace

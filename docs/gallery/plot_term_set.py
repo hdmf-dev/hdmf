@@ -149,6 +149,7 @@ data = VectorData(
 # Similar to wrapping datasets, :py:class:`~hdmf.term_set.TermSetWrapper` can be wrapped around any attribute.
 # To validate attributes, the user will set the attribute to the wrapped value, in which validation must pass
 # for the object to be created.
+# breakpoint()
 data = VectorData(
     name='species',
     description=TermSetWrapper(value='Homo sapiens', termset=terms),
