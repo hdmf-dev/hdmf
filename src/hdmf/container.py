@@ -126,7 +126,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
             msg = "Field value already wrapped with TermSetWrapper."
             warn(msg)
             return val
-            
+
         # check to see that the namespace for the container is in the config
         if self.namespace not in termset_config['namespaces']:
             msg = "%s not found within loaded configuration." % self.namespace
