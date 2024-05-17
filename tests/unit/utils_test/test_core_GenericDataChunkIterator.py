@@ -412,7 +412,7 @@ class GenericDataChunkIteratorTests(TestCase):
     def test_progress_bar_class(self):
         import tqdm
 
-        def MyCustomProgressBar(tqdm.tqdm):
+        class MyCustomProgressBar(tqdm.tqdm):
             def update(self, n: int = 1) -> Union[bool, None]:
                 displayed = super().update(n)
                 print(f"Custom injection on step {n}")
