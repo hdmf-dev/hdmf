@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from tempfile import mkdtemp
 from shutil import rmtree
-from typing import Tuple, Iterable, Callable
+from typing import Tuple, Iterable, Callable, Union
 from sys import version_info
 
 import h5py
@@ -415,7 +415,7 @@ class GenericDataChunkIteratorTests(TestCase):
         class MyCustomProgressBar(tqdm.tqdm):
             def update(self, n: int = 1) -> Union[bool, None]:
                 displayed = super().update(n)
-                print(f"Custom injection on step {n}")
+                print(f"Custom injection on step {n}") # noqa: T201 
 
                 return displayed
 
