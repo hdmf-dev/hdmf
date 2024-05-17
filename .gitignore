@@ -12,6 +12,8 @@
 /docs/source/hdmf*.rst
 /docs/gallery/*.hdf5
 /docs/gallery/*.sqlite
+/docs/gallery/expanded_example_dynamic_term_set.yaml
+/docs/gallery/schemasheets/nwb_static_enums.yaml
 
 # Auto-generated files after running tutorials
 mylab.*.yaml
