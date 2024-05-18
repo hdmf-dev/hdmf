@@ -164,6 +164,7 @@ class HDF5IO(HDMFIO):
             {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+            {'name': 'aws_region', 'type': str, 'doc': 'If driver is ros3, then specify the aws region of the url.', 'default': None},
             returns=("dict mapping the names of the loaded namespaces to a dict mapping included namespace names and "
                      "the included data types"),
             rtype=dict)
@@ -179,7 +180,7 @@ class HDF5IO(HDMFIO):
         namespace_catalog, path, namespaces, file_obj, driver = popargs(
             'namespace_catalog', 'path', 'namespaces', 'file', 'driver', kwargs)
 
-        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver)
+        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver, aws_region=aws_region)
         if file_obj is None:  # need to close the file object that we just opened
             with open_file_obj:
                 return cls.__load_namespaces(namespace_catalog, namespaces, open_file_obj)
@@ -228,6 +229,7 @@ class HDF5IO(HDMFIO):
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+            {'name': 'aws_region', 'type': str, 'doc': 'If driver is ros3, then specify the aws region of the url.', 'default': None},
             returns="dict mapping names to versions of the namespaces in the file", rtype=dict)
     def get_namespaces(cls, **kwargs):
         """Get the names and versions of the cached namespaces from a file.
@@ -243,7 +245,7 @@ class HDF5IO(HDMFIO):
         """
         path, file_obj, driver = popargs('path', 'file', 'driver', kwargs)
 
-        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver)
+        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver, aws_region=aws_region)
         if file_obj is None:  # need to close the file object that we just opened
             with open_file_obj:
                 return cls.__get_namespaces(open_file_obj)
