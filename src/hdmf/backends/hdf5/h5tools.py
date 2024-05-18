@@ -243,7 +243,7 @@ class HDF5IO(HDMFIO):
 
         :raises ValueError: if both `path` and `file` are supplied but `path` is not the same as the path of `file`.
         """
-        path, file_obj, driver = popargs('path', 'file', 'driver', kwargs)
+        path, file_obj, driver, aws_region = popargs('path', 'file', 'driver', 'aws_region', kwargs)
 
         open_file_obj = cls.__resolve_file_obj(path, file_obj, driver, aws_region=aws_region)
         if file_obj is None:  # need to close the file object that we just opened
