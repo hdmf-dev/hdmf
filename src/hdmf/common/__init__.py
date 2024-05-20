@@ -22,6 +22,7 @@ from ..container import _set_exp  # noqa: E402
 global __TYPE_MAP
 
 @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'},
+        {'name': 'type_map', 'type': TypeMap, 'doc': 'The TypeMap.', 'default': None},
         is_method=False)
 def load_type_config(**kwargs):
     """
@@ -29,23 +30,33 @@ def load_type_config(**kwargs):
     NOTE: This config is global and shared across all type maps.
     """
     config_path = kwargs['config_path']
-    __TYPE_MAP.type_config.load_type_config(config_path)
+    type_map = kwargs['type_map'] or get_type_map()
 
-def get_loaded_type_config():
+    type_map.type_config.load_type_config(config_path)
+
+@docval({'name': 'type_map', 'type': TypeMap, 'doc': 'The TypeMap.', 'default': None},
+        is_method=False)
+def get_loaded_type_config(**kwargs):
     """
     This method returns the entire config file.
     """
-    if __TYPE_MAP.type_config.config is None:
+    type_map = kwargs['type_map'] or get_type_map()
+
+    if type_map.type_config.config is None:
         msg = "No configuration is loaded."
         raise ValueError(msg)
     else:
-        return __TYPE_MAP.type_config.config
+        return type_map.type_config.config
 
-def unload_type_config():
+@docval({'name': 'type_map', 'type': TypeMap, 'doc': 'The TypeMap.', 'default': None},
+        is_method=False)
+def unload_type_config(**kwargs):
     """
     Unload the configuration file.
     """
-    return __TYPE_MAP.type_config.unload_type_config()
+    type_map = kwargs['type_map'] or get_type_map()
+
+    return type_map.type_config.unload_type_config()
 
 # a function to register a container classes with the global map
 @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the spec for'},
