@@ -2,6 +2,7 @@ import numpy as np
 import os
 import shutil
 import tempfile
+from warnings import warn
 
 from hdmf.build import TypeMap, CustomClassGenerator
 from hdmf.build.classgenerator import ClassGenerator, MCIClassGenerator
@@ -82,6 +83,79 @@ class TestClassGenerator(TestCase):
         self.assertTrue(hasattr(cls, '__init__'))
 
 
+class TestPostInitGetClass(TestCase):
+    def setUp(self):
+        def post_init_method(self, **kwargs):
+            attr1 = kwargs['attr1']
+            if attr1<10:
+                msg = "attr1 should be >=10"
+                warn(msg)
+        self.post_init=post_init_method
+
+    def test_post_init(self):
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            attributes=[
+                AttributeSpec(name='attr1', doc='a int attribute', dtype='int')
+            ]
+        )
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(spec, 'test.yaml')
+        namespace = SpecNamespace(
+            doc='a test namespace',
+            name=CORE_NAMESPACE,
+            schema=[{'source': 'test.yaml'}],
+            version='0.1.0',
+            catalog=spec_catalog
+        )
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+
+        cls = type_map.get_dt_container_cls('Baz', CORE_NAMESPACE, self.post_init)
+
+        with self.assertWarns(Warning):
+            cls(name='instance', attr1=9)
+
+    def test_multi_container_post_init(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='a dataset',
+                    dtype='int',
+                    name='data',
+                    attributes=[AttributeSpec(name='attr2', doc='an integer attribute', dtype='int')]
+                )
+            ],
+            attributes=[AttributeSpec(name='attr1', doc='a string attribute', dtype='text')])
+
+        multi_spec = GroupSpec(doc='A test extension that contains a multi',
+                               data_type_def='Multi',
+                               groups=[GroupSpec(data_type_inc=bar_spec, doc='test multi', quantity='*')],
+                                attributes=[AttributeSpec(name='attr1', doc='a float attribute', dtype='float')])
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(bar_spec, 'test.yaml')
+        spec_catalog.register_spec(multi_spec, 'test.yaml')
+        namespace = SpecNamespace(
+            doc='a test namespace',
+            name=CORE_NAMESPACE,
+            schema=[{'source': 'test.yaml'}],
+            version='0.1.0',
+            catalog=spec_catalog
+        )
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        Multi = type_map.get_dt_container_cls('Multi', CORE_NAMESPACE, self.post_init)
+
+        with self.assertWarns(Warning):
+            Multi(name='instance', attr1=9.1)
+
 class TestDynamicContainer(TestCase):
 
     def setUp(self):
@@ -109,13 +183,15 @@ class TestDynamicContainer(TestCase):
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4'}
+        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'skip_post_init'}
         received_args = set()
+
         for x in get_docval(cls.__init__):
             if x['name'] != 'foo':
                 received_args.add(x['name'])
                 with self.subTest(name=x['name']):
-                    self.assertNotIn('default', x)
+                    if x['name'] != 'skip_post_init':
+                        self.assertNotIn('default', x)
         self.assertSetEqual(expected_args, received_args)
         self.assertEqual(cls.__name__, 'Baz')
         self.assertTrue(issubclass(cls, Bar))
@@ -135,7 +211,7 @@ class TestDynamicContainer(TestCase):
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo'}
+        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo', 'skip_post_init'}
         received_args = set(map(lambda x: x['name'], get_docval(cls.__init__)))
         self.assertSetEqual(expected_args, received_args)
         self.assertEqual(cls.__name__, 'Baz')
@@ -285,13 +361,14 @@ class TestDynamicContainer(TestCase):
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        expected_args = {'name', 'data', 'attr2', 'attr3', 'attr4'}
+        expected_args = {'name', 'data', 'attr2', 'attr3', 'attr4', 'skip_post_init'}
         received_args = set()
         for x in get_docval(cls.__init__):
             if x['name'] != 'foo':
                 received_args.add(x['name'])
                 with self.subTest(name=x['name']):
-                    self.assertNotIn('default', x)
+                    if x['name'] != 'skip_post_init':
+                        self.assertNotIn('default', x)
         self.assertSetEqual(expected_args, received_args)
         self.assertTrue(issubclass(cls, FixedAttrBar))
         inst = cls(name="My Baz", data=[1, 2, 3, 4], attr2=1000, attr3=98.6, attr4=1.0)
@@ -445,7 +522,7 @@ class TestDynamicContainerFixedValue(TestCase):
 
     def test_init_docval(self):
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)  # generate the class
-        expected_args = {'name'}  # 'attr1' should not be included
+        expected_args = {'name', 'skip_post_init'}  # 'attr1' should not be included
         received_args = set()
         for x in get_docval(cls.__init__):
             received_args.add(x['name'])
@@ -518,6 +595,8 @@ class TestDynamicContainerIncludingFixedName(TestCase):
             {'name': 'my_baz1', 'doc': 'A composition inside with a fixed name', 'type': baz1_cls},
             {'name': 'my_baz2', 'doc': 'A composition inside with a fixed name', 'type': baz2_cls},
             {'name': 'my_baz1_link', 'doc': 'A composition inside without a fixed name', 'type': baz1_cls},
+            {'name': 'skip_post_init', 'type': bool, 'default': False,
+             'doc': 'bool to skip post_init'}
         ))
 
     def test_init_fields(self):
