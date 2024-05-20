@@ -145,6 +145,7 @@ class HDF5IO(HDMFIO):
 
     @classmethod
     def __resolve_file_obj(cls, path, file_obj, driver, aws_region=None):
+        """Helper function to return a file object when loading or getting namespaces from a file using file-related arguments."""
         path = cls.__check_path_file_obj(path, file_obj)
 
         if file_obj is None:
