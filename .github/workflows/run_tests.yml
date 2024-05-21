@@ -209,7 +209,7 @@ jobs:
               --token ${{ secrets.BOT_GITHUB_TOKEN }} \
               --re-upload
 
-  run-gallery-ros3-tests:
+  run-ros3-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     defaults:

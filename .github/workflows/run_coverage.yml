@@ -70,3 +70,50 @@ jobs:
           file: ./coverage.xml
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  run-ros3-coverage:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}  # necessary for conda
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-gallery-python3.12-ros3  , python-ver: "3.12", os: ubuntu-latest }
+    steps:
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0  # tags are required to determine the version
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          activate-environment: ros3
+          environment-file: environment-ros3.yml
+          python-version: ${{ matrix.python-ver }}
+          channels: conda-forge
+          auto-activate-base: false
+          mamba-version: "*"
+
+      - name: Install run dependencies
+        run: |
+          pip install .
+          pip list
+
+      - name: Conda reporting
+        run: |
+          conda info
+          conda config --show-sources
+          conda list --show-channel-urls
+
+      - name: Run ros3 tests  # TODO include gallery tests after they are written
+        run: |
+          pytest tests/unit/test_io_hdf5_streaming.py

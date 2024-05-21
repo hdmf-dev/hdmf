@@ -197,7 +197,7 @@ jobs:
         run: |
           tox -e wheelinstall --installpkg dist/*.tar.gz
 
-  run-gallery-ros3-tests:
+  run-ros3-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     defaults:
