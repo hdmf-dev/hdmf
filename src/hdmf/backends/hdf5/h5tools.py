@@ -145,7 +145,7 @@ class HDF5IO(HDMFIO):
 
     @classmethod
     def __resolve_file_obj(cls, path, file_obj, driver, aws_region=None):
-        """Helper function to return a file object when loading or getting namespaces from a file using file-related arguments."""
+        """Helper function to return a File when loading or getting namespaces from a file."""
         path = cls.__check_path_file_obj(path, file_obj)
 
         if file_obj is None:
@@ -165,7 +165,8 @@ class HDF5IO(HDMFIO):
             {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
-            {'name': 'aws_region', 'type': str, 'doc': 'If driver is ros3, then specify the aws region of the url.', 'default': None},
+            {'name': 'aws_region', 'type': str, 'doc': 'If driver is ros3, then specify the aws region of the url.',
+             'default': None},
             returns=("dict mapping the names of the loaded namespaces to a dict mapping included namespace names and "
                      "the included data types"),
             rtype=dict)
@@ -230,7 +231,8 @@ class HDF5IO(HDMFIO):
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
-            {'name': 'aws_region', 'type': str, 'doc': 'If driver is ros3, then specify the aws region of the url.', 'default': None},
+            {'name': 'aws_region', 'type': str, 'doc': 'If driver is ros3, then specify the aws region of the url.',
+             'default': None},
             returns="dict mapping names to versions of the namespaces in the file", rtype=dict)
     def get_namespaces(cls, **kwargs):
         """Get the names and versions of the cached namespaces from a file.
