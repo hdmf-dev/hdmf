@@ -106,6 +106,7 @@ class TestRos3(TestCase):
 
         with get_hdf5io(s3_path, "r", manager=self.manager, driver="ros3", aws_region="us-east-2") as io:
             io.read()
+            assert io.aws_region == "us-east-2"
 
     def test_get_namespaces(self):
         s3_path = "https://dandiarchive.s3.amazonaws.com/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
