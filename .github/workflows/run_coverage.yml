@@ -116,4 +116,12 @@ jobs:
 
       - name: Run ros3 tests  # TODO include gallery tests after they are written
         run: |
-          pytest tests/unit/test_io_hdf5_streaming.py
+          pytest --cov --cov-report=xml --cov-report=term tests/unit/test_io_hdf5_streaming.py
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          fail_ci_if_error: true
+          file: ./coverage.xml
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
