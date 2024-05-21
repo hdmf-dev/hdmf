@@ -197,7 +197,7 @@ jobs:
         run: |
           tox -e wheelinstall --installpkg dist/*.tar.gz
 
-  run-gallery-ros3-tests:
+  run-ros3-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     defaults:
@@ -210,9 +210,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-gallery-python3.12-ros3   , python-ver: "3.12", os: ubuntu-latest }
-          - { name: windows-gallery-python3.12-ros3 , python-ver: "3.12", os: windows-latest }
-          - { name: macos-gallery-python3.12-ros3   , python-ver: "3.12", os: macos-latest }
+          - { name: linux-python3.12-ros3   , python-ver: "3.12", os: ubuntu-latest }
+          - { name: windows-python3.12-ros3 , python-ver: "3.12", os: windows-latest }
+          - { name: macos-python3.12-ros3   , python-ver: "3.12", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v4

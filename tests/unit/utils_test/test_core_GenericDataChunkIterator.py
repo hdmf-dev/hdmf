@@ -410,7 +410,6 @@ class GenericDataChunkIteratorTests(TestCase):
 
     @unittest.skipIf(not TQDM_INSTALLED, "optional tqdm module is not installed")
     def test_progress_bar_class(self):
-        import tqdm
 
         class MyCustomProgressBar(tqdm.tqdm):
             def update(self, n: int = 1) -> Union[bool, None]:
