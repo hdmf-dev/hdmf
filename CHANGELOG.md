@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.14.0 (Upcoming)
+## HDMF 3.14.0 (May 20, 2024)
 
 ### Enhancements
 - Updated `_field_config` to take `type_map` as an argument for APIs. @mavaylon1 [#1094](https://github.com/hdmf-dev/hdmf/pull/1094)
