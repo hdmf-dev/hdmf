@@ -84,7 +84,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-gallery-python3.12-ros3  , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-python3.12-ros3  , python-ver: "3.12", os: ubuntu-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
