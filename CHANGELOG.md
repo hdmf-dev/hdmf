@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.14.1 (Upcoming)
+
+### Bug fixes
+- Excluded unnecessary artifacts from sdist and wheel. @rly [#1119](https://github.com/hdmf-dev/hdmf/pull/1119)
+
 ## HDMF 3.14.0 (May 20, 2024)
 
 ### Enhancements
