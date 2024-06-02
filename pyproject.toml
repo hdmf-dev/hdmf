@@ -81,7 +81,7 @@ norecursedirs = "tests/unit/helpers"
 
 [tool.codespell]
 skip = "htmlcov,.git,.mypy_cache,.pytest_cache,.coverage,*.pdf,*.svg,venvs,.tox,hdmf-common-schema,./docs/_build/*,*.ipynb"
-ignore-words-list = "datas"
+ignore-words-list = "datas,assertIn"
 
 [tool.coverage.run]
 branch = true
