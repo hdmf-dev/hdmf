@@ -385,7 +385,7 @@ class BaseStorageSpec(Spec):
                 self.set_attribute(attribute)
         self.__resolved = True
 
-    @docval({'name': 'spec', 'type': (Spec, str), 'doc': 'the specification to check'})
+    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
     def is_inherited_spec(self, **kwargs):
         '''
         Return True if this spec was inherited from the parent type, False otherwise.
@@ -393,13 +393,11 @@ class BaseStorageSpec(Spec):
         Returns False if the spec is not found.
         '''
         spec = getargs('spec', kwargs)
-        if isinstance(spec, Spec):
-            spec = spec.name
-        if spec in self.__attributes:
-            return self.is_inherited_attribute(spec)
+        if spec.parent is self and spec.name in self.__attributes:
+            return self.is_inherited_attribute(spec.name)
         return False
 
-    @docval({'name': 'spec', 'type': (Spec, str), 'doc': 'the specification to check'})
+    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
     def is_overridden_spec(self, **kwargs):
         '''
         Return True if this spec overrides a specification from the parent type, False otherwise.
@@ -407,10 +405,8 @@ class BaseStorageSpec(Spec):
         Returns False if the spec is not found.
         '''
         spec = getargs('spec', kwargs)
-        if isinstance(spec, Spec):
-            spec = spec.name
-        if spec in self.__attributes:
-            return self.is_overridden_attribute(spec)
+        if spec.parent is self and spec.name in self.__attributes:
+            return self.is_overridden_attribute(spec.name)
         return False
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the attribute to check'})
@@ -1011,85 +1007,92 @@ class GroupSpec(BaseStorageSpec):
             raise ValueError("Link '%s' not found in spec" % name)
         return name in self.__overridden_links
 
-    @docval({'name': 'spec', 'type': (Spec, str), 'doc': 'the specification to check'})
+    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
     def is_inherited_spec(self, **kwargs):
         ''' Returns 'True' if specification was inherited from a parent type '''
         spec = getargs('spec', kwargs)
-        if isinstance(spec, Spec):
-            name = spec.name
-            if name is None and hasattr(spec, 'data_type_def'):
-                name = spec.data_type_def
-            if name is None:  # NOTE: this will return the target type for LinkSpecs
-                name = spec.data_type_inc
-            if name is None:  # pragma: no cover
-                # this should not be possible
-                raise ValueError('received Spec with wildcard name but no data_type_inc or data_type_def')
-            spec = name
+        spec_name = spec.name
+        if spec_name is None and hasattr(spec, 'data_type_def'):
+            spec_name = spec.data_type_def
+        if spec_name is None:  # NOTE: this will return the target type for LinkSpecs
+            spec_name = spec.data_type_inc
+        if spec_name is None:  # pragma: no cover
+            # this should not be possible
+            raise ValueError('received Spec with wildcard name but no data_type_inc or data_type_def')
         # if the spec has a name, it will be found in __links/__groups/__datasets before __data_types/__target_types
-        if spec in self.__links:
-            return self.is_inherited_link(spec)
-        elif spec in self.__groups:
-            return self.is_inherited_group(spec)
-        elif spec in self.__datasets:
-            return self.is_inherited_dataset(spec)
-        elif spec in self.__data_types:
+        if spec_name in self.__links:
+            return self.is_inherited_link(spec_name)
+        elif spec_name in self.__groups:
+            return self.is_inherited_group(spec_name)
+        elif spec_name in self.__datasets:
+            return self.is_inherited_dataset(spec_name)
+        elif spec_name in self.__data_types:
             # NOTE: the same data type can be both an unnamed data type and an unnamed target type
-            return self.is_inherited_type(spec)
-        elif spec in self.__target_types:
-            return self.is_inherited_target_type(spec)
+            return self.is_inherited_type(spec_name)
+        elif spec_name in self.__target_types:
+            return self.is_inherited_target_type(spec_name)
         else:
+            # attribute spec
             if super().is_inherited_spec(spec):
                 return True
             else:
-                for s in self.__datasets:
-                    if self.is_inherited_dataset(s):
-                        if self.__datasets[s].get_attribute(spec) is not None:
-                            return True
-                for s in self.__groups:
-                    if self.is_inherited_group(s):
-                        if self.__groups[s].get_attribute(spec) is not None:
-                            return True
+                parent_name = spec.parent.name
+                if parent_name is None:
+                    parent_name = spec.parent.data_type
+                if isinstance(spec.parent, DatasetSpec):
+                    if parent_name in self.__datasets:
+                        if self.is_inherited_dataset(parent_name):
+                            if self.__datasets[parent_name].get_attribute(spec_name) is not None:
+                                return True
+                else:
+                    if parent_name in self.__groups:
+                        if self.is_inherited_group(parent_name):
+                            if self.__groups[parent_name].get_attribute(spec_name) is not None:
+                                return True
         return False
 
-    @docval({'name': 'spec', 'type': (Spec, str), 'doc': 'the specification to check'})
+    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
     def is_overridden_spec(self, **kwargs):  # noqa: C901
         ''' Returns 'True' if specification overrides a specification from the parent type '''
         spec = getargs('spec', kwargs)
-        if isinstance(spec, Spec):
-            name = spec.name
-            if name is None:
-                if isinstance(spec, LinkSpec):  # unnamed LinkSpec cannot be overridden
-                    return False
-                if spec.is_many():  # this is a wildcard spec, so it cannot be overridden
-                    return False
-                name = spec.data_type_def
-            if name is None:  # NOTE: this will return the target type for LinkSpecs
-                name = spec.data_type_inc
-            if name is None:  # pragma: no cover
-                # this should not happen
-                raise ValueError('received Spec with wildcard name but no data_type_inc or data_type_def')
-            spec = name
+        spec_name = spec.name
+        if spec_name is None:
+            if isinstance(spec, LinkSpec):  # unnamed LinkSpec cannot be overridden
+                return False
+            if spec.is_many():  # this is a wildcard spec, so it cannot be overridden
+                return False
+            spec_name = spec.data_type_def
+        if spec_name is None:  # NOTE: this will return the target type for LinkSpecs
+            spec_name = spec.data_type_inc
+        if spec_name is None:  # pragma: no cover
+            # this should not happen
+            raise ValueError('received Spec with wildcard name but no data_type_inc or data_type_def')
         # if the spec has a name, it will be found in __links/__groups/__datasets before __data_types/__target_types
-        if spec in self.__links:
-            return self.is_overridden_link(spec)
-        elif spec in self.__groups:
-            return self.is_overridden_group(spec)
-        elif spec in self.__datasets:
-            return self.is_overridden_dataset(spec)
-        elif spec in self.__data_types:
-            return self.is_overridden_type(spec)
+        if spec_name in self.__links:
+            return self.is_overridden_link(spec_name)
+        elif spec_name in self.__groups:
+            return self.is_overridden_group(spec_name)
+        elif spec_name in self.__datasets:
+            return self.is_overridden_dataset(spec_name)
+        elif spec_name in self.__data_types:
+            return self.is_overridden_type(spec_name)
         else:
             if super().is_overridden_spec(spec):  # check if overridden attribute
                 return True
             else:
-                for s in self.__datasets:
-                    if self.is_overridden_dataset(s):
-                        if self.__datasets[s].is_overridden_spec(spec):
-                            return True
-                for s in self.__groups:
-                    if self.is_overridden_group(s):
-                        if self.__groups[s].is_overridden_spec(spec):
-                            return True
+                parent_name = spec.parent.name
+                if parent_name is None:
+                   parent_name = spec.parent.data_type
+                if isinstance(spec.parent, DatasetSpec):
+                    if parent_name in self.__datasets:
+                        if self.is_overridden_dataset(parent_name):
+                            if self.__datasets[parent_name].is_overridden_spec(spec):
+                                return True
+                else:
+                    if parent_name in self.__groups:
+                        if self.is_overridden_group(parent_name):
+                            if self.__groups[parent_name].is_overridden_spec(spec):
+                                return True
         return False
 
     @docval({'name': 'spec', 'type': (BaseStorageSpec, str), 'doc': 'the specification to check'})

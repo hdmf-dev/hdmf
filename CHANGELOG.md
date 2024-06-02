@@ -1,5 +1,12 @@
 # HDMF Changelog
 
+## HDMF 3.14.1 (June 3, 2024)
+
+### Bug Fixes
+- Fixed issue with resolving attribute specs that have the same name at different levels of a spec hierarchy.
+  @rly [#1122](https://github.com/hdmf-dev/hdmf/pull/1122)
+
+
 ## HDMF 3.14.0 (May 20, 2024)
 
 ### Enhancements
