@@ -4,6 +4,8 @@
 
 ### Bug fixes
 - Excluded unnecessary artifacts from sdist and wheel. @rly [#1119](https://github.com/hdmf-dev/hdmf/pull/1119)
+- Fixed issue with resolving attribute specs that have the same name at different levels of a spec hierarchy.
+  @rly [#1122](https://github.com/hdmf-dev/hdmf/pull/1122)
 
 ## HDMF 3.14.0 (May 20, 2024)
 
@@ -553,7 +555,7 @@ the fields (i.e., when the constructor sets some fields to fixed values). @rly
   Each sub-table is itself a DynamicTable that is aligned with the main table by row index. Each subtable
   defines a sub-category in the main table effectively creating a table with sub-headings to organize columns.
   @oruebel (#551)
-- Add tutoral for new `AlignedDynamicTable` type. @oruebel (#571)
+- Add tutorial for new `AlignedDynamicTable` type. @oruebel (#571)
 - Equality check for `DynamicTable` now also checks that the name and description of the table are the same. @rly (#566)
 
 ### Internal improvements
