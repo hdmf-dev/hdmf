@@ -64,10 +64,23 @@ source = "vcs"
 version-file = "src/hdmf/_version.py"
 
 [tool.hatch.build.targets.sdist]
-exclude = [".git_archival.txt"]
+exclude = [
+    ".git*",
+    ".codecov.yml",
+    ".readthedocs.yaml",
+    ".mailmap",
+    ".pre-commit-config.yaml",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/hdmf"]
+exclude = [
+    ".git*",
+    ".codecov.yml",
+    ".readthedocs.yaml",
+    ".mailmap",
+    ".pre-commit-config.yaml",
+]
 
 # [tool.mypy]
 # no_incremental = true  # needed b/c mypy and ruamel.yaml do not play nice. https://github.com/python/mypy/issues/12664

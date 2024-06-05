@@ -1,11 +1,11 @@
 # HDMF Changelog
 
-## HDMF 3.14.1 (June 3, 2024)
+## HDMF 3.14.1 (Upcoming)
 
-### Bug Fixes
+### Bug fixes
+- Excluded unnecessary artifacts from sdist and wheel. @rly [#1119](https://github.com/hdmf-dev/hdmf/pull/1119)
 - Fixed issue with resolving attribute specs that have the same name at different levels of a spec hierarchy.
   @rly [#1122](https://github.com/hdmf-dev/hdmf/pull/1122)
-
 
 ## HDMF 3.14.0 (May 20, 2024)
 
