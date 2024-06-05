@@ -1,12 +1,26 @@
 # HDMF Changelog
 
-## HDMF 3.14.0 (Upcoming)
+## HDMF 3.14.1 (Upcoming)
+
+### Bug fixes
+- Excluded unnecessary artifacts from sdist and wheel. @rly [#1119](https://github.com/hdmf-dev/hdmf/pull/1119)
+- Fixed issue with resolving attribute specs that have the same name at different levels of a spec hierarchy.
+  @rly [#1122](https://github.com/hdmf-dev/hdmf/pull/1122)
+
+## HDMF 3.14.0 (May 20, 2024)
 
 ### Enhancements
 - Updated `_field_config` to take `type_map` as an argument for APIs. @mavaylon1 [#1094](https://github.com/hdmf-dev/hdmf/pull/1094)
 - Added `TypeConfigurator` to automatically wrap fields with `TermSetWrapper` according to a configuration file. @mavaylon1 [#1016](https://github.com/hdmf-dev/hdmf/pull/1016)
 - Updated `TermSetWrapper` to support validating a single field within a compound array. @mavaylon1 [#1061](https://github.com/hdmf-dev/hdmf/pull/1061)
 - Updated testing to not install in editable mode and not run `coverage` by default. @rly [#1107](https://github.com/hdmf-dev/hdmf/pull/1107)
+- Add `post_init_method` parameter when generating classes to perform post-init functionality, i.e., validation. @mavaylon1 [#1089](https://github.com/hdmf-dev/hdmf/pull/1089)
+- Exposed `aws_region` to `HDF5IO` and downstream passes to `h5py.File`. @codycbakerphd [#1040](https://github.com/hdmf-dev/hdmf/pull/1040)
+- Exposed `progress_bar_class` to the `GenericDataChunkIterator` for more custom control over display of progress while iterating. @codycbakerphd [#1110](https://github.com/hdmf-dev/hdmf/pull/1110)
+- Updated loading, unloading, and getting the `TypeConfigurator` to support a `TypeMap` parameter. @mavaylon1 [#1117](https://github.com/hdmf-dev/hdmf/pull/1117)
+
+### Bug Fixes
+- Fixed `TermSetWrapper` warning raised during the setters. @mavaylon1 [#1116](https://github.com/hdmf-dev/hdmf/pull/1116)
 
 ## HDMF 3.13.0 (March 20, 2024)
 
@@ -541,7 +555,7 @@ the fields (i.e., when the constructor sets some fields to fixed values). @rly
   Each sub-table is itself a DynamicTable that is aligned with the main table by row index. Each subtable
   defines a sub-category in the main table effectively creating a table with sub-headings to organize columns.
   @oruebel (#551)
-- Add tutoral for new `AlignedDynamicTable` type. @oruebel (#571)
+- Add tutorial for new `AlignedDynamicTable` type. @oruebel (#571)
 - Equality check for `DynamicTable` now also checks that the name and description of the table are the same. @rly (#566)
 
 ### Internal improvements

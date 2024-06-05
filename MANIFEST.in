@@ -1,5 +1,0 @@
-include license.txt Legal.txt src/hdmf/_due.py
-include requirements.txt requirements-dev.txt requirements-doc.txt requirements-min.txt requirements-opt.txt
-include test_gallery.py tox.ini
-graft tests
-global-exclude *.py[cod]

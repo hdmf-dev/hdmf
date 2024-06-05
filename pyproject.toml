@@ -32,7 +32,7 @@ classifiers = [
 dependencies = [
     "h5py>=2.10",
     "jsonschema>=2.6.0",
-    "numpy>=1.18",
+    'numpy>=1.18, <2.0', # pin below 2.0 until HDMF supports numpy 2.0
     "pandas>=1.0.5",
     "ruamel.yaml>=0.16",
     "scipy>=1.4",
@@ -64,10 +64,23 @@ source = "vcs"
 version-file = "src/hdmf/_version.py"
 
 [tool.hatch.build.targets.sdist]
-exclude = [".git_archival.txt"]
+exclude = [
+    ".git*",
+    ".codecov.yml",
+    ".readthedocs.yaml",
+    ".mailmap",
+    ".pre-commit-config.yaml",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/hdmf"]
+exclude = [
+    ".git*",
+    ".codecov.yml",
+    ".readthedocs.yaml",
+    ".mailmap",
+    ".pre-commit-config.yaml",
+]
 
 # [tool.mypy]
 # no_incremental = true  # needed b/c mypy and ruamel.yaml do not play nice. https://github.com/python/mypy/issues/12664
@@ -81,7 +94,7 @@ norecursedirs = "tests/unit/helpers"
 
 [tool.codespell]
 skip = "htmlcov,.git,.mypy_cache,.pytest_cache,.coverage,*.pdf,*.svg,venvs,.tox,hdmf-common-schema,./docs/_build/*,*.ipynb"
-ignore-words-list = "datas"
+ignore-words-list = "datas,assertIn"
 
 [tool.coverage.run]
 branch = true

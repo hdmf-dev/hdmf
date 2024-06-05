@@ -62,15 +62,21 @@ class HDF5IO(HDMFIO):
             {'name': 'file', 'type': [File, "S3File", "RemFile"],
              'doc': 'a pre-existing h5py.File, S3File, or RemFile object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+            {
+                'name': 'aws_region',
+                'type': str,
+                'doc': 'If driver is ros3, then specify the aws region of the url.',
+                'default': None
+            },
             {'name': 'herd_path', 'type': str,
              'doc': 'The path to read/write the HERD file', 'default': None},)
     def __init__(self, **kwargs):
         """Open an HDF5 file for IO.
         """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
-        path, manager, mode, comm, file_obj, driver, herd_path = popargs('path', 'manager', 'mode',
+        path, manager, mode, comm, file_obj, driver, aws_region, herd_path = popargs('path', 'manager', 'mode',
                                                                                        'comm', 'file', 'driver',
-                                                                                       'herd_path',
+                                                                                       'aws_region', 'herd_path',
                                                                                        kwargs)
 
         self.__open_links = []  # keep track of other files opened from links in this file
@@ -91,6 +97,7 @@ class HDF5IO(HDMFIO):
         elif isinstance(manager, TypeMap):
             manager = BuildManager(manager)
         self.__driver = driver
+        self.__aws_region = aws_region
         self.__comm = comm
         self.__mode = mode
         self.__file = file_obj
@@ -116,6 +123,10 @@ class HDF5IO(HDMFIO):
     def driver(self):
         return self.__driver
 
+    @property
+    def aws_region(self):
+        return self.__aws_region
+
     @classmethod
     def __check_path_file_obj(cls, path, file_obj):
         if isinstance(path, Path):
@@ -133,13 +144,17 @@ class HDF5IO(HDMFIO):
         return path
 
     @classmethod
-    def __resolve_file_obj(cls, path, file_obj, driver):
+    def __resolve_file_obj(cls, path, file_obj, driver, aws_region=None):
+        """Helper function to return a File when loading or getting namespaces from a file."""
         path = cls.__check_path_file_obj(path, file_obj)
 
         if file_obj is None:
             file_kwargs = dict()
             if driver is not None:
                 file_kwargs.update(driver=driver)
+
+                if aws_region is not None:
+                    file_kwargs.update(aws_region=bytes(aws_region, "ascii"))
             file_obj = File(path, 'r', **file_kwargs)
         return file_obj
 
@@ -150,6 +165,8 @@ class HDF5IO(HDMFIO):
             {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+            {'name': 'aws_region', 'type': str, 'doc': 'If driver is ros3, then specify the aws region of the url.',
+             'default': None},
             returns=("dict mapping the names of the loaded namespaces to a dict mapping included namespace names and "
                      "the included data types"),
             rtype=dict)
@@ -162,10 +179,10 @@ class HDF5IO(HDMFIO):
 
         :raises ValueError: if both `path` and `file` are supplied but `path` is not the same as the path of `file`.
         """
-        namespace_catalog, path, namespaces, file_obj, driver = popargs(
-            'namespace_catalog', 'path', 'namespaces', 'file', 'driver', kwargs)
+        namespace_catalog, path, namespaces, file_obj, driver, aws_region = popargs(
+            'namespace_catalog', 'path', 'namespaces', 'file', 'driver', 'aws_region', kwargs)
 
-        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver)
+        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver, aws_region=aws_region)
         if file_obj is None:  # need to close the file object that we just opened
             with open_file_obj:
                 return cls.__load_namespaces(namespace_catalog, namespaces, open_file_obj)
@@ -214,6 +231,8 @@ class HDF5IO(HDMFIO):
     @docval({'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
             {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+            {'name': 'aws_region', 'type': str, 'doc': 'If driver is ros3, then specify the aws region of the url.',
+             'default': None},
             returns="dict mapping names to versions of the namespaces in the file", rtype=dict)
     def get_namespaces(cls, **kwargs):
         """Get the names and versions of the cached namespaces from a file.
@@ -227,9 +246,9 @@ class HDF5IO(HDMFIO):
 
         :raises ValueError: if both `path` and `file` are supplied but `path` is not the same as the path of `file`.
         """
-        path, file_obj, driver = popargs('path', 'file', 'driver', kwargs)
+        path, file_obj, driver, aws_region = popargs('path', 'file', 'driver', 'aws_region', kwargs)
 
-        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver)
+        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver, aws_region=aws_region)
         if file_obj is None:  # need to close the file object that we just opened
             with open_file_obj:
                 return cls.__get_namespaces(open_file_obj)
@@ -755,6 +774,9 @@ class HDF5IO(HDMFIO):
 
             if self.driver is not None:
                 kwargs.update(driver=self.driver)
+
+                if self.driver == "ros3" and self.aws_region is not None:
+                    kwargs.update(aws_region=bytes(self.aws_region, "ascii"))
 
             self.__file = File(self.source, open_flag, **kwargs)
 

@@ -365,26 +365,22 @@ class TestResolveAttrs(TestCase):
         self.assertTrue(self.inc_group_spec.resolved)
 
     def test_is_inherited_spec(self):
-        self.assertFalse(self.def_group_spec.is_inherited_spec('attribute1'))
-        self.assertFalse(self.def_group_spec.is_inherited_spec('attribute2'))
-        self.assertTrue(self.inc_group_spec.is_inherited_spec(
-            AttributeSpec('attribute1', 'my first attribute', 'text')
-        ))
-        self.assertTrue(self.inc_group_spec.is_inherited_spec('attribute1'))
-        self.assertTrue(self.inc_group_spec.is_inherited_spec('attribute2'))
-        self.assertFalse(self.inc_group_spec.is_inherited_spec('attribute3'))
-        self.assertFalse(self.inc_group_spec.is_inherited_spec('attribute4'))
+        self.assertFalse(self.def_group_spec.is_inherited_spec(self.def_group_spec.attributes[0]))
+        self.assertFalse(self.def_group_spec.is_inherited_spec(self.def_group_spec.attributes[1]))
+
+        attr_spec_map = {attr.name: attr for attr in self.inc_group_spec.attributes}
+        self.assertTrue(self.inc_group_spec.is_inherited_spec(attr_spec_map["attribute1"]))
+        self.assertTrue(self.inc_group_spec.is_inherited_spec(attr_spec_map["attribute2"]))
+        self.assertFalse(self.inc_group_spec.is_inherited_spec(attr_spec_map["attribute3"]))
 
     def test_is_overridden_spec(self):
-        self.assertFalse(self.def_group_spec.is_overridden_spec('attribute1'))
-        self.assertFalse(self.def_group_spec.is_overridden_spec('attribute2'))
-        self.assertFalse(self.inc_group_spec.is_overridden_spec(
-            AttributeSpec('attribute1', 'my first attribute', 'text')
-        ))
-        self.assertFalse(self.inc_group_spec.is_overridden_spec('attribute1'))
-        self.assertTrue(self.inc_group_spec.is_overridden_spec('attribute2'))
-        self.assertFalse(self.inc_group_spec.is_overridden_spec('attribute3'))
-        self.assertFalse(self.inc_group_spec.is_overridden_spec('attribute4'))
+        self.assertFalse(self.def_group_spec.is_overridden_spec(self.def_group_spec.attributes[0]))
+        self.assertFalse(self.def_group_spec.is_overridden_spec(self.def_group_spec.attributes[0]))
+
+        attr_spec_map = {attr.name: attr for attr in self.inc_group_spec.attributes}
+        self.assertFalse(self.inc_group_spec.is_overridden_spec(attr_spec_map["attribute1"]))
+        self.assertTrue(self.inc_group_spec.is_overridden_spec(attr_spec_map["attribute2"]))
+        self.assertFalse(self.inc_group_spec.is_overridden_spec(attr_spec_map["attribute3"]))
 
     def test_is_inherited_attribute(self):
         self.assertFalse(self.def_group_spec.is_inherited_attribute('attribute1'))
@@ -403,6 +399,95 @@ class TestResolveAttrs(TestCase):
         self.assertFalse(self.inc_group_spec.is_overridden_attribute('attribute3'))
         with self.assertRaisesWith(ValueError, "Attribute 'attribute4' not found"):
             self.inc_group_spec.is_overridden_attribute('attribute4')
+
+
+class TestResolveGroupSameAttributeName(TestCase):
+    # https://github.com/hdmf-dev/hdmf/issues/1121
+
+    def test_is_inherited_two_different_datasets(self):
+        self.def_group_spec = GroupSpec(
+            doc='A test group',
+            data_type_def='MyGroup',
+            datasets=[
+                DatasetSpec(
+                    name='dset1',
+                    doc="dset1",
+                    dtype='int',
+                    attributes=[AttributeSpec('attr1', 'MyGroup.dset1.attr1', 'text')]
+                ),
+            ]
+        )
+        self.inc_group_spec = GroupSpec(
+            doc='A test subgroup',
+            data_type_def='SubGroup',
+            data_type_inc='MyGroup',
+            datasets=[
+                DatasetSpec(
+                    name='dset2',
+                    doc="dset2",
+                    dtype='int',
+                    attributes=[AttributeSpec('attr1', 'SubGroup.dset2.attr1', 'text')]
+                ),
+            ]
+        )
+        self.inc_group_spec.resolve_spec(self.def_group_spec)
+
+        self.assertFalse(self.def_group_spec.is_inherited_spec(self.def_group_spec.datasets[0].attributes[0]))
+
+        dset_spec_map = {dset.name: dset for dset in self.inc_group_spec.datasets}
+        self.assertFalse(self.inc_group_spec.is_inherited_spec(dset_spec_map["dset2"].attributes[0]))
+        self.assertTrue(self.inc_group_spec.is_inherited_spec(dset_spec_map["dset1"].attributes[0]))
+
+    def test_is_inherited_different_groups_and_datasets(self):
+        self.def_group_spec = GroupSpec(
+            doc='A test group',
+            data_type_def='MyGroup',
+            attributes=[AttributeSpec('attr1', 'MyGroup.attr1', 'text')],  # <-- added from above
+            datasets=[
+                DatasetSpec(
+                    name='dset1',
+                    doc="dset1",
+                    dtype='int',
+                    attributes=[AttributeSpec('attr1', 'MyGroup.dset1.attr1', 'text')]
+                ),
+            ]
+        )
+        self.inc_group_spec = GroupSpec(
+            doc='A test subgroup',
+            data_type_def='SubGroup',
+            data_type_inc='MyGroup',
+            attributes=[AttributeSpec('attr1', 'SubGroup.attr1', 'text')],  # <-- added from above
+            datasets=[
+                DatasetSpec(
+                    name='dset2',
+                    doc="dset2",
+                    dtype='int',
+                    attributes=[AttributeSpec('attr1', 'SubGroup.dset2.attr1', 'text')]
+                ),
+            ]
+        )
+        self.inc_group_spec.resolve_spec(self.def_group_spec)
+
+        self.assertFalse(self.def_group_spec.is_inherited_spec(self.def_group_spec.datasets[0].attributes[0]))
+
+        dset_spec_map = {dset.name: dset for dset in self.inc_group_spec.datasets}
+        self.assertFalse(self.inc_group_spec.is_inherited_spec(dset_spec_map["dset2"].attributes[0]))
+        self.assertTrue(self.inc_group_spec.is_inherited_spec(dset_spec_map["dset1"].attributes[0]))
+        self.assertTrue(self.inc_group_spec.is_inherited_spec(self.inc_group_spec.attributes[0]))
+
+        self.inc_group_spec2 = GroupSpec(
+            doc='A test subsubgroup',
+            data_type_def='SubSubGroup',
+            data_type_inc='SubGroup',
+        )
+        self.inc_group_spec2.resolve_spec(self.inc_group_spec)
+
+        dset_spec_map = {dset.name: dset for dset in self.inc_group_spec2.datasets}
+        self.assertTrue(self.inc_group_spec2.is_inherited_spec(dset_spec_map["dset1"].attributes[0]))
+        self.assertTrue(self.inc_group_spec2.is_inherited_spec(dset_spec_map["dset2"].attributes[0]))
+        self.assertTrue(self.inc_group_spec2.is_inherited_spec(self.inc_group_spec2.attributes[0]))
+
+
 
 
 class GroupSpecWithLinksTest(TestCase):
