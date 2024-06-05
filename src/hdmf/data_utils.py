@@ -938,7 +938,7 @@ class ShapeValidatorResult:
             {'name': 'message', 'type': str,
              'doc': 'Message describing the result of the shape validation', 'default': None},
             {'name': 'ignored', 'type': tuple,
-             'doc': 'Axes that have been ignored in the validaton process', 'default': tuple(), 'shape': (None,)},
+             'doc': 'Axes that have been ignored in the validation process', 'default': tuple(), 'shape': (None,)},
             {'name': 'unmatched', 'type': tuple,
              'doc': 'List of axes that did not match during shape validation', 'default': tuple(), 'shape': (None,)},
             {'name': 'error', 'type': str, 'doc': 'Error that may have occurred. One of ERROR_TYPE', 'default': None},
