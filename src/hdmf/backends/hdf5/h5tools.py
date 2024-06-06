@@ -711,6 +711,7 @@ class HDF5IO(HDMFIO):
                     kwargs['dtype'] = d.dtype
                 elif isinstance(elem1, Reference):
                     d = BuilderH5ReferenceDataset(h5obj, self)
+                    breakpoint()
                     kwargs['dtype'] = d.dtype
             elif h5obj.dtype.kind == 'V':  # table / compound data type
                 cpd_dt = h5obj.dtype

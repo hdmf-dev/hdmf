@@ -949,6 +949,7 @@ class Data(AbstractContainer):
 
     def append(self, arg):
         self._validate_new_data_element(arg)
+        # breakpoint()
         self.__data = append_data(self.__data, arg)
 
     def extend(self, arg):

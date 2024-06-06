@@ -4,7 +4,7 @@ import numpy as np
 
 from .array import Array
 from .utils import ExtenderMeta, docval_macro, docval, getargs
-
+from .data_utils import DataIO, append_data
 
 class Query(metaclass=ExtenderMeta):
     __operations__ = (
@@ -162,6 +162,9 @@ class HDMFDataset(metaclass=ExtenderMeta):
 
     def next(self):
         return self.dataset.next()
+
+    def append(self, arg):
+        append_data(self.dataset, arg)
 
 
 class ReferenceResolver(metaclass=ABCMeta):
