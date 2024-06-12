@@ -386,10 +386,12 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         :returns: DataChunk object with the data and selection of the current buffer.
         :rtype: DataChunk
         """
-        if self.display_progress:
-            self.progress_bar.update(n=1)
+        # if self.display_progress:
+        #     self.progress_bar.update(n=1)
         try:
             buffer_selection = next(self.buffer_selection_generator)
+            if self.display_progress:
+                self.progress_bar.update(n=1)
             return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
         except StopIteration:
             if self.display_progress:
