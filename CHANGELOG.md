@@ -1,5 +1,12 @@
 # HDMF Changelog
 
+## HDMF 3.14.2 (???)
+
+### Bug fixes
+- Fix iterator increment causing an extra +1 added after the end of completion. @CodyCBakerPhD [#1128](https://github.com/hdmf-dev/hdmf/pull/1128)
+
+
+
 ## HDMF 3.14.1 (June 6, 2024)
 
 ### Bug fixes
