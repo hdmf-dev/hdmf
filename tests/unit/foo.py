@@ -36,7 +36,7 @@ with NWBZarrIO("test.nwb", mode="w") as io:
     io.write(nwbfile)
 
 # now reload and try to add some more electrodes
-io = NWBZarrIO("test.nwb", mode="r+d")
+io = NWBZarrIO("test.nwb", mode="r+")
 nwbfile_read = io.read()
 
 rel_xs = [50., 60., 70., 80.]
