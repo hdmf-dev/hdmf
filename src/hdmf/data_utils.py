@@ -386,16 +386,18 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         :returns: DataChunk object with the data and selection of the current buffer.
         :rtype: DataChunk
         """
-        # if self.display_progress:
-        #     self.progress_bar.update(n=1)
         try:
             buffer_selection = next(self.buffer_selection_generator)
+
+            # Only update after successful iteration
             if self.display_progress:
                 self.progress_bar.update(n=1)
+
             return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
         except StopIteration:
+            # Allow text to be written to new lines after completion
             if self.display_progress:
-                self.progress_bar.write("\n")  # Allows text to be written to new lines after completion
+                self.progress_bar.write("\n")
             raise StopIteration
 
     def __reduce__(self) -> Tuple[Callable, Iterable]:
