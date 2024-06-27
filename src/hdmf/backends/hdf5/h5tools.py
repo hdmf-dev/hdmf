@@ -582,6 +582,7 @@ class HDF5IO(HDMFIO):
 
         :raises ValueError: When no builder has been constructed yet for the given h5py object
         """
+        breakpoint()
         h5obj = getargs('h5obj', kwargs)
         fpath = h5obj.file.filename
         builder = self.__get_built(fpath, h5obj.id)

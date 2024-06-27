@@ -1,0 +1,7 @@
+{
+    "description": "a reference to the ElectrodeGroup this electrode is a part of",
+    "namespace": "hdmf-common",
+    "neurodata_type": "VectorData",
+    "object_id": "0ffba278-8d3a-415b-b4bf-5af8b7845bc9",
+    "zarr_dtype": "object"
+}

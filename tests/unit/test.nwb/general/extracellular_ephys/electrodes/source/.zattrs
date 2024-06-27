@@ -1,0 +1,7 @@
+{
+    "description": "1st or 2nd round",
+    "namespace": "hdmf-common",
+    "neurodata_type": "VectorData",
+    "object_id": "22ed2237-1029-4430-ab7a-e33b65690e71",
+    "zarr_dtype": "str"
+}

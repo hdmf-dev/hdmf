@@ -5,6 +5,8 @@ from collections.abc import Iterable, Callable
 from warnings import warn
 from typing import Tuple
 from itertools import product, chain
+from zarr import Array as ZarrArray
+
 
 import h5py
 import numpy as np
@@ -13,11 +15,20 @@ from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
 
 def append_data(data, arg):
-    if isinstance(data, (list, DataIO)):
+    from hdmf.backends.hdf5.h5_utils import HDMFDataset
+
+    if isinstance(data, (list, DataIO, HDMFDataset)):
         data.append(arg)
         return data
+    # if isinstance(data, (list, DataIO)):
+    #     data.append(arg)
+    #     return data
     elif type(data).__name__ == 'TermSetWrapper': # circular import
         data.append(arg)
+        return data
+    elif isinstance(data, ZarrArray):
+        breakpoint()
+        data.append([arg], axis=0)
         return data
     elif isinstance(data, np.ndarray):
         if len(data.dtype)>0: # data is a structured array
@@ -31,6 +42,7 @@ def append_data(data, arg):
         data[-1] = arg
         return data
     else:
+        breakpoint()
         msg = "Data cannot append to object of type '%s'" % type(data)
         raise ValueError(msg)
 
