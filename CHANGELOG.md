@@ -1,11 +1,12 @@
 # HDMF Changelog
 
-## HDMF 3.14.2 (???)
+## HDMF 3.14.2 (Upcoming)
 
 ### Bug fixes
 - Fix iterator increment causing an extra +1 added after the end of completion. @CodyCBakerPhD [#1128](https://github.com/hdmf-dev/hdmf/pull/1128)
 
-
+### Enhancements
+- Support appending to zarr arrays. @mavaylon1 [#1136](https://github.com/hdmf-dev/hdmf/pull/1136)
 
 ## HDMF 3.14.1 (June 6, 2024)
 
