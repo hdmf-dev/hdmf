@@ -164,7 +164,7 @@ def get_type(data, builder_dtype=None):
                 # Empty array
                 else:
                     # Empty string array
-                    if data.dtype.metadata["vlen"] == str:
+                    if isinstance(data.dtype.metadata["vlen"], str):
                         return "utf", None
                     # Undetermined variable length data type.
                     else:                        # pragma: no cover
