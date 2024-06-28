@@ -728,7 +728,7 @@ class HDF5IO(HDMFIO):
     def _check_str_dtype(self, h5obj):
         dtype = h5obj.dtype
         if dtype.kind == 'O':
-            if dtype.metadata.get('vlen') == str and H5PY_3:
+            if isinstance(dtype.metadata.get('vlen'), str) and H5PY_3:
                 return StrDataset(h5obj, None)
         return h5obj
 
