@@ -118,9 +118,6 @@ omit = [
 
 [tool.ruff]
 lint.select = ["E", "F", "T100", "T201", "T203"]
-ignore = [
-    "E721" # We use it for good reasons
-]
 exclude = [
   ".git",
   ".tox",
