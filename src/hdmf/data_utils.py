@@ -5,16 +5,19 @@ from collections.abc import Iterable, Callable
 from warnings import warn
 from typing import Tuple
 from itertools import product, chain
+from zarr import Array as ZarrArray
 
 import h5py
 import numpy as np
 
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
-
 def append_data(data, arg):
     if isinstance(data, (list, DataIO)):
         data.append(arg)
+        return data
+    elif isinstance(data, ZarrArray):
+        data.append([arg], axis=0)
         return data
     elif type(data).__name__ == 'TermSetWrapper': # circular import
         data.append(arg)

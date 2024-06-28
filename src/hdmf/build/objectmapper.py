@@ -1164,7 +1164,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if not isinstance(builder, DatasetBuilder):  # pragma: no cover
                 raise ValueError("__get_subspec_values - must pass DatasetBuilder with DatasetSpec")
             if (spec.shape is None and getattr(builder.data, 'shape', None) == (1,) and
-                    type(builder.data[0]) != np.void):
+                    type(builder.data[0]) is not np.void):
                 # if a scalar dataset is expected and a 1-element non-compound dataset is given, then read the dataset
                 builder['data'] = builder.data[0]  # use dictionary reference instead of .data to bypass error
             ret[spec] = self.__check_ref_resolver(builder.data)
