@@ -2,9 +2,9 @@
 h5py==3.11.0
 importlib-resources==6.1.0; python_version < "3.9"  # TODO: remove when minimum python version is 3.9
 jsonschema==4.22.0
-numpy==2.0.0; python_version >= "3.9"
-numpy==1.26.4; python_version < "3.8"  # TODO: remove when minimum python version is 3.9
-pandas==2.2.2
+numpy==1.26.4  # TODO: numpy 2.0.0 is supported by hdmf but incompatible with pandas and scipy
+pandas==2.2.2; python_version >= "3.9"
+pandas==2.1.2; python_version < "3.8"  # TODO: remove when minimum python version is 3.9
 ruamel.yaml==0.18.2
 scipy==1.14.0; python_version >= "3.10"
 scipy==1.11.3; python_version < "3.10"
