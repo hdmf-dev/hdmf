@@ -7,6 +7,7 @@
 
 ### Enhancements
 - Support appending to zarr arrays. @mavaylon1 [#1136](https://github.com/hdmf-dev/hdmf/pull/1136)
+- Add support for numpy 2. @rly [#1139](https://github.com/hdmf-dev/hdmf/pull/1139)
 
 ## HDMF 3.14.1 (June 6, 2024)
 
