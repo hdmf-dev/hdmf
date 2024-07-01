@@ -3,10 +3,16 @@ from hdmf.testing import TestCase
 
 import numpy as np
 from numpy.testing import assert_array_equal
-import zarr
+import unittest
 
+try:
+    import zarr
+    ZARR_INSTALLED = True
+except ImportError:
+    ZARR_INSTALLED = False
+
+@unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
 class TestAppendData(TestCase):
-
     def test_append_data_zarr(self):
         zarr_array = zarr.array([1,2,3])
         new = append_data(zarr_array, 4)
