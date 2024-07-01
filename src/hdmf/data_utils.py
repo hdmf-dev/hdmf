@@ -35,13 +35,14 @@ def append_data(data, arg):
         data.resize(shape)
         data[-1] = arg
         return data
+    elif ZARR_INSTALLED:
+        if isinstance(data, ZarrArray):
+            data.append([arg], axis=0)
+            return data
+        else:
+            msg = "Data cannot append to object of type '%s'" % type(data)
+            raise ValueError(msg)
     else:
-        if ZARR_INSTALLED:
-            if isinstance(data, ZarrArray):
-                data.append([arg], axis=0)
-                return data
-
-        # If ZARR_INSTALLED is False or data is not an instance of ZarrArray
         msg = "Data cannot append to object of type '%s'" % type(data)
         raise ValueError(msg)
 
