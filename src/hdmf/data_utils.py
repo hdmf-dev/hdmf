@@ -5,7 +5,12 @@ from collections.abc import Iterable, Callable
 from warnings import warn
 from typing import Tuple
 from itertools import product, chain
-from zarr import Array as ZarrArray
+
+try:
+    from zarr import ZarrArray
+    ZARR_INSTALLED = True
+except ImportError:
+    ZARR_INSTALLED = False
 
 import h5py
 import numpy as np
@@ -34,8 +39,15 @@ def append_data(data, arg):
         data[-1] = arg
         return data
     else:
+        if ZARR_INSTALLED:
+            if isinstance(data, ZarrArray):
+                data.append([arg], axis=0)
+                return data
+
+        # If ZARR_INSTALLED is False or data is not an instance of ZarrArray
         msg = "Data cannot append to object of type '%s'" % type(data)
         raise ValueError(msg)
+
 
 
 def extend_data(data, arg):
