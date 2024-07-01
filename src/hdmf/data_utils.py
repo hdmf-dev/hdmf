@@ -5,16 +5,19 @@ from collections.abc import Iterable, Callable
 from warnings import warn
 from typing import Tuple
 from itertools import product, chain
+from zarr import Array as ZarrArray
 
 import h5py
 import numpy as np
 
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
-
 def append_data(data, arg):
     if isinstance(data, (list, DataIO)):
         data.append(arg)
+        return data
+    elif isinstance(data, ZarrArray):
+        data.append([arg], axis=0)
         return data
     elif type(data).__name__ == 'TermSetWrapper': # circular import
         data.append(arg)
@@ -386,14 +389,18 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         :returns: DataChunk object with the data and selection of the current buffer.
         :rtype: DataChunk
         """
-        if self.display_progress:
-            self.progress_bar.update(n=1)
         try:
             buffer_selection = next(self.buffer_selection_generator)
+
+            # Only update after successful iteration
+            if self.display_progress:
+                self.progress_bar.update(n=1)
+
             return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
         except StopIteration:
+            # Allow text to be written to new lines after completion
             if self.display_progress:
-                self.progress_bar.write("\n")  # Allows text to be written to new lines after completion
+                self.progress_bar.write("\n")
             raise StopIteration
 
     def __reduce__(self) -> Tuple[Callable, Iterable]:

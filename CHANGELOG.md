@@ -1,6 +1,15 @@
 # HDMF Changelog
 
-## HDMF 3.14.1 (Upcoming)
+## HDMF 3.14.2 (Upcoming)
+
+### Enhancements
+- Warn when unexpected keys are present in specs. @rly [#1134](https://github.com/hdmf-dev/hdmf/pull/1134)
+- Support appending to zarr arrays. @mavaylon1 [#1136](https://github.com/hdmf-dev/hdmf/pull/1136)
+
+### Bug fixes
+- Fix iterator increment causing an extra +1 added after the end of completion. @CodyCBakerPhD [#1128](https://github.com/hdmf-dev/hdmf/pull/1128)
+
+## HDMF 3.14.1 (June 6, 2024)
 
 ### Bug fixes
 - Excluded unnecessary artifacts from sdist and wheel. @rly [#1119](https://github.com/hdmf-dev/hdmf/pull/1119)
