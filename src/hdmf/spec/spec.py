@@ -93,9 +93,13 @@ class ConstructableDict(dict, metaclass=ABCMeta):
         vargs = cls.build_const_args(spec_dict)
         kwargs = dict()
         # iterate through the Spec docval and construct kwargs based on matching values in spec_dict
+        unused_vargs = list(vargs)
         for x in get_docval(cls.__init__):
             if x['name'] in vargs:
                 kwargs[x['name']] = vargs.get(x['name'])
+                unused_vargs.remove(x['name'])
+        if unused_vargs:
+            warn(f'Unexpected keys {unused_vargs} in spec {spec_dict}')
         return cls(**kwargs)
 
 

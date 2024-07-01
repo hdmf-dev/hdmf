@@ -91,3 +91,15 @@ class AttributeSpecTests(TestCase):
         msg = "AttributeSpec.__init__: missing argument 'doc'"
         with self.assertRaisesWith(TypeError, msg):
             AttributeSpec.build_spec(spec_dict)
+
+    def test_build_warn_extra_args(self):
+        spec_dict = {
+            'name': 'attribute1',
+            'doc': 'test attribute',
+            'dtype': 'int',
+            'quantity': '?',
+        }
+        msg = ("Unexpected keys ['quantity'] in spec {'name': 'attribute1', 'doc': 'test attribute', "
+               "'dtype': 'int', 'quantity': '?'}")
+        with self.assertWarnsWith(UserWarning, msg):
+            AttributeSpec.build_spec(spec_dict)
