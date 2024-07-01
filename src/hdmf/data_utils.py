@@ -7,7 +7,7 @@ from typing import Tuple
 from itertools import product, chain
 
 try:
-    from zarr import ZarrArray
+    from zarr import Array as ZarrArray
     ZARR_INSTALLED = True
 except ImportError:
     ZARR_INSTALLED = False
@@ -45,7 +45,6 @@ def append_data(data, arg):
     else:
         msg = "Data cannot append to object of type '%s'" % type(data)
         raise ValueError(msg)
-
 
 
 def extend_data(data, arg):
