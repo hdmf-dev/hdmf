@@ -10,6 +10,14 @@ except ImportError:
     SCIPY_INSTALLED = False
 
 
+class TestCSRMatrixNoScipy(TestCase):
+
+    def test_import_error(self):
+        data = np.array([[1, 0, 2], [0, 0, 3], [4, 5, 6]])
+        with self.assertRaises(ImportError):
+            CSRMatrix(data=data)
+
+
 @unittest.skipIf(not SCIPY_INSTALLED, "scipy is not installed")
 class TestCSRMatrix(TestCase):
 
