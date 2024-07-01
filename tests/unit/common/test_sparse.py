@@ -10,6 +10,7 @@ except ImportError:
     SCIPY_INSTALLED = False
 
 
+@unittest.skipIf(SCIPY_INSTALLED, "scipy is installed")
 class TestCSRMatrixNoScipy(TestCase):
 
     def test_import_error(self):
