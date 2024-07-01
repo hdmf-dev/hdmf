@@ -11,8 +11,9 @@ try:
 except ImportError:
     ZARR_INSTALLED = False
 
-@unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
 class TestAppendData(TestCase):
+
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
     def test_append_data_zarr(self):
         zarr_array = zarr.array([1,2,3])
         new = append_data(zarr_array, 4)
