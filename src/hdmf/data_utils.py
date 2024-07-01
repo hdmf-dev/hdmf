@@ -21,9 +21,6 @@ def append_data(data, arg):
     if isinstance(data, (list, DataIO)):
         data.append(arg)
         return data
-    elif isinstance(data, ZarrArray):
-        data.append([arg], axis=0)
-        return data
     elif type(data).__name__ == 'TermSetWrapper': # circular import
         data.append(arg)
         return data
