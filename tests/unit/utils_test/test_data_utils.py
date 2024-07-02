@@ -20,7 +20,7 @@ class TestAppendData(TestCase):
     def test_append_exception(self):
         data = MyIterable([1, 2, 3, 4, 5])
         with self.assertRaises(ValueError):
-            rappend_data(data, 4)
+            append_data(data, 4)
 
 
 class TestZarrAppendData(TestCase):
@@ -32,7 +32,7 @@ class TestZarrAppendData(TestCase):
     def test_append_exception(self):
         data = MyIterable([1, 2, 3, 4, 5])
         with self.assertRaises(ValueError):
-            rappend_data(data, 4)
+            append_data(data, 4)
 
     def test_append_data_zarr(self):
         zarr_array = zarr.array([1,2,3])
