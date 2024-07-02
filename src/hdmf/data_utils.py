@@ -20,14 +20,10 @@ def append_data(data, arg):
     if isinstance(data, (list, DataIO, HDMFDataset)):
         data.append(arg)
         return data
-    # if isinstance(data, (list, DataIO)):
-    #     data.append(arg)
-    #     return data
     elif type(data).__name__ == 'TermSetWrapper': # circular import
         data.append(arg)
         return data
     elif isinstance(data, ZarrArray):
-        breakpoint()
         data.append([arg], axis=0)
         return data
     elif isinstance(data, np.ndarray):
@@ -42,7 +38,7 @@ def append_data(data, arg):
         data[-1] = arg
         return data
     else:
-        breakpoint()
+        # breakpoint()
         msg = "Data cannot append to object of type '%s'" % type(data)
         raise ValueError(msg)
 
