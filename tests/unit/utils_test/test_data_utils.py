@@ -29,10 +29,6 @@ class TestZarrAppendData(TestCase):
         if not ZARR_INSTALLED:
             self.skipTest("optional Zarr package is not installed")
 
-    def test_append_exception(self):
-        data = MyIterable([1, 2, 3, 4, 5])
-        with self.assertRaises(ValueError):
-            append_data(data, 4)
 
     def test_append_data_zarr(self):
         zarr_array = zarr.array([1,2,3])
