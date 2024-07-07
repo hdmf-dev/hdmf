@@ -5,7 +5,12 @@ from collections.abc import Iterable, Callable
 from warnings import warn
 from typing import Tuple
 from itertools import product, chain
-from zarr import Array as ZarrArray
+
+try:
+    from zarr import Array as ZarrArray
+    ZARR_INSTALLED = True
+except ImportError:
+    ZARR_INSTALLED = False
 
 import h5py
 import numpy as np
@@ -15,9 +20,6 @@ from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 def append_data(data, arg):
     if isinstance(data, (list, DataIO)):
         data.append(arg)
-        return data
-    elif isinstance(data, ZarrArray):
-        data.append([arg], axis=0)
         return data
     elif type(data).__name__ == 'TermSetWrapper': # circular import
         data.append(arg)
@@ -32,6 +34,9 @@ def append_data(data, arg):
         shape[0] += 1
         data.resize(shape)
         data[-1] = arg
+        return data
+    elif ZARR_INSTALLED and isinstance(data, ZarrArray):
+        data.append([arg], axis=0)
         return data
     else:
         msg = "Data cannot append to object of type '%s'" % type(data)
