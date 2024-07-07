@@ -5,6 +5,7 @@
 ### Enhancements
 - Warn when unexpected keys are present in specs. @rly [#1134](https://github.com/hdmf-dev/hdmf/pull/1134)
 - Support appending to zarr arrays. @mavaylon1 [#1136](https://github.com/hdmf-dev/hdmf/pull/1136)
+- Support specifying "value" key in DatasetSpec. @rly [#1143](https://github.com/hdmf-dev/hdmf/pull/1143)
 
 ### Bug fixes
 - Fix iterator increment causing an extra +1 added after the end of completion. @CodyCBakerPhD [#1128](https://github.com/hdmf-dev/hdmf/pull/1128)
