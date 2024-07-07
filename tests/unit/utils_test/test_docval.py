@@ -736,8 +736,12 @@ class TestDocValidator(TestCase):
         self.assertEqual(method(self, np.uint(1)), np.uint(1))
         self.assertEqual(method(self, np.uint(2)), np.uint(2))
 
+        # the string rep of uint changes from numpy 1 to 2 ("1" to "np.uint64(1)"), so do not hardcode the string
+        uint_str1 = np.uint(1).__repr__()
+        uint_str2 = np.uint(2).__repr__()
+
         msg = ("TestDocValidator.test_enum_uint.<locals>.method: "
-               "forbidden value for 'arg1' (got 3, expected (1, 2))")
+               "forbidden value for 'arg1' (got 3, expected (%s, %s))" % (uint_str1, uint_str2))
         with self.assertRaisesWith(ValueError, msg):
             method(self, np.uint(3))
 
@@ -767,8 +771,11 @@ class TestDocValidator(TestCase):
         self.assertEqual(method(self, 'true'), 'true')
         self.assertEqual(method(self, np.uint(1)), np.uint(1))
 
+        # the string rep of uint changes from numpy 1 to 2 ("1" to "np.uint64(1)"), so do not hardcode the string
+        uint_str = np.uint(1).__repr__()
+
         msg = ("TestDocValidator.test_enum_bool_mixed.<locals>.method: "
-               "forbidden value for 'arg1' (got 0, expected (True, 1, 1.0, 'true', 1))")
+               "forbidden value for 'arg1' (got 0, expected (True, 1, 1.0, 'true', %s))" % uint_str)
         with self.assertRaisesWith(ValueError, msg):
             method(self, 0)
 
