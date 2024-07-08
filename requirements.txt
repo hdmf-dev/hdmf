@@ -5,4 +5,3 @@ jsonschema==4.19.1
 numpy==1.26.1
 pandas==2.1.2
 ruamel.yaml==0.18.2
-scipy==1.11.3
