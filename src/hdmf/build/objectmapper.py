@@ -299,7 +299,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     cls.__check_convert_numeric(value.dtype.type)
                 if np.issubdtype(value.dtype, np.str_):
                     ret_dtype = 'utf8'
-                elif np.issubdtype(value.dtype, np.string_):
+                elif np.issubdtype(value.dtype, np.bytes_):
                     ret_dtype = 'ascii'
                 elif np.issubdtype(value.dtype, np.dtype('O')):
                     # Only variable-length strings should ever appear as generic objects.

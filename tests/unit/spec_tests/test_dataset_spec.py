@@ -246,6 +246,10 @@ class DatasetSpecTests(TestCase):
                                   data_type_inc=data_type_inc, data_type_def=data_type_def)
                 self.assertEqual(group.data_type, data_type)
 
+    def test_constructor_value(self):
+        spec = DatasetSpec(doc='my first dataset', dtype='int', name='dataset1', value=42)
+        assert spec.value == 42
+
     def test_build_warn_extra_args(self):
         spec_dict = {
             'name': 'dataset1',
