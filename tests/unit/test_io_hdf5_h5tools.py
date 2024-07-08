@@ -2964,8 +2964,10 @@ class TestExport(TestCase):
         num_bazs = 10
         for i in range(num_bazs):
             bazs.append(Baz(name='baz%d' % i))
-        baz_data = BazData(name='baz_data1', data=bazs)
+        wrapped_bazs = H5DataIO(bazs)
+        baz_data = BazData(name='baz_data1', data=wrapped_bazs)
         bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_data=baz_data)
+        breakpoint()
 
         with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='w') as write_io:
             write_io.write(bucket)
@@ -2974,11 +2976,14 @@ class TestExport(TestCase):
             read_bucket1 = read_io.read()
             new_baz = Baz(name='baz000')
             breakpoint()
-            # read_bucket1.add_baz(new_baz)
+            DoR = read_bucket1.baz_data.data
+            DoR.append(new_baz)
+            breakpoint()
+
             #
             # read_container = reader.read()
             # new_baz = Baz(name='baz0')
-            # DoR = read_container.baz_data.data
+            # DoR = read_bucket1.baz_data.data
             # DoR.append(new_baz)
 
     def test_append_external_link_data(self):

@@ -96,6 +96,7 @@ class HDMFIO(metaclass=ABCMeta):
 
         """Write a container to the IO source."""
         f_builder = self.__manager.build(container, source=self.__source, root=True)
+        breakpoint()
         self.write_builder(f_builder, **kwargs)
 
     @docval({'name': 'src_io', 'type': 'hdmf.backends.io.HDMFIO',

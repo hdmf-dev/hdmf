@@ -771,6 +771,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # TODO: Check the BuildManager as refinements should probably be resolved rather than be passed in via spec_ext
         all_attrs = list({a.name: a for a in all_attrs[::-1]}.values())
         self.__add_attributes(builder, all_attrs, container, manager, source, export)
+        # breakpoint()
         return builder
 
     def __check_dset_spec(self, orig, ext):

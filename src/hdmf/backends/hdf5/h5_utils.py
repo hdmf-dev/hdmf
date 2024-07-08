@@ -17,7 +17,7 @@ import os
 import logging
 
 from ...array import Array
-from ...data_utils import DataIO, AbstractDataChunkIterator
+from ...data_utils import DataIO, AbstractDataChunkIterator, append_data
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
@@ -145,6 +145,10 @@ class DatasetOfReferences(H5Dataset, ReferenceResolver, metaclass=ABCMeta):
 
     def __next__(self):
         return self._get_ref(super().__next__())
+
+    def append(self, arg):
+        breakpoint()
+        append_data(self.dataset, arg)
 
 
 class BuilderResolverMixin(BuilderResolver):

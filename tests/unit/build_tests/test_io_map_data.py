@@ -442,6 +442,7 @@ class TestDataIOEdgeCases(TestCase):
         """Test building of a dataset with data_type and no dtype with value DataIO."""
         container = Baz('my_baz', H5DataIO(['a', 'b', 'c', 'd'], chunks=True), 'value1')
         builder = self.type_map.build(container)
+        breakpoint()
         self.assertIsInstance(builder.get('data'), H5DataIO)
 
     def test_build_datachunkiterator(self):
