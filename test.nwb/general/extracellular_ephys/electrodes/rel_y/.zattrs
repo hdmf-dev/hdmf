@@ -1,7 +1,0 @@
-{
-    "description": "the y coordinate within the electrode group",
-    "namespace": "hdmf-common",
-    "neurodata_type": "VectorData",
-    "object_id": "8b45204f-75fd-4420-acf5-a273dd78600a",
-    "zarr_dtype": "float"
-}

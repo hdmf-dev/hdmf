@@ -1,7 +1,0 @@
-{
-    "description": "the location of channel within the subject e.g. brain region",
-    "namespace": "hdmf-common",
-    "neurodata_type": "VectorData",
-    "object_id": "3d1efbb7-85c5-4e5d-93e2-5f2031884a91",
-    "zarr_dtype": "str"
-}
