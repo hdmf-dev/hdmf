@@ -319,7 +319,6 @@ class TestBuildUntypedDatasetOfReferences(BuildDatasetOfReferencesMixin, TestCas
         baz = Baz('MyBaz', [foo, None], 'abcdefghijklmnopqrstuvwxyz')
         foo_builder = self.manager.build(foo)
         baz_builder = self.manager.build(baz, root=True)
-        breakpoint()
         expected = DatasetBuilder('MyBaz', [ReferenceBuilder(foo_builder), None],
                                   attributes={'baz_attr': 'abcdefghijklmnopqrstuvwxyz',
                                               'data_type': 'Baz',

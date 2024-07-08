@@ -26,9 +26,6 @@ def append_data(data, arg):
     elif type(data).__name__ == 'TermSetWrapper': # circular import
         data.append(arg)
         return data
-    elif isinstance(data, ZarrArray):
-        data.append([arg], axis=0)
-        return data
     elif isinstance(data, np.ndarray):
         if len(data.dtype)>0: # data is a structured array
             return np.append(data, arg)
@@ -44,7 +41,6 @@ def append_data(data, arg):
         data.append([arg], axis=0)
         return data
     else:
-        # breakpoint()
         msg = "Data cannot append to object of type '%s'" % type(data)
         raise ValueError(msg)
 
