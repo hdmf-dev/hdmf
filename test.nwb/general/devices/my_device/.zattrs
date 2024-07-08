@@ -1,0 +1,6 @@
+{
+    "description": "my device",
+    "namespace": "core",
+    "neurodata_type": "Device",
+    "object_id": "d5392185-bd31-40c8-9dc5-c21ab403a00e"
+}

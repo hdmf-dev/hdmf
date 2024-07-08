@@ -1,0 +1,14 @@
+{
+    "description": "my_tetrode",
+    "location": "unknown",
+    "namespace": "core",
+    "neurodata_type": "ElectrodeGroup",
+    "object_id": "d54321b1-9c24-419f-9b4f-1351dac4a1e1",
+    "zarr_link": [
+        {
+            "name": "device",
+            "path": "/general/devices/my_device",
+            "source": "."
+        }
+    ]
+}

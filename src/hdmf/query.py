@@ -165,7 +165,6 @@ class HDMFDataset(metaclass=ExtenderMeta):
         return self.dataset.next()
 
     def append(self, arg):
-        breakpoint()
         append_data(self.dataset, arg)
 
 
