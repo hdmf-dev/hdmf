@@ -1,10 +1,5 @@
 # HDMF Changelog
 
-## HDMF 4.0.0 (Upcoming)
-
-### Breaking changes
-- Scipy is no longer a required dependency. Users using the `CSRMatrix` data type should install `scipy` separately. @rly [#1140](https://github.com/hdmf-dev/hdmf/pull/1140)
-
 ## HDMF 3.14.2 (Upcoming)
 
 ### Bug fixes
