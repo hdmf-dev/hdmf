@@ -235,7 +235,7 @@ class ElementIdentifiers(Data):
         if isinstance(search_ids, int):
             search_ids = [search_ids]
         # Find all matching locations
-        return np.in1d(self.data, search_ids).nonzero()[0]
+        return np.isin(self.data, search_ids).nonzero()[0]
 
     def _validate_new_data(self, data):
         # NOTE this may not cover all the many AbstractDataChunkIterator edge cases
