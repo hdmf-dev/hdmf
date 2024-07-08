@@ -2958,6 +2958,29 @@ class TestExport(TestCase):
             self.assertEqual(f['foofile_data'].file.filename, self.paths[1])
             self.assertIsInstance(f.attrs['foo_ref_attr'], h5py.Reference)
 
+    def test_append_dataset_of_references(self):
+        """Test that exporting a written container with a dataset of references works."""
+        bazs = []
+        num_bazs = 10
+        for i in range(num_bazs):
+            bazs.append(Baz(name='baz%d' % i))
+        baz_data = BazData(name='baz_data1', data=bazs)
+        bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_data=baz_data)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='w') as write_io:
+            write_io.write(bucket)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as read_io:
+            read_bucket1 = read_io.read()
+            new_baz = Baz(name='baz000')
+            breakpoint()
+            # read_bucket1.add_baz(new_baz)
+            #
+            # read_container = reader.read()
+            # new_baz = Baz(name='baz0')
+            # DoR = read_container.baz_data.data
+            # DoR.append(new_baz)
+
     def test_append_external_link_data(self):
         """Test that exporting a written container after adding a link with link_data=True creates external links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
