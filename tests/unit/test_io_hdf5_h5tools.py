@@ -569,6 +569,12 @@ class H5IOTest(TestCase):
         dset = self.f["test_dataset"]
         self.assertEqual(dset.chunks, chunk_shape)
 
+    def test_pass_through_of_maxshape_on_h5dataset(self):
+        k = 10
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', np.arange(k), attributes={}))
+        dset = H5DataIO(self.f['test_dataset'])
+        self.assertEqual(dset.maxshape, (k,))
+
     #############################################
     #  H5DataIO general
     #############################################

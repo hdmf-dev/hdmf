@@ -637,3 +637,13 @@ class H5DataIO(DataIO):
         if isinstance(self.data, Dataset) and not self.data.id.valid:
             return False
         return super().valid
+
+    @property
+    def maxshape(self):
+        if 'maxshape' in self.io_settings:
+            return self.io_settings['maxshape']
+        elif hasattr(self.data, 'maxshape'):
+            return self.data.maxshape
+        elif 'shape' in self.io_settings:
+            return self.io_settings['shape']
+        return None
