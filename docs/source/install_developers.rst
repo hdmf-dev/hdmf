@@ -73,7 +73,7 @@ environment by using the ``conda remove --name hdmf-venv --all`` command.
     For advanced users, we recommend using Mambaforge_, a faster version of the conda package manager
     that includes conda-forge as a default channel.
 
-.. _Anaconda: https://www.anaconda.com/products/distribution
+.. _Anaconda: https://www.anaconda.com
 .. _Mambaforge: https://github.com/conda-forge/miniforge
 
 Install from GitHub
