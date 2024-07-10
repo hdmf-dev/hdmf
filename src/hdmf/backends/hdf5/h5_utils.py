@@ -146,9 +146,6 @@ class DatasetOfReferences(H5Dataset, ReferenceResolver, metaclass=ABCMeta):
     def __next__(self):
         return self._get_ref(super().__next__())
 
-    def append(self, arg):
-        append_data(self.dataset, arg)
-
 
 class BuilderResolverMixin(BuilderResolver):
     """
