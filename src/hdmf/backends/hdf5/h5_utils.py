@@ -17,7 +17,7 @@ import os
 import logging
 
 from ...array import Array
-from ...data_utils import DataIO, AbstractDataChunkIterator, append_data
+from ...data_utils import DataIO, AbstractDataChunkIterator
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
