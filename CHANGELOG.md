@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.14.2 (Upcoming)
+## HDMF 3.14.2 (July 7, 2024)
 
 ### Enhancements
 - Warn when unexpected keys are present in specs. @rly [#1134](https://github.com/hdmf-dev/hdmf/pull/1134)
