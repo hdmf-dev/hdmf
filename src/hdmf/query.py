@@ -165,7 +165,7 @@ class HDMFDataset(metaclass=ExtenderMeta):
         return self.dataset.next()
 
     def append(self, arg):
-        pass
+        append_data(self.dataset, arg)
 
 
 class ReferenceResolver(metaclass=ABCMeta):
