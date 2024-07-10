@@ -1,5 +1,12 @@
 # HDMF Changelog
 
+## HDMF 3.14.3 (TBD)
+
+### Enhancements
+
+### Bug fixes
+- Fix H5DataIO not exposing `maxshape` on non-dci dsets. @cboulay [#1149](https://github.com/hdmf-dev/hdmf/pull/1149)
+
 ## HDMF 3.14.2 (July 7, 2024)
 
 ### Enhancements
