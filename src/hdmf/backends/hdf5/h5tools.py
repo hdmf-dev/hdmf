@@ -1117,7 +1117,6 @@ class HDF5IO(HDMFIO):
         data = builder.data
         dataio = None
         options = dict()  # dict with additional
-        breakpoint()
         if isinstance(data, H5DataIO):
             options['io_settings'] = data.io_settings
             dataio = data

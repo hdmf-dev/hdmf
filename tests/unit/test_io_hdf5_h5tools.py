@@ -2964,27 +2964,20 @@ class TestExport(TestCase):
         num_bazs = 10
         for i in range(num_bazs):
             bazs.append(Baz(name='baz%d' % i))
-        wrapped_bazs = H5DataIO(bazs)
+        array_bazs=np.array(bazs)
+        wrapped_bazs = H5DataIO(array_bazs, maxshape=(None,))
         baz_data = BazData(name='baz_data1', data=wrapped_bazs)
         bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_data=baz_data)
-        breakpoint()
 
         with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='w') as write_io:
             write_io.write(bucket)
 
         with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as read_io:
             read_bucket1 = read_io.read()
-            new_baz = Baz(name='baz000')
-            breakpoint()
             DoR = read_bucket1.baz_data.data
-            DoR.append(new_baz)
-            breakpoint()
-
-            #
-            # read_container = reader.read()
-            # new_baz = Baz(name='baz0')
-            # DoR = read_bucket1.baz_data.data
-            # DoR.append(new_baz)
+            ref = read_bucket1.baz_data.data.dataset[0]
+            DoR.append(ref)
+            self.assertEqual(len(read_bucket1.baz_data.data), 11)
 
     def test_append_external_link_data(self):
         """Test that exporting a written container after adding a link with link_data=True creates external links."""

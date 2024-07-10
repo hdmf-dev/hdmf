@@ -147,7 +147,6 @@ class DatasetOfReferences(H5Dataset, ReferenceResolver, metaclass=ABCMeta):
         return self._get_ref(super().__next__())
 
     def append(self, arg):
-        breakpoint()
         append_data(self.dataset, arg)
 
 

@@ -11,6 +11,8 @@ from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBu
                      ConstructError)
 from .manager import Proxy, BuildManager
 from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
+from hdmf.backends.hdf5.h5_utils import H5DataIO
+
 from ..container import AbstractContainer, Data, DataRegion
 from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
@@ -771,7 +773,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # TODO: Check the BuildManager as refinements should probably be resolved rather than be passed in via spec_ext
         all_attrs = list({a.name: a for a in all_attrs[::-1]}.values())
         self.__add_attributes(builder, all_attrs, container, manager, source, export)
-        # breakpoint()
         return builder
 
     def __check_dset_spec(self, orig, ext):
@@ -821,7 +822,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                           % (builder.__class__.__name__, builder.name))
 
         def _filler():
-            builder.data = self.__get_ref_builder(builder, dtype, shape, container, build_manager)
+            data = self.__get_ref_builder(builder, dtype, shape, container, build_manager)
+            builder.data = data
 
         return _filler
 
@@ -890,6 +892,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 for d in container.data:
                     target_builder = self.__get_target_builder(d, build_manager, builder)
                     bldr_data.append(ReferenceBuilder(target_builder))
+                if isinstance(container.data, H5DataIO):
+                    bldr_data = H5DataIO(bldr_data, **container.data.get_io_params())
             else:
                 self.logger.debug("Setting %s '%s' data to reference builder"
                                   % (builder.__class__.__name__, builder.name))
