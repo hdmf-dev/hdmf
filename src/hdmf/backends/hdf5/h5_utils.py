@@ -644,6 +644,8 @@ class H5DataIO(DataIO):
             return self.io_settings['maxshape']
         elif hasattr(self.data, 'maxshape'):
             return self.data.maxshape
+        elif hasattr(self, "shape"):
+            return self.shape
         elif 'shape' in self.io_settings:
             return self.io_settings['shape']
         return None
