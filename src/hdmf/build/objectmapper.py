@@ -708,6 +708,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
         builder, spec_ext, export = getargs('builder', 'spec_ext', 'export', kwargs)
         name = manager.get_builder_name(container)
+        breakpoint()
         if isinstance(self.__spec, GroupSpec):
             self.logger.debug("Building %s '%s' as a group (source: %s)"
                               % (container.__class__.__name__, container.name, repr(source)))
