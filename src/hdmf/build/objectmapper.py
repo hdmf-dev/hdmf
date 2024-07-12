@@ -822,8 +822,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                           % (builder.__class__.__name__, builder.name))
 
         def _filler():
-            data = self.__get_ref_builder(builder, dtype, shape, container, build_manager)
-            builder.data = data
+            builder.data = self.__get_ref_builder(builder, dtype, shape, container, build_manager)
 
         return _filler
 
