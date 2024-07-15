@@ -115,7 +115,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         # check for TermSet defined within schema
         spec = type_map.get_map(self).spec
         if 'termset' in spec:
-            termset_path = os.path.join(CUR_DIR, spec['termset'])
+            termset_path = spec['termset']
 
         # Check for Loaded configuration
         # Note: A loaded configuation should override TermSet defined in the schema
