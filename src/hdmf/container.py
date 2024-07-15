@@ -113,8 +113,14 @@ class AbstractContainer(metaclass=ExtenderMeta):
         The modifications are not written to file, avoiding permanent modifications.
         """
         # check for TermSet defined within schema
-        spec = type_map.get_map(self).spec
-        if 'termset' in spec:
+        try:
+            spec = type_map.get_map(self).spec
+            check_spec = True
+        except ValueError:
+            # Class may not be mapped to a data type (test suite)
+            check_spec = False
+
+        if check_spec and 'termset' in spec:
             termset_path = spec['termset']
 
         # Check for Loaded configuration
