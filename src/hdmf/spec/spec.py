@@ -101,6 +101,8 @@ class ConstructableDict(dict, metaclass=ABCMeta):
             warn(f'Unexpected keys {unused_vargs} in spec {spec_dict}')
         return cls(**kwargs)
 
+    def __hash__(self):
+        return hash(str(self))
 
 class Spec(ConstructableDict):
     ''' A base specification class
@@ -147,9 +149,6 @@ class Spec(ConstructableDict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
         ret = super().build_const_args(spec_dict)
         return ret
-
-    def __hash__(self):
-        return id(self)
 
     @property
     def path(self):
