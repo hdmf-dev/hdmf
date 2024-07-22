@@ -1525,6 +1525,15 @@ class HDF5IO(HDMFIO):
         else:
             return self.__file[path].ref
 
+    @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference',
+             'default': None},
+            {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the region reference indexing object',
+             'default': None},
+            returns='the reference', rtype=Reference)
+    def _create_ref(self, **kwargs):
+        self.__get_ref(**kwargs)
+
+
     def __is_ref(self, dtype):
         if isinstance(dtype, DtypeSpec):
             return self.__is_ref(dtype.dtype)

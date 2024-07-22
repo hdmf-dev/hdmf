@@ -2974,9 +2974,14 @@ class TestExport(TestCase):
 
         with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as read_io:
             read_bucket1 = read_io.read()
+            new_baz = Baz(name='new')
+            read_bucket1.add_baz(new_baz)
+
             DoR = read_bucket1.baz_data.data
-            ref = read_bucket1.baz_data.data.dataset[0]
-            DoR.append(ref)
+            DoR.append(new_baz)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='r') as read_io:
+            read_bucket1 = read_io.read()
             self.assertEqual(len(read_bucket1.baz_data.data), 11)
 
     def test_append_external_link_data(self):
