@@ -117,7 +117,6 @@ class H5Dataset(HDMFDataset):
         append_data(self.dataset, ref)
 
 
-
 class DatasetOfReferences(H5Dataset, ReferenceResolver, metaclass=ABCMeta):
     """
     An extension of the base ReferenceResolver class to add more abstract methods for

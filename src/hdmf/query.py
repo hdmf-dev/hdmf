@@ -164,7 +164,10 @@ class HDMFDataset(metaclass=ExtenderMeta):
         return self.dataset.next()
 
     def append(self, arg):
-        pass
+        """
+        Override this method for new backends, i.e., not HDF5 and Zarr.
+        """
+        pass # pragma: no cover
 
 
 class ReferenceResolver(metaclass=ABCMeta):
