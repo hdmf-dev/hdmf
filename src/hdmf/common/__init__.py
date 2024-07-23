@@ -3,6 +3,7 @@ for reading and writing data in according to the HDMF-common specification
 '''
 import os.path
 from copy import deepcopy
+from collections.abc import Callable
 
 CORE_NAMESPACE = 'hdmf-common'
 EXP_NAMESPACE = 'hdmf-experimental'
@@ -20,6 +21,42 @@ from ..container import _set_exp  # noqa: E402
 # a global type map
 global __TYPE_MAP
 
+@docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'},
+        {'name': 'type_map', 'type': TypeMap, 'doc': 'The TypeMap.', 'default': None},
+        is_method=False)
+def load_type_config(**kwargs):
+    """
+    This method will either load the default config or the config provided by the path.
+    NOTE: This config is global and shared across all type maps.
+    """
+    config_path = kwargs['config_path']
+    type_map = kwargs['type_map'] or get_type_map()
+
+    type_map.type_config.load_type_config(config_path)
+
+@docval({'name': 'type_map', 'type': TypeMap, 'doc': 'The TypeMap.', 'default': None},
+        is_method=False)
+def get_loaded_type_config(**kwargs):
+    """
+    This method returns the entire config file.
+    """
+    type_map = kwargs['type_map'] or get_type_map()
+
+    if type_map.type_config.config is None:
+        msg = "No configuration is loaded."
+        raise ValueError(msg)
+    else:
+        return type_map.type_config.config
+
+@docval({'name': 'type_map', 'type': TypeMap, 'doc': 'The TypeMap.', 'default': None},
+        is_method=False)
+def unload_type_config(**kwargs):
+    """
+    Unload the configuration file.
+    """
+    type_map = kwargs['type_map'] or get_type_map()
+
+    return type_map.type_config.unload_type_config()
 
 # a function to register a container classes with the global map
 @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the spec for'},
@@ -111,12 +148,14 @@ def available_namespaces():
 @docval({'name': 'data_type', 'type': str,
          'doc': 'the data_type to get the Container class for'},
         {'name': 'namespace', 'type': str, 'doc': 'the namespace the data_type is defined in'},
+        {'name': 'post_init_method', 'type': Callable, 'default': None,
+        'doc': 'The function used as a post_init method to validate the class generation.'},
         is_method=False)
 def get_class(**kwargs):
     """Get the class object of the Container subclass corresponding to a given neurdata_type.
     """
-    data_type, namespace = getargs('data_type', 'namespace', kwargs)
-    return __TYPE_MAP.get_dt_container_cls(data_type, namespace)
+    data_type, namespace, post_init_method = getargs('data_type', 'namespace', 'post_init_method', kwargs)
+    return __TYPE_MAP.get_dt_container_cls(data_type, namespace, post_init_method)
 
 
 @docval({'name': 'extensions', 'type': (str, TypeMap, list),

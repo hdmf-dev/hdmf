@@ -1,16 +1,21 @@
 import copy
 import math
 from abc import ABCMeta, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Callable
 from warnings import warn
-from typing import Tuple, Callable
+from typing import Tuple
 from itertools import product, chain
+
+try:
+    from zarr import Array as ZarrArray
+    ZARR_INSTALLED = True
+except ImportError:
+    ZARR_INSTALLED = False
 
 import h5py
 import numpy as np
 
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
-
 
 def append_data(data, arg):
     if isinstance(data, (list, DataIO)):
@@ -20,12 +25,18 @@ def append_data(data, arg):
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):
-        return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
+        if len(data.dtype)>0: # data is a structured array
+            return np.append(data, arg)
+        else: # arg is a scalar or row vector
+            return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
     elif isinstance(data, h5py.Dataset):
         shape = list(data.shape)
         shape[0] += 1
         data.resize(shape)
         data[-1] = arg
+        return data
+    elif ZARR_INSTALLED and isinstance(data, ZarrArray):
+        data.append([arg], axis=0)
         return data
     else:
         msg = "Data cannot append to object of type '%s'" % type(data)
@@ -177,8 +188,14 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             default=False,
         ),
         dict(
+            name="progress_bar_class",
+            type=Callable,
+            doc="The progress bar class to use. Defaults to tqdm.tqdm if the TQDM package is installed.",
+            default=None,
+        ),
+        dict(
             name="progress_bar_options",
-            type=None,
+            type=dict,
             doc="Dictionary of keyword arguments to be passed directly to tqdm.",
             default=None,
         ),
@@ -196,8 +213,23 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         HDF5 recommends chunk size in the range of 2 to 16 MB for optimal cloud performance.
         https://youtu.be/rcS5vt-mKok?t=621
         """
-        buffer_gb, buffer_shape, chunk_mb, chunk_shape, self.display_progress, progress_bar_options = getargs(
-            "buffer_gb", "buffer_shape", "chunk_mb", "chunk_shape", "display_progress", "progress_bar_options", kwargs
+        (
+            buffer_gb,
+            buffer_shape,
+            chunk_mb,
+            chunk_shape,
+            self.display_progress,
+            progress_bar_class,
+            progress_bar_options,
+        ) = getargs(
+            "buffer_gb",
+            "buffer_shape",
+            "chunk_mb",
+            "chunk_shape",
+            "display_progress",
+            "progress_bar_class",
+            "progress_bar_options",
+            kwargs,
         )
         self.progress_bar_options = progress_bar_options or dict()
 
@@ -274,11 +306,13 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             try:
                 from tqdm import tqdm
 
+                progress_bar_class = progress_bar_class or tqdm
+
                 if "total" in self.progress_bar_options:
                     warn("Option 'total' in 'progress_bar_options' is not allowed to be over-written! Ignoring.")
                     self.progress_bar_options.pop("total")
 
-                self.progress_bar = tqdm(total=self.num_buffers, **self.progress_bar_options)
+                self.progress_bar = progress_bar_class(total=self.num_buffers, **self.progress_bar_options)
             except ImportError:
                 warn(
                     "You must install tqdm to use the progress bar feature (pip install tqdm)! "
@@ -360,14 +394,18 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         :returns: DataChunk object with the data and selection of the current buffer.
         :rtype: DataChunk
         """
-        if self.display_progress:
-            self.progress_bar.update(n=1)
         try:
             buffer_selection = next(self.buffer_selection_generator)
+
+            # Only update after successful iteration
+            if self.display_progress:
+                self.progress_bar.update(n=1)
+
             return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
         except StopIteration:
+            # Allow text to be written to new lines after completion
             if self.display_progress:
-                self.progress_bar.write("\n")  # Allows text to be written to new lines after completion
+                self.progress_bar.write("\n")
             raise StopIteration
 
     def __reduce__(self) -> Tuple[Callable, Iterable]:
@@ -912,7 +950,7 @@ class ShapeValidatorResult:
             {'name': 'message', 'type': str,
              'doc': 'Message describing the result of the shape validation', 'default': None},
             {'name': 'ignored', 'type': tuple,
-             'doc': 'Axes that have been ignored in the validaton process', 'default': tuple(), 'shape': (None,)},
+             'doc': 'Axes that have been ignored in the validation process', 'default': tuple(), 'shape': (None,)},
             {'name': 'unmatched', 'type': tuple,
              'doc': 'List of axes that did not match during shape validation', 'default': tuple(), 'shape': (None,)},
             {'name': 'error', 'type': str, 'doc': 'Error that may have occurred. One of ERROR_TYPE', 'default': None},

@@ -300,7 +300,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     cls.__check_convert_numeric(value.dtype.type)
                 if np.issubdtype(value.dtype, np.str_):
                     ret_dtype = 'utf8'
-                elif np.issubdtype(value.dtype, np.string_):
+                elif np.issubdtype(value.dtype, np.bytes_):
                     ret_dtype = 'ascii'
                 elif np.issubdtype(value.dtype, np.dtype('O')):
                     # Only variable-length strings should ever appear as generic objects.
@@ -1247,7 +1247,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if not isinstance(builder, DatasetBuilder):  # pragma: no cover
                 raise ValueError("__get_subspec_values - must pass DatasetBuilder with DatasetSpec")
             if (spec.shape is None and getattr(builder.data, 'shape', None) == (1,) and
-                    type(builder.data[0]) != np.void):
+                    type(builder.data[0]) is not np.void):
                 # if a scalar dataset is expected and a 1-element non-compound dataset is given, then read the dataset
                 builder['data'] = builder.data[0]  # use dictionary reference instead of .data to bypass error
             ret[spec] = self.__check_ref_resolver(builder.data)

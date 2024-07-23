@@ -28,7 +28,7 @@ jobs:
           - { name: linux-python3.12-upgraded    , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: ubuntu-latest , upload-wheels: true }
           - { name: windows-python3.8-minimum    , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: windows-latest }
           - { name: windows-python3.12-upgraded  , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: windows-latest }
-          - { name: macos-python3.8-minimum      , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: macos-latest }
+          - { name: macos-python3.8-minimum      , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: macos-13 }
           - { name: macos-python3.12-upgraded    , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
@@ -209,7 +209,7 @@ jobs:
               --token ${{ secrets.BOT_GITHUB_TOKEN }} \
               --re-upload
 
-  run-gallery-ros3-tests:
+  run-ros3-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     defaults:
@@ -222,7 +222,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-gallery-python3.12-ros3  , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-python3.12-ros3  , python-ver: "3.12", os: ubuntu-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
@@ -243,7 +243,7 @@ jobs:
 
       - name: Install run dependencies
         run: |
-          pip install -e .
+          pip install .
           pip list
 
       - name: Conda reporting

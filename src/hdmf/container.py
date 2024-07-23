@@ -5,6 +5,7 @@ from copy import deepcopy
 from typing import Type
 from uuid import uuid4
 from warnings import warn
+import os
 
 import h5py
 import numpy as np
@@ -13,6 +14,7 @@ import pandas as pd
 from .data_utils import DataIO, append_data, extend_data
 from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
 
+from .term_set import TermSet, TermSetWrapper
 
 def _set_exp(cls):
     """Set a class as being experimental"""
@@ -34,7 +36,7 @@ class HERDManager:
     This class manages whether to set/attach an instance of HERD to the subclass.
     """
 
-    @docval({'name': 'herd', 'type': 'hdmf.common.resources.HERD',
+    @docval({'name': 'herd', 'type': 'HERD',
              'doc': 'The external resources to be used for the container.'},)
     def link_resources(self, **kwargs):
         """
@@ -75,7 +77,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
         Make a setter function for creating a :py:func:`property`
         """
         name = field['name']
-
         if not field.get('settable', True):
             return None
 
@@ -85,9 +86,85 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if name in self.fields:
                 msg = "can't set attribute '%s' -- already set" % name
                 raise AttributeError(msg)
-            self.fields[name] = val
-
+            self.fields[name] = self._field_config(arg_name=name,
+                                                   val=val,
+                                                   type_map=self._get_type_map())
         return setter
+
+    def _get_type_map(self):
+        from hdmf.common import get_type_map # circular import
+        return get_type_map()
+
+    @property
+    def data_type(self):
+        """
+        Return the spec data type associated with this container.
+        """
+        return getattr(self, self._data_type_attr)
+
+    def _field_config(self, arg_name, val, type_map):
+        """
+        This method will be called in the setter. The termset configuration will be used (if loaded)
+        to check for a defined TermSet associated with the field. If found, the value of the field
+        will be wrapped with a TermSetWrapper.
+
+        Even though the path field in the configurator can be a list of paths, the config
+        itself is only one file. When a user loads custom configs, the config is appended/modified.
+        The modifications are not written to file, avoiding permanent modifications.
+        """
+        configurator = type_map.type_config
+
+        if len(configurator.path)>0:
+            # The type_map has a config always set; however, when toggled off, the config path is empty.
+            CUR_DIR = os.path.dirname(os.path.realpath(configurator.path[0]))
+            termset_config = configurator.config
+        else:
+            return val
+
+        # If the val has been manually wrapped then skip checking the config for the attr
+        if isinstance(val, TermSetWrapper):
+            msg = "Field value already wrapped with TermSetWrapper."
+            warn(msg)
+            return val
+
+        # check to see that the namespace for the container is in the config
+        if self.namespace not in termset_config['namespaces']:
+            msg = "%s not found within loaded configuration." % self.namespace
+            warn(msg)
+            return val
+        else:
+            # check to see that the container type is in the config under the namespace
+            config_namespace = termset_config['namespaces'][self.namespace]
+            data_type = self.data_type
+
+            if data_type not in config_namespace['data_types']:
+                msg = '%s not found within the configuration for %s' % (data_type, self.namespace)
+                warn(msg)
+                return val
+            else:
+                # Get the ObjectMapper
+                obj_mapper = type_map.get_map(self)
+
+                # Get the spec for the constructor arg
+                spec = obj_mapper.get_carg_spec(arg_name)
+                if spec is None:
+                    msg = "Spec not found for %s." % arg_name
+                    warn(msg)
+                    return val
+
+                # Get spec attr name
+                mapped_attr_name = obj_mapper.get_attribute(spec)
+
+                config_data_type = config_namespace['data_types'][data_type]
+                try:
+                    config_termset_path = config_data_type[mapped_attr_name]
+                except KeyError:
+                    return val
+
+                termset_path = os.path.join(CUR_DIR, config_termset_path['termset'])
+                termset = TermSet(term_schema_path=termset_path)
+                val = TermSetWrapper(value=val, termset=termset)
+                return val
 
     @classmethod
     def _getter(cls, field):
@@ -389,7 +466,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
     def children(self):
         return tuple(self.__children)
 
-    @docval({'name': 'child', 'type': 'hdmf.container.Container',
+    @docval({'name': 'child', 'type': 'Container',
              'doc': 'the child Container for this Container', 'default': None})
     def add_child(self, **kwargs):
         warn(DeprecationWarning('add_child is deprecated. Set the parent attribute instead.'))
@@ -787,7 +864,6 @@ class Data(AbstractContainer):
     """
     A class for representing dataset containers
     """
-
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):

@@ -17,8 +17,7 @@ from hdmf.common import (
     EnumData,
     DynamicTableRegion,
     get_manager,
-    SimpleMultiContainer,
-)
+    SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
 from hdmf.data_utils import DataChunkIterator
@@ -32,9 +31,9 @@ from tests.unit.helpers.utils import (
 
 try:
     import linkml_runtime  # noqa: F401
-    LINKML_INSTALLED = True
+    REQUIREMENTS_INSTALLED = True
 except ImportError:
-    LINKML_INSTALLED = False
+    REQUIREMENTS_INSTALLED = False
 
 
 class TestDynamicTable(TestCase):
@@ -131,7 +130,7 @@ class TestDynamicTable(TestCase):
         # now test that when we supply id's that the error goes away
         _ = DynamicTable(name="TestTable", description="", columns=[column], id=list(range(3)))
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_col_validate(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -150,7 +149,7 @@ class TestDynamicTable(TestCase):
         expected_df.index.name = 'id'
         pd.testing.assert_frame_equal(species.to_dataframe(), expected_df)
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_col_validate_bad_data(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -165,7 +164,7 @@ class TestDynamicTable(TestCase):
                                data=TermSetWrapper(value=['bad data'],
                                                    termset=terms))
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_row_validate(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -187,7 +186,7 @@ class TestDynamicTable(TestCase):
         expected_df.index.name = 'id'
         pd.testing.assert_frame_equal(species.to_dataframe(), expected_df)
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_row_validate_bad_data_one_col(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -204,7 +203,7 @@ class TestDynamicTable(TestCase):
         with self.assertRaises(ValueError):
             species.add_row(Species_1='bad', Species_2='Ursus arctos horribilis')
 
-    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_row_validate_bad_data_all_col(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         col1 = VectorData(
@@ -220,6 +219,101 @@ class TestDynamicTable(TestCase):
         species = DynamicTable(name='species', description='My species', columns=[col1,col2])
         with self.assertRaises(ValueError):
             species.add_row(Species_1='bad data', Species_2='bad data')
+
+    def test_compound_data_append(self):
+        c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        compound_vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=c_data
+        )
+        compound_vector_data.append(c_data2)
+
+        np.testing.assert_array_equal(compound_vector_data.data, np.append(c_data, c_data2))
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_array_append_error(self):
+        c_data = np.array(['Homo sapiens'])
+        c_data2 = np.array(['Mus musculus'])
+
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        vectordata_termset = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=c_data, termset=terms)
+        )
+
+        with self.assertRaises(ValueError):
+            vectordata_termset.append(c_data2)
+
+    def test_compound_data_extend(self):
+        c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        compound_vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=c_data
+        )
+        compound_vector_data.extend(c_data2)
+
+        np.testing.assert_array_equal(compound_vector_data.data, np.vstack((c_data, c_data2)))
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_wrapped_array_append(self):
+        data = np.array(['Homo sapiens'])
+        data2 = 'Mus musculus'
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=data, termset=terms)
+        )
+        vector_data.append(data2)
+
+        np.testing.assert_array_equal(vector_data.data.data, np.append(data, data2))
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_wrapped_array_extend(self):
+        data = np.array(['Homo sapiens'])
+        data2 = np.array(['Mus musculus'])
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=data, termset=terms)
+        )
+        vector_data.extend(data2)
+
+        np.testing.assert_array_equal(vector_data.data.data, np.vstack((data, data2)))
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_wrapped_compound_data_append(self):
+        c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        compound_vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=c_data, field='species', termset=terms)
+        )
+        compound_vector_data.append(c_data2)
+
+        np.testing.assert_array_equal(compound_vector_data.data.data, np.append(c_data, c_data2))
+
+    @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_wrapped_compound_data_extend(self):
+        c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        c_data2 = np.array([('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        compound_vector_data = VectorData(
+            name='Species_1',
+            description='...',
+            data=TermSetWrapper(value=c_data, field='species', termset=terms)
+        )
+        compound_vector_data.extend(c_data2)
+
+        np.testing.assert_array_equal(compound_vector_data.data.data, np.vstack((c_data, c_data2)))
 
     def test_constructor_bad_columns(self):
         columns = ['bad_column']
