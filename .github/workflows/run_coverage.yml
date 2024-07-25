@@ -60,9 +60,8 @@ jobs:
 
       - name: Run tests and generate coverage report
         run: |
-          pytest  # configured to run with coverage
-          python -m coverage xml  # codecov uploader requires xml format
-          python -m coverage report -m
+          # coverage is configured in pyproject.toml
+          pytest --cov --cov-report=xml --cov-report=term  # codecov uploader requires xml format
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
