@@ -1,5 +1,12 @@
 # HDMF Changelog
 
+## HDMF 3.14.3 (Upcoming)
+
+### Enhancements
+- Added new attribute "dimension_labels" on `DatasetBuilder` which specifies the names of the dimensions used in the
+dataset based on the shape of the dataset data and the dimension names in the spec for the data type. This attribute
+is available on build (during the write process), but not on read of a dataset from a file. @rly [#1081](https://github.com/hdmf-dev/hdmf/pull/1081)
+
 ## HDMF 3.14.2 (July 7, 2024)
 
 ### Enhancements
