@@ -554,7 +554,8 @@ class H5DataIO(DataIO):
         """Cache the h5py.Dataset written with the stored IO settings.
 
         This attribute can be used to cache a written, empty dataset and fill it in later.
-        This allows users to access the handle to the dataset *without* having to close and repoen a file.
+        This allows users to access the handle to the dataset *without* having to close 
+        and reopen a file.
 
         For example::
 
