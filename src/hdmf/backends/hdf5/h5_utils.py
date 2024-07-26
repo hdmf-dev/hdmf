@@ -551,8 +551,9 @@ class H5DataIO(DataIO):
 
     @dataset.setter
     def dataset(self, val):
-        """Cache an h5py.Dataset, which can be used to cache a written, empty dataset and fill it in later.
+        """Cache the h5py.Dataset written with the stored IO settings.
 
+        This attribute can be used to cache a written, empty dataset and fill it in later.
         This allows users to access the handle to the dataset *without* having to close and repoen a file.
 
         For example::
