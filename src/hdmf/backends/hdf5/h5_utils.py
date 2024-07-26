@@ -561,11 +561,11 @@ class H5DataIO(DataIO):
             foo = Foo('foo1', dataio, "I am foo1", 17, 3.14)
             bucket = FooBucket('bucket1', [foo])
             foofile = FooFile(buckets=[bucket])
-            
+
             io = HDF5IO(self.path, manager=self.manager, mode='w')
             # write the object to disk, including initializing an empty int dataset with shape (5,)
             io.write(foofile)
-            
+
             foo.my_data.dataset[:] = [0, 1, 2, 3, 4]
             io.close()
         """
