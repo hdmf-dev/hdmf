@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.14.3 (Upcoming)
+## HDMF 3.14.3 (July 29, 2024)
 
 ### Enhancements
 - Added new attribute "dimension_labels" on `DatasetBuilder` which specifies the names of the dimensions used in the
