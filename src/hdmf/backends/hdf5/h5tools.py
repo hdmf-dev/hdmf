@@ -1132,6 +1132,7 @@ class HDF5IO(HDMFIO):
         data = builder.data
         dataio = None
         options = dict()  # dict with additional
+        # breakpoint()
         if isinstance(data, H5DataIO):
             options['io_settings'] = data.io_settings
             dataio = data
@@ -1488,6 +1489,11 @@ class HDF5IO(HDMFIO):
             data_shape = (len(data),)
         else:
             data_shape = get_data_shape(data)
+        # breakpoint()
+        if expandable:
+            # Don't override existing settings
+            if 'maxshape' not in io_settings:
+                io_settings['maxshape'] = tuple([None]*len(data_shape))
 
         # Create the dataset
         try:

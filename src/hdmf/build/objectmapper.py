@@ -722,6 +722,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if not isinstance(container, Data):
                     msg = "'container' must be of type Data with DatasetSpec"
                     raise ValueError(msg)
+                breakpoint()
                 spec_dtype, spec_shape, spec_dims, spec = self.__check_dset_spec(self.spec, spec_ext)
                 dimension_labels = self.__get_dimension_labels_from_spec(container.data, spec_shape, spec_dims)
                 if isinstance(spec_dtype, RefSpec):
