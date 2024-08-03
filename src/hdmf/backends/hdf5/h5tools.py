@@ -1493,7 +1493,7 @@ class HDF5IO(HDMFIO):
             # Don't override existing settings
             if 'maxshape' not in io_settings:
                 if matched_spec_shape is not None:
-                    io_settings['maxshape'] = tuple([None]*len(matched_spec_shape))
+                    io_settings['maxshape'] = matched_spec_shape
                 else:
                     io_settings['maxshape'] = tuple([None]*len(data_shape))
         # Create the dataset
