@@ -1130,9 +1130,9 @@ class HDF5IO(HDMFIO):
             return None
         name = builder.name
         data = builder.data
+        matched_spec_shape = builder.spec_shapes
         dataio = None
         options = dict()  # dict with additional
-        # breakpoint()
         if isinstance(data, H5DataIO):
             options['io_settings'] = data.io_settings
             dataio = data
@@ -1244,7 +1244,7 @@ class HDF5IO(HDMFIO):
                 return
             # If the compound data type contains only regular data (i.e., no references) then we can write it as usual
             else:
-                dset = self.__list_fill__(parent, name, data, expandable, options)
+                dset = self.__list_fill__(parent, name, data, matched_spec_shape, expandable, options)
         # Write a dataset containing references, i.e., a region or object reference.
         # NOTE: we can ignore options['io_settings'] for scalar data
         elif self.__is_ref(options['dtype']):
@@ -1339,7 +1339,7 @@ class HDF5IO(HDMFIO):
                 self.__dci_queue.append(dataset=dset, data=data)
             # Write a regular in memory array (e.g., numpy array, list etc.)
             elif hasattr(data, '__len__'):
-                dset = self.__list_fill__(parent, name, data, expandable, options)
+                dset = self.__list_fill__(parent, name, data, matched_spec_shape, expandable, options)
             # Write a regular scalar dataset
             else:
                 dset = self.__scalar_fill__(parent, name, data, options)
@@ -1467,7 +1467,7 @@ class HDF5IO(HDMFIO):
         return dset
 
     @classmethod
-    def __list_fill__(cls, parent, name, data, expandable, options=None):
+    def __list_fill__(cls, parent, name, data, matched_spec_shape, expandable, options=None):
         # define the io settings and data type if necessary
         io_settings = {}
         dtype = None
@@ -1489,12 +1489,13 @@ class HDF5IO(HDMFIO):
             data_shape = (len(data),)
         else:
             data_shape = get_data_shape(data)
-        # breakpoint()
         if expandable:
             # Don't override existing settings
             if 'maxshape' not in io_settings:
-                io_settings['maxshape'] = tuple([None]*len(data_shape))
-
+                if matched_spec_shape is not None:
+                    io_settings['maxshape'] = tuple([None]*len(matched_spec_shape))
+                else:
+                    io_settings['maxshape'] = tuple([None]*len(data_shape))
         # Create the dataset
         try:
             dset = parent.create_dataset(name, shape=data_shape, dtype=dtype, **io_settings)

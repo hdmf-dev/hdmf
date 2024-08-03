@@ -28,6 +28,7 @@ from hdmf.spec.spec import GroupSpec
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common.resources import HERD
 from hdmf.term_set import TermSet, TermSetWrapper
+from hdmf.utils import get_data_shape
 
 
 from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
@@ -739,12 +740,12 @@ class H5IOTest(TestCase):
                              self.f['test_copy'][:].tolist())
 
     def test_list_fill_empty(self):
-        dset = self.io.__list_fill__(self.f, 'empty_dataset', [], options={'dtype': int, 'io_settings': {}})
+        dset = self.io.__list_fill__(self.f, 'empty_dataset', [], None, True, options={'dtype': int, 'io_settings': {}})
         self.assertTupleEqual(dset.shape, (0,))
 
     def test_list_fill_empty_no_dtype(self):
         with self.assertRaisesRegex(Exception, r"cannot add \S+ to [/\S]+ - could not determine type"):
-            self.io.__list_fill__(self.f, 'empty_dataset', [])
+            self.io.__list_fill__(self.f, 'empty_dataset', [], None, True)
 
     def test_read_str(self):
         a = ['a', 'bb', 'ccc', 'dddd', 'e']
@@ -3725,3 +3726,25 @@ class TestDataSetDataIO(TestCase):
         self.data.set_data_io(H5DataIO, dict(chunks=True))
         assert isinstance(self.data.data, H5DataIO)
         assert self.data.data.io_settings["chunks"]
+
+
+class TestExpand(TestCase):
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+
+    def test_expand_false(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile, expandable=False)
+
+        io = HDF5IO(self.path, manager=self.manager, mode='r')
+        read_foofile = io.read()
+        self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
+                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+        self.assertEqual(get_data_shape(read_foofile.buckets['bucket1'].foos['foo1'].my_data),
+                        (5,))
