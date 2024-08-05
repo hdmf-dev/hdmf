@@ -10,9 +10,12 @@ from glob import glob
 import zipfile
 
 import h5py
-import numpy as np
 from h5py import SoftLink, HardLink, ExternalLink, File
 from h5py import filters as h5py_filters
+
+import numpy as np
+import numpy.testing as npt
+
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.hdf5.h5tools import HDF5IO, SPEC_LOC_ATTR, H5PY_3
 from hdmf.backends.io import HDMFIO
@@ -30,11 +33,11 @@ from hdmf.common.resources import HERD
 from hdmf.term_set import TermSet, TermSetWrapper
 from hdmf.utils import get_data_shape
 
-
 from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
                               Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
                               CORE_NAMESPACE, get_temp_filepath, CacheSpecTestHelper,
-                              CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
+                              CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace,
+                              QuxData, QuxBucket, get_qux_buildmanager)
 
 try:
     import zarr
@@ -3748,3 +3751,22 @@ class TestExpand(TestCase):
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
         self.assertEqual(get_data_shape(read_foofile.buckets['bucket1'].foos['foo1'].my_data),
                         (5,))
+
+    def test_expand_set_shape(self):
+        qux = QuxData(name='my_qux', data=[[1, 2, 3], [4, 5, 6]])
+        quxbucket = QuxBucket('bucket1', qux)
+
+        manager = get_qux_buildmanager([None, 3])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(quxbucket, expandable=True)
+
+        io = HDF5IO(self.path, manager=manager, mode='r+')
+        read_quxbucket = io.read()
+        read_quxbucket.qux_data.append([7,8,9])
+
+        expected = np.array([[1, 2, 3],
+                             [4, 5, 6],
+                             [7, 8, 9]])
+        npt.assert_array_equal(read_quxbucket.qux_data.data[:], expected)
+        self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None,3))
