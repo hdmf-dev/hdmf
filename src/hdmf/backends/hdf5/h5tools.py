@@ -1494,7 +1494,7 @@ class HDF5IO(HDMFIO):
             if 'maxshape' not in io_settings:
                 if matched_spec_shape is not None:
                     io_settings['maxshape'] = matched_spec_shape
-        
+
         # Create the dataset
         try:
             dset = parent.create_dataset(name, shape=data_shape, dtype=dtype, **io_settings)
