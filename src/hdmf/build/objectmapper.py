@@ -724,7 +724,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     msg = "'container' must be of type Data with DatasetSpec"
                     raise ValueError(msg)
                 spec_dtype, spec_shape, spec_dims, spec = self.__check_dset_spec(self.spec, spec_ext)
-                dimension_labels, matched_shape = self.__get_spec_info(container.data, spec_shape, spec_dims)
+                dimension_labels, matched_shape = self.__get_spec_info(container.data,
+                                                                       spec_shape,
+                                                                       spec_dims,
+                                                                       spec_dtype)
                 if isinstance(spec_dtype, RefSpec):
                     self.logger.debug("Building %s '%s' as a dataset of references (source: %s)"
                                       % (container.__class__.__name__, container.name, repr(source)))
@@ -825,7 +828,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             spec = ext
         return dtype, shape, dims, spec
 
-    def __get_spec_info(self, data, spec_shape, spec_dims):
+    def __get_spec_info(self, data, spec_shape, spec_dims, spec_dtype=None):
         """This will return the dimension labels and shape by matching the data shape to a permissible spec shape."""
         if spec_shape is None and spec_dims is None:
             return None, None
@@ -834,7 +837,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
         elif spec_shape is None and spec_dims is not None:
             return spec_dims, None
         else:
-            data_shape = get_data_shape(data)
+            if spec_dtype is not None and isinstance(spec_dtype, list):
+                data_shape = (len(data),)
+            else:
+                data_shape = get_data_shape(data)
             # if shape is a list of allowed shapes, find the index of the shape that matches the data
             if isinstance(spec_shape[0], list):
                 match_shape_inds = list()
