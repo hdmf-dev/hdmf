@@ -449,8 +449,8 @@ class H5DataIO(DataIO):
              'doc': 'Chunk shape or True to enable auto-chunking',
              'default': None},
             {'name': 'compression',
-             'type': (str, bool, int),
-             'doc': 'Compression strategy. If a bool is given, then gzip compression will be used by default.' +
+             'type': (str, bool, int, 'Codec'),
+             'doc': 'Compression strategy. If a bool is given, then gzip compression will be used by default. Codec only applies to LINDI.' +
                     'http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression',
              'default': None},
             {'name': 'compression_opts',
@@ -529,13 +529,14 @@ class H5DataIO(DataIO):
                     self.__iosettings.pop('compression_opts', None)
         # Validate the compression options used
         self._check_compression_options()
-        # Confirm that the compressor is supported by h5py
-        if not self.filter_available(self.__iosettings.get('compression', None),
-                                     self.__allow_plugin_filters):
-            msg = "%s compression may not be supported by this version of h5py." % str(self.__iosettings['compression'])
-            if not self.__allow_plugin_filters:
-                msg += " Set `allow_plugin_filters=True` to enable the use of dynamically-loaded plugin filters."
-            raise ValueError(msg)
+        # Confirm that the compressor is supported by h5py (unless we are using Codec with LINDI)
+        if isinstance(self.__iosettings.get('compression', None), str):
+            if not self.filter_available(self.__iosettings.get('compression', None),
+                                        self.__allow_plugin_filters):
+                msg = "%s compression may not be supported by this version of h5py." % str(self.__iosettings['compression'])
+                if not self.__allow_plugin_filters:
+                    msg += " Set `allow_plugin_filters=True` to enable the use of dynamically-loaded plugin filters."
+                raise ValueError(msg)
         # Check possible parameter collisions
         if isinstance(self.data, Dataset):
             for k in self.__iosettings.keys():
@@ -614,11 +615,12 @@ class H5DataIO(DataIO):
                     if szip_opts_error:
                         raise ValueError("SZIP compression filter compression_opts"
                                          " must be a 2-tuple ('ec'|'nn', even integer 0-32).")
-            # Warn if compressor other than gzip is being used
-            if self.__iosettings['compression'] not in ['gzip', h5py_filters.h5z.FILTER_DEFLATE]:
-                warnings.warn(str(self.__iosettings['compression']) + " compression may not be available "
-                              "on all installations of HDF5. Use of gzip is recommended to ensure portability of "
-                              "the generated HDF5 files.", stacklevel=3)
+            # Warn if compressor other than gzip is being used (Unless we are using Codec with LINDI)
+            if isinstance(self.__iosettings['compression'], str):
+                if self.__iosettings['compression'] not in ['gzip', h5py_filters.h5z.FILTER_DEFLATE]:
+                    warnings.warn(str(self.__iosettings['compression']) + " compression may not be available "
+                                "on all installations of HDF5. Use of gzip is recommended to ensure portability of "
+                                "the generated HDF5 files.", stacklevel=3)
 
     @staticmethod
     def filter_available(filter, allow_plugin_filters):
