@@ -4,6 +4,7 @@
 
 ### Enhancements
 - Added support to append to a dataset of references for HDMF-Zarr. @mavaylon1 [#1157](https://github.com/hdmf-dev/hdmf/pull/1157)
+- Adjusted stacklevel of warnings to point to user code when possible. @rly [#1166](https://github.com/hdmf-dev/hdmf/pull/1166)
 
 ## HDMF 3.14.3 (July 29, 2024)
 
