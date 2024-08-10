@@ -567,6 +567,19 @@ class AbstractContainer(metaclass=ExtenderMeta):
         """
         pass
 
+    def _error_on_new_warn_on_construct(self, error_msg: str, error_cls: type = ValueError):
+        """Raise a ValueError when a check is violated on instance creation.
+        To ensure backwards compatibility, this method throws a warning
+        instead of raising an error when reading from a file, ensuring that
+        files with invalid data can be read. If error_msg is set to None
+        the function will simply return without further action.
+        """
+        if error_msg is None:
+            return
+        if not self._in_construct_mode:
+            raise error_cls(error_msg)
+        warn(error_msg)
+
 
 class Container(AbstractContainer):
     """A container that can contain other containers and has special functionality for printing."""
