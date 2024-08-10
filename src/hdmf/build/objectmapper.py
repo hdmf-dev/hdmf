@@ -524,21 +524,21 @@ class ObjectMapper(metaclass=ExtenderMeta):
         self.map_const_arg(attr_carg, spec)
         self.map_attr(attr_carg, spec)
 
-    def __get_override_carg(self, *args):
-        name = args[0]
-        remaining_args = tuple(args[1:])
-        if name in self.constructor_args:
-            self.logger.debug("        Calling override function for constructor argument '%s'" % name)
-            func = self.constructor_args[name]
-            return func(self, *remaining_args)
-        return None
+    NO_OVERRIDE = object()  # non-None sentinel object that signals no override for constructor args and object attrs
+
+    def __get_override_carg(self, argname, builder, manager):
+        if argname in self.constructor_args:
+            self.logger.debug("        Calling override function for constructor argument '%s'" % argname)
+            func = self.constructor_args[argname]
+            return func(self, builder, manager)
+        return self.NO_OVERRIDE
 
     def __get_override_attr(self, name, container, manager):
         if name in self.obj_attrs:
             self.logger.debug("        Calling override function for attribute '%s'" % name)
             func = self.obj_attrs[name]
             return func(self, container, manager)
-        return None
+        return self.NO_OVERRIDE
 
     @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute for"},
             returns='the attribute name', rtype=str)
@@ -558,26 +558,27 @@ class ObjectMapper(metaclass=ExtenderMeta):
         attr_name = self.get_attribute(spec)
         if attr_name is None:
             return None
-        attr_val = self.__get_override_attr(attr_name, container, manager)
-        if attr_val is None:
-            try:
-                attr_val = getattr(container, attr_name)
-            except AttributeError:
-                msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
-                       % (container.__class__.__name__, container.name, attr_name, spec))
-                raise ContainerConfigurationError(msg)
-            if isinstance(attr_val, TermSetWrapper):
-                attr_val = attr_val.value
-            if attr_val is not None:
-                attr_val = self.__convert_string(attr_val, spec)
-                spec_dt = self.__get_data_type(spec)
-                if spec_dt is not None:
-                    try:
-                        attr_val = self.__filter_by_spec_dt(attr_val, spec_dt, manager)
-                    except ValueError as e:
-                        msg = ("%s '%s' attribute '%s' has unexpected type."
-                               % (container.__class__.__name__, container.name, attr_name))
-                        raise ContainerConfigurationError(msg) from e
+        override = self.__get_override_attr(attr_name, container, manager)
+        if override is not self.NO_OVERRIDE:
+            return override
+        try:
+            attr_val = getattr(container, attr_name)
+        except AttributeError:
+            msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
+                    % (container.__class__.__name__, container.name, attr_name, spec))
+            raise ContainerConfigurationError(msg)
+        if isinstance(attr_val, TermSetWrapper):
+            attr_val = attr_val.value
+        if attr_val is not None:
+            attr_val = self.__convert_string(attr_val, spec)
+            spec_dt = self.__get_data_type(spec)
+            if spec_dt is not None:
+                try:
+                    attr_val = self.__filter_by_spec_dt(attr_val, spec_dt, manager)
+                except ValueError as e:
+                    msg = ("%s '%s' attribute '%s' has unexpected type."
+                            % (container.__class__.__name__, container.name, attr_name))
+                    raise ContainerConfigurationError(msg) from e
             # else: attr_val is an attribute on the Container and its value is None
         # attr_val can be None, an AbstractContainer, or a list of AbstractContainers
         return attr_val
@@ -1334,7 +1335,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         for const_arg in get_docval(cls.__init__):
             argname = const_arg['name']
             override = self.__get_override_carg(argname, builder, manager)
-            if override is not None:
+            if override is not self.NO_OVERRIDE:
                 val = override
             elif argname in const_args:
                 val = const_args[argname]
