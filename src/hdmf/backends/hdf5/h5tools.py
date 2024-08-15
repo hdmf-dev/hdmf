@@ -385,8 +385,7 @@ class HDF5IO(HDMFIO):
              'doc': 'A HERD object to populate with references.',
              'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('Bool to set whether datasets are expandable by setting the maxshape for all schema allowed dimensions',
-                     'of a dataset to None and enabling auto-chunking by default.')})
+             'doc': ('Bool to set whether datasets are expandable by setting the maxshape.')})
     def write(self, **kwargs):
         """Write the container to an HDF5 file."""
         if self.__mode == 'r':
@@ -831,8 +830,7 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('Bool to set whether datasets are expandable by setting the maxshape for all schema allowed dimensions',
-                     'of a dataset to None and enabling auto-chunking by default.')})
+             'doc': ('Bool to set whether datasets are expandable by setting the maxshape.')})
     def write_builder(self, **kwargs):
         f_builder = popargs('builder', kwargs)
         link_data, exhaust_dci, export_source = getargs('link_data',
@@ -1010,8 +1008,7 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('Bool to set whether datasets are expandable by setting the maxshape for all schema allowed dimensions',
-                     'of a dataset to None and enabling auto-chunking by default.')},
+             'doc': ('Bool to set whether datasets are expandable by setting the maxshape.')},
             returns='the Group that was created', rtype=Group)
     def write_group(self, **kwargs):
         parent, builder = popargs('parent', 'builder', kwargs)
@@ -1113,8 +1110,7 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('Bool to set whether datasets are expandable by setting the maxshape for all schema allowed dimensions',
-                     'of a dataset to None and enabling auto-chunking by default.')},
+             'doc': ('Bool to set whether datasets are expandable by setting the maxshape.')},
             returns='the Dataset that was created', rtype=Dataset)
     def write_dataset(self, **kwargs):  # noqa: C901
         """ Write a dataset to HDF5
