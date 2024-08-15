@@ -6,7 +6,6 @@
 - Added support to append to a dataset of references for HDMF-Zarr. @mavaylon1 [#1157](https://github.com/hdmf-dev/hdmf/pull/1157)
 - Added support for datasets to be expandable by default for the HDF5 backend. @mavaylon1 [#1158](https://github.com/hdmf-dev/hdmf/pull/1158)
 
-
 ## HDMF 3.14.3 (July 29, 2024)
 
 ### Enhancements
