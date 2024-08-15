@@ -1,7 +1,6 @@
 import re
 from abc import ABCMeta
 from collections import OrderedDict
-from copy import deepcopy
 from warnings import warn
 
 from ..utils import docval, getargs, popargs, get_docval
@@ -84,7 +83,7 @@ class ConstructableDict(dict, metaclass=ABCMeta):
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this ConstructableDict class from a dictionary '''
         # main use cases are when spec_dict is a ConstructableDict or a spec dict read from a file
-        return deepcopy(spec_dict)
+        return spec_dict
 
     @classmethod
     def build_spec(cls, spec_dict):
@@ -102,6 +101,8 @@ class ConstructableDict(dict, metaclass=ABCMeta):
             warn(f'Unexpected keys {unused_vargs} in spec {spec_dict}')
         return cls(**kwargs)
 
+    def __hash__(self):
+        return hash(str(self))
 
 class Spec(ConstructableDict):
     ''' A base specification class
@@ -148,9 +149,6 @@ class Spec(ConstructableDict):
         ''' Build constructor arguments for this Spec class from a dictionary '''
         ret = super().build_const_args(spec_dict)
         return ret
-
-    def __hash__(self):
-        return id(self)
 
     @property
     def path(self):
