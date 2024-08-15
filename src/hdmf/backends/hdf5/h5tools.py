@@ -385,7 +385,7 @@ class HDF5IO(HDMFIO):
              'doc': 'A HERD object to populate with references.',
              'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('Bool to set whether datasets are expandable by setting the max shape for all dimensions',
+             'doc': ('Bool to set whether datasets are expandable by setting the maxshape for all schema allowed dimensions',
                      'of a dataset to None and enabling auto-chunking by default.')})
     def write(self, **kwargs):
         """Write the container to an HDF5 file."""
@@ -831,7 +831,7 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('Bool to set whether datasets are expandable by setting the max shape for all dimensions',
+             'doc': ('Bool to set whether datasets are expandable by setting the maxshape for all schema allowed dimensions',
                      'of a dataset to None and enabling auto-chunking by default.')})
     def write_builder(self, **kwargs):
         f_builder = popargs('builder', kwargs)
@@ -1010,7 +1010,7 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('Bool to set whether datasets are expandable by setting the max shape for all dimensions',
+             'doc': ('Bool to set whether datasets are expandable by setting the maxshape for all schema allowed dimensions',
                      'of a dataset to None and enabling auto-chunking by default.')},
             returns='the Group that was created', rtype=Group)
     def write_group(self, **kwargs):
@@ -1113,7 +1113,7 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('Bool to set whether datasets are expandable by setting the max shape for all dimensions',
+             'doc': ('Bool to set whether datasets are expandable by setting the maxshape for all schema allowed dimensions',
                      'of a dataset to None and enabling auto-chunking by default.')},
             returns='the Dataset that was created', rtype=Dataset)
     def write_dataset(self, **kwargs):  # noqa: C901
