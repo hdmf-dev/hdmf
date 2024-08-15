@@ -164,6 +164,14 @@ class H5IOTest(TestCase):
         dset = self.f['test_dataset']
         self.assertTrue(np.all(dset[:] == a))
 
+    def test_write_dataset_lol_strings(self):
+        a = [['aa', 'bb'], ['cc', 'dd']]
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
+        dset = self.f['test_dataset']
+        decoded_dset = [[item.decode('utf-8') for item in sublist if isinstance(item, bytes)]
+                        for sublist in dset[:]]
+        self.assertTrue(decoded_dset == a)
+
     def test_write_dataset_list_compress_gzip(self):
         a = H5DataIO(np.arange(30).reshape(5, 2, 3),
                      compression='gzip',
