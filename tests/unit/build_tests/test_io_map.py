@@ -9,6 +9,7 @@ from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecN
 from hdmf.testing import TestCase
 from abc import ABCMeta, abstractmethod
 import unittest
+import numpy as np
 
 from tests.unit.helpers.utils import CORE_NAMESPACE, create_test_type_map
 
@@ -352,6 +353,48 @@ class TestMapStrings(TestCase):
         bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
         builder = type_map.build(bar_inst)
         self.assertEqual(builder.get('data').data, "['a', 'b', 'c', 'd']")
+
+    def test_build_2d_lol(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, None),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr1', doc='an example string attribute', dtype='text')],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        bar_inst = Bar('my_bar', [['aa', 'bb'], ['cc', 'dd']], 'value1', 10)
+        builder = type_map.build(bar_inst)
+        self.assertEqual(builder.get('data').data, [['aa', 'bb'], ['cc', 'dd']])
+
+    def test_build_2d_ndarray(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, None),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr1', doc='an example string attribute', dtype='text')],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        bar_inst = Bar('my_bar', np.array([['aa', 'bb'], ['cc', 'dd']]), 'value1', 10)
+        builder = type_map.build(bar_inst)
+        np.testing.assert_array_equal(builder.get('data').data, np.array([['aa', 'bb'], ['cc', 'dd']]))
 
     def test_build_dataio(self):
         bar_spec = GroupSpec('A test group specification with a data type',
