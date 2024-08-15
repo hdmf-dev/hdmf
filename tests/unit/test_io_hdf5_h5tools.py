@@ -3712,6 +3712,29 @@ class TestContainerSetDataIO(TestCase):
         self.assertIsInstance(self.obj.data1, H5DataIO)
         self.assertTrue(self.obj.data1.io_settings["chunks"])
 
+    def test_set_data_io_h5py_dataset(self):
+        file_path = get_temp_filepath()
+        file = File(file_path, 'w')
+        data = file.create_dataset('data', data=[1, 2, 3, 4, 5], chunks=(3,))
+        class ContainerWithData(Container):
+            __fields__ = ('data',)
+
+            @docval(
+                {"name": "name", "doc": "name", "type": str},
+                {'name': 'data', 'doc': 'field1 doc', 'type': h5py.Dataset},
+            )
+            def __init__(self, **kwargs):
+                super().__init__(name=kwargs["name"])
+                self.data = kwargs["data"]
+
+        container = ContainerWithData("name", data)
+        container.set_data_io("data", H5DataIO, data_io_kwargs=dict(chunks=(2,)))
+
+        self.assertIsInstance(container.data, H5DataIO)
+        self.assertEqual(container.data.io_settings["chunks"], (2,))
+
+        os.remove(file_path)
+
 
 class TestDataSetDataIO(TestCase):
 
