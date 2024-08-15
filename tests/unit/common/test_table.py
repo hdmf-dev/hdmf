@@ -1287,6 +1287,34 @@ class TestDynamicTableRegion(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             dynamic_table_region.get(0, df=False, index=False)
 
+    def test_init_out_of_bounds(self):
+        table = self.with_columns_and_data()
+        with self.assertRaises(IndexError):
+            DynamicTableRegion(name='dtr', data=[0, 1, 2, 2, 5], description='desc', table=table)
+
+    def test_init_out_of_bounds_long(self):
+        table = self.with_columns_and_data()
+        data = np.ones(DynamicTableRegion.MAX_ROWS_TO_VALIDATE_INIT+1, dtype=int)*5
+        dtr = DynamicTableRegion(name='dtr', data=data, description='desc', table=table)
+        assert dtr.data is data  # no exception raised
+
+    def test_init_out_of_bounds_no_validate(self):
+        table = self.with_columns_and_data()
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1, 5], description='desc', table=table, validate_data=False)
+        self.assertEqual(dtr.data, [0, 1, 5])  # no exception raised
+
+    def test_add_row_out_of_bounds(self):
+        table = self.with_columns_and_data()
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1, 2, 2], description='desc', table=table)
+        with self.assertRaises(IndexError):
+            dtr.add_row(5)
+
+    def test_set_table_out_of_bounds(self):
+        table = self.with_columns_and_data()
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1, 5], description='desc')
+        with self.assertRaises(IndexError):
+            dtr.table = table
+
 
 class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
 

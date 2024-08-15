@@ -4,7 +4,9 @@
 
 ### Enhancements
 - Added support to append to a dataset of references for HDMF-Zarr. @mavaylon1 [#1157](https://github.com/hdmf-dev/hdmf/pull/1157)
-
+- Added a check when setting or adding data to a `DynamicTableRegion` or setting the `table` attribute of a `DynamicTableRegion`
+  that the data values are in bounds of the linked table. This can be turned off for
+  `DynamicTableRegion.__init__` using the keyword argument `validate_data=False`. @rly [#1168](https://github.com/hdmf-dev/hdmf/pull/1168)
 ## HDMF 3.14.3 (July 29, 2024)
 
 ### Enhancements

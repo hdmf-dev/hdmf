@@ -445,7 +445,7 @@ class TestHierarchicalTable(TestCase):
         p1 = DynamicTable(name='parent_table', description='parent_table',
                           columns=[VectorData(name='p1', description='p1', data=np.arange(3)), dtr_p1, vi_dtr_p1])
         # Super-parent table
-        dtr_sp = DynamicTableRegion(name='sl1', description='sl1', data=np.arange(4), table=p1)
+        dtr_sp = DynamicTableRegion(name='sl1', description='sl1', data=[0, 1, 2, 0], table=p1)
         vi_dtr_sp = VectorIndex(name='sl1_index', data=[1, 2, 3], target=dtr_sp)
         spt = DynamicTable(name='super_parent_table', description='super_parent_table',
                            columns=[VectorData(name='sp1', description='sp1', data=np.arange(3)), dtr_sp, vi_dtr_sp])
