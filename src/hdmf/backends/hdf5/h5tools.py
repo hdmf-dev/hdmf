@@ -924,8 +924,8 @@ class HDF5IO(HDMFIO):
         # binary
         # number
 
-        # Use text dtype for Zarr datasets of strings. Zarr stores variable lenght strings
-        # as objects so we need to detect this special case here
+        # Use text dtype for Zarr datasets of strings. Zarr stores variable length strings
+        # as objects, so we need to detect this special case here
         if hasattr(data, 'attrs') and 'zarr_dtype' in data.attrs and data.attrs['zarr_dtype'] == 'str':
             return cls.__dtypes['text']
 
