@@ -4,6 +4,7 @@
 
 ### Enhancements
 - Added support to append to a dataset of references for HDMF-Zarr. @mavaylon1 [#1157](https://github.com/hdmf-dev/hdmf/pull/1157)
+- Added support for overriding backend configurations of h5py.Dataset objects in Container.set_data_io: [#1172](https://github.com/hdmf-dev/hdmf/pull/1172)
 
 ## HDMF 3.14.3 (July 29, 2024)
 
