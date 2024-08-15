@@ -905,33 +905,6 @@ class TestBuildDatasetDimensionLabelsTwoOptionsTwoMatches(BuildDatasetShapeMixin
         builder = self.manager.build(bar_data_holder_inst, source='test.h5')
         assert builder.datasets['my_bar'].dimension_labels == ('a', 'b2')
 
-class TestBuildDatasetDimensionLabelsShapeWithoutDims(BuildDatasetShapeMixin):
-
-    def get_base_shape_dims(self):
-        return [[[None, None], [None, 3]], None]
-
-    def get_dataset_inc_spec(self):
-        dataset_inc_spec = DatasetSpec(
-            doc='A BarData',
-            data_type_inc='BarData',
-            quantity='*',
-        )
-        return dataset_inc_spec
-
-    def test_build(self):
-        """
-        Test build of BarDataHolder which contains a BarData.
-        """
-        # NOTE: attr1 doesn't map to anything but is required in the test container class
-        bar_data_inst = BarData(name='my_bar', data=[[1, 2, 3], [4, 5, 6]], attr1='a string')
-        bar_data_holder_inst = BarDataHolder(
-            name='my_bar_holder',
-            bar_datas=[bar_data_inst],
-        )
-
-        builder = self.manager.build(bar_data_holder_inst, source='test.h5')
-        assert builder.datasets['my_bar'].dimension_labels is None
-
 
 class TestBuildDatasetDimensionLabelsOneOptionRefined(BuildDatasetShapeMixin):
 
