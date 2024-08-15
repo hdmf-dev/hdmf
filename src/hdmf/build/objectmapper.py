@@ -850,7 +850,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """This will return the dimension labels and shape by matching the data shape to a permissible spec shape."""
         if spec_shape is None and spec_dims is None:
             return None, None
-        # elif spec_shape is not None and spec_dims is None:
         else:
             if spec_dtype is not None and isinstance(spec_dtype, list):
                 data_shape = (len(data),)
