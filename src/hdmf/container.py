@@ -866,9 +866,9 @@ class Container(AbstractContainer):
             data_io_kwargs = kwargs
         data = self.fields.get(dataset_name)
         data_chunk_iterator_kwargs = data_chunk_iterator_kwargs or dict()
-        data = data_chunk_iterator_class(data=data, **data_chunk_iterator_kwargs)
         if data is None:
             raise ValueError(f"{dataset_name} is None and cannot be wrapped in a DataIO class")
+        data = data_chunk_iterator_class(data=data, **data_chunk_iterator_kwargs)
         self.fields[dataset_name] = data_io_class(data=data, **data_io_kwargs)
 
 
