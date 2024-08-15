@@ -11,7 +11,7 @@ import h5py
 import numpy as np
 import pandas as pd
 
-from .data_utils import DataIO, append_data, extend_data
+from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator, DataChunkIterator
 from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
 
 from .term_set import TermSet, TermSetWrapper
@@ -830,7 +830,9 @@ class Container(AbstractContainer):
         out += '\n' + indent + right_br
         return out
 
-    def set_data_io(self, dataset_name: str, data_io_class: Type[DataIO], data_io_kwargs: dict = None, **kwargs):
+    def set_data_io(self, dataset_name: str, data_io_class: Type[DataIO], data_io_kwargs: dict = None,
+                    data_chunk_iterator_class: Type[AbstractDataChunkIterator] = DataChunkIterator,
+                    data_chunk_iterator_kwargs: dict = None, **kwargs):
         """
         Apply DataIO object to a dataset field of the Container.
 
@@ -842,6 +844,10 @@ class Container(AbstractContainer):
             Class to use for DataIO, e.g. H5DataIO or ZarrDataIO
         data_io_kwargs: dict
             keyword arguments passed to the constructor of the DataIO class.
+        data_chunk_iterator_class: Type[AbstractDataChunkIterator]
+            Class to use for DataChunkIterator, by default DataChunkIterator
+        data_chunk_iterator_kwargs: dict
+            keyword arguments passed to the constructor of the DataChunkIterator class.
         **kwargs:
             DEPRECATED. Use data_io_kwargs instead.
             kwargs are passed to the constructor of the DataIO class.
@@ -855,7 +861,8 @@ class Container(AbstractContainer):
             )
             data_io_kwargs = kwargs
         data = self.fields.get(dataset_name)
-        data = np.array(data)
+        data_chunk_iterator_kwargs = data_chunk_iterator_kwargs or dict()
+        data = data_chunk_iterator_class(data=data, **data_chunk_iterator_kwargs)
         if data is None:
             raise ValueError(f"{dataset_name} is None and cannot be wrapped in a DataIO class")
         self.fields[dataset_name] = data_io_class(data=data, **data_io_kwargs)
