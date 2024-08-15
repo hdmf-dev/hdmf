@@ -830,9 +830,13 @@ class Container(AbstractContainer):
         out += '\n' + indent + right_br
         return out
 
-    def set_data_io(self, dataset_name: str, data_io_class: Type[DataIO], data_io_kwargs: dict = None,
-                    data_chunk_iterator_class: Type[AbstractDataChunkIterator] = DataChunkIterator,
-                    data_chunk_iterator_kwargs: dict = None, **kwargs):
+    def set_data_io(
+        self,
+        dataset_name: str,
+        data_io_class: Type[DataIO], data_io_kwargs: dict = None,
+        data_chunk_iterator_class: Type[AbstractDataChunkIterator] = DataChunkIterator,
+        data_chunk_iterator_kwargs: dict = None, **kwargs
+    ):
         """
         Apply DataIO object to a dataset field of the Container.
 
