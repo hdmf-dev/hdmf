@@ -168,7 +168,7 @@ class H5IOTest(TestCase):
         a = [['aa', 'bb'], ['cc', 'dd']]
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
         dset = self.f['test_dataset']
-        decoded_dset = [[item.decode('utf-8') for item in sublist if isinstance(item, bytes)]
+        decoded_dset = [[item.decode('utf-8') if isinstance(item, bytes) else item for item in sublist]
                         for sublist in dset[:]]
         self.assertTrue(decoded_dset == a)
 
