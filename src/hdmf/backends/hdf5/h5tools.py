@@ -923,6 +923,12 @@ class HDF5IO(HDMFIO):
         # TODO: These values exist, but I haven't solved them yet
         # binary
         # number
+
+        # Use text dtype for Zarr datasets of strings. Zarr stores variable lenght strings
+        # as objects so we need to detect this special case here
+        if hasattr(data, 'attrs') and 'zarr_dtype' in data.attrs and data.attrs['zarr_dtype'] == 'str':
+            return cls.__dtypes['text']
+
         dtype = cls.__resolve_dtype_helper__(dtype)
         if dtype is None:
             dtype = cls.get_type(data)
