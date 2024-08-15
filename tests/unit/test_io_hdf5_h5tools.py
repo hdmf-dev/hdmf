@@ -3745,12 +3745,25 @@ class TestExpand(TestCase):
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
             io.write(foofile, expandable=False)
 
-        io = HDF5IO(self.path, manager=self.manager, mode='r')
-        read_foofile = io.read()
-        self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
-                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
-        self.assertEqual(get_data_shape(read_foofile.buckets['bucket1'].foos['foo1'].my_data),
-                        (5,))
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
+                                     read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+            self.assertEqual(get_data_shape(read_foofile.buckets['bucket1'].foos['foo1'].my_data),
+                            (5,))
+
+    def test_multi_shape_no_labels(self):
+        qux = QuxData(name='my_qux', data=[[1, 2, 3], [4, 5, 6]])
+        quxbucket = QuxBucket('bucket1', qux)
+
+        manager = get_qux_buildmanager([[None, None],[None, 3]])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(quxbucket, expandable=True)
+
+        with HDF5IO(self.path, manager=manager, mode='r') as io:
+            read_quxbucket = io.read()
+            self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None,3))
 
     def test_expand_set_shape(self):
         qux = QuxData(name='my_qux', data=[[1, 2, 3], [4, 5, 6]])
@@ -3761,12 +3774,12 @@ class TestExpand(TestCase):
         with HDF5IO(self.path, manager=manager, mode='w') as io:
             io.write(quxbucket, expandable=True)
 
-        io = HDF5IO(self.path, manager=manager, mode='r+')
-        read_quxbucket = io.read()
-        read_quxbucket.qux_data.append([7,8,9])
+        with HDF5IO(self.path, manager=manager, mode='r+') as io:
+            read_quxbucket = io.read()
+            read_quxbucket.qux_data.append([7,8,9])
 
-        expected = np.array([[1, 2, 3],
-                             [4, 5, 6],
-                             [7, 8, 9]])
-        npt.assert_array_equal(read_quxbucket.qux_data.data[:], expected)
-        self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None,3))
+            expected = np.array([[1, 2, 3],
+                                 [4, 5, 6],
+                                 [7, 8, 9]])
+            npt.assert_array_equal(read_quxbucket.qux_data.data[:], expected)
+            self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None,3))
