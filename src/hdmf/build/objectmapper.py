@@ -617,7 +617,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     def string_type(x):
                         return x.isoformat()  # method works for both date and datetime
                 if string_type is not None:
-                    if spec.shape is not None or spec.dims is not None:
+                    if spec.shape is not None and len(spec.shape) > 1:
+                        ret = [[string_type(item) for item in sublist] for sublist in value]
+                    elif spec.shape is not None or spec.dims is not None:
                         ret = list(map(string_type, value))
                     else:
                         ret = string_type(value)
