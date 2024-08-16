@@ -912,7 +912,13 @@ class Data(AbstractContainer):
         dataio.data = self.__data
         self.__data = dataio
 
-    def set_data_io(self, data_io_class: Type[DataIO], data_io_kwargs: dict) -> None:
+    def set_data_io(
+        self,
+        data_io_class: Type[DataIO],
+        data_io_kwargs: dict,
+        data_chunk_iterator_class: Type[AbstractDataChunkIterator] = DataChunkIterator,
+        data_chunk_iterator_kwargs: dict = None,
+    ) -> None:
         """
         Apply DataIO object to the data held by this Data object.
 
@@ -922,8 +928,14 @@ class Data(AbstractContainer):
             The DataIO to apply to the data held by this Data.
         data_io_kwargs: dict
             The keyword arguments to pass to the DataIO.
+        data_chunk_iterator_class: Type[AbstractDataChunkIterator]
+            The DataChunkIterator to use for the DataIO, by default DataChunkIterator.
+        data_chunk_iterator_kwargs: dict
+            The keyword arguments to pass to the DataChunkIterator.
         """
-        self.__data = data_io_class(data=self.__data, **data_io_kwargs)
+        data_chunk_iterator_kwargs = data_chunk_iterator_kwargs or dict()
+        data = data_chunk_iterator_class(data=self.__data, **data_chunk_iterator_kwargs)
+        self.__data = data_io_class(data=data, **data_io_kwargs)
 
     @docval({'name': 'func', 'type': types.FunctionType, 'doc': 'a function to transform *data*'})
     def transform(self, **kwargs):
