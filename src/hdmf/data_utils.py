@@ -18,7 +18,8 @@ import numpy as np
 from .utils import docval, getargs, popargs, docval_macro, get_data_shape
 
 def append_data(data, arg):
-    if isinstance(data, (list, DataIO)):
+    from hdmf.backends.hdf5.h5_utils import HDMFDataset
+    if isinstance(data, (list, DataIO, HDMFDataset)):
         data.append(arg)
         return data
     elif type(data).__name__ == 'TermSetWrapper': # circular import

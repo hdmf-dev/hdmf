@@ -546,10 +546,31 @@ class H5DataIO(DataIO):
 
     @property
     def dataset(self):
+        """Get the cached h5py.Dataset."""
         return self.__dataset
 
     @dataset.setter
     def dataset(self, val):
+        """Cache the h5py.Dataset written with the stored IO settings.
+
+        This attribute can be used to cache a written, empty dataset and fill it in later.
+        This allows users to access the handle to the dataset *without* having to close
+        and reopen a file.
+
+        For example::
+
+            dataio = H5DataIO(shape=(5,), dtype=int)
+            foo = Foo('foo1', dataio, "I am foo1", 17, 3.14)
+            bucket = FooBucket('bucket1', [foo])
+            foofile = FooFile(buckets=[bucket])
+
+            io = HDF5IO(self.path, manager=self.manager, mode='w')
+            # write the object to disk, including initializing an empty int dataset with shape (5,)
+            io.write(foofile)
+
+            foo.my_data.dataset[:] = [0, 1, 2, 3, 4]
+            io.close()
+        """
         if self.__dataset is not None:
             raise ValueError("Cannot overwrite H5DataIO.dataset")
         self.__dataset = val
