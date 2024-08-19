@@ -24,7 +24,7 @@ from hdmf import Data, docval
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
-from hdmf.spec.spec import GroupSpec
+from hdmf.spec.spec import GroupSpec, DtypeSpec
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common.resources import HERD
 from hdmf.term_set import TermSet, TermSetWrapper
@@ -171,6 +171,22 @@ class H5IOTest(TestCase):
         decoded_dset = [[item.decode('utf-8') if isinstance(item, bytes) else item for item in sublist]
                         for sublist in dset[:]]
         self.assertTrue(decoded_dset == a)
+
+    def test_write_dataset_list_compound_datatype(self):
+        a = np.array([(1, 2, 0.5), (3, 4, 0.5)], dtype=[('x', 'int'), ('y', 'int'), ('z', 'float')])
+        dset_builder = DatasetBuilder(
+                    name='test_dataset',
+                    data=a.tolist(),
+                    attributes={},
+                    dtype=[
+                        DtypeSpec('x', doc='x', dtype='int'),
+                        DtypeSpec('y', doc='y', dtype='int'),
+                        DtypeSpec('z', doc='z', dtype='float'),
+                    ],
+                )
+        self.io.write_dataset(self.f, dset_builder)
+        dset = self.f['test_dataset']
+        self.assertTrue(np.all(dset[:] == a))
 
     def test_write_dataset_list_compress_gzip(self):
         a = H5DataIO(np.arange(30).reshape(5, 2, 3),
