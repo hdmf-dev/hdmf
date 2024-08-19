@@ -501,7 +501,7 @@ class H5DataIO(DataIO):
         # Check for possible collision with other parameters
         if not isinstance(getargs('data', kwargs), Dataset) and self.__link_data:
             self.__link_data = False
-            warnings.warn('link_data parameter in H5DataIO will be ignored', stacklevel=2)
+            warnings.warn('link_data parameter in H5DataIO will be ignored', stacklevel=3)
         # Call the super constructor and consume the data parameter
         super().__init__(**kwargs)
         # Construct the dict with the io args, ignoring all options that were set to None
@@ -525,7 +525,7 @@ class H5DataIO(DataIO):
                 self.__iosettings.pop('compression', None)
                 if 'compression_opts' in self.__iosettings:
                     warnings.warn('Compression disabled by compression=False setting. ' +
-                                  'compression_opts parameter will, therefore, be ignored.', stacklevel=2)
+                                  'compression_opts parameter will, therefore, be ignored.', stacklevel=3)
                     self.__iosettings.pop('compression_opts', None)
         # Validate the compression options used
         self._check_compression_options()
@@ -540,16 +540,37 @@ class H5DataIO(DataIO):
         if isinstance(self.data, Dataset):
             for k in self.__iosettings.keys():
                 warnings.warn("%s in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset" % k,
-                              stacklevel=2)
+                              stacklevel=3)
 
         self.__dataset = None
 
     @property
     def dataset(self):
+        """Get the cached h5py.Dataset."""
         return self.__dataset
 
     @dataset.setter
     def dataset(self, val):
+        """Cache the h5py.Dataset written with the stored IO settings.
+
+        This attribute can be used to cache a written, empty dataset and fill it in later.
+        This allows users to access the handle to the dataset *without* having to close
+        and reopen a file.
+
+        For example::
+
+            dataio = H5DataIO(shape=(5,), dtype=int)
+            foo = Foo('foo1', dataio, "I am foo1", 17, 3.14)
+            bucket = FooBucket('bucket1', [foo])
+            foofile = FooFile(buckets=[bucket])
+
+            io = HDF5IO(self.path, manager=self.manager, mode='w')
+            # write the object to disk, including initializing an empty int dataset with shape (5,)
+            io.write(foofile)
+
+            foo.my_data.dataset[:] = [0, 1, 2, 3, 4]
+            io.close()
+        """
         if self.__dataset is not None:
             raise ValueError("Cannot overwrite H5DataIO.dataset")
         self.__dataset = val
@@ -597,7 +618,7 @@ class H5DataIO(DataIO):
             if self.__iosettings['compression'] not in ['gzip', h5py_filters.h5z.FILTER_DEFLATE]:
                 warnings.warn(str(self.__iosettings['compression']) + " compression may not be available "
                               "on all installations of HDF5. Use of gzip is recommended to ensure portability of "
-                              "the generated HDF5 files.", stacklevel=3)
+                              "the generated HDF5 files.", stacklevel=4)
 
     @staticmethod
     def filter_available(filter, allow_plugin_filters):

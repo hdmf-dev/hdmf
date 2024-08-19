@@ -1,5 +1,21 @@
 # HDMF Changelog
 
+## HDMF 3.14.4 (Upcoming)
+
+### Enhancements
+- Added support to append to a dataset of references for HDMF-Zarr. @mavaylon1 [#1157](https://github.com/hdmf-dev/hdmf/pull/1157)
+- Adjusted stacklevel of warnings to point to user code when possible. @rly [#1166](https://github.com/hdmf-dev/hdmf/pull/1166)
+- Improved "already exists" error message when adding a container to a `MultiContainerInterface`. @rly [#1165](https://github.com/hdmf-dev/hdmf/pull/1165)
+
+## HDMF 3.14.3 (July 29, 2024)
+
+### Enhancements
+- Added new attribute "dimension_labels" on `DatasetBuilder` which specifies the names of the dimensions used in the
+dataset based on the shape of the dataset data and the dimension names in the spec for the data type. This attribute
+is available on build (during the write process), but not on read of a dataset from a file. @rly [#1081](https://github.com/hdmf-dev/hdmf/pull/1081)
+- Speed up loading namespaces by skipping register_type when already registered. @magland [#1102](https://github.com/hdmf-dev/hdmf/pull/1102)
+- Speed up namespace loading: return a shallow copy rather than a deep copy in build_const_args. @magland [#1103](https://github.com/hdmf-dev/hdmf/pull/1103)
+
 ## HDMF 3.14.2 (July 7, 2024)
 
 ### Enhancements

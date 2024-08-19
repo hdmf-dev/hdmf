@@ -344,7 +344,7 @@ class HDF5IO(HDMFIO):
         warnings.warn("The copy_file class method is no longer supported and may be removed in a future version of "
                       "HDMF. Please use the export method or h5py.File.copy method instead.",
                       category=DeprecationWarning,
-                      stacklevel=2)
+                      stacklevel=3)
 
         source_filename, dest_filename, expand_external, expand_refs, expand_soft = getargs('source_filename',
                                                                                             'dest_filename',
@@ -698,6 +698,9 @@ class HDF5IO(HDMFIO):
                     d = ReferenceBuilder(target_builder)
                 kwargs['data'] = d
                 kwargs['dtype'] = d.dtype
+            elif h5obj.dtype.kind == 'V':  # compound data type
+                kwargs['data'] = np.array([scalar], dtype=h5obj.dtype)
+                kwargs['dtype'] = h5obj.dtype
             else:
                 kwargs["data"] = scalar
         else:
@@ -1228,7 +1231,11 @@ class HDF5IO(HDMFIO):
                 return
             # If the compound data type contains only regular data (i.e., no references) then we can write it as usual
             else:
-                dset = self.__list_fill__(parent, name, data, options)
+                #if builder.maxshape is None:
+                if name == 'position':  # TODO - determine here how to detect scalar compound
+                    dset = self.__scalar_fill__(parent, name, data, options)
+                else:
+                    dset = self.__list_fill__(parent, name, data, options)
         # Write a dataset containing references, i.e., a region or object reference.
         # NOTE: we can ignore options['io_settings'] for scalar data
         elif self.__is_ref(options['dtype']):
@@ -1351,7 +1358,7 @@ class HDF5IO(HDMFIO):
                 msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                 raise Exception(msg) from exc
         try:
-            dset = parent.create_dataset(name, data=data, shape=None, dtype=dtype, **io_settings)
+            dset = parent.create_dataset(name, data=data, shape=(), dtype=dtype, **io_settings)
         except Exception as exc:
             msg = "Could not create scalar dataset %s in %s" % (name, parent.name)
             raise Exception(msg) from exc
