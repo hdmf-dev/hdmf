@@ -21,24 +21,26 @@ class Bar(Container):
             {'name': 'attr1', 'type': str, 'doc': 'an attribute'},
             {'name': 'attr2', 'type': int, 'doc': 'another attribute'},
             {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14},
+            {'name': 'attr_array', 'type': 'array_data', 'doc': 'another attribute', 'default': (1, 2, 3)},
             {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None})
     def __init__(self, **kwargs):
-        name, data, attr1, attr2, attr3, foo = getargs('name', 'data', 'attr1', 'attr2', 'attr3', 'foo', kwargs)
+        name, data, attr1, attr2, attr3, attr_array, foo = getargs('name', 'data', 'attr1', 'attr2', 'attr3', 'attr_array', 'foo', kwargs)
         super().__init__(name=name)
         self.__data = data
         self.__attr1 = attr1
         self.__attr2 = attr2
         self.__attr3 = attr3
+        self.__attr_array = attr_array
         self.__foo = foo
         if self.__foo is not None and self.__foo.parent is None:
             self.__foo.parent = self
 
     def __eq__(self, other):
-        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'foo')
+        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'attr_array', 'foo')
         return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     def __str__(self):
-        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'foo')
+        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'attr_array', 'foo')
         return ','.join('%s=%s' % (a, getattr(self, a)) for a in attrs)
 
     @property
@@ -60,6 +62,10 @@ class Bar(Container):
     @property
     def attr3(self):
         return self.__attr3
+
+    @property
+    def attr_array(self):
+        return self.__attr_array
 
     @property
     def foo(self):
@@ -334,12 +340,15 @@ class TestMapStrings(TestCase):
                              datasets=[DatasetSpec('an example dataset', 'text', name='data', shape=(None,),
                                                    attributes=[AttributeSpec(
                                                        'attr2', 'an example integer attribute', 'int')])],
-                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                                         AttributeSpec('attr_array', 'an example array attribute', 'text',
+                                            shape=(None,))])
         type_map = self.customSetUp(bar_spec)
         type_map.register_map(Bar, BarMapper)
-        bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
+        bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10, attr_array=['a', 'b', 'c', 'd'])
         builder = type_map.build(bar_inst)
-        self.assertEqual(builder.get('data').data, ['a', 'b', 'c', 'd'])
+        np.testing.assert_array_equal(builder.get('data').data, np.array(['a', 'b', 'c', 'd']))
+        np.testing.assert_array_equal(builder.get('attr_array'), np.array(['a', 'b', 'c', 'd']))
 
     def test_build_scalar(self):
         bar_spec = GroupSpec('A test group specification with a data type',
@@ -367,13 +376,16 @@ class TestMapStrings(TestCase):
                     attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
                 )
             ],
-            attributes=[AttributeSpec(name='attr1', doc='an example string attribute', dtype='text')],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
+                                      shape=(None, None))],
         )
         type_map = self.customSetUp(bar_spec)
         type_map.register_map(Bar, BarMapper)
-        bar_inst = Bar('my_bar', [['aa', 'bb'], ['cc', 'dd']], 'value1', 10)
+        str_lol_2d = [['aa', 'bb'], ['cc', 'dd']]
+        bar_inst = Bar('my_bar', str_lol_2d, 'value1', 10, attr_array=str_lol_2d)
         builder = type_map.build(bar_inst)
-        self.assertEqual(builder.get('data').data, [['aa', 'bb'], ['cc', 'dd']])
+        self.assertEqual(builder.get('data').data, str_lol_2d)
+        self.assertEqual(builder.get('attr_array'), str_lol_2d)
 
     def test_build_2d_ndarray(self):
         bar_spec = GroupSpec(
@@ -388,13 +400,61 @@ class TestMapStrings(TestCase):
                     attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
                 )
             ],
-            attributes=[AttributeSpec(name='attr1', doc='an example string attribute', dtype='text')],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text', shape=(None, None))],
         )
         type_map = self.customSetUp(bar_spec)
         type_map.register_map(Bar, BarMapper)
-        bar_inst = Bar('my_bar', np.array([['aa', 'bb'], ['cc', 'dd']]), 'value1', 10)
+        str_array_2d = np.array([['aa', 'bb'], ['cc', 'dd']])
+        bar_inst = Bar('my_bar', str_array_2d, 'value1', 10, attr_array=str_array_2d)
         builder = type_map.build(bar_inst)
-        np.testing.assert_array_equal(builder.get('data').data, np.array([['aa', 'bb'], ['cc', 'dd']]))
+        np.testing.assert_array_equal(builder.get('data').data, str_array_2d)
+        np.testing.assert_array_equal(builder.get('attr_array'), str_array_2d)
+
+    def test_build_3d_lol(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, None, None),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text', shape=(None, None, None))],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        str_lol_3d = [[['aa', 'bb'], ['cc', 'dd']], [['ee', 'ff'], ['gg', 'hh']]]
+        bar_inst = Bar('my_bar', str_lol_3d, 'value1', 10, attr_array=str_lol_3d)
+        builder = type_map.build(bar_inst)
+        self.assertEqual(builder.get('data').data, str_lol_3d)
+        self.assertEqual(builder.get('attr_array'), str_lol_3d)
+
+    def test_build_3d_ndarray(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, None, None),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text', shape=(None, None, None))],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        str_array_3d = np.array([[['aa', 'bb'], ['cc', 'dd']], [['ee', 'ff'], ['gg', 'hh']]])
+        bar_inst = Bar('my_bar', str_array_3d, 'value1', 10, attr_array=str_array_3d)
+        builder = type_map.build(bar_inst)
+        np.testing.assert_array_equal(builder.get('data').data, str_array_3d)
+        np.testing.assert_array_equal(builder.get('attr_array'), str_array_3d)
 
     def test_build_dataio(self):
         bar_spec = GroupSpec('A test group specification with a data type',
