@@ -121,10 +121,10 @@ class GroupBuilderTestCase(TestCase):
                         # if strings, convert before comparing
                         if b_array:
                             if b_sub.dtype.char in ('S', 'U'):
-                                a_sub = [np.string_(s) for s in a_sub]
+                                a_sub = [np.bytes_(s) for s in a_sub]
                         else:
                             if a_sub.dtype.char in ('S', 'U'):
-                                b_sub = [np.string_(s) for s in b_sub]
+                                b_sub = [np.bytes_(s) for s in b_sub]
                         equal = np.array_equal(a_sub, b_sub)
                     else:
                         equal = a_sub == b_sub
