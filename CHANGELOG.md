@@ -1,12 +1,51 @@
 # HDMF Changelog
 
-## HDMF 3.14.0 (Upcoming)
+## HDMF 3.14.4 (Upcoming)
+
+### Enhancements
+- Added support to append to a dataset of references for HDMF-Zarr. @mavaylon1 [#1157](https://github.com/hdmf-dev/hdmf/pull/1157)
+
+## HDMF 3.14.3 (July 29, 2024)
+
+### Enhancements
+- Added new attribute "dimension_labels" on `DatasetBuilder` which specifies the names of the dimensions used in the
+dataset based on the shape of the dataset data and the dimension names in the spec for the data type. This attribute
+is available on build (during the write process), but not on read of a dataset from a file. @rly [#1081](https://github.com/hdmf-dev/hdmf/pull/1081)
+- Speed up loading namespaces by skipping register_type when already registered. @magland [#1103](https://github.com/hdmf-dev/hdmf/pull/1103)
+
+
+## HDMF 3.14.2 (July 7, 2024)
+
+### Enhancements
+- Warn when unexpected keys are present in specs. @rly [#1134](https://github.com/hdmf-dev/hdmf/pull/1134)
+- Support appending to zarr arrays. @mavaylon1 [#1136](https://github.com/hdmf-dev/hdmf/pull/1136)
+- Support specifying "value" key in DatasetSpec. @rly [#1143](https://github.com/hdmf-dev/hdmf/pull/1143)
+- Add support for numpy 2. @rly [#1139](https://github.com/hdmf-dev/hdmf/pull/1139)
+
+### Bug fixes
+- Fix iterator increment causing an extra +1 added after the end of completion. @CodyCBakerPhD [#1128](https://github.com/hdmf-dev/hdmf/pull/1128)
+
+## HDMF 3.14.1 (June 6, 2024)
+
+### Bug fixes
+- Excluded unnecessary artifacts from sdist and wheel. @rly [#1119](https://github.com/hdmf-dev/hdmf/pull/1119)
+- Fixed issue with resolving attribute specs that have the same name at different levels of a spec hierarchy.
+  @rly [#1122](https://github.com/hdmf-dev/hdmf/pull/1122)
+
+## HDMF 3.14.0 (May 20, 2024)
 
 ### Enhancements
 - Updated `_field_config` to take `type_map` as an argument for APIs. @mavaylon1 [#1094](https://github.com/hdmf-dev/hdmf/pull/1094)
 - Added `TypeConfigurator` to automatically wrap fields with `TermSetWrapper` according to a configuration file. @mavaylon1 [#1016](https://github.com/hdmf-dev/hdmf/pull/1016)
 - Updated `TermSetWrapper` to support validating a single field within a compound array. @mavaylon1 [#1061](https://github.com/hdmf-dev/hdmf/pull/1061)
-- Speed up loading namespaces by skipping register_type when already registered.
+- Updated testing to not install in editable mode and not run `coverage` by default. @rly [#1107](https://github.com/hdmf-dev/hdmf/pull/1107)
+- Add `post_init_method` parameter when generating classes to perform post-init functionality, i.e., validation. @mavaylon1 [#1089](https://github.com/hdmf-dev/hdmf/pull/1089)
+- Exposed `aws_region` to `HDF5IO` and downstream passes to `h5py.File`. @codycbakerphd [#1040](https://github.com/hdmf-dev/hdmf/pull/1040)
+- Exposed `progress_bar_class` to the `GenericDataChunkIterator` for more custom control over display of progress while iterating. @codycbakerphd [#1110](https://github.com/hdmf-dev/hdmf/pull/1110)
+- Updated loading, unloading, and getting the `TypeConfigurator` to support a `TypeMap` parameter. @mavaylon1 [#1117](https://github.com/hdmf-dev/hdmf/pull/1117)
+
+### Bug Fixes
+- Fixed `TermSetWrapper` warning raised during the setters. @mavaylon1 [#1116](https://github.com/hdmf-dev/hdmf/pull/1116)
 
 ## HDMF 3.13.0 (March 20, 2024)
 
@@ -541,7 +580,7 @@ the fields (i.e., when the constructor sets some fields to fixed values). @rly
   Each sub-table is itself a DynamicTable that is aligned with the main table by row index. Each subtable
   defines a sub-category in the main table effectively creating a table with sub-headings to organize columns.
   @oruebel (#551)
-- Add tutoral for new `AlignedDynamicTable` type. @oruebel (#571)
+- Add tutorial for new `AlignedDynamicTable` type. @oruebel (#571)
 - Equality check for `DynamicTable` now also checks that the name and description of the table are the same. @rly (#566)
 
 ### Internal improvements

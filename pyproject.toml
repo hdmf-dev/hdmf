@@ -32,7 +32,7 @@ classifiers = [
 dependencies = [
     "h5py>=2.10",
     "jsonschema>=2.6.0",
-    "numpy>=1.18",
+    'numpy>=1.18',
     "pandas>=1.0.5",
     "ruamel.yaml>=0.16",
     "scipy>=1.4",
@@ -41,7 +41,6 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-zarr = ["zarr>=2.12.0"]
 tqdm = ["tqdm>=4.41.0"]
 termset = ["linkml-runtime>=1.5.5; python_version >= '3.9'",
            "schemasheets>=0.1.23; python_version >= '3.9'",
@@ -64,10 +63,23 @@ source = "vcs"
 version-file = "src/hdmf/_version.py"
 
 [tool.hatch.build.targets.sdist]
-exclude = [".git_archival.txt"]
+exclude = [
+    ".git*",
+    ".codecov.yml",
+    ".readthedocs.yaml",
+    ".mailmap",
+    ".pre-commit-config.yaml",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/hdmf"]
+exclude = [
+    ".git*",
+    ".codecov.yml",
+    ".readthedocs.yaml",
+    ".mailmap",
+    ".pre-commit-config.yaml",
+]
 
 # [tool.mypy]
 # no_incremental = true  # needed b/c mypy and ruamel.yaml do not play nice. https://github.com/python/mypy/issues/12664
@@ -77,25 +89,24 @@ packages = ["src/hdmf"]
 # verbose = 1
 
 [tool.pytest.ini_options]
-addopts = "--cov --cov-report html"
 norecursedirs = "tests/unit/helpers"
 
 [tool.codespell]
 skip = "htmlcov,.git,.mypy_cache,.pytest_cache,.coverage,*.pdf,*.svg,venvs,.tox,hdmf-common-schema,./docs/_build/*,*.ipynb"
-ignore-words-list = "datas"
+ignore-words-list = "datas,assertIn"
 
 [tool.coverage.run]
 branch = true
-source = ["src/"]
-omit = [
-    "src/hdmf/_due.py",
-    "src/hdmf/testing/*",
-]
+source = ["hdmf"]
 
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
     "@abstract"
+]
+omit = [
+    "*/hdmf/_due.py",
+    "*/hdmf/testing/*",
 ]
 
 # [tool.black]
@@ -105,7 +116,7 @@ exclude_lines = [
 # force-exclude = "src/hdmf/common/hdmf-common-schema|docs/gallery"
 
 [tool.ruff]
-select = ["E", "F", "T100", "T201", "T203"]
+lint.select = ["E", "F", "T100", "T201", "T203"]
 exclude = [
   ".git",
   ".tox",
@@ -120,11 +131,11 @@ exclude = [
 ]
 line-length = 120
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "docs/gallery/*" = ["E402", "T201"]
 "src/*/__init__.py" = ["F401"]
 "setup.py" = ["T201"]
 "test_gallery.py" = ["T201"]
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 17
