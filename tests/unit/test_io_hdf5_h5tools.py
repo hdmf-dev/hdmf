@@ -3728,7 +3728,12 @@ class TestContainerSetDataIO(TestCase):
                 self.data = kwargs["data"]
 
         container = ContainerWithData("name", data)
-        container.set_data_io("data", H5DataIO, data_io_kwargs=dict(chunks=(2,)))
+        container.set_data_io(
+            "data",
+            H5DataIO,
+            data_io_kwargs=dict(chunks=(2,)),
+            data_chunk_iterator_class=DataChunkIterator,
+        )
 
         self.assertIsInstance(container.data, H5DataIO)
         self.assertEqual(container.data.io_settings["chunks"], (2,))
