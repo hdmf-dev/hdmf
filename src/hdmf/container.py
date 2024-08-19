@@ -2,7 +2,7 @@ import types
 from abc import abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
-from typing import Type
+from typing import Type, Optional
 from uuid import uuid4
 from warnings import warn
 import os
@@ -11,7 +11,7 @@ import h5py
 import numpy as np
 import pandas as pd
 
-from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator, DataChunkIterator
+from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator
 from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
 
 from .term_set import TermSet, TermSetWrapper
@@ -833,9 +833,9 @@ class Container(AbstractContainer):
     def set_data_io(
         self,
         dataset_name: str,
-        data_io_class: Type[DataIO], 
+        data_io_class: Type[DataIO],
         data_io_kwargs: dict = None,
-        data_chunk_iterator_class: Type[AbstractDataChunkIterator] = DataChunkIterator,
+        data_chunk_iterator_class: Optional[Type[AbstractDataChunkIterator]] = None,
         data_chunk_iterator_kwargs: dict = None, **kwargs
     ):
         """
@@ -850,7 +850,7 @@ class Container(AbstractContainer):
         data_io_kwargs: dict
             keyword arguments passed to the constructor of the DataIO class.
         data_chunk_iterator_class: Type[AbstractDataChunkIterator]
-            Class to use for DataChunkIterator, by default DataChunkIterator
+            Class to use for DataChunkIterator. If None, no DataChunkIterator is used.
         data_chunk_iterator_kwargs: dict
             keyword arguments passed to the constructor of the DataChunkIterator class.
         **kwargs:
@@ -869,7 +869,8 @@ class Container(AbstractContainer):
         data_chunk_iterator_kwargs = data_chunk_iterator_kwargs or dict()
         if data is None:
             raise ValueError(f"{dataset_name} is None and cannot be wrapped in a DataIO class")
-        data = data_chunk_iterator_class(data=data, **data_chunk_iterator_kwargs)
+        if data_chunk_iterator_class is not None:
+            data = data_chunk_iterator_class(data=data, **data_chunk_iterator_kwargs)
         self.fields[dataset_name] = data_io_class(data=data, **data_io_kwargs)
 
 
@@ -917,7 +918,7 @@ class Data(AbstractContainer):
         self,
         data_io_class: Type[DataIO],
         data_io_kwargs: dict,
-        data_chunk_iterator_class: Type[AbstractDataChunkIterator] = DataChunkIterator,
+        data_chunk_iterator_class: Optional[Type[AbstractDataChunkIterator]] = None,
         data_chunk_iterator_kwargs: dict = None,
     ) -> None:
         """
@@ -930,12 +931,14 @@ class Data(AbstractContainer):
         data_io_kwargs: dict
             The keyword arguments to pass to the DataIO.
         data_chunk_iterator_class: Type[AbstractDataChunkIterator]
-            The DataChunkIterator to use for the DataIO, by default DataChunkIterator.
+            The DataChunkIterator to use for the DataIO. If None, no DataChunkIterator is used.
         data_chunk_iterator_kwargs: dict
             The keyword arguments to pass to the DataChunkIterator.
         """
         data_chunk_iterator_kwargs = data_chunk_iterator_kwargs or dict()
-        data = data_chunk_iterator_class(data=self.__data, **data_chunk_iterator_kwargs)
+        data = self.__data
+        if data_chunk_iterator_class is not None:
+            data = data_chunk_iterator_class(data=data, **data_chunk_iterator_kwargs)
         self.__data = data_io_class(data=data, **data_io_kwargs)
 
     @docval({'name': 'func', 'type': types.FunctionType, 'doc': 'a function to transform *data*'})
