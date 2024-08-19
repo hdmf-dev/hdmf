@@ -913,7 +913,7 @@ class Data(AbstractContainer):
         warn(
             "Data.set_dataio() is deprecated. Please use Data.set_data_io() instead.",
             DeprecationWarning,
-            stacklevel=2,
+            stacklevel=3,
         )
         dataio = getargs('dataio', kwargs)
         dataio.data = self.__data
@@ -1180,7 +1180,9 @@ class MultiContainerInterface(Container):
                     # still need to mark self as modified
                     self.set_modified()
                 if tmp.name in d:
-                    msg = "'%s' already exists in %s '%s'" % (tmp.name, cls.__name__, self.name)
+                    msg = (f"Cannot add {tmp.__class__} '{tmp.name}' at 0x{id(tmp)} to dict attribute '{attr_name}' in "
+                           f"{cls} '{self.name}'. {d[tmp.name].__class__} '{tmp.name}' at 0x{id(d[tmp.name])} "
+                           f"already exists in '{attr_name}' and has the same name.")
                     raise ValueError(msg)
                 d[tmp.name] = tmp
             return container
