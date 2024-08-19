@@ -468,16 +468,17 @@ class NamespaceCatalog:
     def __register_type(self, ndt, inc_ns, catalog, registered_types):
         if ndt in registered_types:
             # already registered
-            return
-        spec = inc_ns.get_spec(ndt)
-        spec_file = inc_ns.catalog.get_spec_source_file(ndt)
-        self.__register_dependent_types(spec, inc_ns, catalog, registered_types)
-        if isinstance(spec, DatasetSpec):
-            built_spec = self.dataset_spec_cls.build_spec(spec)
+            pass
         else:
-            built_spec = self.group_spec_cls.build_spec(spec)
-        registered_types.add(ndt)
-        catalog.register_spec(built_spec, spec_file)
+            spec = inc_ns.get_spec(ndt)
+            spec_file = inc_ns.catalog.get_spec_source_file(ndt)
+            self.__register_dependent_types(spec, inc_ns, catalog, registered_types)
+            if isinstance(spec, DatasetSpec):
+                built_spec = self.dataset_spec_cls.build_spec(spec)
+            else:
+                built_spec = self.group_spec_cls.build_spec(spec)
+            registered_types.add(ndt)
+            catalog.register_spec(built_spec, spec_file)
 
     def __register_dependent_types(self, spec, inc_ns, catalog, registered_types):
         """Ensure that classes for all types used by this type are registered
