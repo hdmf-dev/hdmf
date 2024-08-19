@@ -856,6 +856,11 @@ class Container(AbstractContainer):
         **kwargs:
             DEPRECATED. Use data_io_kwargs instead.
             kwargs are passed to the constructor of the DataIO class.
+
+        Notes
+        -----
+        If data_chunk_iterator_class is not None, the data is wrapped in the DataChunkIterator before being wrapped in
+        the DataIO. This allows for rewriting the backend configuration of hdf5 datasets.
         """
         if kwargs or (data_io_kwargs is None):
             warn(
@@ -934,6 +939,11 @@ class Data(AbstractContainer):
             The DataChunkIterator to use for the DataIO. If None, no DataChunkIterator is used.
         data_chunk_iterator_kwargs: dict
             The keyword arguments to pass to the DataChunkIterator.
+
+        Notes
+        -----
+        If data_chunk_iterator_class is not None, the data is wrapped in the DataChunkIterator before being wrapped in
+        the DataIO. This allows for rewriting the backend configuration of hdf5 datasets.
         """
         data_chunk_iterator_kwargs = data_chunk_iterator_kwargs or dict()
         data = self.__data
