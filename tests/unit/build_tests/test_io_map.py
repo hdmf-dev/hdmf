@@ -24,7 +24,7 @@ class Bar(Container):
             {'name': 'attr_array', 'type': 'array_data', 'doc': 'another attribute', 'default': (1, 2, 3)},
             {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None})
     def __init__(self, **kwargs):
-        name, data, attr1, attr2, attr3, attr_array, foo = getargs('name', 'data', 'attr1', 'attr2', 'attr3', 
+        name, data, attr1, attr2, attr3, attr_array, foo = getargs('name', 'data', 'attr1', 'attr2', 'attr3',
                                                                    'attr_array', 'foo', kwargs)
         super().__init__(name=name)
         self.__data = data
@@ -401,7 +401,7 @@ class TestMapStrings(TestCase):
                     attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
                 )
             ],
-            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text', 
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
                                       shape=(None, None))],
         )
         type_map = self.customSetUp(bar_spec)
@@ -425,7 +425,7 @@ class TestMapStrings(TestCase):
                     attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
                 )
             ],
-            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text', 
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
                                       shape=(None, None, None))],
         )
         type_map = self.customSetUp(bar_spec)
@@ -449,7 +449,7 @@ class TestMapStrings(TestCase):
                     attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
                 )
             ],
-            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text', 
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
                                       shape=(None, None, None))],
         )
         type_map = self.customSetUp(bar_spec)
