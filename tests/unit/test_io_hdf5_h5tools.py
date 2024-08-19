@@ -186,7 +186,8 @@ class H5IOTest(TestCase):
                 )
         self.io.write_dataset(self.f, dset_builder)
         dset = self.f['test_dataset']
-        self.assertTrue(np.all(dset[:] == a))
+        for field in a.dtype.names:
+            self.assertTrue(np.all(dset[field][:] == a[field]))
 
     def test_write_dataset_list_compress_gzip(self):
         a = H5DataIO(np.arange(30).reshape(5, 2, 3),
