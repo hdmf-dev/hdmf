@@ -894,7 +894,7 @@ class Data(AbstractContainer):
         warn(
             "Data.set_dataio() is deprecated. Please use Data.set_data_io() instead.",
             DeprecationWarning,
-            stacklevel=2,
+            stacklevel=3,
         )
         dataio = getargs('dataio', kwargs)
         dataio.data = self.__data
