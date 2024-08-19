@@ -13,7 +13,6 @@ dataset based on the shape of the dataset data and the dimension names in the sp
 is available on build (during the write process), but not on read of a dataset from a file. @rly [#1081](https://github.com/hdmf-dev/hdmf/pull/1081)
 - Speed up loading namespaces by skipping register_type when already registered. @magland [#1103](https://github.com/hdmf-dev/hdmf/pull/1103)
 
-
 ## HDMF 3.14.2 (July 7, 2024)
 
 ### Enhancements
