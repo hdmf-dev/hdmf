@@ -8,7 +8,7 @@
 - Improved "already exists" error message when adding a container to a `MultiContainerInterface`. @rly [#1165](https://github.com/hdmf-dev/hdmf/pull/1165)
 
 ### Bug fixes
-- Fixed bug when converting string datasets from Zarr to HDF5. @oruebel [#1171](https://github.com/hdmf-dev/hdmf/pull/1171)
+- Fixed bug when converting string datasets from Zarr to HDF5. @oruebel @rly [#1171](https://github.com/hdmf-dev/hdmf/pull/1171)
 
 ## HDMF 3.14.3 (July 29, 2024)
 

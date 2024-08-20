@@ -37,6 +37,7 @@ from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmana
 
 try:
     import zarr
+    import numcodecs
     SKIP_ZARR_TESTS = False
 except ImportError:
     SKIP_ZARR_TESTS = True
@@ -3538,16 +3539,121 @@ class TestWriteHDF5withZarrInput(TestCase):
         self.assertListEqual(dset[:].tolist(),
                              base_data.tolist())
 
-    def test_write_zarr_string_dataset(self):
+    def test_write_zarr_flen_utf8_dataset(self):
+        # fixed length unicode zarr array
         base_data = np.array(['string1', 'string2'], dtype=str)
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
         f = io._file
-        io.write_dataset(f, DatasetBuilder('test_dataset', zarr_data, attributes={}))
-        dset = f['test_dataset']
+
+        io.write_dataset(f, DatasetBuilder('test_dataset1', zarr_data))  # no dtype specified
+        dset = f['test_dataset1']
+        self.assertIs(dset.dtype.type, np.object_)
+        self.assertEqual(h5py.check_dtype(vlen=dset.dtype), str)  # check that the dtype is str
         self.assertTupleEqual(dset.shape, (2,))
-        self.assertListEqual(dset[:].astype(bytes).tolist(), base_data.astype(bytes).tolist())
+        np.testing.assert_array_equal(dset[:].astype(str), base_data)
+
+        io.write_dataset(f, DatasetBuilder('test_dataset2', zarr_data, dtype="utf8"))  # utf8 dtype specified
+        dset = f['test_dataset2']
+        self.assertIs(dset.dtype.type, np.object_)
+        self.assertEqual(h5py.check_dtype(vlen=dset.dtype), str)  # check that the dtype is str
+        self.assertTupleEqual(dset.shape, (2,))
+        np.testing.assert_array_equal(dset[:].astype(str), zarr_data[:])
+
+        io.write_dataset(f, DatasetBuilder('test_dataset3', zarr_data, dtype="ascii"))  # ascii dtype specified
+        dset = f['test_dataset3']
+        self.assertIs(dset.dtype.type, np.object_)
+        self.assertEqual(h5py.check_dtype(vlen=dset.dtype), bytes)  # check that the dtype is bytes
+        self.assertTupleEqual(dset.shape, (2,))
+        np.testing.assert_array_equal(dset[:].astype(str), zarr_data[:])
+
+    def test_write_zarr_flen_ascii_dataset(self):
+        # fixed length ascii zarr array
+        base_data = np.array(['string1', 'string2'], dtype=bytes)
+        zarr.save(self.zarr_path, base_data)
+        zarr_data = zarr.open(self.zarr_path, 'r')
+        io = HDF5IO(self.path, mode='a')
+        f = io._file
+
+        io.write_dataset(f, DatasetBuilder('test_dataset1', zarr_data))  # no dtype specified
+        dset = f['test_dataset1']
+        self.assertIs(dset.dtype.type, np.object_)
+        self.assertEqual(h5py.check_dtype(vlen=dset.dtype), bytes)  # check that the dtype is bytes
+        self.assertTupleEqual(dset.shape, (2,))
+        np.testing.assert_array_equal(dset[:].astype(bytes), base_data)
+
+        io.write_dataset(f, DatasetBuilder('test_dataset2', zarr_data, dtype="utf8"))  # utf8 dtype specified
+        dset = f['test_dataset2']
+        self.assertIs(dset.dtype.type, np.object_)
+        self.assertEqual(h5py.check_dtype(vlen=dset.dtype), str)  # check that the dtype is str
+        self.assertTupleEqual(dset.shape, (2,))
+        np.testing.assert_array_equal(dset[:].astype(bytes), zarr_data[:])
+
+        io.write_dataset(f, DatasetBuilder('test_dataset3', zarr_data, dtype="ascii"))  # ascii dtype specified
+        dset = f['test_dataset3']
+        self.assertIs(dset.dtype.type, np.object_)
+        self.assertEqual(h5py.check_dtype(vlen=dset.dtype), bytes)  # check that the dtype is bytes
+        self.assertTupleEqual(dset.shape, (2,))
+        np.testing.assert_array_equal(dset[:].astype(bytes), zarr_data[:])
+
+    def test_write_zarr_vlen_utf8_dataset(self):
+        # variable length unicode zarr array
+        base_data = np.array(['string1', 'string2'], dtype=str)
+        zarr_data = zarr.open(self.zarr_path, shape=(2,), dtype=object, object_codec=numcodecs.VLenUTF8())
+        zarr_data[:] = base_data
+        io = HDF5IO(self.path, mode='a')
+        f = io._file
+
+        io.write_dataset(f, DatasetBuilder('test_dataset1', zarr_data))  # no dtype specified
+        dset = f['test_dataset1']
+        self.assertIs(dset.dtype.type, np.object_)
+        self.assertEqual(h5py.check_dtype(vlen=dset.dtype), str)  # check that the dtype is str
+        self.assertTupleEqual(dset.shape, (2,))
+        np.testing.assert_array_equal(dset[:].astype(str), base_data)
+
+        io.write_dataset(f, DatasetBuilder('test_dataset2', zarr_data, dtype="utf8"))  # utf8 dtype specified
+        dset = f['test_dataset2']
+        self.assertIs(dset.dtype.type, np.object_)
+        self.assertEqual(h5py.check_dtype(vlen=dset.dtype), str)  # check that the dtype is str
+        self.assertTupleEqual(dset.shape, (2,))
+        np.testing.assert_array_equal(dset[:].astype(str), zarr_data[:])
+
+        io.write_dataset(f, DatasetBuilder('test_dataset3', zarr_data, dtype="ascii"))  # ascii dtype specified
+        dset = f['test_dataset3']
+        self.assertIs(dset.dtype.type, np.object_)
+        self.assertEqual(h5py.check_dtype(vlen=dset.dtype), bytes)  # check that the dtype is bytes
+        self.assertTupleEqual(dset.shape, (2,))
+        np.testing.assert_array_equal(dset[:].astype(str), zarr_data[:])
+
+    def test_write_zarr_vlen_ascii_dataset(self):
+        # variable length ascii zarr array
+        base_data = np.array(['string1', 'string2'], dtype=bytes)
+        zarr_data = zarr.open(self.zarr_path, shape=(2,), dtype=object, object_codec=numcodecs.VLenBytes())
+        zarr_data[:] = base_data
+        io = HDF5IO(self.path, mode='a')
+        f = io._file
+
+        io.write_dataset(f, DatasetBuilder('test_dataset1', zarr_data))  # no dtype specified
+        dset = f['test_dataset1']
+        self.assertIs(dset.dtype.type, np.object_)
+        self.assertEqual(h5py.check_dtype(vlen=dset.dtype), bytes)  # check that the dtype is bytes
+        self.assertTupleEqual(dset.shape, (2,))
+        np.testing.assert_array_equal(dset[:].astype(bytes), base_data)
+
+        io.write_dataset(f, DatasetBuilder('test_dataset2', zarr_data, dtype="utf8"))  # utf8 dtype specified
+        dset = f['test_dataset2']
+        self.assertIs(dset.dtype.type, np.object_)
+        self.assertEqual(h5py.check_dtype(vlen=dset.dtype), str)  # check that the dtype is str
+        self.assertTupleEqual(dset.shape, (2,))
+        np.testing.assert_array_equal(dset[:].astype(bytes), zarr_data[:])
+
+        io.write_dataset(f, DatasetBuilder('test_dataset3', zarr_data, dtype="ascii"))  # ascii dtype specified
+        dset = f['test_dataset3']
+        self.assertIs(dset.dtype.type, np.object_)
+        self.assertEqual(h5py.check_dtype(vlen=dset.dtype), bytes)  # check that the dtype is bytes
+        self.assertTupleEqual(dset.shape, (2,))
+        np.testing.assert_array_equal(dset[:].astype(bytes), zarr_data[:])
 
     def test_write_zarr_dataset_compress_gzip(self):
         base_data = np.arange(50).reshape(5, 10).astype('float32')

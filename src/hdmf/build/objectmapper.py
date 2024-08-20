@@ -20,6 +20,16 @@ from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpe
 from ..spec.spec import BaseStorageSpec
 from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape
 
+try:
+    from zarr import Array as ZarrArray
+    ZARR_INSTALLED = True
+except ImportError:
+    ZARR_INSTALLED = False
+
+
+def _is_zarr_array(value):
+    return ZARR_INSTALLED and isinstance(value, ZarrArray)
+
 _const_arg = '__constructor_arg'
 
 
@@ -206,17 +216,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
         spec_dtype_type = cls.__dtypes[spec_dtype]
         warning_msg = None
         # Numpy Array or Zarr array
-        if (isinstance(value, np.ndarray) or
-                (hasattr(value, 'astype') and hasattr(value, 'dtype'))):
+        # NOTE: Numpy < 2.0 has only fixed-length strings.
+        # Numpy 2.0 introduces variable-length strings (dtype=np.dtypes.StringDType()).
+        # HDMF does not yet do any special handling of numpy arrays with variable-length strings.
+        if isinstance(value, np.ndarray) or _is_zarr_array(value):
             if spec_dtype_type is _unicode:
-                if hasattr(value, 'attrs') and 'zarr_dtype' in value.attrs:
+                if _is_zarr_array(value):
                     # Zarr stores strings as objects, so we cannot convert to unicode dtype
                     ret = value
                 else:
                     ret = value.astype('U')
                 ret_dtype = "utf8"
             elif spec_dtype_type is _ascii:
-                if hasattr(value, 'attrs') and 'zarr_dtype' in value.attrs:
+                if _is_zarr_array(value):
                     # Zarr stores strings as objects, so we cannot convert to unicode dtype
                     ret = value
                 else:
