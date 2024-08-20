@@ -632,7 +632,7 @@ class Container(AbstractContainer):
             # if isinstance(v, DataIO) or not hasattr(v, '__len__') or len(v) > 0:
             if hasattr(v, '__len__'):
                 if isinstance(v, (np.ndarray, list, tuple)):
-                    if len(v) > 0:
+                    if (hasattr(v, 'shape') and len(np.shape(v)) == 0) or len(v) > 0:
                         template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
                 elif v:
                     template += "  {}: {}\n".format(k, self.__smart_str(v, 1))

@@ -698,6 +698,8 @@ class HDF5IO(HDMFIO):
                     d = ReferenceBuilder(target_builder)
                 kwargs['data'] = d
                 kwargs['dtype'] = d.dtype
+            elif h5obj.dtype.kind == 'V':  # scalar compound data type
+                kwargs['data'] = np.array(scalar, dtype=h5obj.dtype)
             else:
                 kwargs["data"] = scalar
         else:
@@ -1227,6 +1229,8 @@ class HDF5IO(HDMFIO):
 
                 return
             # If the compound data type contains only regular data (i.e., no references) then we can write it as usual
+            elif len(np.shape(data)) == 0:
+                dset = self.__scalar_fill__(parent, name, data, options)
             else:
                 dset = self.__list_fill__(parent, name, data, options)
         # Write a dataset containing references, i.e., a region or object reference.
