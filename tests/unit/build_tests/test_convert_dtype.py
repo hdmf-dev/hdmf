@@ -1,11 +1,19 @@
 from datetime import datetime, date
-
 import numpy as np
+import unittest
+
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.build import ObjectMapper
 from hdmf.data_utils import DataChunkIterator
 from hdmf.spec import DatasetSpec, RefSpec, DtypeSpec
 from hdmf.testing import TestCase
+
+try:
+    import zarr
+    import numcodecs
+    SKIP_ZARR_TESTS = False
+except ImportError:
+    SKIP_ZARR_TESTS = True
 
 
 class TestConvertDtype(TestCase):
@@ -551,3 +559,43 @@ class TestConvertDtype(TestCase):
         self.assertEqual(ret, b'2020-11-10')
         self.assertIs(type(ret), bytes)
         self.assertEqual(ret_dtype, 'ascii')
+
+    @unittest.skipIf(SKIP_ZARR_TESTS, "Zarr is not installed")
+    def test_zarr_array_spec_vlen_utf8(self):
+        """Test that converting a zarr array with utf8 dtype for a variable length utf8 dtype spec
+        returns the same object with a utf8 ret_dtype."""
+        spec = DatasetSpec('an example dataset', 'text', name='data')
+
+        value = zarr.array(['a', 'b'])  # fixed length unicode (dtype = <U1)
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertIs(ret.dtype.type, np.str_)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = zarr.array(['a', 'b'], dtype=object, object_codec=numcodecs.VLenUTF8())  # variable length unicode
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertIs(ret.dtype.type, np.object_)
+        self.assertEqual(ret_dtype, 'utf8')
+
+    @unittest.skipIf(SKIP_ZARR_TESTS, "Zarr is not installed")
+    def test_zarr_array_spec_vlen_ascii(self):
+        """Test that converting a zarr array with fixed length utf8 dtype for a variable length ascii dtype spec
+        returns the same object with a ascii ret_dtype."""
+        spec = DatasetSpec('an example dataset', 'ascii', name='data')
+
+        value = zarr.array(['a', 'b'])  # fixed length unicode (dtype = <U1)
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertIs(ret.dtype.type, np.str_)  # the zarr array is not converted
+        self.assertEqual(ret_dtype, 'ascii')  # the dtype of the builder will be ascii
+
+        value = zarr.array(['a', 'b'], dtype=object, object_codec=numcodecs.VLenUTF8())  # variable length unicode
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertIs(ret.dtype.type, np.object_)  # the zarr array is not converted
+        self.assertEqual(ret_dtype, 'ascii')  # the dtype of the builder will be ascii
