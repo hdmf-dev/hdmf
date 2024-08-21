@@ -1513,7 +1513,9 @@ class HDF5IO(HDMFIO):
         else:
             self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.name))
             builder = self.manager.build(container)
+        breakpoint()
         path = self.__get_path(builder)
+
         self.logger.debug("Getting reference at path '%s'" % path)
         if isinstance(container, RegionBuilder):
             region = container.region
@@ -1531,8 +1533,7 @@ class HDF5IO(HDMFIO):
              'default': None},
             returns='the reference', rtype=Reference)
     def _create_ref(self, **kwargs):
-        self.__get_ref(**kwargs)
-
+        return self.__get_ref(**kwargs)
 
     def __is_ref(self, dtype):
         if isinstance(dtype, DtypeSpec):

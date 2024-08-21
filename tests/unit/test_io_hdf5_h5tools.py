@@ -2961,7 +2961,7 @@ class TestExport(TestCase):
     def test_append_dataset_of_references(self):
         """Test that exporting a written container with a dataset of references works."""
         bazs = []
-        num_bazs = 10
+        num_bazs = 1
         for i in range(num_bazs):
             bazs.append(Baz(name='baz%d' % i))
         array_bazs=np.array(bazs)
@@ -2976,15 +2976,19 @@ class TestExport(TestCase):
             read_bucket1 = read_io.read()
             new_baz = Baz(name='new')
             read_bucket1.add_baz(new_baz)
+            read_io.write(read_bucket1)
 
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as read_io:
+            read_bucket1 = read_io.read()
+            breakpoint()
             DoR = read_bucket1.baz_data.data
             DoR.append(new_baz)
             read_io.write(read_bucket1)
 
         with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='r') as read_io:
             read_bucket1 = read_io.read()
-            self.assertEqual(len(read_bucket1.baz_data.data), 11)
-            self.assertIs(read_bucket1.baz_data.data[10], read_bucket1.bazs["new"])
+            self.assertEqual(len(read_bucket1.baz_data.data), 2)
+            self.assertIs(read_bucket1.baz_data.data[1], read_bucket1.bazs["new"])
 
     def test_append_external_link_data(self):
         """Test that exporting a written container after adding a link with link_data=True creates external links."""

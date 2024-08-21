@@ -95,6 +95,10 @@ class BuildManager:
         self.__ref_queue = deque()  # a queue of the ReferenceBuilders that need to be added
 
     @property
+    def builders(self):
+        return self.__builders
+
+    @property
     def namespace_catalog(self):
         return self.__type_map.namespace_catalog
 
@@ -198,7 +202,7 @@ class BuildManager:
         ''' Save the Builder for a given AbstractContainer for future use '''
         container, builder = getargs('container', 'builder', kwargs)
         container_id = self.__conthash__(container)
-        self.__builders[container_id] = builder
+        self.__builders[container.object_id] = builder
         builder_id = self.__bldrhash__(builder)
         self.__containers[builder_id] = container
 
@@ -263,7 +267,7 @@ class BuildManager:
         """Return the prebuilt builder for the given container or None if it does not exist."""
         container = getargs('container', kwargs)
         container_id = self.__conthash__(container)
-        result = self.__builders.get(container_id)
+        result = self.__builders.get(container.object_id)
         return result
 
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
