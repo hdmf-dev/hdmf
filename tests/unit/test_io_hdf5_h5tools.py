@@ -2972,18 +2972,16 @@ class TestExport(TestCase):
         with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='w') as write_io:
             write_io.write(bucket)
 
-        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as read_io:
-            read_bucket1 = read_io.read()
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as append_io:
+            read_bucket1 = append_io.read()
             new_baz = Baz(name='new')
             read_bucket1.add_baz(new_baz)
-            read_io.write(read_bucket1)
+            append_io.write(read_bucket1)
 
-        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as read_io:
-            read_bucket1 = read_io.read()
-            breakpoint()
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as ref_io:
+            read_bucket1 = ref_io.read()
             DoR = read_bucket1.baz_data.data
-            DoR.append(new_baz)
-            read_io.write(read_bucket1)
+            DoR.append(read_bucket1.bazs['new'])
 
         with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='r') as read_io:
             read_bucket1 = read_io.read()

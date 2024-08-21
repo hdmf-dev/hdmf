@@ -11,7 +11,8 @@ from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBu
                      ConstructError)
 from .manager import Proxy, BuildManager
 
-from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
+from .warnings import (MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning,
+                       IncorrectDatasetShapeBuildWarning)
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from ..container import AbstractContainer, Data, DataRegion

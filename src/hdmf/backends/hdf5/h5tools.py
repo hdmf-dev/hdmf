@@ -1513,7 +1513,6 @@ class HDF5IO(HDMFIO):
         else:
             self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.name))
             builder = self.manager.build(container)
-        breakpoint()
         path = self.__get_path(builder)
 
         self.logger.debug("Getting reference at path '%s'" % path)

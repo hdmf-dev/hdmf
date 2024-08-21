@@ -110,11 +110,10 @@ class H5Dataset(HDMFDataset):
 
     def append(self, arg):
         # Get Builder
-        builder = self.io.manager.builders[arg.object_id]
+        builder = self.io.manager.get_builder(arg)
 
         # Get HDF5 Reference
         ref = self.io._create_ref(builder)
-        breakpoint()
         append_data(self.dataset, ref)
 
 
