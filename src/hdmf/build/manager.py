@@ -92,7 +92,7 @@ class BuildManager:
         self.__containers = dict()
         self.__active_builders = set()
         self.__type_map = type_map
-        self.__ref_queue = deque()  # a queue of the ReferenceBuilders that need to be addedq
+        self.__ref_queue = deque()  # a queue of the ReferenceBuilders that need to be added
 
     @property
     def namespace_catalog(self):
