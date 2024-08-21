@@ -7,6 +7,7 @@
 - Adjusted stacklevel of warnings to point to user code when possible. @rly [#1166](https://github.com/hdmf-dev/hdmf/pull/1166)
 - Improved "already exists" error message when adding a container to a `MultiContainerInterface`. @rly [#1165](https://github.com/hdmf-dev/hdmf/pull/1165)
 - Added support to write multidimensional string arrays. @stephprince [#1173](https://github.com/hdmf-dev/hdmf/pull/1173)
+- Add support for appending to a dataset of references. @mavaylon1 [#1135](https://github.com/hdmf-dev/hdmf/pull/1135)
 
 ## HDMF 3.14.3 (July 29, 2024)
 
@@ -24,7 +25,6 @@ is available on build (during the write process), but not on read of a dataset f
 - Support appending to zarr arrays. @mavaylon1 [#1136](https://github.com/hdmf-dev/hdmf/pull/1136)
 - Support specifying "value" key in DatasetSpec. @rly [#1143](https://github.com/hdmf-dev/hdmf/pull/1143)
 - Add support for numpy 2. @rly [#1139](https://github.com/hdmf-dev/hdmf/pull/1139)
-- Add support for appending to a dataset of references. @mavaylon1 [#1135](https://github.com/hdmf-dev/hdmf/pull/1135)
 
 ### Bug fixes
 - Fix iterator increment causing an extra +1 added after the end of completion. @CodyCBakerPhD [#1128](https://github.com/hdmf-dev/hdmf/pull/1128)
