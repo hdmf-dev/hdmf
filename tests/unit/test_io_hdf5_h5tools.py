@@ -806,7 +806,7 @@ class H5IOTest(TestCase):
         self.io.close()
         with HDF5IO(self.path, 'r') as io:
             bldr = io.read_builder()
-            np.array_equal(bldr['test_dataset'].data[()], a)
+            np.testing.assert_array_equal(bldr['test_dataset'].data[()], a)
 
 
 class TestRoundTrip(TestCase):
