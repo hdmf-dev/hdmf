@@ -982,6 +982,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     target_builder = self.__get_target_builder(d, build_manager, builder)
                     bldr_data.append(ReferenceBuilder(target_builder))
                 if isinstance(container.data, H5DataIO):
+                    # This is here to support appending a dataset of references.
                     bldr_data = H5DataIO(bldr_data, **container.data.get_io_params())
             else:
                 self.logger.debug("Setting %s '%s' data to reference builder"
