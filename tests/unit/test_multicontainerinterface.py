@@ -198,7 +198,10 @@ class TestBasic(TestCase):
         """Test that adding a container to the attribute dict correctly adds the container."""
         obj1 = Container('obj1')
         foo = Foo(obj1)
-        msg = "'obj1' already exists in Foo 'Foo'"
+        msg = (f"Cannot add <class 'hdmf.container.Container'> 'obj1' at 0x{id(obj1)} to dict attribute "
+               "'containers' in <class 'tests.unit.test_multicontainerinterface.Foo'> 'Foo'. "
+               f"<class 'hdmf.container.Container'> 'obj1' at 0x{id(obj1)} already exists in 'containers' "
+               "and has the same name.")
         with self.assertRaisesWith(ValueError, msg):
             foo.add_container(obj1)
 

@@ -601,11 +601,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     def __convert_string(self, value, spec):
         """Convert string types to the specified dtype."""
+        def __apply_string_type(value, string_type):
+            if isinstance(value, (list, tuple, np.ndarray, DataIO)):
+                return [__apply_string_type(item, string_type) for item in value]
+            else:
+                return string_type(value)
+
         ret = value
         if isinstance(spec, AttributeSpec):
             if 'text' in spec.dtype:
                 if spec.shape is not None or spec.dims is not None:
-                    ret = list(map(str, value))
+                    ret = __apply_string_type(value, str)
                 else:
                     ret = str(value)
         elif isinstance(spec, DatasetSpec):
@@ -621,7 +627,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         return x.isoformat()  # method works for both date and datetime
                 if string_type is not None:
                     if spec.shape is not None or spec.dims is not None:
-                        ret = list(map(string_type, value))
+                        ret = __apply_string_type(value, string_type)
                     else:
                         ret = string_type(value)
                     # copy over any I/O parameters if they were specified

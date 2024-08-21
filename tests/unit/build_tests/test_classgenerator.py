@@ -180,10 +180,11 @@ class TestDynamicContainer(TestCase):
         baz_spec = GroupSpec('A test extension with no Container class',
                              data_type_def='Baz', data_type_inc=self.bar_spec,
                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
-                                         AttributeSpec('attr4', 'another float attribute', 'float')])
+                                         AttributeSpec('attr4', 'another float attribute', 'float'),
+                                         AttributeSpec('attr_array', 'an array attribute', 'text', shape=(None,)),])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'skip_post_init'}
+        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'attr_array', 'skip_post_init'}
         received_args = set()
 
         for x in get_docval(cls.__init__):
@@ -211,7 +212,7 @@ class TestDynamicContainer(TestCase):
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo', 'skip_post_init'}
+        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'attr_array', 'foo', 'skip_post_init'}
         received_args = set(map(lambda x: x['name'], get_docval(cls.__init__)))
         self.assertSetEqual(expected_args, received_args)
         self.assertEqual(cls.__name__, 'Baz')

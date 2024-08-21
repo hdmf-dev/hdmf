@@ -344,7 +344,7 @@ class HDF5IO(HDMFIO):
         warnings.warn("The copy_file class method is no longer supported and may be removed in a future version of "
                       "HDMF. Please use the export method or h5py.File.copy method instead.",
                       category=DeprecationWarning,
-                      stacklevel=2)
+                      stacklevel=3)
 
         source_filename, dest_filename, expand_external, expand_refs, expand_soft = getargs('source_filename',
                                                                                             'dest_filename',
@@ -1469,7 +1469,7 @@ class HDF5IO(HDMFIO):
             data_shape = io_settings.pop('shape')
         elif hasattr(data, 'shape'):
             data_shape = data.shape
-        elif isinstance(dtype, np.dtype):
+        elif isinstance(dtype, np.dtype) and len(dtype) > 1:  # check if compound dtype
             data_shape = (len(data),)
         else:
             data_shape = get_data_shape(data)
