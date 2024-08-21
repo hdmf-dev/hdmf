@@ -1473,7 +1473,7 @@ class HDF5IO(HDMFIO):
             data_shape = io_settings.pop('shape')
         elif hasattr(data, 'shape'):
             data_shape = data.shape
-        elif isinstance(dtype, np.dtype):
+        elif isinstance(dtype, np.dtype) and len(dtype) > 1:  # check if compound dtype
             data_shape = (len(data),)
         else:
             data_shape = get_data_shape(data)
