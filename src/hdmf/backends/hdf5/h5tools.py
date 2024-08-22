@@ -1518,6 +1518,7 @@ class HDF5IO(HDMFIO):
             self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.name))
             builder = self.manager.build(container)
         path = self.__get_path(builder)
+
         self.logger.debug("Getting reference at path '%s'" % path)
         if isinstance(container, RegionBuilder):
             region = container.region
@@ -1528,6 +1529,14 @@ class HDF5IO(HDMFIO):
             return self.__file[path].regionref[region]
         else:
             return self.__file[path].ref
+
+    @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference',
+             'default': None},
+            {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the region reference indexing object',
+             'default': None},
+            returns='the reference', rtype=Reference)
+    def _create_ref(self, **kwargs):
+        return self.__get_ref(**kwargs)
 
     def __is_ref(self, dtype):
         if isinstance(dtype, DtypeSpec):

@@ -17,7 +17,7 @@ import os
 import logging
 
 from ...array import Array
-from ...data_utils import DataIO, AbstractDataChunkIterator
+from ...data_utils import DataIO, AbstractDataChunkIterator, append_data
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
@@ -107,6 +107,20 @@ class H5Dataset(HDMFDataset):
     @property
     def shape(self):
         return self.dataset.shape
+
+    def append(self, arg):
+        # Get Builder
+        builder = self.io.manager.get_builder(arg)
+        if builder is None:
+            raise ValueError(
+                "The container being appended to the dataset has not yet been built. "
+                "Please write the container to the file, then open the modified file, and "
+                "append the read container to the dataset."
+            )
+
+        # Get HDF5 Reference
+        ref = self.io._create_ref(builder)
+        append_data(self.dataset, ref)
 
 
 class DatasetOfReferences(H5Dataset, ReferenceResolver, metaclass=ABCMeta):

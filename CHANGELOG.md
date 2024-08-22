@@ -7,6 +7,7 @@
 - Adjusted stacklevel of warnings to point to user code when possible. @rly [#1166](https://github.com/hdmf-dev/hdmf/pull/1166)
 - Improved "already exists" error message when adding a container to a `MultiContainerInterface`. @rly [#1165](https://github.com/hdmf-dev/hdmf/pull/1165)
 - Added support to write multidimensional string arrays. @stephprince [#1173](https://github.com/hdmf-dev/hdmf/pull/1173)
+- Add support for appending to a dataset of references. @mavaylon1 [#1135](https://github.com/hdmf-dev/hdmf/pull/1135)
 
 ### Bug fixes
 - Fixed issue where scalar datasets with a compound data type were being written as non-scalar datasets @stephprince [#1176](https://github.com/hdmf-dev/hdmf/pull/1176)
