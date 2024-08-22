@@ -165,7 +165,7 @@ class HDMFDataset(metaclass=ExtenderMeta):
 
     def append(self, arg):
         """
-        Override this method for new backends, i.e., not HDF5 and Zarr.
+        Override this method to support appending to backend-specific datasets
         """
         pass # pragma: no cover
 
