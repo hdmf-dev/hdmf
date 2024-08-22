@@ -144,6 +144,16 @@ class H5IOTest(TestCase):
             read_a = read_a.decode('utf-8')
         self.assertEqual(read_a, a)
 
+    def test_write_dataset_scalar_compound(self):
+        cmpd_dtype = np.dtype([('x', np.int32), ('y', np.float64)])
+        a = np.array((1, 0.1), dtype=cmpd_dtype)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a,
+                                                     dtype=[DtypeSpec('x', doc='x', dtype='int32'),
+                                                            DtypeSpec('y', doc='y', dtype='float64')]))
+        dset = self.f['test_dataset']
+        self.assertTupleEqual(dset.shape, ())
+        self.assertEqual(dset[()].tolist(), a.tolist())
+
     ##########################################
     #  write_dataset tests: TermSetWrapper
     ##########################################
@@ -786,6 +796,17 @@ class H5IOTest(TestCase):
             else:
                 self.assertEqual(str(bldr['test_dataset'].data),
                                  '<HDF5 dataset "test_dataset": shape (5,), type "|O">')
+
+    def test_read_scalar_compound(self):
+        cmpd_dtype = np.dtype([('x', np.int32), ('y', np.float64)])
+        a = np.array((1, 0.1), dtype=cmpd_dtype)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a,
+                                                     dtype=[DtypeSpec('x', doc='x', dtype='int32'),
+                                                            DtypeSpec('y', doc='y', dtype='float64')]))
+        self.io.close()
+        with HDF5IO(self.path, 'r') as io:
+            bldr = io.read_builder()
+            np.testing.assert_array_equal(bldr['test_dataset'].data[()], a)
 
 
 class TestRoundTrip(TestCase):
