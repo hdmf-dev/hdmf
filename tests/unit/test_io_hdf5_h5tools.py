@@ -3034,6 +3034,27 @@ class TestExport(TestCase):
             self.assertEqual(len(read_bucket1.baz_data.data), 2)
             self.assertIs(read_bucket1.baz_data.data[1], read_bucket1.bazs["new"])
 
+    def test_append_dataset_of_references_orphaned_target(self):
+        bazs = []
+        num_bazs = 1
+        for i in range(num_bazs):
+            bazs.append(Baz(name='baz%d' % i))
+        array_bazs=np.array(bazs)
+        wrapped_bazs = H5DataIO(array_bazs, maxshape=(None,))
+        baz_data = BazData(name='baz_data1', data=wrapped_bazs)
+        bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_data=baz_data)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='w') as write_io:
+            write_io.write(bucket)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as ref_io:
+            read_bucket1 = ref_io.read()
+            new_baz = Baz(name='new')
+            read_bucket1.add_baz(new_baz)
+            DoR = read_bucket1.baz_data.data
+            with self.assertRaises(ValueError):
+                DoR.append(read_bucket1.bazs['new'])
+
     def test_append_external_link_data(self):
         """Test that exporting a written container after adding a link with link_data=True creates external links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
