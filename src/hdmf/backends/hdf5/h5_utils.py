@@ -111,6 +111,12 @@ class H5Dataset(HDMFDataset):
     def append(self, arg):
         # Get Builder
         builder = self.io.manager.get_builder(arg)
+        if builder is None:
+            raise ValueError(
+                "The container being appended to the dataset has not yet been built. "
+                "Please write the container to the file, then open the modified file, and "
+                "append the read container to the dataset."
+            )
 
         # Get HDF5 Reference
         ref = self.io._create_ref(builder)
