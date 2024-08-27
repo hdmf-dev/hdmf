@@ -1,9 +1,16 @@
 # HDMF Changelog
 
-## HDMF 3.14.4 (Upcoming)
+## HDMF 3.14.4 (August 22, 2024)
 
 ### Enhancements
 - Added support to append to a dataset of references for HDMF-Zarr. @mavaylon1 [#1157](https://github.com/hdmf-dev/hdmf/pull/1157)
+- Adjusted stacklevel of warnings to point to user code when possible. @rly [#1166](https://github.com/hdmf-dev/hdmf/pull/1166)
+- Improved "already exists" error message when adding a container to a `MultiContainerInterface`. @rly [#1165](https://github.com/hdmf-dev/hdmf/pull/1165)
+- Added support to write multidimensional string arrays. @stephprince [#1173](https://github.com/hdmf-dev/hdmf/pull/1173)
+- Add support for appending to a dataset of references. @mavaylon1 [#1135](https://github.com/hdmf-dev/hdmf/pull/1135)
+
+### Bug fixes
+- Fixed issue where scalar datasets with a compound data type were being written as non-scalar datasets @stephprince [#1176](https://github.com/hdmf-dev/hdmf/pull/1176)
 
 ### Bug fixes
 - Fix H5DataIO not exposing `maxshape` on non-dci dsets. @cboulay [#1149](https://github.com/hdmf-dev/hdmf/pull/1149)
@@ -14,6 +21,8 @@
 - Added new attribute "dimension_labels" on `DatasetBuilder` which specifies the names of the dimensions used in the
 dataset based on the shape of the dataset data and the dimension names in the spec for the data type. This attribute
 is available on build (during the write process), but not on read of a dataset from a file. @rly [#1081](https://github.com/hdmf-dev/hdmf/pull/1081)
+- Speed up loading namespaces by skipping register_type when already registered. @magland [#1102](https://github.com/hdmf-dev/hdmf/pull/1102)
+- Speed up namespace loading: return a shallow copy rather than a deep copy in build_const_args. @magland [#1103](https://github.com/hdmf-dev/hdmf/pull/1103)
 
 ## HDMF 3.14.2 (July 7, 2024)
 

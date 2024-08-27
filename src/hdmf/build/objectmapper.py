@@ -10,8 +10,11 @@ from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, Refere
 from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError, ContainerConfigurationError,
                      ConstructError)
 from .manager import Proxy, BuildManager
+
 from .warnings import (MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning,
                        IncorrectDatasetShapeBuildWarning)
+from hdmf.backends.hdf5.h5_utils import H5DataIO
+
 from ..container import AbstractContainer, Data, DataRegion
 from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
@@ -598,11 +601,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     def __convert_string(self, value, spec):
         """Convert string types to the specified dtype."""
+        def __apply_string_type(value, string_type):
+            if isinstance(value, (list, tuple, np.ndarray, DataIO)):
+                return [__apply_string_type(item, string_type) for item in value]
+            else:
+                return string_type(value)
+
         ret = value
         if isinstance(spec, AttributeSpec):
             if 'text' in spec.dtype:
                 if spec.shape is not None or spec.dims is not None:
-                    ret = list(map(str, value))
+                    ret = __apply_string_type(value, str)
                 else:
                     ret = str(value)
         elif isinstance(spec, DatasetSpec):
@@ -618,7 +627,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         return x.isoformat()  # method works for both date and datetime
                 if string_type is not None:
                     if spec.shape is not None or spec.dims is not None:
-                        ret = list(map(string_type, value))
+                        ret = __apply_string_type(value, string_type)
                     else:
                         ret = string_type(value)
                     # copy over any I/O parameters if they were specified
@@ -972,6 +981,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 for d in container.data:
                     target_builder = self.__get_target_builder(d, build_manager, builder)
                     bldr_data.append(ReferenceBuilder(target_builder))
+                if isinstance(container.data, H5DataIO):
+                    # This is here to support appending a dataset of references.
+                    bldr_data = H5DataIO(bldr_data, **container.data.get_io_params())
             else:
                 self.logger.debug("Setting %s '%s' data to reference builder"
                                   % (builder.__class__.__name__, builder.name))

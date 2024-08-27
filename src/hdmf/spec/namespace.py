@@ -50,13 +50,13 @@ class SpecNamespace(dict):
             self['full_name'] = full_name
         if version == str(SpecNamespace.UNVERSIONED):
             # the unversioned version may be written to file as a string and read from file as a string
-            warn("Loaded namespace '%s' is unversioned. Please notify the extension author." % name, stacklevel=2)
+            warn(f"Loaded namespace '{name}' is unversioned. Please notify the extension author.")
             version = SpecNamespace.UNVERSIONED
         if version is None:
             # version is required on write -- see YAMLSpecWriter.write_namespace -- but can be None on read in order to
             # be able to read older files with extensions that are missing the version key.
-            warn(("Loaded namespace '%s' is missing the required key 'version'. Version will be set to '%s'. "
-                  "Please notify the extension author.") % (name, SpecNamespace.UNVERSIONED), stacklevel=2)
+            warn(f"Loaded namespace '{name}' is missing the required key 'version'. Version will be set to "
+                 f"'{SpecNamespace.UNVERSIONED}'. Please notify the extension author.")
             version = SpecNamespace.UNVERSIONED
         self['version'] = version
         if date is not None:
@@ -466,15 +466,19 @@ class NamespaceCatalog:
         return included_types
 
     def __register_type(self, ndt, inc_ns, catalog, registered_types):
-        spec = inc_ns.get_spec(ndt)
-        spec_file = inc_ns.catalog.get_spec_source_file(ndt)
-        self.__register_dependent_types(spec, inc_ns, catalog, registered_types)
-        if isinstance(spec, DatasetSpec):
-            built_spec = self.dataset_spec_cls.build_spec(spec)
+        if ndt in registered_types:
+            # already registered
+            pass
         else:
-            built_spec = self.group_spec_cls.build_spec(spec)
-        registered_types.add(ndt)
-        catalog.register_spec(built_spec, spec_file)
+            spec = inc_ns.get_spec(ndt)
+            spec_file = inc_ns.catalog.get_spec_source_file(ndt)
+            self.__register_dependent_types(spec, inc_ns, catalog, registered_types)
+            if isinstance(spec, DatasetSpec):
+                built_spec = self.dataset_spec_cls.build_spec(spec)
+            else:
+                built_spec = self.group_spec_cls.build_spec(spec)
+            registered_types.add(ndt)
+            catalog.register_spec(built_spec, spec_file)
 
     def __register_dependent_types(self, spec, inc_ns, catalog, registered_types):
         """Ensure that classes for all types used by this type are registered
@@ -529,7 +533,7 @@ class NamespaceCatalog:
                 if ns['version'] != self.__namespaces.get(ns['name'])['version']:
                     # warn if the cached namespace differs from the already loaded namespace
                     warn("Ignoring cached namespace '%s' version %s because version %s is already loaded."
-                         % (ns['name'], ns['version'], self.__namespaces.get(ns['name'])['version']), stacklevel=2)
+                         % (ns['name'], ns['version'], self.__namespaces.get(ns['name'])['version']))
             else:
                 to_load.append(ns)
         # now load specs into namespace
