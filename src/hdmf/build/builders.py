@@ -330,6 +330,9 @@ class DatasetBuilder(BaseBuilder):
              'doc': 'The datatype of this dataset.', 'default': None},
             {'name': 'attributes', 'type': dict,
              'doc': 'A dictionary of attributes to create in this dataset.', 'default': dict()},
+            {'name': 'spec_shapes', 'type': tuple,
+             'doc': ('The shape(s) defined in the spec.'),
+             'default': None},
             {'name': 'dimension_labels', 'type': tuple,
              'doc': ('A list of labels for each dimension of this dataset from the spec. Currently this is '
                      'supplied only on build.'),
@@ -341,21 +344,26 @@ class DatasetBuilder(BaseBuilder):
             {'name': 'source', 'type': str, 'doc': 'The source of the data in this builder.', 'default': None})
     def __init__(self, **kwargs):
         """ Create a Builder object for a dataset """
-        name, data, dtype, attributes, dimension_labels, maxshape, chunks, parent, source = getargs(
-            'name', 'data', 'dtype', 'attributes', 'dimension_labels', 'maxshape', 'chunks', 'parent', 'source',
-            kwargs
-        )
+        name, data, dtype, attributes, spec_shapes, dimension_labels, maxshape, chunks, parent, source = getargs(
+            'name', 'data', 'dtype', 'attributes', 'spec_shapes', 'dimension_labels', 'maxshape', 'chunks',
+            'parent', 'source', kwargs)
         super().__init__(name, attributes, parent, source)
         self['data'] = data
         self['attributes'] = _copy.copy(attributes)
         self.__dimension_labels = dimension_labels
         self.__chunks = chunks
+        self.__spec_shapes = spec_shapes
         self.__maxshape = maxshape
         if isinstance(data, BaseBuilder):
             if dtype is None:
                 dtype = self.OBJECT_REF_TYPE
         self.__dtype = dtype
         self.__name = name
+
+    @property
+    def spec_shapes(self):
+        """The shapes defined in the spec."""
+        return self.__spec_shapes
 
     @property
     def data(self):

@@ -343,6 +343,70 @@ def get_foo_buildmanager(my_data_dtype="int"):
     manager = BuildManager(type_map)
     return manager
 
+############################################
+# Qux: A test class with variable data shapes
+############################################
+class QuxData(Data):
+    pass
+
+
+class QuxBucket(Container):
+    "PseudoFile"
+    @docval(
+        {"name": "name", "type": str, "doc": "the name of this bucket"},
+        {"name": "qux_data", "type": QuxData, "doc": "Data with user defined shape."},
+    )
+    def __init__(self, **kwargs):
+        name, qux_data = getargs("name", "qux_data", kwargs)
+        super().__init__(name=name)
+        self.__qux_data = qux_data
+        self.__qux_data.parent = self
+
+    @property
+    def qux_data(self):
+        return self.__qux_data
+
+
+def get_qux_buildmanager(shape):
+    qux_data_spec = DatasetSpec(
+        doc="A test dataset of references specification with a data type",
+        name="qux_data",
+        data_type_def="QuxData",
+        shape=shape,
+        dtype='int'
+    )
+
+    qux_bucket_spec = GroupSpec(
+        doc="A test group specification for a data type containing data type",
+        data_type_def="QuxBucket",
+        datasets=[
+            DatasetSpec(doc="doc", data_type_inc="QuxData"),
+        ],
+    )
+
+    spec_catalog = SpecCatalog()
+    spec_catalog.register_spec(qux_data_spec, "test.yaml")
+    spec_catalog.register_spec(qux_bucket_spec, "test.yaml")
+
+    namespace = SpecNamespace(
+        "a test namespace",
+        CORE_NAMESPACE,
+        [{"source": "test.yaml"}],
+        version="0.1.0",
+        catalog=spec_catalog,
+    )
+
+    namespace_catalog = NamespaceCatalog()
+    namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+
+    type_map = TypeMap(namespace_catalog)
+    type_map.register_container_type(CORE_NAMESPACE, "QuxData", QuxData)
+    type_map.register_container_type(CORE_NAMESPACE, "QuxBucket", QuxBucket)
+
+    manager = BuildManager(type_map)
+    return manager
+
+
 
 ############################################
 #  Baz example data containers and specs
