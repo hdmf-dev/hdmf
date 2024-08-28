@@ -791,6 +791,26 @@ class TestRoundTrip(TestCase):
             self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
+    def test_roundtrip_basic_append(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='a') as io:
+            read_foofile = io.read()
+            data = read_foofile.buckets['bucket1'].foos['foo1'].my_data
+            shape = list(data.shape)
+            shape[0] += 1
+            data.resize(shape)
+            data[-1] = 6
+            self.assertListEqual(read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist(),
+                                 [1, 2, 3, 4, 5, 6])
+
+
     def test_roundtrip_empty_dataset(self):
         foo1 = Foo('foo1', [], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
