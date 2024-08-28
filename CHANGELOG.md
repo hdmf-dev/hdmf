@@ -11,6 +11,7 @@
 
 ### Bug fixes
 - Fixed issue where scalar datasets with a compound data type were being written as non-scalar datasets @stephprince [#1176](https://github.com/hdmf-dev/hdmf/pull/1176)
+- Fixed H5DataIO not exposing `maxshape` on non-dci dsets. @cboulay [#1149](https://github.com/hdmf-dev/hdmf/pull/1149)
 
 ## HDMF 3.14.3 (July 29, 2024)
 

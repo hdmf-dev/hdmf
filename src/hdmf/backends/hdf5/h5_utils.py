@@ -21,7 +21,7 @@ from ...data_utils import DataIO, AbstractDataChunkIterator, append_data
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
-from ...utils import docval, getargs, popargs, get_docval
+from ...utils import docval, getargs, popargs, get_docval, get_data_shape
 
 
 class HDF5IODataChunkIteratorQueue(deque):
@@ -672,3 +672,14 @@ class H5DataIO(DataIO):
         if isinstance(self.data, Dataset) and not self.data.id.valid:
             return False
         return super().valid
+
+    @property
+    def maxshape(self):
+        if 'maxshape' in self.io_settings:
+            return self.io_settings['maxshape']
+        elif hasattr(self.data, 'maxshape'):
+            return self.data.maxshape
+        elif hasattr(self, "shape"):
+            return self.shape
+        else:
+            return get_data_shape(self.data)

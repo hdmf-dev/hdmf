@@ -607,6 +607,12 @@ class H5IOTest(TestCase):
     #############################################
     #  H5DataIO general
     #############################################
+    def test_pass_through_of_maxshape_on_h5dataset(self):
+        k = 10
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', np.arange(k), attributes={}))
+        dset = H5DataIO(self.f['test_dataset'])
+        self.assertEqual(dset.maxshape, (k,))
+
     def test_warning_on_non_gzip_compression(self):
         # Make sure no warning is issued when using gzip
         with warnings.catch_warnings(record=True) as w:
@@ -3762,6 +3768,14 @@ class H5DataIOTests(TestCase):
         dataio = H5DataIO(shape=(10, 10), dtype=int)
         with self.assertRaisesRegex(ValueError, "Setting data when dtype and shape are not None is not supported"):
             dataio.data = list()
+
+    def test_dataio_maxshape(self):
+        dataio = H5DataIO(data=np.arange(10), maxshape=(None,))
+        self.assertEqual(dataio.maxshape, (None,))
+
+    def test_dataio_maxshape_from_data(self):
+        dataio = H5DataIO(data=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        self.assertEqual(dataio.maxshape, (10,))
 
 
 def test_hdf5io_can_read():
