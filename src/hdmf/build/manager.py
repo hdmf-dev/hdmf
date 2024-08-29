@@ -550,6 +550,8 @@ class TypeMap:
 
     def __check_dependent_types(self, spec, namespace):
         """Ensure that classes for all types used by this type exist in this namespace and generate them if not.
+
+        `spec` should be a GroupSpec or DatasetSpec in the `namespace`
         """
         def __check_dependent_types_helper(spec, namespace):
             if isinstance(spec, (GroupSpec, DatasetSpec)):
@@ -566,19 +568,18 @@ class TypeMap:
         if spec.data_type_inc is not None:
             self.get_dt_container_cls(spec.data_type_inc, namespace)
 
-        if isinstance(spec, (GroupSpec, DatasetSpec)):
-            # handle attributes that have a reference dtype
-            for attr_spec in spec.attributes:
-                if isinstance(attr_spec.dtype, RefSpec):
-                    self.get_dt_container_cls(attr_spec.dtype.target_type, namespace)
-            # handle datasets that have a reference dtype
-            if isinstance(spec, DatasetSpec):
-                if isinstance(spec.dtype, RefSpec):
-                    self.get_dt_container_cls(spec.dtype.target_type, namespace)
-            # recurse into nested types
-            if isinstance(spec, GroupSpec):
-                for child_spec in (spec.groups + spec.datasets + spec.links):
-                    __check_dependent_types_helper(child_spec, namespace)
+        # handle attributes that have a reference dtype
+        for attr_spec in spec.attributes:
+            if isinstance(attr_spec.dtype, RefSpec):
+                self.get_dt_container_cls(attr_spec.dtype.target_type, namespace)
+        # handle datasets that have a reference dtype
+        if isinstance(spec, DatasetSpec):
+            if isinstance(spec.dtype, RefSpec):
+                self.get_dt_container_cls(spec.dtype.target_type, namespace)
+        # recurse into nested types
+        if isinstance(spec, GroupSpec):
+            for child_spec in (spec.groups + spec.datasets + spec.links):
+                __check_dependent_types_helper(child_spec, namespace)
 
     def __get_parent_cls(self, namespace, data_type, spec):
         dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
