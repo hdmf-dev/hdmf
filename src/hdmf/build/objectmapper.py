@@ -931,6 +931,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 for j, subt in refs:
                     tmp[j] = self.__get_ref_builder(builder, subt.dtype, None, row[j], build_manager)
                 bldr_data.append(tuple(tmp))
+            if isinstance(container.data, H5DataIO):
+                # This is here to support appending a dataset of references.
+                bldr_data = H5DataIO(bldr_data, **container.data.get_io_params())
             builder.data = bldr_data
 
         return _filler
@@ -949,6 +952,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 else:
                     target_builder = self.__get_target_builder(d, build_manager, builder)
                     bldr_data.append(ReferenceBuilder(target_builder))
+            if isinstance(container.data, H5DataIO):
+                # This is here to support appending a dataset of references.
+                bldr_data = H5DataIO(bldr_data, **container.data.get_io_params())
             builder.data = bldr_data
 
         return _filler
