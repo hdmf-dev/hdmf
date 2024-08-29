@@ -7,7 +7,7 @@ from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBu
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
 from ..term_set import TypeConfigurator
-from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog
+from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, RefSpec
 from ..spec.spec import BaseStorageSpec
 from ..utils import docval, getargs, ExtenderMeta, get_docval
 
@@ -480,6 +480,7 @@ class TypeMap:
         load_namespaces here has the advantage of being able to keep track of type dependencies across namespaces.
         '''
         deps = self.__ns_catalog.load_namespaces(**kwargs)
+        # register container types for each dependent type in each dependent namespace
         for new_ns, ns_deps in deps.items():
             for src_ns, types in ns_deps.items():
                 for dt in types:
@@ -529,7 +530,7 @@ class TypeMap:
                     namespace = ns_key
                     break
         if namespace is None:
-            raise ValueError("Namespace could not be resolved.")
+            raise ValueError(f"Namespace could not be resolved for data type '{data_type}'.")
 
         cls = self.__get_container_cls(namespace, data_type)
 
@@ -564,9 +565,20 @@ class TypeMap:
 
         if spec.data_type_inc is not None:
             self.get_dt_container_cls(spec.data_type_inc, namespace)
-        if isinstance(spec, GroupSpec):
-            for child_spec in (spec.groups + spec.datasets + spec.links):
-                __check_dependent_types_helper(child_spec, namespace)
+
+        if isinstance(spec, (GroupSpec, DatasetSpec)):
+            # handle attributes that have a reference dtype
+            for attr_spec in spec.attributes:
+                if isinstance(attr_spec.dtype, RefSpec):
+                    self.get_dt_container_cls(attr_spec.dtype.target_type, namespace)
+            # handle datasets that have a reference dtype
+            if isinstance(spec, DatasetSpec):
+                if isinstance(spec.dtype, RefSpec):
+                    self.get_dt_container_cls(spec.dtype.target_type, namespace)
+            # recurse into nested types
+            if isinstance(spec, GroupSpec):
+                for child_spec in (spec.groups + spec.datasets + spec.links):
+                    __check_dependent_types_helper(child_spec, namespace)
 
     def __get_parent_cls(self, namespace, data_type, spec):
         dt_hier = self.__ns_catalog.get_hierarchy(namespace, data_type)
