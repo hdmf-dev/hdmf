@@ -629,12 +629,8 @@ class Container(AbstractContainer):
             template += "\nFields:\n"
         for k in sorted(self.fields):  # sorted to enable tests
             v = self.fields[k]
-            # if isinstance(v, DataIO) or not hasattr(v, '__len__') or len(v) > 0:
             if hasattr(v, '__len__'):
-                if isinstance(v, (np.ndarray, list, tuple)):
-                    if len(v) > 0:
-                        template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
-                elif v:
+                if isinstance(v, (np.ndarray, list, tuple)) or v:
                     template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
             else:
                 template += "  {}: {}\n".format(k, v)
@@ -894,7 +890,7 @@ class Data(AbstractContainer):
         warn(
             "Data.set_dataio() is deprecated. Please use Data.set_data_io() instead.",
             DeprecationWarning,
-            stacklevel=2,
+            stacklevel=3,
         )
         dataio = getargs('dataio', kwargs)
         dataio.data = self.__data
@@ -1142,7 +1138,9 @@ class MultiContainerInterface(Container):
                     # still need to mark self as modified
                     self.set_modified()
                 if tmp.name in d:
-                    msg = "'%s' already exists in %s '%s'" % (tmp.name, cls.__name__, self.name)
+                    msg = (f"Cannot add {tmp.__class__} '{tmp.name}' at 0x{id(tmp)} to dict attribute '{attr_name}' in "
+                           f"{cls} '{self.name}'. {d[tmp.name].__class__} '{tmp.name}' at 0x{id(d[tmp.name])} "
+                           f"already exists in '{attr_name}' and has the same name.")
                     raise ValueError(msg)
                 d[tmp.name] = tmp
             return container

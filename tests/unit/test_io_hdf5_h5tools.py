@@ -27,7 +27,7 @@ from hdmf import Data, docval
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
-from hdmf.spec.spec import GroupSpec
+from hdmf.spec.spec import GroupSpec, DtypeSpec
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common.resources import HERD
 from hdmf.term_set import TermSet, TermSetWrapper
@@ -148,6 +148,16 @@ class H5IOTest(TestCase):
             read_a = read_a.decode('utf-8')
         self.assertEqual(read_a, a)
 
+    def test_write_dataset_scalar_compound(self):
+        cmpd_dtype = np.dtype([('x', np.int32), ('y', np.float64)])
+        a = np.array((1, 0.1), dtype=cmpd_dtype)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a,
+                                                     dtype=[DtypeSpec('x', doc='x', dtype='int32'),
+                                                            DtypeSpec('y', doc='y', dtype='float64')]))
+        dset = self.f['test_dataset']
+        self.assertTupleEqual(dset.shape, ())
+        self.assertEqual(dset[()].tolist(), a.tolist())
+
     ##########################################
     #  write_dataset tests: TermSetWrapper
     ##########################################
@@ -167,6 +177,31 @@ class H5IOTest(TestCase):
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a.tolist(), attributes={}))
         dset = self.f['test_dataset']
         self.assertTrue(np.all(dset[:] == a))
+
+    def test_write_dataset_lol_strings(self):
+        a = [['aa', 'bb'], ['cc', 'dd']]
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
+        dset = self.f['test_dataset']
+        decoded_dset = [[item.decode('utf-8') if isinstance(item, bytes) else item for item in sublist]
+                        for sublist in dset[:]]
+        self.assertTrue(decoded_dset == a)
+
+    def test_write_dataset_list_compound_datatype(self):
+        a = np.array([(1, 2, 0.5), (3, 4, 0.5)], dtype=[('x', 'int'), ('y', 'int'), ('z', 'float')])
+        dset_builder = DatasetBuilder(
+                    name='test_dataset',
+                    data=a.tolist(),
+                    attributes={},
+                    dtype=[
+                        DtypeSpec('x', doc='x', dtype='int'),
+                        DtypeSpec('y', doc='y', dtype='int'),
+                        DtypeSpec('z', doc='z', dtype='float'),
+                    ],
+                )
+        self.io.write_dataset(self.f, dset_builder)
+        dset = self.f['test_dataset']
+        for field in a.dtype.names:
+            self.assertTrue(np.all(dset[field][:] == a[field]))
 
     def test_write_dataset_list_compress_gzip(self):
         a = H5DataIO(np.arange(30).reshape(5, 2, 3),
@@ -576,6 +611,12 @@ class H5IOTest(TestCase):
     #############################################
     #  H5DataIO general
     #############################################
+    def test_pass_through_of_maxshape_on_h5dataset(self):
+        k = 10
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', np.arange(k), attributes={}))
+        dset = H5DataIO(self.f['test_dataset'])
+        self.assertEqual(dset.maxshape, (k,))
+
     def test_warning_on_non_gzip_compression(self):
         # Make sure no warning is issued when using gzip
         with warnings.catch_warnings(record=True) as w:
@@ -765,6 +806,17 @@ class H5IOTest(TestCase):
             else:
                 self.assertEqual(str(bldr['test_dataset'].data),
                                  '<HDF5 dataset "test_dataset": shape (5,), type "|O">')
+
+    def test_read_scalar_compound(self):
+        cmpd_dtype = np.dtype([('x', np.int32), ('y', np.float64)])
+        a = np.array((1, 0.1), dtype=cmpd_dtype)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a,
+                                                     dtype=[DtypeSpec('x', doc='x', dtype='int32'),
+                                                            DtypeSpec('y', doc='y', dtype='float64')]))
+        self.io.close()
+        with HDF5IO(self.path, 'r') as io:
+            bldr = io.read_builder()
+            np.testing.assert_array_equal(bldr['test_dataset'].data[()], a)
 
 
 class TestRoundTrip(TestCase):
@@ -2982,6 +3034,57 @@ class TestExport(TestCase):
             self.assertEqual(f['foofile_data'].file.filename, self.paths[1])
             self.assertIsInstance(f.attrs['foo_ref_attr'], h5py.Reference)
 
+    def test_append_dataset_of_references(self):
+        """Test that exporting a written container with a dataset of references works."""
+        bazs = []
+        num_bazs = 1
+        for i in range(num_bazs):
+            bazs.append(Baz(name='baz%d' % i))
+        array_bazs=np.array(bazs)
+        wrapped_bazs = H5DataIO(array_bazs, maxshape=(None,))
+        baz_data = BazData(name='baz_data1', data=wrapped_bazs)
+        bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_data=baz_data)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='w') as write_io:
+            write_io.write(bucket)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as append_io:
+            read_bucket1 = append_io.read()
+            new_baz = Baz(name='new')
+            read_bucket1.add_baz(new_baz)
+            append_io.write(read_bucket1)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as ref_io:
+            read_bucket1 = ref_io.read()
+            DoR = read_bucket1.baz_data.data
+            DoR.append(read_bucket1.bazs['new'])
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='r') as read_io:
+            read_bucket1 = read_io.read()
+            self.assertEqual(len(read_bucket1.baz_data.data), 2)
+            self.assertIs(read_bucket1.baz_data.data[1], read_bucket1.bazs["new"])
+
+    def test_append_dataset_of_references_orphaned_target(self):
+        bazs = []
+        num_bazs = 1
+        for i in range(num_bazs):
+            bazs.append(Baz(name='baz%d' % i))
+        array_bazs=np.array(bazs)
+        wrapped_bazs = H5DataIO(array_bazs, maxshape=(None,))
+        baz_data = BazData(name='baz_data1', data=wrapped_bazs)
+        bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_data=baz_data)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='w') as write_io:
+            write_io.write(bucket)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as ref_io:
+            read_bucket1 = ref_io.read()
+            new_baz = Baz(name='new')
+            read_bucket1.add_baz(new_baz)
+            DoR = read_bucket1.baz_data.data
+            with self.assertRaises(ValueError):
+                DoR.append(read_bucket1.bazs['new'])
+
     def test_append_external_link_data(self):
         """Test that exporting a written container after adding a link with link_data=True creates external links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
@@ -3689,6 +3792,14 @@ class H5DataIOTests(TestCase):
         dataio = H5DataIO(shape=(10, 10), dtype=int)
         with self.assertRaisesRegex(ValueError, "Setting data when dtype and shape are not None is not supported"):
             dataio.data = list()
+
+    def test_dataio_maxshape(self):
+        dataio = H5DataIO(data=np.arange(10), maxshape=(None,))
+        self.assertEqual(dataio.maxshape, (None,))
+
+    def test_dataio_maxshape_from_data(self):
+        dataio = H5DataIO(data=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        self.assertEqual(dataio.maxshape, (10,))
 
 
 def test_hdf5io_can_read():
