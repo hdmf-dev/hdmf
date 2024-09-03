@@ -1,5 +1,9 @@
 # HDMF Changelog
 
+## HDMF 4.0.0 (Upcoming)
+### Enhancements
+- Added support for datasets to be expandable by default for the HDF5 backend. @mavaylon1 [#1158](https://github.com/hdmf-dev/hdmf/pull/1158)
+
 ## HDMF 3.14.4 (August 22, 2024)
 
 ### Enhancements
