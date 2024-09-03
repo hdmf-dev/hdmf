@@ -1134,33 +1134,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         raise BuildError(builder, msg) from ex
                     self.logger.debug("        Adding untyped dataset for spec name %s and adding attributes"
                                       % repr(spec.name))
-                    try:
-                        expand = True
-                        dimension_labels, matched_shape = self.__get_spec_info(data,
-                                                                               spec.shape,
-                                                                               spec.dims,
-                                                                               dtype)
-                    except InvalidDataIOError:
-                        # This try/except is for tests overwriting data in H5DataIO, i.e., raise error
-                        # since this is not allowed.
-                        # ---> test_io_hdf5_h5tools.py::HDF5IOEmptyDataset::test_overwrite_dataset
-                        expand = False
 
-                    if expand:
-                        sub_builder = DatasetBuilder(spec.name,
-                                                     data,
-                                                     parent=builder,
-                                                     source=source,
-                                                     dtype=dtype,
-                                                     spec_shapes=matched_shape,
-                                                     dimension_labels=dimension_labels,
-                                                 )
-                    else:
-                        sub_builder = DatasetBuilder(spec.name,
-                                                     data,
-                                                     parent=builder,
-                                                     source=source,
-                                                     dtype=dtype)
+                    dimension_labels, matched_shape = self.__get_spec_info(data,
+                                                                           spec.shape,
+                                                                           spec.dims,
+                                                                           dtype)
+
+                    sub_builder = DatasetBuilder(spec.name,
+                                                 data,
+                                                 parent=builder,
+                                                 source=source,
+                                                 dtype=dtype,
+                                                 spec_shapes=matched_shape,
+                                                 dimension_labels=dimension_labels)
                     builder.set_dataset(sub_builder)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source, export)
             else:
