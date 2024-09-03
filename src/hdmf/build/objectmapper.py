@@ -17,7 +17,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from ..container import AbstractContainer, Data, DataRegion
 from ..term_set import TermSetWrapper
-from ..data_utils import DataIO, AbstractDataChunkIterator, InvalidDataIOError
+from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
 from ..spec.spec import BaseStorageSpec
