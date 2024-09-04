@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.14.5 (Upcoming)
+
+### Bug fixes
+- Fixed export of scalar datasets with a compound data type. @stephprince [#1185](https://github.com/hdmf-dev/hdmf/pull/1185)
+
 ## HDMF 3.14.4 (August 22, 2024)
 
 ### Enhancements
