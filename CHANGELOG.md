@@ -1,12 +1,20 @@
 # HDMF Changelog
 
-## HDMF 3.14.4 (Upcoming)
+## HDMF 3.14.4 (August 22, 2024)
 
 ### Enhancements
 - Added support to append to a dataset of references for HDMF-Zarr. @mavaylon1 [#1157](https://github.com/hdmf-dev/hdmf/pull/1157)
 - Added support for overriding backend configurations of h5py.Dataset objects in Container.set_data_io: [#1172](https://github.com/hdmf-dev/hdmf/pull/1172)
 - Adjusted stacklevel of warnings to point to user code when possible. @rly [#1166](https://github.com/hdmf-dev/hdmf/pull/1166)
 - Improved "already exists" error message when adding a container to a `MultiContainerInterface`. @rly [#1165](https://github.com/hdmf-dev/hdmf/pull/1165)
+- Added support to write multidimensional string arrays. @stephprince [#1173](https://github.com/hdmf-dev/hdmf/pull/1173)
+- Add support for appending to a dataset of references. @mavaylon1 [#1135](https://github.com/hdmf-dev/hdmf/pull/1135)
+
+### Bug fixes
+- Fixed issue where scalar datasets with a compound data type were being written as non-scalar datasets @stephprince [#1176](https://github.com/hdmf-dev/hdmf/pull/1176)
+- Fixed H5DataIO not exposing `maxshape` on non-dci dsets. @cboulay [#1149](https://github.com/hdmf-dev/hdmf/pull/1149)
+- Fixed generation of classes in an extension that contain attributes or datasets storing references to other types defined in the extension.
+  @rly [#1183](https://github.com/hdmf-dev/hdmf/pull/1183)
 
 ## HDMF 3.14.3 (July 29, 2024)
 

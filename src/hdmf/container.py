@@ -629,12 +629,8 @@ class Container(AbstractContainer):
             template += "\nFields:\n"
         for k in sorted(self.fields):  # sorted to enable tests
             v = self.fields[k]
-            # if isinstance(v, DataIO) or not hasattr(v, '__len__') or len(v) > 0:
             if hasattr(v, '__len__'):
-                if isinstance(v, (np.ndarray, list, tuple)):
-                    if len(v) > 0:
-                        template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
-                elif v:
+                if isinstance(v, (np.ndarray, list, tuple)) or v:
                     template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
             else:
                 template += "  {}: {}\n".format(k, v)
