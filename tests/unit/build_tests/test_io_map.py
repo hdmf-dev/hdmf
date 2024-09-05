@@ -1,4 +1,4 @@
-from hdmf.utils import docval, getargs
+from hdmf.utils import StrDataset, docval, getargs
 from hdmf import Container, Data
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
@@ -7,6 +7,7 @@ from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager
 from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec,
                        LinkSpec)
 from hdmf.testing import TestCase
+import h5py
 from abc import ABCMeta, abstractmethod
 import unittest
 import numpy as np
@@ -459,6 +460,68 @@ class TestMapStrings(TestCase):
         builder = type_map.build(bar_inst)
         np.testing.assert_array_equal(builder.get('data').data, str_array_3d)
         np.testing.assert_array_equal(builder.get('attr_array'), str_array_3d)
+
+    def test_build_1d_h5py_dataset(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, ),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
+                                      shape=(None, ))],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        # create in-memory hdf5 file that is discarded after closing
+        with h5py.File("test.h5", "w", driver="core", backing_store=False) as f:
+            str_array_1d = np.array(
+                ['aa', 'bb', 'cc', 'dd'],
+                dtype=h5py.special_dtype(vlen=str)
+            )
+            # wrap the dataset in a StrDataset to mimic how HDF5IO would read this dataset
+            dataset = StrDataset(f.create_dataset('data', data=str_array_1d), None)
+            bar_inst = Bar('my_bar', dataset, 'value1', 10, attr_array=dataset)
+            builder = type_map.build(bar_inst)
+            np.testing.assert_array_equal(builder.get('data').data, dataset[:])
+            np.testing.assert_array_equal(builder.get('attr_array'), dataset[:])
+
+    def test_build_3d_h5py_dataset(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, None, None),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
+                                      shape=(None, None, None))],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        # create in-memory hdf5 file that is discarded after closing
+        with h5py.File("test.h5", "w", driver="core", backing_store=False) as f:
+            str_array_3d = np.array(
+                [[['aa', 'bb'], ['cc', 'dd']], [['ee', 'ff'], ['gg', 'hh']]],
+                dtype=h5py.special_dtype(vlen=str)
+            )
+            # wrap the dataset in a StrDataset to mimic how HDF5IO would read this dataset
+            dataset = StrDataset(f.create_dataset('data', data=str_array_3d), None)
+            bar_inst = Bar('my_bar', dataset, 'value1', 10, attr_array=dataset)
+            builder = type_map.build(bar_inst)
+            np.testing.assert_array_equal(builder.get('data').data, dataset[:])
+            np.testing.assert_array_equal(builder.get('attr_array'), dataset[:])
 
     def test_build_dataio(self):
         bar_spec = GroupSpec('A test group specification with a data type',
