@@ -1140,7 +1140,7 @@ class LabelledDict(dict):
 
 @docval_macro('array_data')
 class StrDataset(h5py.Dataset):
-    """Wrapper to decode strings on reading the dataset"""
+    """Wrapper to decode strings on reading the dataset. Use only for h5py 3+."""
     def __init__(self, dset, encoding, errors='strict'):
         self.dset = dset
         if encoding is None:
