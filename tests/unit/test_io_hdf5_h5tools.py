@@ -3801,6 +3801,11 @@ class TestContainerSetDataIO(TestCase):
                 self.data2 = kwargs["data2"]
 
         self.obj = ContainerWithData("name", [1, 2, 3, 4, 5], None)
+        self.file_path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.file_path):
+            os.remove(self.file_path)
 
     def test_set_data_io(self):
         self.obj.set_data_io("data1", H5DataIO, data_io_kwargs=dict(chunks=True))
@@ -3824,8 +3829,7 @@ class TestContainerSetDataIO(TestCase):
         self.assertTrue(self.obj.data1.io_settings["chunks"])
 
     def test_set_data_io_h5py_dataset(self):
-        file_path = get_temp_filepath()
-        file = File(file_path, 'w')
+        file = File(self.file_path, 'w')
         data = file.create_dataset('data', data=[1, 2, 3, 4, 5], chunks=(3,))
         class ContainerWithData(Container):
             __fields__ = ('data',)
@@ -3848,9 +3852,7 @@ class TestContainerSetDataIO(TestCase):
 
         self.assertIsInstance(container.data, H5DataIO)
         self.assertEqual(container.data.io_settings["chunks"], (2,))
-
-        os.remove(file_path)
-
+        file.close()
 
 class TestDataSetDataIO(TestCase):
 
