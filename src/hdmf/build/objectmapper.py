@@ -602,7 +602,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
     def __convert_string(self, value, spec):
         """Convert string types to the specified dtype."""
         def __apply_string_type(value, string_type):
-            if isinstance(value, (list, tuple, np.ndarray, DataIO)):
+            # NOTE: if a user passes a h5py.Dataset that is not wrapped with a hdmf.utils.StrDataset,
+            # then this conversion may not be correct. Users should unpack their string h5py.Datasets
+            # into a numpy array (or wrap them in StrDataset) before passing them to a container object.
+            if hasattr(value, '__iter__') and not isinstance(value, (str, bytes)):
                 return [__apply_string_type(item, string_type) for item in value]
             else:
                 return string_type(value)

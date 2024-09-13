@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 3.14.5 (September 6, 2024)
+
+### Bug fixes
+- Fixed bug in writing of string arrays to an HDF5 file that were read from an HDF5 file that was introduced in 3.14.4. @rly @stephprince
+  [#1189](https://github.com/hdmf-dev/hdmf/pull/1189)
+
 ## HDMF 3.14.4 (September 4, 2024)
 
 ### Enhancements
