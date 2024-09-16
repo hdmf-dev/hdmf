@@ -1,6 +1,9 @@
 # HDMF Changelog
 
-## HDMF 3.14.5 (September 6, 2024)
+## HDMF 3.14.5 (September 17, 2024)
+
+### Enhancements
+- Added support for overriding backend configurations of `h5py.Dataset` objects in `Container.set_data_io`. @pauladkisson [#1172](https://github.com/hdmf-dev/hdmf/pull/1172)
 
 ### Bug fixes
 - Fixed bug in writing of string arrays to an HDF5 file that were read from an HDF5 file that was introduced in 3.14.4. @rly @stephprince
@@ -10,7 +13,6 @@
 
 ### Enhancements
 - Added support to append to a dataset of references for HDMF-Zarr. @mavaylon1 [#1157](https://github.com/hdmf-dev/hdmf/pull/1157)
-- Added support for overriding backend configurations of h5py.Dataset objects in Container.set_data_io: [#1172](https://github.com/hdmf-dev/hdmf/pull/1172)
 - Adjusted stacklevel of warnings to point to user code when possible. @rly [#1166](https://github.com/hdmf-dev/hdmf/pull/1166)
 - Improved "already exists" error message when adding a container to a `MultiContainerInterface`. @rly [#1165](https://github.com/hdmf-dev/hdmf/pull/1165)
 - Added support to write multidimensional string arrays. @stephprince [#1173](https://github.com/hdmf-dev/hdmf/pull/1173)
