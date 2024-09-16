@@ -1,6 +1,9 @@
 # HDMF Changelog
 
-## HDMF 3.14.5 (September 6, 2024)
+## HDMF 3.14.5 (September 17, 2024)
+
+### Enhancements
+- Added support for overriding backend configurations of `h5py.Dataset` objects in `Container.set_data_io`. @pauladkisson [#1172](https://github.com/hdmf-dev/hdmf/pull/1172)
 
 ### Bug fixes
 - Fixed bug in writing of string arrays to an HDF5 file that were read from an HDF5 file that was introduced in 3.14.4. @rly @stephprince
