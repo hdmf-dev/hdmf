@@ -541,7 +541,7 @@ class H5DataIO(DataIO):
         if isinstance(self.data, Dataset):
             for k in self.__iosettings.keys():
                 warnings.warn("%s in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset" % k,
-                              stacklevel=2)
+                              stacklevel=4)
 
         self.__dataset = None
 
