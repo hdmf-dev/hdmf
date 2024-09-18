@@ -17,11 +17,11 @@ import os
 import logging
 
 from ...array import Array
-from ...data_utils import DataIO, AbstractDataChunkIterator, append_data
+from ...data_utils import DataIO, AbstractDataChunkIterator
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
-from ...utils import docval, getargs, popargs, get_docval, get_data_shape
+from ...utils import docval, getargs, popargs, get_docval
 
 
 class HDF5IODataChunkIteratorQueue(deque):
@@ -450,7 +450,8 @@ class H5DataIO(DataIO):
              'default': None},
             {'name': 'compression',
              'type': (str, bool, int, 'Codec'),
-             'doc': 'Compression strategy. If a bool is given, then gzip compression will be used by default. Codec only applies to LINDI.' +
+             'doc': 'Compression strategy. If a bool is given, then gzip compression will be used by default.' +
+                    'Codec only applies to LINDI.' +
                     'http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression',
              'default': None},
             {'name': 'compression_opts',
@@ -533,7 +534,10 @@ class H5DataIO(DataIO):
         if isinstance(self.__iosettings.get('compression', None), str):
             if not self.filter_available(self.__iosettings.get('compression', None),
                                         self.__allow_plugin_filters):
-                msg = "%s compression may not be supported by this version of h5py." % str(self.__iosettings['compression'])
+                msg = (
+                    f"{self.__iosettings['compression']} compression may not be supported "
+                    "by this version of h5py."
+                )
                 if not self.__allow_plugin_filters:
                     msg += " Set `allow_plugin_filters=True` to enable the use of dynamically-loaded plugin filters."
                 raise ValueError(msg)
