@@ -17,11 +17,11 @@ import os
 import logging
 
 from ...array import Array
-from ...data_utils import DataIO, AbstractDataChunkIterator
+from ...data_utils import DataIO, AbstractDataChunkIterator, append_data
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
-from ...utils import docval, getargs, popargs, get_docval
+from ...utils import docval, getargs, popargs, get_docval, get_data_shape
 
 
 class HDF5IODataChunkIteratorQueue(deque):
@@ -501,7 +501,7 @@ class H5DataIO(DataIO):
         # Check for possible collision with other parameters
         if not isinstance(getargs('data', kwargs), Dataset) and self.__link_data:
             self.__link_data = False
-            warnings.warn('link_data parameter in H5DataIO will be ignored', stacklevel=2)
+            warnings.warn('link_data parameter in H5DataIO will be ignored', stacklevel=3)
         # Call the super constructor and consume the data parameter
         super().__init__(**kwargs)
         # Construct the dict with the io args, ignoring all options that were set to None
@@ -525,7 +525,7 @@ class H5DataIO(DataIO):
                 self.__iosettings.pop('compression', None)
                 if 'compression_opts' in self.__iosettings:
                     warnings.warn('Compression disabled by compression=False setting. ' +
-                                  'compression_opts parameter will, therefore, be ignored.', stacklevel=2)
+                                  'compression_opts parameter will, therefore, be ignored.', stacklevel=3)
                     self.__iosettings.pop('compression_opts', None)
         # Validate the compression options used
         self._check_compression_options()
