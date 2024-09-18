@@ -541,7 +541,7 @@ class H5DataIO(DataIO):
         if isinstance(self.data, Dataset):
             for k in self.__iosettings.keys():
                 warnings.warn("%s in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset" % k,
-                              stacklevel=4)
+                              stacklevel=3)
 
         self.__dataset = None
 
@@ -620,7 +620,7 @@ class H5DataIO(DataIO):
                 if self.__iosettings['compression'] not in ['gzip', h5py_filters.h5z.FILTER_DEFLATE]:
                     warnings.warn(str(self.__iosettings['compression']) + " compression may not be available "
                                 "on all installations of HDF5. Use of gzip is recommended to ensure portability of "
-                                "the generated HDF5 files.", stacklevel=3)
+                                "the generated HDF5 files.", stacklevel=4)
 
     @staticmethod
     def filter_available(filter, allow_plugin_filters):
