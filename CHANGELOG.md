@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.14.6 (Upcoming)
+
+### Bug fixes
+- Fixed mamba-related error in conda-based GitHub Actions. @rly [#1194](https://github.com/hdmf-dev/hdmf/pull/1194)
+
 ## HDMF 3.14.5 (September 17, 2024)
 
 ### Enhancements
