@@ -698,6 +698,9 @@ class Container(AbstractContainer):
 
         if isinstance(fields, dict):
             for key, value in fields.items():
+                if value is self:
+                    return f'<div style="margin-left: {level * 20}px;" class="container-fields"> Circular reference ' \
+                           f'detected for {value.name} </div>'
                 current_access_code = f"{access_code}.{key}" if is_field else f"{access_code}['{key}']"
                 if hasattr(value, '_generate_field_html'):
                     html_repr += value._generate_field_html(key, value, level, current_access_code)
