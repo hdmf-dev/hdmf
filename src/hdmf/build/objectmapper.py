@@ -10,14 +10,18 @@ from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, Refere
 from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError, ContainerConfigurationError,
                      ConstructError)
 from .manager import Proxy, BuildManager
-from .warnings import MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning
+
+from .warnings import (MissingRequiredBuildWarning, DtypeConversionWarning, IncorrectQuantityBuildWarning,
+                       IncorrectDatasetShapeBuildWarning)
+from hdmf.backends.hdf5.h5_utils import H5DataIO
+
 from ..container import AbstractContainer, Data, DataRegion
 from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
 from ..spec.spec import BaseStorageSpec
-from ..utils import docval, getargs, ExtenderMeta, get_docval
+from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape
 
 _const_arg = '__constructor_arg'
 
@@ -299,7 +303,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     cls.__check_convert_numeric(value.dtype.type)
                 if np.issubdtype(value.dtype, np.str_):
                     ret_dtype = 'utf8'
-                elif np.issubdtype(value.dtype, np.string_):
+                elif np.issubdtype(value.dtype, np.bytes_):
                     ret_dtype = 'ascii'
                 elif np.issubdtype(value.dtype, np.dtype('O')):
                     # Only variable-length strings should ever appear as generic objects.
@@ -597,11 +601,20 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     def __convert_string(self, value, spec):
         """Convert string types to the specified dtype."""
+        def __apply_string_type(value, string_type):
+            # NOTE: if a user passes a h5py.Dataset that is not wrapped with a hdmf.utils.StrDataset,
+            # then this conversion may not be correct. Users should unpack their string h5py.Datasets
+            # into a numpy array (or wrap them in StrDataset) before passing them to a container object.
+            if hasattr(value, '__iter__') and not isinstance(value, (str, bytes)):
+                return [__apply_string_type(item, string_type) for item in value]
+            else:
+                return string_type(value)
+
         ret = value
         if isinstance(spec, AttributeSpec):
             if 'text' in spec.dtype:
                 if spec.shape is not None or spec.dims is not None:
-                    ret = list(map(str, value))
+                    ret = __apply_string_type(value, str)
                 else:
                     ret = str(value)
         elif isinstance(spec, DatasetSpec):
@@ -617,7 +630,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         return x.isoformat()  # method works for both date and datetime
                 if string_type is not None:
                     if spec.shape is not None or spec.dims is not None:
-                        ret = list(map(string_type, value))
+                        ret = __apply_string_type(value, string_type)
                     else:
                         ret = string_type(value)
                     # copy over any I/O parameters if they were specified
@@ -721,19 +734,34 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if not isinstance(container, Data):
                     msg = "'container' must be of type Data with DatasetSpec"
                     raise ValueError(msg)
-                spec_dtype, spec_shape, spec = self.__check_dset_spec(self.spec, spec_ext)
+                spec_dtype, spec_shape, spec_dims, spec = self.__check_dset_spec(self.spec, spec_ext)
+                dimension_labels = self.__get_dimension_labels_from_spec(container.data, spec_shape, spec_dims)
                 if isinstance(spec_dtype, RefSpec):
                     self.logger.debug("Building %s '%s' as a dataset of references (source: %s)"
                                       % (container.__class__.__name__, container.name, repr(source)))
                     # create dataset builder with data=None as a placeholder. fill in with refs later
-                    builder = DatasetBuilder(name, data=None, parent=parent, source=source, dtype=spec_dtype.reftype)
+                    builder = DatasetBuilder(
+                        name,
+                        data=None,
+                        parent=parent,
+                        source=source,
+                        dtype=spec_dtype.reftype,
+                        dimension_labels=dimension_labels,
+                    )
                     manager.queue_ref(self.__set_dataset_to_refs(builder, spec_dtype, spec_shape, container, manager))
                 elif isinstance(spec_dtype, list):
                     # a compound dataset
                     self.logger.debug("Building %s '%s' as a dataset of compound dtypes (source: %s)"
                                       % (container.__class__.__name__, container.name, repr(source)))
                     # create dataset builder with data=None, dtype=None as a placeholder. fill in with refs later
-                    builder = DatasetBuilder(name, data=None, parent=parent, source=source, dtype=spec_dtype)
+                    builder = DatasetBuilder(
+                        name,
+                        data=None,
+                        parent=parent,
+                        source=source,
+                        dtype=spec_dtype,
+                        dimension_labels=dimension_labels,
+                    )
                     manager.queue_ref(self.__set_compound_dataset_to_refs(builder, spec, spec_dtype, container,
                                                                           manager))
                 else:
@@ -744,7 +772,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                           % (container.__class__.__name__, container.name, repr(source)))
                         # an unspecified dtype and we were given references
                         # create dataset builder with data=None as a placeholder. fill in with refs later
-                        builder = DatasetBuilder(name, data=None, parent=parent, source=source, dtype='object')
+                        builder = DatasetBuilder(
+                            name,
+                            data=None,
+                            parent=parent,
+                            source=source,
+                            dtype="object",
+                            dimension_labels=dimension_labels,
+                        )
                         manager.queue_ref(self.__set_untyped_dataset_to_refs(builder, container, manager))
                     else:
                         # a dataset that has no references, pass the conversion off to the convert_dtype method
@@ -760,7 +795,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         except Exception as ex:
                             msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
                             raise Exception(msg) from ex
-                        builder = DatasetBuilder(name, bldr_data, parent=parent, source=source, dtype=dtype)
+                        builder = DatasetBuilder(
+                            name,
+                            data=bldr_data,
+                            parent=parent,
+                            source=source,
+                            dtype=dtype,
+                            dimension_labels=dimension_labels,
+                        )
 
         # Add attributes from the specification extension to the list of attributes
         all_attrs = self.__spec.attributes + getattr(spec_ext, 'attributes', tuple())
@@ -779,14 +821,67 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         dtype = orig.dtype
         shape = orig.shape
+        dims = orig.dims
         spec = orig
         if ext is not None:
             if ext.dtype is not None:
                 dtype = ext.dtype
             if ext.shape is not None:
                 shape = ext.shape
+                dims = ext.dims
             spec = ext
-        return dtype, shape, spec
+        return dtype, shape, dims, spec
+
+    def __get_dimension_labels_from_spec(self, data, spec_shape, spec_dims) -> tuple:
+        if spec_shape is None or spec_dims is None:
+            return None
+        data_shape = get_data_shape(data)
+        # if shape is a list of allowed shapes, find the index of the shape that matches the data
+        if isinstance(spec_shape[0], list):
+            match_shape_inds = list()
+            for i, s in enumerate(spec_shape):
+                # skip this shape if it has a different number of dimensions from the data
+                if len(s) != len(data_shape):
+                    continue
+                # check each dimension. None means any length is allowed
+                match = True
+                for j, d in enumerate(data_shape):
+                    if s[j] is not None and s[j] != d:
+                        match = False
+                        break
+                if match:
+                    match_shape_inds.append(i)
+            # use the most specific match -- the one with the fewest Nones
+            if match_shape_inds:
+                if len(match_shape_inds) == 1:
+                    return tuple(spec_dims[match_shape_inds[0]])
+                else:
+                    count_nones = [len([x for x in spec_shape[k] if x is None]) for k in match_shape_inds]
+                    index_min_count = count_nones.index(min(count_nones))
+                    best_match_ind = match_shape_inds[index_min_count]
+                    return tuple(spec_dims[best_match_ind])
+            else:
+                # no matches found
+                msg = "Shape of data does not match any allowed shapes in spec '%s'" % self.spec.path
+                warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
+                return None
+        else:
+            if len(data_shape) != len(spec_shape):
+                msg = "Shape of data does not match shape in spec '%s'" % self.spec.path
+                warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
+                return None
+            # check each dimension. None means any length is allowed
+            match = True
+            for j, d in enumerate(data_shape):
+                if spec_shape[j] is not None and spec_shape[j] != d:
+                    match = False
+                    break
+            if not match:
+                msg = "Shape of data does not match shape in spec '%s'" % self.spec.path
+                warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
+                return None
+            # shape is a single list of allowed dimension lengths
+            return tuple(spec_dims)
 
     def __is_reftype(self, data):
         if (isinstance(data, AbstractDataChunkIterator) or
@@ -889,6 +984,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 for d in container.data:
                     target_builder = self.__get_target_builder(d, build_manager, builder)
                     bldr_data.append(ReferenceBuilder(target_builder))
+                if isinstance(container.data, H5DataIO):
+                    # This is here to support appending a dataset of references.
+                    bldr_data = H5DataIO(bldr_data, **container.data.get_io_params())
             else:
                 self.logger.debug("Setting %s '%s' data to reference builder"
                                   % (builder.__class__.__name__, builder.name))
@@ -1164,7 +1262,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if not isinstance(builder, DatasetBuilder):  # pragma: no cover
                 raise ValueError("__get_subspec_values - must pass DatasetBuilder with DatasetSpec")
             if (spec.shape is None and getattr(builder.data, 'shape', None) == (1,) and
-                    type(builder.data[0]) != np.void):
+                    type(builder.data[0]) is not np.void):
                 # if a scalar dataset is expected and a 1-element non-compound dataset is given, then read the dataset
                 builder['data'] = builder.data[0]  # use dictionary reference instead of .data to bypass error
             ret[spec] = self.__check_ref_resolver(builder.data)

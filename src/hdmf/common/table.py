@@ -235,7 +235,7 @@ class ElementIdentifiers(Data):
         if isinstance(search_ids, int):
             search_ids = [search_ids]
         # Find all matching locations
-        return np.in1d(self.data, search_ids).nonzero()[0]
+        return np.isin(self.data, search_ids).nonzero()[0]
 
     def _validate_new_data(self, data):
         # NOTE this may not cover all the many AbstractDataChunkIterator edge cases
@@ -717,7 +717,7 @@ class DynamicTable(Container):
                     warn(("Data has elements with different lengths and therefore cannot be coerced into an "
                           "N-dimensional array. Use the 'index' argument when creating a column to add rows "
                           "with different lengths."),
-                         stacklevel=2)
+                         stacklevel=3)
 
     def __eq__(self, other):
         """Compare if the two DynamicTables contain the same data.
@@ -776,7 +776,7 @@ class DynamicTable(Container):
 
         if isinstance(index, VectorIndex):
             warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
-                 "deprecated in a future version of HDMF.", category=FutureWarning, stacklevel=2)
+                 "deprecated in a future version of HDMF.", category=FutureWarning, stacklevel=3)
 
         if name in self.__colids:  # column has already been added
             msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
@@ -793,7 +793,7 @@ class DynamicTable(Container):
                        "Please ensure the new column complies with the spec. "
                        "This will raise an error in a future version of HDMF."
                        % (name, self.__class__.__name__, spec_table))
-                warn(msg, stacklevel=2)
+                warn(msg, stacklevel=3)
 
             index_bool = index or not isinstance(index, bool)
             spec_index = self.__uninit_cols[name].get('index', False)
@@ -803,7 +803,7 @@ class DynamicTable(Container):
                        "Please ensure the new column complies with the spec. "
                        "This will raise an error in a future version of HDMF."
                        % (name, self.__class__.__name__, spec_index))
-                warn(msg, stacklevel=2)
+                warn(msg, stacklevel=3)
 
             spec_col_cls = self.__uninit_cols[name].get('class', VectorData)
             if col_cls != spec_col_cls:
@@ -841,7 +841,7 @@ class DynamicTable(Container):
                 warn(("Data has elements with different lengths and therefore cannot be coerced into an "
                       "N-dimensional array. Use the 'index' argument when adding a column of data with "
                       "different lengths."),
-                     stacklevel=2)
+                     stacklevel=3)
 
             # Check that we are asked to create an index
             if (isinstance(index, bool) or isinstance(index, int)) and index > 0 and len(data) > 0:

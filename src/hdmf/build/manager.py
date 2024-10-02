@@ -1,12 +1,13 @@
 import logging
 from collections import OrderedDict, deque
 from copy import copy
+from collections.abc import Callable
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
 from ..term_set import TypeConfigurator
-from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog
+from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, RefSpec
 from ..spec.spec import BaseStorageSpec
 from ..utils import docval, getargs, ExtenderMeta, get_docval
 
@@ -479,6 +480,7 @@ class TypeMap:
         load_namespaces here has the advantage of being able to keep track of type dependencies across namespaces.
         '''
         deps = self.__ns_catalog.load_namespaces(**kwargs)
+        # register container types for each dependent type in each dependent namespace
         for new_ns, ns_deps in deps.items():
             for src_ns, types in ns_deps.items():
                 for dt in types:
@@ -498,11 +500,14 @@ class TypeMap:
         created and returned.
         """
         # NOTE: this internally used function get_container_cls will be removed in favor of get_dt_container_cls
+        # Deprecated: Will be removed by HDMF 4.0
         namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
         return self.get_dt_container_cls(data_type, namespace, autogen)
 
     @docval({"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             {"name": "namespace", "type": str, "doc": "the namespace containing the data_type", "default": None},
+            {'name': 'post_init_method', 'type': Callable, 'default': None,
+            'doc': 'The function used as a post_init method to validate the class generation.'},
             {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
             returns='the class for the given namespace and data_type', rtype=type)
     def get_dt_container_cls(self, **kwargs):
@@ -513,7 +518,8 @@ class TypeMap:
         Replaces get_container_cls but namespace is optional. If namespace is unknown, it will be looked up from
         all namespaces.
         """
-        namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
+        namespace, data_type, post_init_method, autogen = getargs('namespace', 'data_type',
+                                                                  'post_init_method','autogen', kwargs)
 
         # namespace is unknown, so look it up
         if namespace is None:
@@ -524,20 +530,28 @@ class TypeMap:
                     namespace = ns_key
                     break
         if namespace is None:
-            raise ValueError("Namespace could not be resolved.")
+            raise ValueError(f"Namespace could not be resolved for data type '{data_type}'.")
 
         cls = self.__get_container_cls(namespace, data_type)
+
         if cls is None and autogen:  # dynamically generate a class
             spec = self.__ns_catalog.get_spec(namespace, data_type)
             self.__check_dependent_types(spec, namespace)
             parent_cls = self.__get_parent_cls(namespace, data_type, spec)
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
-            cls = self.__class_generator.generate_class(data_type, spec, parent_cls, attr_names, self)
+            cls = self.__class_generator.generate_class(data_type=data_type,
+                                                        spec=spec,
+                                                        parent_cls=parent_cls,
+                                                        attr_names=attr_names,
+                                                        post_init_method=post_init_method,
+                                                        type_map=self)
             self.register_container_type(namespace, data_type, cls)
         return cls
 
     def __check_dependent_types(self, spec, namespace):
         """Ensure that classes for all types used by this type exist in this namespace and generate them if not.
+
+        `spec` should be a GroupSpec or DatasetSpec in the `namespace`
         """
         def __check_dependent_types_helper(spec, namespace):
             if isinstance(spec, (GroupSpec, DatasetSpec)):
@@ -553,6 +567,16 @@ class TypeMap:
 
         if spec.data_type_inc is not None:
             self.get_dt_container_cls(spec.data_type_inc, namespace)
+
+        # handle attributes that have a reference dtype
+        for attr_spec in spec.attributes:
+            if isinstance(attr_spec.dtype, RefSpec):
+                self.get_dt_container_cls(attr_spec.dtype.target_type, namespace)
+        # handle datasets that have a reference dtype
+        if isinstance(spec, DatasetSpec):
+            if isinstance(spec.dtype, RefSpec):
+                self.get_dt_container_cls(spec.dtype.target_type, namespace)
+        # recurse into nested types
         if isinstance(spec, GroupSpec):
             for child_spec in (spec.groups + spec.datasets + spec.links):
                 __check_dependent_types_helper(child_spec, namespace)

@@ -165,13 +165,12 @@ jobs:
           auto-update-conda: true
           python-version: ${{ matrix.python-ver }}
           channels: conda-forge
-          mamba-version: "*"
 
       - name: Install build dependencies
         run: |
           conda config --set always_yes yes --set changeps1 no
           conda info
-          mamba install -c conda-forge "tox>=4"
+          conda install -c conda-forge "tox>=4"
 
       - name: Conda reporting
         run: |
@@ -197,7 +196,7 @@ jobs:
         run: |
           tox -e wheelinstall --installpkg dist/*.tar.gz
 
-  run-gallery-ros3-tests:
+  run-ros3-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     defaults:
@@ -210,9 +209,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-gallery-python3.12-ros3   , python-ver: "3.12", os: ubuntu-latest }
-          - { name: windows-gallery-python3.12-ros3 , python-ver: "3.12", os: windows-latest }
-          - { name: macos-gallery-python3.12-ros3   , python-ver: "3.12", os: macos-latest }
+          - { name: linux-python3.12-ros3   , python-ver: "3.12", os: ubuntu-latest }
+          - { name: windows-python3.12-ros3 , python-ver: "3.12", os: windows-latest }
+          - { name: macos-python3.12-ros3   , python-ver: "3.12", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
@@ -229,7 +228,6 @@ jobs:
           python-version: ${{ matrix.python-ver }}
           channels: conda-forge
           auto-activate-base: false
-          mamba-version: "*"
 
       - name: Install run dependencies
         run: |

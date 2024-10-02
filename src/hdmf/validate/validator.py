@@ -134,7 +134,7 @@ def get_type(data, builder_dtype=None):
     elif isinstance(data, ReferenceResolver):
         return data.dtype, None
     # Numpy nd-array data
-    elif isinstance(data, np.ndarray):
+    elif isinstance(data, np.ndarray) and len(data.dtype) <= 1:
         if data.size > 0:
             return get_type(data[0], builder_dtype)
         else:
@@ -147,11 +147,14 @@ def get_type(data, builder_dtype=None):
     # Case for h5py.Dataset and other I/O specific array types
     else:
         # Compound dtype
-        if builder_dtype and isinstance(builder_dtype, list):
+        if builder_dtype and len(builder_dtype) > 1:
             dtypes = []
             string_formats = []
             for i in range(len(builder_dtype)):
-                dtype, string_format = get_type(data[0][i])
+                if len(np.shape(data)) == 0:
+                    dtype, string_format = get_type(data[()][i])
+                else:
+                    dtype, string_format = get_type(data[0][i])
                 dtypes.append(dtype)
                 string_formats.append(string_format)
             return dtypes, string_formats
@@ -164,7 +167,7 @@ def get_type(data, builder_dtype=None):
                 # Empty array
                 else:
                     # Empty string array
-                    if data.dtype.metadata["vlen"] == str:
+                    if data.dtype.metadata["vlen"] is str:
                         return "utf", None
                     # Undetermined variable length data type.
                     else:                        # pragma: no cover
@@ -438,7 +441,9 @@ class DatasetValidator(BaseStorageValidator):
             except EmptyArrayError:
                 # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                 pass
-        if isinstance(builder.dtype, list):
+        if builder.dtype is not None and len(builder.dtype) > 1 and len(np.shape(builder.data)) == 0:
+            shape = ()  # scalar compound dataset
+        elif isinstance(builder.dtype, list):
             shape = (len(builder.data), )  # only 1D datasets with compound types are supported
         else:
             shape = get_data_shape(data)
