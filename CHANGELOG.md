@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.14.6 (Upcoming)
+
+### Enhancements
+- Allow Codec for compression for use with LINDI
+
 ## HDMF 3.14.5 (September 17, 2024)
 
 ### Enhancements
