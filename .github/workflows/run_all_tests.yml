@@ -165,13 +165,12 @@ jobs:
           auto-update-conda: true
           python-version: ${{ matrix.python-ver }}
           channels: conda-forge
-          mamba-version: "*"
 
       - name: Install build dependencies
         run: |
           conda config --set always_yes yes --set changeps1 no
           conda info
-          mamba install -c conda-forge "tox>=4"
+          conda install -c conda-forge "tox>=4"
 
       - name: Conda reporting
         run: |
@@ -229,7 +228,6 @@ jobs:
           python-version: ${{ matrix.python-ver }}
           channels: conda-forge
           auto-activate-base: false
-          mamba-version: "*"
 
       - name: Install run dependencies
         run: |

@@ -9,7 +9,7 @@
 - Fixed bug in writing of string arrays to an HDF5 file that were read from an HDF5 file that was introduced in 3.14.4. @rly @stephprince
   [#1189](https://github.com/hdmf-dev/hdmf/pull/1189)
 - Fixed export of scalar datasets with a compound data type. @stephprince [#1185](https://github.com/hdmf-dev/hdmf/pull/1185)
-
+- Fixed mamba-related error in conda-based GitHub Actions. @rly [#1194](https://github.com/hdmf-dev/hdmf/pull/1194)
 
 ## HDMF 3.14.4 (September 4, 2024)
 
