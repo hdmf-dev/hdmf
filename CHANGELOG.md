@@ -1,11 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.14.6 (Upcoming)
-
-### Bug fixes
-- Fixed mamba-related error in conda-based GitHub Actions. @rly [#1194](https://github.com/hdmf-dev/hdmf/pull/1194)
-
-## HDMF 3.14.5 (September 17, 2024)
+## HDMF 3.14.5 (Upcoming)
 
 ### Enhancements
 - Added support for overriding backend configurations of `h5py.Dataset` objects in `Container.set_data_io`. @pauladkisson [#1172](https://github.com/hdmf-dev/hdmf/pull/1172)
@@ -13,6 +8,8 @@
 ### Bug fixes
 - Fixed bug in writing of string arrays to an HDF5 file that were read from an HDF5 file that was introduced in 3.14.4. @rly @stephprince
   [#1189](https://github.com/hdmf-dev/hdmf/pull/1189)
+- Fixed export of scalar datasets with a compound data type. @stephprince [#1185](https://github.com/hdmf-dev/hdmf/pull/1185)
+- Fixed mamba-related error in conda-based GitHub Actions. @rly [#1194](https://github.com/hdmf-dev/hdmf/pull/1194)
 
 ## HDMF 3.14.4 (September 4, 2024)
 
