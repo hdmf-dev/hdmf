@@ -1,7 +1,6 @@
 import re
 from abc import ABCMeta
 from collections import OrderedDict
-from copy import deepcopy
 from warnings import warn
 
 from ..utils import docval, getargs, popargs, get_docval
@@ -84,7 +83,7 @@ class ConstructableDict(dict, metaclass=ABCMeta):
     def build_const_args(cls, spec_dict):
         ''' Build constructor arguments for this ConstructableDict class from a dictionary '''
         # main use cases are when spec_dict is a ConstructableDict or a spec dict read from a file
-        return deepcopy(spec_dict)
+        return spec_dict.copy()
 
     @classmethod
     def build_spec(cls, spec_dict):
@@ -322,7 +321,7 @@ class BaseStorageSpec(Spec):
         default_name = getargs('default_name', kwargs)
         if default_name:
             if name is not None:
-                warn("found 'default_name' with 'name' - ignoring 'default_name'", stacklevel=2)
+                warn("found 'default_name' with 'name' - ignoring 'default_name'")
             else:
                 self['default_name'] = default_name
         self.__attributes = dict()
@@ -648,6 +647,7 @@ _dataset_args = [
     {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
     {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
     {'name': 'default_value', 'type': None, 'doc': 'a default value for this dataset', 'default': None},
+    {'name': 'value', 'type': None, 'doc': 'a fixed value for this dataset', 'default': None},
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
     {'name': 'data_type_inc', 'type': (str, 'DatasetSpec'),
      'doc': 'the data type this specification extends', 'default': None},
@@ -662,7 +662,8 @@ class DatasetSpec(BaseStorageSpec):
 
     @docval(*_dataset_args)
     def __init__(self, **kwargs):
-        doc, shape, dims, dtype, default_value = popargs('doc', 'shape', 'dims', 'dtype', 'default_value', kwargs)
+        doc, shape, dims, dtype = popargs('doc', 'shape', 'dims', 'dtype', kwargs)
+        default_value, value = popargs('default_value', 'value', kwargs)
         if shape is not None:
             self['shape'] = shape
         if dims is not None:
@@ -685,6 +686,8 @@ class DatasetSpec(BaseStorageSpec):
         super().__init__(doc, **kwargs)
         if default_value is not None:
             self['default_value'] = default_value
+        if value is not None:
+            self['value'] = value
         if self.name is not None:
             valid_quant_vals = [1, 'zero_or_one', ZERO_OR_ONE]
             if self.quantity not in valid_quant_vals:
@@ -761,6 +764,11 @@ class DatasetSpec(BaseStorageSpec):
     def default_value(self):
         '''The default value of the dataset or None if not specified'''
         return self.get('default_value', None)
+
+    @property
+    def value(self):
+        '''The fixed value of the dataset or None if not specified'''
+        return self.get('value', None)
 
     @classmethod
     def dtype_spec_cls(cls):

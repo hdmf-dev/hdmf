@@ -501,6 +501,28 @@ class TestDtypeValidation(TestCase):
         results = self.vmap.validate(bar_builder)
         self.assertEqual(len(results), 0)
 
+    def test_scalar_compound_dtype(self):
+        """Test that validator allows scalar compound dtype data where a compound dtype is specified."""
+        spec_catalog = SpecCatalog()
+        dtype = [DtypeSpec('x', doc='x', dtype='int'), DtypeSpec('y', doc='y', dtype='float')]
+        spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Bar',
+                         datasets=[DatasetSpec('an example dataset', dtype, name='data',)],
+                         attributes=[AttributeSpec('attr1', 'an example attribute', 'text',)])
+        spec_catalog.register_spec(spec, 'test2.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test2.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+        value = np.array((1, 2.2), dtype=[('x', 'int'), ('y', 'float')])
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': 'test'},
+                                   datasets=[DatasetBuilder(name='data',
+                                                            data=value,
+                                                            dtype=[DtypeSpec('x', doc='x', dtype='int'),
+                                                                   DtypeSpec('y', doc='y', dtype='float'),],),])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
 
 class Test1DArrayValidation(TestCase):
 

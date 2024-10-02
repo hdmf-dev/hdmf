@@ -344,7 +344,7 @@ class HDF5IO(HDMFIO):
         warnings.warn("The copy_file class method is no longer supported and may be removed in a future version of "
                       "HDMF. Please use the export method or h5py.File.copy method instead.",
                       category=DeprecationWarning,
-                      stacklevel=2)
+                      stacklevel=3)
 
         source_filename, dest_filename, expand_external, expand_refs, expand_soft = getargs('source_filename',
                                                                                             'dest_filename',
@@ -698,6 +698,8 @@ class HDF5IO(HDMFIO):
                     d = ReferenceBuilder(target_builder)
                 kwargs['data'] = d
                 kwargs['dtype'] = d.dtype
+            elif h5obj.dtype.kind == 'V':  # scalar compound data type
+                kwargs['data'] = np.array(scalar, dtype=h5obj.dtype)
             else:
                 kwargs["data"] = scalar
         else:
@@ -1227,6 +1229,8 @@ class HDF5IO(HDMFIO):
 
                 return
             # If the compound data type contains only regular data (i.e., no references) then we can write it as usual
+            elif len(np.shape(data)) == 0:
+                dset = self.__scalar_fill__(parent, name, data, options)
             else:
                 dset = self.__list_fill__(parent, name, data, options)
         # Write a dataset containing references, i.e., a region or object reference.
@@ -1469,7 +1473,7 @@ class HDF5IO(HDMFIO):
             data_shape = io_settings.pop('shape')
         elif hasattr(data, 'shape'):
             data_shape = data.shape
-        elif isinstance(dtype, np.dtype):
+        elif isinstance(dtype, np.dtype) and len(dtype) > 1:  # check if compound dtype
             data_shape = (len(data),)
         else:
             data_shape = get_data_shape(data)
@@ -1514,6 +1518,7 @@ class HDF5IO(HDMFIO):
             self.logger.debug("Getting reference for %s '%s'" % (container.__class__.__name__, container.name))
             builder = self.manager.build(container)
         path = self.__get_path(builder)
+
         self.logger.debug("Getting reference at path '%s'" % path)
         if isinstance(container, RegionBuilder):
             region = container.region
@@ -1524,6 +1529,14 @@ class HDF5IO(HDMFIO):
             return self.__file[path].regionref[region]
         else:
             return self.__file[path].ref
+
+    @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference',
+             'default': None},
+            {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the region reference indexing object',
+             'default': None},
+            returns='the reference', rtype=Reference)
+    def _create_ref(self, **kwargs):
+        return self.__get_ref(**kwargs)
 
     def __is_ref(self, dtype):
         if isinstance(dtype, DtypeSpec):

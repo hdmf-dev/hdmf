@@ -163,6 +163,12 @@ class HDMFDataset(metaclass=ExtenderMeta):
     def next(self):
         return self.dataset.next()
 
+    def append(self, arg):
+        """
+        Override this method to support appending to backend-specific datasets
+        """
+        pass # pragma: no cover
+
 
 class ReferenceResolver(metaclass=ABCMeta):
     """

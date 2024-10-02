@@ -101,7 +101,6 @@ jobs:
           python-version: ${{ matrix.python-ver }}
           channels: conda-forge
           auto-activate-base: false
-          mamba-version: "*"
 
       - name: Install run dependencies
         run: |
