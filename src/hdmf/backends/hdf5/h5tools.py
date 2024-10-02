@@ -700,6 +700,10 @@ class HDF5IO(HDMFIO):
                 kwargs['dtype'] = d.dtype
             elif h5obj.dtype.kind == 'V':  # scalar compound data type
                 kwargs['data'] = np.array(scalar, dtype=h5obj.dtype)
+                cpd_dt = h5obj.dtype
+                ref_cols = [check_dtype(ref=cpd_dt[i]) or check_dtype(vlen=cpd_dt[i]) for i in range(len(cpd_dt))]
+                d = BuilderH5TableDataset(h5obj, self, ref_cols)
+                kwargs['dtype'] = HDF5IO.__compound_dtype_to_list(h5obj.dtype, d.dtype)
             else:
                 kwargs["data"] = scalar
         else:
