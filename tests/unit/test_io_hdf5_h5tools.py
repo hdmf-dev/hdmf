@@ -3801,6 +3801,11 @@ class TestContainerSetDataIO(TestCase):
                 self.data2 = kwargs["data2"]
 
         self.obj = ContainerWithData("name", [1, 2, 3, 4, 5], None)
+        self.file_path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.file_path):
+            os.remove(self.file_path)
 
     def test_set_data_io(self):
         self.obj.set_data_io("data1", H5DataIO, data_io_kwargs=dict(chunks=True))
@@ -3823,6 +3828,31 @@ class TestContainerSetDataIO(TestCase):
         self.assertIsInstance(self.obj.data1, H5DataIO)
         self.assertTrue(self.obj.data1.io_settings["chunks"])
 
+    def test_set_data_io_h5py_dataset(self):
+        file = File(self.file_path, 'w')
+        data = file.create_dataset('data', data=[1, 2, 3, 4, 5], chunks=(3,))
+        class ContainerWithData(Container):
+            __fields__ = ('data',)
+
+            @docval(
+                {"name": "name", "doc": "name", "type": str},
+                {'name': 'data', 'doc': 'field1 doc', 'type': h5py.Dataset},
+            )
+            def __init__(self, **kwargs):
+                super().__init__(name=kwargs["name"])
+                self.data = kwargs["data"]
+
+        container = ContainerWithData("name", data)
+        container.set_data_io(
+            "data",
+            H5DataIO,
+            data_io_kwargs=dict(chunks=(2,)),
+            data_chunk_iterator_class=DataChunkIterator,
+        )
+
+        self.assertIsInstance(container.data, H5DataIO)
+        self.assertEqual(container.data.io_settings["chunks"], (2,))
+        file.close()
 
 class TestDataSetDataIO(TestCase):
 
@@ -3831,8 +3861,30 @@ class TestDataSetDataIO(TestCase):
             pass
 
         self.data = MyData("my_data", [1, 2, 3])
+        self.file_path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.file_path):
+            os.remove(self.file_path)
 
     def test_set_data_io(self):
         self.data.set_data_io(H5DataIO, dict(chunks=True))
         assert isinstance(self.data.data, H5DataIO)
         assert self.data.data.io_settings["chunks"]
+
+    def test_set_data_io_h5py_dataset(self):
+        file = File(self.file_path, 'w')
+        data = file.create_dataset('data', data=[1, 2, 3, 4, 5], chunks=(3,))
+        class MyData(Data):
+            pass
+
+        my_data = MyData("my_data", data)
+        my_data.set_data_io(
+            H5DataIO,
+            data_io_kwargs=dict(chunks=(2,)),
+            data_chunk_iterator_class=DataChunkIterator,
+        )
+
+        self.assertIsInstance(my_data.data, H5DataIO)
+        self.assertEqual(my_data.data.io_settings["chunks"], (2,))
+        file.close()
