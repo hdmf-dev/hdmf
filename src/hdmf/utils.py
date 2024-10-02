@@ -188,6 +188,11 @@ def __fmt_str_quotes(x):
     return str(x)
 
 
+def __shape_error_message(argname, valshape, allowable_shapes):
+    allowable_shapes_str = str(allowable_shapes).replace("None", ":")
+    return f"incorrect shape for {argname}: got {valshape}, and expected {allowable_shapes_str}"
+
+
 def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False,  # noqa: C901
                  allow_positional=AllowPositional.ALLOWED):
     """
@@ -304,8 +309,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                         argval = getattr(argval, argname)
                         valshape = get_data_shape(argval)
                     if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
-                        fmt_val = (argname, valshape, arg['shape'])
-                        value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
+                        value_errors.append(__shape_error_message(argname, valshape, arg['shape']))
                 if 'enum' in arg:
                     err = __check_enum(argval, arg)
                     if err:
@@ -361,8 +365,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                     argval = getattr(argval, argname)
                     valshape = get_data_shape(argval)
                 if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
-                    fmt_val = (argname, valshape, arg['shape'])
-                    value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
+                    value_errors.append(__shape_error_message(argname, valshape, arg['shape']))
             if 'enum' in arg and argval is not None:
                 err = __check_enum(argval, arg)
                 if err:

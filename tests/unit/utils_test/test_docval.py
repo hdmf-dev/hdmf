@@ -877,7 +877,7 @@ class TestDocValidatorChain(TestCase):
         # shape after an object is initialized
         obj2.arg3 = [10, 20, 30]
 
-        err_msg = "MyChainClass.__init__: incorrect shape for 'arg3' (got '(3,)', expected '(None, 2)')"
+        err_msg = "MyChainClass.__init__: incorrect shape for arg3: got (3,), and expected (:, 2)"
         with self.assertRaisesWith(ValueError, err_msg):
             MyChainClass(self.obj1, obj2, [[100, 200]])
 
@@ -914,7 +914,7 @@ class TestDocValidatorChain(TestCase):
         # shape after an object is initialized
         obj2.arg4 = [10, 20, 30]
 
-        err_msg = "MyChainClass.__init__: incorrect shape for 'arg4' (got '(3,)', expected '(None, 2)')"
+        err_msg = "MyChainClass.__init__: incorrect shape for arg4: got (3,), and expected (:, 2)"
         with self.assertRaisesWith(ValueError, err_msg):
             MyChainClass(self.obj1, [[100, 200], [300, 400], [500, 600]], arg4=obj2)
 
