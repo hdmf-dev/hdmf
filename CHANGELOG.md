@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 3.14.5 (Upcoming)
+## HDMF 3.14.5 (October 6, 2024)
 
 ### Enhancements
 - Added support for overriding backend configurations of `h5py.Dataset` objects in `Container.set_data_io`. @pauladkisson [#1172](https://github.com/hdmf-dev/hdmf/pull/1172)
