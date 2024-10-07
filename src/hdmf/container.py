@@ -707,7 +707,9 @@ class Container(AbstractContainer):
             for index, item in enumerate(fields):
                 access_code += f'[{index}]'
                 html_repr += self._generate_field_html(index, item, level, access_code)
-        elif isinstance(fields, np.ndarray):
+        elif isinstance(fields, (np.ndarray, h5py.Dataset)):
+            html_repr += self._generate_array_html(fields, level)
+        elif hasattr(fields, "store") and hasattr(fields, "shape"):  # Duck typing for zarr array
             html_repr += self._generate_array_html(fields, level)
         else:
             pass
@@ -724,18 +726,22 @@ class Container(AbstractContainer):
             return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
                    f' title="{access_code}">{key}: </span><span class="field-value">{value}</span></div>'
 
-        if hasattr(value, "generate_html_repr"):
+        if isinstance(value, (np.ndarray, h5py.Dataset)):
+            html_content = self._generate_array_html(value, level + 1)
+        elif hasattr(value, "store") and hasattr(value, "shape"):  # Duck typing for zarr array
+            html_content = self._generate_array_html(value, level + 1)
+        elif hasattr(value, "generate_html_repr"):
             html_content = value.generate_html_repr(level + 1, access_code)
-
         elif hasattr(value, '__repr_html__'):
             html_content = value.__repr_html__()
-
-        elif hasattr(value, "fields"):
+        elif hasattr(value, "fields"):  # Note that h5py.Dataset has a fields attribute so there is an implicit order
             html_content = self._generate_html_repr(value.fields, level + 1, access_code, is_field=True)
         elif isinstance(value, (list, dict, np.ndarray)):
             html_content = self._generate_html_repr(value, level + 1, access_code, is_field=False)
         else:
             html_content = f'<span class="field-key">{value}</span>'
+
+
         html_repr = (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
             f'class="container-fields field-key" title="{access_code}"><b>{key}</b></summary>'
@@ -745,10 +751,74 @@ class Container(AbstractContainer):
 
         return html_repr
 
+
     def _generate_array_html(self, array, level):
-        """Generates HTML for a NumPy array."""
-        str_ = str(array).replace("\n", "</br>")
-        return f'<div style="margin-left: {level * 20}px;" class="container-fields">{str_}</div>'
+        """Generates HTML for a NumPy array, h5py Dataset, or Zarr array."""
+
+        def convert_bytes_to_str(bytes_size):
+            suffixes = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
+            i = 0
+            while bytes_size >= 1024 and i < len(suffixes)-1:
+                bytes_size /= 1024.
+                i += 1
+            return f"{bytes_size:.2f} {suffixes[i]}"
+
+        # Generates an html report for the backend info, inspired on zarr info html representation
+        def html_table(item_dicts) -> str:
+            report = '<table class="data-info">'
+            report += "<tbody>"
+            for k, v in item_dicts.items():
+                report += (
+                    f"<tr>"
+                    f'<th style="text-align: left">{k}</th>'
+                    f'<td style="text-align: left">{v}</td>'
+                    f"</tr>"
+                )
+            report += "</tbody>"
+            report += "</table>"
+            return report
+
+        if hasattr(array, "nbytes"):  # TODO: Remove this after h5py minimal version is larger than 3.0
+            array_size_in_bytes = array.nbytes
+        else:
+            array_size_in_bytes = array.size * array.dtype.itemsize
+        array_size_repr = convert_bytes_to_str(array_size_in_bytes)
+        basic_array_info_dict = {"shape": array.shape, "dtype": array.dtype,  "Array size": array_size_repr}
+
+        if isinstance(array, np.ndarray):
+            head = "NumPy Array"
+            backend_info_dict = basic_array_info_dict
+
+        if isinstance(array, h5py.Dataset):
+            hdf5_dataset = array
+            chunks = hdf5_dataset.chunks
+            compression = hdf5_dataset.compression
+            compression_opts = hdf5_dataset.compression_opts
+            compressed_size = hdf5_dataset.id.get_storage_size()
+            uncompressed_size = array_size_in_bytes
+            compression_ratio = uncompressed_size / compressed_size if compressed_size != 0 else "undefined"
+
+            head = "HDF5 Dataset"
+            hdf5_info_dict = {"chunks": chunks, "compression": compression, "compression_opts": compression_opts,
+                              "compression_ratio": compression_ratio}
+            backend_info_dict = {**basic_array_info_dict, **hdf5_info_dict}
+
+        if hasattr(array, "store") and hasattr(array, "shape"):  # Duck typing for zarr array
+            head = "Zarr Array"
+            zarr_info_dict = {k:v for k, v in array.info_items()}
+            backend_info_dict = zarr_info_dict
+
+        # Add <br> tags and concatenate the components
+        head_html = head
+        backend_info_html = html_table(backend_info_dict)
+        repr_html = head_html + "<br>" + backend_info_html
+
+        # Display data for small datasets
+        array_is_small = array_size_in_bytes < 1024 * 0.1  # 10 % a kilobyte to display the array
+        if array_is_small or isinstance(array, np.ndarray):
+            repr_html += "<br>" + str(np.asarray(array))
+
+        return f'<div style="margin-left: {level * 20}px;" class="container-fields">{repr_html}</div>'
 
     @staticmethod
     def __smart_str(v, num_indent):

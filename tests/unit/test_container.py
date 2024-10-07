@@ -1,6 +1,7 @@
 import numpy as np
 from uuid import uuid4, UUID
 import os
+import h5py
 
 from hdmf.container import AbstractContainer, Container, Data, HERDManager
 from hdmf.common.resources import HERD
@@ -423,6 +424,23 @@ class TestHTMLRepr(TestCase):
             self.data = kwargs['data']
             self.str = kwargs['str']
 
+    class ContainerWithData(Container):
+
+        __fields__ = (
+            "data",
+            "str"
+        )
+
+        @docval(
+            {'name': "data", "doc": 'data', 'type': 'array_data', "default": None},
+            {'name': "str", "doc": 'str', 'type': str, "default": None},
+
+        )
+        def __init__(self, **kwargs):
+            super().__init__('test name')
+            self.data = kwargs['data']
+            self.str = kwargs['str']
+
     def test_repr_html_(self):
         child_obj1 = Container('test child 1')
         obj1 = self.ContainerWithChildAndData(child=child_obj1, data=[1, 2, 3], str="hello")
@@ -455,6 +473,39 @@ class TestHTMLRepr(TestCase):
             'class="field-value">hello</span></div></div>'
         )
 
+    def test_repr_html_array(self):
+        obj = self.ContainerWithData(data=np.array([1, 2, 3, 4], dtype=np.int64), str="hello")
+        expected_html_table = (
+            'class="container-fields">NumPy Array<br><table class="data-info"><tbody><tr><th style="text-align: '
+            'left">shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">dtype</'
+            'th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Array size</th><td '
+            'style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]</div></details><div '
+            'style="margin-left: 0px;" class="container-fields"><span class="field-key" title=".str">str: </'
+            'span><span class="field-value">hello</span></div></div>'
+        )
+        self.assertIn(expected_html_table, obj._repr_html_())
+
+    def test_repr_html_hdf5_dataset(self):
+
+        # Open an HDF5 file in write mode
+        with h5py.File('data.h5', 'w') as file:
+            dataset = file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+            obj = self.ContainerWithData(data=dataset, str="hello")
+            expected_html_table = (
+                'class="container-fields">HDF5 Dataset<br><table class="data-info"><tbody><tr><th style="text-align: '
+                'left">shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">dtype</'
+                'th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Array size</th><td '
+                'style="text-align: left">32.00 bytes</td></tr><tr><th style="text-align: left">chunks</th><td '
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">compression</th><td '
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">compression_opts</th><td '
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">compression_ratio</th><td '
+                'style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4]</div></details><div '
+                'style="margin-left: 0px;" class="container-fields"><span class="field-key" title=".str">str: </'
+                'span><span class="field-value">hello</span></div></div>'
+            )
+
+            self.assertIn(expected_html_table, obj._repr_html_())
+        os.remove('data.h5')
 
 class TestData(TestCase):
 

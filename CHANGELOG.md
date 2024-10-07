@@ -74,6 +74,7 @@ is available on build (during the write process), but not on read of a dataset f
 - Unwrap `TermSetWrapper` within the builder to support different backends more efficiently. @mavaylon1 [#1070](https://github.com/hdmf-dev/hdmf/pull/1070)
 - Added docs page that lists limitations of support for the HDMF specification language. @rly [#1069](https://github.com/hdmf-dev/hdmf/pull/1069)
 - Added warning when using `add_row` or `add_column` to add a ragged array to `DynamicTable` without an index parameter. @stephprince [#1066](https://github.com/hdmf-dev/hdmf/pull/1066)
+- Improve html representation of data in `Containers` @h-mayorquin [#1100](https://github.com/hdmf-dev/hdmf/pull/1100)
 
 ## HDMF 3.12.2 (February 9, 2024)
 
