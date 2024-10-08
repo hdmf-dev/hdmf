@@ -11,8 +11,10 @@ from warnings import warn
 import numpy as np
 import pandas as pd
 import itertools
+from typing import Type
 
 from . import register_class, EXP_NAMESPACE
+from ..backends.hdf5.h5_utils import H5DataIO
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type, is_ragged
@@ -1342,6 +1344,25 @@ class DynamicTable(Container):
         kwargs = dict(name=self.name, id=self.id, columns=self.columns, description=self.description,
                       colnames=self.colnames)
         return self.__class__(**kwargs)
+
+    def make_expandable(self, data_io_class: Type[DataIO] = H5DataIO, data_io_kwargs: dict = None):
+        """
+
+        Parameters
+        ----------
+        data_io_class: Type[DataIO], default=H5DataIO
+        data_io_kwargs: dict, optional
+            Keyword arguments to pass to the data_io_class. If None, defaults to dict(shape=(None, *data.shape[1:]))
+        """
+
+        if data_io_kwargs is None:
+            data_io_kwargs = dict()
+
+        for column in self.columns + [self.id]:
+            shape = column.data.shape
+            kwargs = dict(shape=(None, *shape[1:]))
+            kwargs.update(**data_io_kwargs)
+            column.set_data_io(data_io_class=data_io_class, data_io_kwargs=kwargs)
 
 
 @register_class('DynamicTableRegion')
