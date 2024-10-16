@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 3.14.6 (Upcoming)
+
+### Enhancements
+- Added support for expandable datasets of references for untyped and compound data types. @stephprince [#1188](https://github.com/hdmf-dev/hdmf/pull/1188)
+
 ## HDMF 3.14.5 (October 6, 2024)
 
 ### Enhancements
