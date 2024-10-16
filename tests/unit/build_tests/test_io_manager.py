@@ -341,7 +341,7 @@ class TestRetrieveContainerClass(TestBase):
         self.assertIs(ret, Foo)
 
     def test_get_dt_container_cls_no_namespace(self):
-        with self.assertRaisesWith(ValueError, "Namespace could not be resolved."):
+        with self.assertRaisesWith(ValueError, "Namespace could not be resolved for data type 'Unknown'."):
             self.type_map.get_dt_container_cls(data_type="Unknown")
 
 

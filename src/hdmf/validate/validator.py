@@ -147,7 +147,7 @@ def get_type(data, builder_dtype=None):
     # Case for h5py.Dataset and other I/O specific array types
     else:
         # Compound dtype
-        if builder_dtype and len(builder_dtype) > 1:
+        if builder_dtype and isinstance(builder_dtype, list):
             dtypes = []
             string_formats = []
             for i in range(len(builder_dtype)):
@@ -441,7 +441,7 @@ class DatasetValidator(BaseStorageValidator):
             except EmptyArrayError:
                 # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                 pass
-        if builder.dtype is not None and len(builder.dtype) > 1 and len(np.shape(builder.data)) == 0:
+        if isinstance(builder.dtype, list) and len(np.shape(builder.data)) == 0:
             shape = ()  # scalar compound dataset
         elif isinstance(builder.dtype, list):
             shape = (len(builder.data), )  # only 1D datasets with compound types are supported

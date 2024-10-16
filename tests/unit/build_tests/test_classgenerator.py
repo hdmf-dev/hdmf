@@ -7,7 +7,9 @@ from warnings import warn
 from hdmf.build import TypeMap, CustomClassGenerator
 from hdmf.build.classgenerator import ClassGenerator, MCIClassGenerator
 from hdmf.container import Container, Data, MultiContainerInterface, AbstractContainer
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec
+from hdmf.spec import (
+    GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec, RefSpec
+)
 from hdmf.testing import TestCase
 from hdmf.utils import get_docval, docval
 
@@ -734,9 +736,18 @@ class TestGetClassSeparateNamespace(TestCase):
                 GroupSpec(data_type_inc='Bar', doc='a bar', quantity='?')
             ]
         )
+        moo_spec = DatasetSpec(
+            doc='A test dataset that is a 1D array of object references of Baz',
+            data_type_def='Moo',
+            shape=(None,),
+            dtype=RefSpec(
+                reftype='object',
+                target_type='Baz'
+            )
+        )
         create_load_namespace_yaml(
             namespace_name='ndx-test',
-            specs=[baz_spec],
+            specs=[baz_spec, moo_spec],
             output_dir=self.test_dir,
             incl_types={
                 CORE_NAMESPACE: ['Bar'],
@@ -827,6 +838,171 @@ class TestGetClassSeparateNamespace(TestCase):
         qux_cls = self.type_map.get_dt_container_cls('Qux', 'ndx-test')
 
         self._check_classes(baz_cls, bar_cls, bar_cls2, qux_cls, qux_cls2)
+
+class TestGetClassObjectReferences(TestCase):
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+        if os.path.exists(self.test_dir):  # start clean
+            self.tearDown()
+        os.mkdir(self.test_dir)
+        self.type_map = TypeMap()
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir)
+
+    def test_get_class_include_dataset_of_references(self):
+        """Test that get_class resolves datasets of object references."""
+        qux_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Qux'
+        )
+        moo_spec = DatasetSpec(
+            doc='A test dataset that is a 1D array of object references of Qux',
+            data_type_def='Moo',
+            shape=(None,),
+            dtype=RefSpec(
+                reftype='object',
+                target_type='Qux'
+            ),
+        )
+
+        create_load_namespace_yaml(
+            namespace_name='ndx-test',
+            specs=[qux_spec, moo_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map
+        )
+        # no types should be resolved to start
+        assert self.type_map.get_container_classes('ndx-test') == []
+
+        self.type_map.get_dt_container_cls('Moo', 'ndx-test')
+        # now, Moo and Qux should be resolved
+        assert len(self.type_map.get_container_classes('ndx-test')) == 2
+        assert "Moo" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+        assert "Qux" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+
+    def test_get_class_include_attribute_object_reference(self):
+        """Test that get_class resolves data types with an attribute that is an object reference."""
+        qux_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Qux'
+        )
+        woo_spec = DatasetSpec(
+            doc='A test dataset that has a scalar object reference to a Qux',
+            data_type_def='Woo',
+            attributes=[
+                AttributeSpec(
+                    name='attr1',
+                    doc='a string attribute',
+                    dtype=RefSpec(reftype='object', target_type='Qux')
+                ),
+            ]
+        )
+        create_load_namespace_yaml(
+            namespace_name='ndx-test',
+            specs=[qux_spec, woo_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map
+        )
+        # no types should be resolved to start
+        assert self.type_map.get_container_classes('ndx-test') == []
+
+        self.type_map.get_dt_container_cls('Woo', 'ndx-test')
+        # now, Woo and Qux should be resolved
+        assert len(self.type_map.get_container_classes('ndx-test')) == 2
+        assert "Woo" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+        assert "Qux" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+
+    def test_get_class_include_nested_object_reference(self):
+        """Test that get_class resolves nested datasets that are object references."""
+        qux_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Qux'
+        )
+        spam_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Spam',
+            shape=(None,),
+            dtype=RefSpec(
+                reftype='object',
+                target_type='Qux'
+            ),
+        )
+        goo_spec = GroupSpec(
+            doc='A test dataset that has a nested dataset (Spam) that has a scalar object reference to a Qux',
+            data_type_def='Goo',
+            datasets=[
+                DatasetSpec(
+                    doc='a dataset',
+                    data_type_inc='Spam',
+                ),
+            ],
+        )
+
+        create_load_namespace_yaml(
+            namespace_name='ndx-test',
+            specs=[qux_spec, spam_spec, goo_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map
+        )
+        # no types should be resolved to start
+        assert self.type_map.get_container_classes('ndx-test') == []
+
+        self.type_map.get_dt_container_cls('Goo', 'ndx-test')
+        # now, Goo, Spam, and Qux should be resolved
+        assert len(self.type_map.get_container_classes('ndx-test')) == 3
+        assert "Goo" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+        assert "Spam" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+        assert "Qux" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+
+    def test_get_class_include_nested_attribute_object_reference(self):
+        """Test that get_class resolves nested datasets that have an attribute that is an object reference."""
+        qux_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Qux'
+        )
+        bam_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Bam',
+            attributes=[
+                AttributeSpec(
+                    name='attr1',
+                    doc='a string attribute',
+                    dtype=RefSpec(reftype='object', target_type='Qux')
+                ),
+            ],
+        )
+        boo_spec = GroupSpec(
+            doc='A test dataset that has a nested dataset (Spam) that has a scalar object reference to a Qux',
+            data_type_def='Boo',
+            datasets=[
+                DatasetSpec(
+                    doc='a dataset',
+                    data_type_inc='Bam',
+                ),
+            ],
+        )
+
+        create_load_namespace_yaml(
+            namespace_name='ndx-test',
+            specs=[qux_spec, bam_spec, boo_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map
+        )
+        # no types should be resolved to start
+        assert self.type_map.get_container_classes('ndx-test') == []
+
+        self.type_map.get_dt_container_cls('Boo', 'ndx-test')
+        # now, Boo, Bam, and Qux should be resolved
+        assert len(self.type_map.get_container_classes('ndx-test')) == 3
+        assert "Boo" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+        assert "Bam" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+        assert "Qux" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
 
 
 class EmptyBar(Container):

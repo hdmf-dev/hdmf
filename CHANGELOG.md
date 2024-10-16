@@ -1,6 +1,17 @@
 # HDMF Changelog
 
-## HDMF 3.14.4 (August 22, 2024)
+## HDMF 3.14.5 (October 6, 2024)
+
+### Enhancements
+- Added support for overriding backend configurations of `h5py.Dataset` objects in `Container.set_data_io`. @pauladkisson [#1172](https://github.com/hdmf-dev/hdmf/pull/1172)
+
+### Bug fixes
+- Fixed bug in writing of string arrays to an HDF5 file that were read from an HDF5 file that was introduced in 3.14.4. @rly @stephprince
+  [#1189](https://github.com/hdmf-dev/hdmf/pull/1189)
+- Fixed export of scalar datasets with a compound data type. @stephprince [#1185](https://github.com/hdmf-dev/hdmf/pull/1185)
+- Fixed mamba-related error in conda-based GitHub Actions. @rly [#1194](https://github.com/hdmf-dev/hdmf/pull/1194)
+
+## HDMF 3.14.4 (September 4, 2024)
 
 ### Enhancements
 - Added support to append to a dataset of references for HDMF-Zarr. @mavaylon1 [#1157](https://github.com/hdmf-dev/hdmf/pull/1157)
@@ -12,6 +23,8 @@
 ### Bug fixes
 - Fixed issue where scalar datasets with a compound data type were being written as non-scalar datasets @stephprince [#1176](https://github.com/hdmf-dev/hdmf/pull/1176)
 - Fixed H5DataIO not exposing `maxshape` on non-dci dsets. @cboulay [#1149](https://github.com/hdmf-dev/hdmf/pull/1149)
+- Fixed generation of classes in an extension that contain attributes or datasets storing references to other types defined in the extension.
+  @rly [#1183](https://github.com/hdmf-dev/hdmf/pull/1183)
 
 ## HDMF 3.14.3 (July 29, 2024)
 
