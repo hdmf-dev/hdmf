@@ -161,7 +161,7 @@ class CustomClassGenerator:
         return container_type
 
     @classmethod
-    def _get_type(cls, spec, type_map):
+    def _get_type(cls, spec, type_map, parent_spec):
         """Get the type of a spec for use in docval.
         Returns a container class, a type, a tuple of types, ('array_data', 'data') for specs with
         non-scalar shape, or (Data, Container) when an attribute reference target has not been mapped to a container
@@ -183,6 +183,10 @@ class CustomClassGenerator:
         if isinstance(spec, LinkSpec):
             return cls._get_container_type(spec.target_type, type_map)
         if spec.data_type is not None:
+            if spec.data_type == parent_spec.data_type_def:  # handle case where A contains A
+                return spec.data_type  # docval handles class names as strings specially
+            # TODO handle the rare case where A contains the definition of B which contains A
+            # the workaround is to define B separately (avoid nested type definitions)
             return cls._get_container_type(spec.data_type, type_map)
         if spec.shape is None and spec.dims is None:
             return cls._get_type_from_spec_dtype(spec.dtype)
@@ -224,7 +228,7 @@ class CustomClassGenerator:
         :param spec: The spec for the container class to generate.
         """
         field_spec = not_inherited_fields[attr_name]
-        dtype = cls._get_type(field_spec, type_map)
+        dtype = cls._get_type(field_spec, type_map, spec)
         fields_conf = {'name': attr_name,
                        'doc': field_spec['doc']}
         if cls._ischild(dtype) and issubclass(parent_cls, Container) and not isinstance(field_spec, LinkSpec):
@@ -245,7 +249,7 @@ class CustomClassGenerator:
         docval_arg = dict(
             name=attr_name,
             doc=field_spec.doc,
-            type=cls._get_type(field_spec, type_map)
+            type=cls._get_type(field_spec, type_map, spec)
         )
         shape = getattr(field_spec, 'shape', None)
         if shape is not None:
@@ -388,7 +392,7 @@ class MCIClassGenerator(CustomClassGenerator):
         field_spec = not_inherited_fields[attr_name]
         field_clsconf = dict(
             attr=attr_name,
-            type=cls._get_type(field_spec, type_map),
+            type=cls._get_type(field_spec, type_map, spec),
             add='add_{}'.format(attr_name),
             get='get_{}'.format(attr_name),
             create='create_{}'.format(attr_name)
@@ -399,7 +403,7 @@ class MCIClassGenerator(CustomClassGenerator):
         docval_arg = dict(
             name=attr_name,
             doc=field_spec.doc,
-            type=(list, tuple, dict, cls._get_type(field_spec, type_map))
+            type=(list, tuple, dict, cls._get_type(field_spec, type_map, spec))
         )
         if cls._check_spec_optional(field_spec, spec):
             docval_arg['default'] = getattr(field_spec, 'default_value', None)

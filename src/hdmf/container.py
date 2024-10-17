@@ -1304,6 +1304,12 @@ class MultiContainerInterface(Container):
 
         # get container type
         container_type = conf_dict.get('type')
+        if isinstance(container_type, str):  # handle self-referencing/recursive type
+            for supercls in cls.__mro__:
+                if container_type == supercls.__name__:
+                    container_type = supercls
+                    break
+
         if container_type is None:
             msg = "MultiContainerInterface subclass %s is missing 'type' key in __clsconf__" % cls.__name__
             if multi:
