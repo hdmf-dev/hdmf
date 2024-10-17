@@ -212,10 +212,18 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if (isinstance(value, np.ndarray) or
                 (hasattr(value, 'astype') and hasattr(value, 'dtype'))):
             if spec_dtype_type is _unicode:
-                ret = value.astype('U')
+                if hasattr(value, 'attrs') and 'zarr_dtype' in value.attrs:
+                    # Zarr stores strings as objects, so we cannot convert to unicode dtype
+                    ret = value
+                else:
+                    ret = value.astype('U')
                 ret_dtype = "utf8"
             elif spec_dtype_type is _ascii:
-                ret = value.astype('S')
+                if hasattr(value, 'attrs') and 'zarr_dtype' in value.attrs:
+                    # Zarr stores strings as objects, so we cannot convert to unicode dtype
+                    ret = value
+                else:
+                    ret = value.astype('S')
                 ret_dtype = "ascii"
             else:
                 dtype_func, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)

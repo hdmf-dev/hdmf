@@ -26,6 +26,9 @@
 - Fixed generation of classes in an extension that contain attributes or datasets storing references to other types defined in the extension.
   @rly [#1183](https://github.com/hdmf-dev/hdmf/pull/1183)
 
+### Bug fixes
+- Fixed bug when converting string datasets from Zarr to HDF5. @oruebel [#1171](https://github.com/hdmf-dev/hdmf/pull/1171)
+
 ## HDMF 3.14.3 (July 29, 2024)
 
 ### Enhancements
@@ -41,10 +44,10 @@ is available on build (during the write process), but not on read of a dataset f
 - Warn when unexpected keys are present in specs. @rly [#1134](https://github.com/hdmf-dev/hdmf/pull/1134)
 - Support appending to zarr arrays. @mavaylon1 [#1136](https://github.com/hdmf-dev/hdmf/pull/1136)
 - Support specifying "value" key in DatasetSpec. @rly [#1143](https://github.com/hdmf-dev/hdmf/pull/1143)
-- Add support for numpy 2. @rly [#1139](https://github.com/hdmf-dev/hdmf/pull/1139)
+- Added support for numpy 2. @rly [#1139](https://github.com/hdmf-dev/hdmf/pull/1139)
 
 ### Bug fixes
-- Fix iterator increment causing an extra +1 added after the end of completion. @CodyCBakerPhD [#1128](https://github.com/hdmf-dev/hdmf/pull/1128)
+- Fixed iterator increment causing an extra +1 added after the end of completion. @CodyCBakerPhD [#1128](https://github.com/hdmf-dev/hdmf/pull/1128)
 
 ## HDMF 3.14.1 (June 6, 2024)
 
