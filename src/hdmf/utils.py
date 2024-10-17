@@ -1,3 +1,6 @@
+"""
+Module with utility functions and classes for creating frontend data functionality (e.g., docval or LabelledDiced)
+"""
 import collections
 import copy as _copy
 import types

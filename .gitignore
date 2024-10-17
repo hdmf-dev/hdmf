@@ -23,6 +23,9 @@ manifest.json
 # Auto-generated tutorials
 /docs/source/tutorials/
 
+# Auto-generated from sphinx.ext.autosummary
+/docs/source/_autosummary
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/

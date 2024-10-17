@@ -1,3 +1,4 @@
+"""Module implementing the main HDF5IO HDF5 backend for HDMF"""
 import logging
 import os.path
 import warnings
@@ -35,6 +36,7 @@ H5PY_3 = h5py.__version__.startswith('3')
 
 
 class HDF5IO(HDMFIO):
+    """HDMF I/O backend for reading and writing HDMF builders to/from HDF5 files."""
 
     __ns_spec_path = 'namespace'  # path to the namespace dataset within a namespace group
 

@@ -1,3 +1,4 @@
+"""Module with data utilities, e.g., dataset I/O wrappers for iterative write and for defining I/O properties"""
 import copy
 import math
 from abc import ABCMeta, abstractmethod

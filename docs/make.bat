@@ -54,6 +54,7 @@ if "%1" == "clean" (
 	del /q %GALLERYDIR%\*.hdf5
 	del /q %GALLERYDIR%\*.sqlite
 	rmdir /q /s %RSTDIR%\tutorials
+	rmdir /q /s %RSTDIR%\_autosummary
 	goto end
 )
 

@@ -1,3 +1,4 @@
+"""Module defining the Builder datastrucures used to represent data for I/O, e.g., GroupBuilder, DatasetBuilder etc."""
 import copy as _copy
 import itertools as _itertools
 import posixpath as _posixpath
@@ -12,6 +13,7 @@ from ..utils import docval, getargs, get_docval
 
 
 class Builder(dict, metaclass=ABCMeta):
+    """Base interface class for all Builder types"""
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the group'},
             {'name': 'parent', 'type': 'hdmf.build.builders.Builder', 'doc': 'the parent builder of this Builder',
@@ -75,6 +77,8 @@ class Builder(dict, metaclass=ABCMeta):
 
 
 class BaseBuilder(Builder, metaclass=ABCMeta):
+    """Base class for Builders that support attributes, e.g,. DatasetBuilder and GroupBuilder """
+
     __attribute = 'attributes'  # self dictionary key for attributes
 
     @docval({'name': 'name', 'type': str, 'doc': 'The name of the builder.'},

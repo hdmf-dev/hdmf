@@ -49,6 +49,7 @@ autodoc_member_order = "bysource"
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "sphinx_gallery.gen_gallery",
@@ -78,6 +79,9 @@ intersphinx_mapping = {
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
     "zarr": ("https://zarr.readthedocs.io/en/stable/", None),
 }
+
+# Enable sphinx.ext.autosummary to generate automatic summary for pynwb API docs
+autosummary_generate = True
 
 # these links cannot be checked in github actions
 linkcheck_ignore = [

@@ -1,3 +1,4 @@
+"""Module with data structures for stroring sparse matrices """
 import scipy.sparse as sps
 from . import register_class
 from ..container import Container

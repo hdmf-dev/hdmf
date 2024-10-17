@@ -1,3 +1,4 @@
+"""Collection of classes for representing and creating format specifications, e.g. GroupSpec, DatasetSpec etc."""
 import re
 from abc import ABCMeta
 from collections import OrderedDict
@@ -18,11 +19,19 @@ FLAGS = {
 
 
 class DtypeHelper:
-    # Dict where the keys are the primary data type and the values are list of strings with synonyms for the dtype
-    # make sure keys are consistent between hdmf.spec.spec.DtypeHelper.primary_dtype_synonyms,
-    # hdmf.build.objectmapper.ObjectMapper.__dtypes, hdmf.build.manager.TypeMap._spec_dtype_map,
-    # hdmf.validate.validator.__allowable, and backend dtype maps
-    # see https://hdmf-schema-language.readthedocs.io/en/latest/description.html#dtype
+    """
+    Utility class with helper functions and attributes used when specifying data types.
+
+    This class is usually not instantiated but defines a collection of static helpers.
+    """
+
+    """
+    Dict where the keys are the primary data type and the values are list of strings with synonyms for the dtype
+    make sure keys are consistent between hdmf.spec.spec.DtypeHelper.primary_dtype_synonyms,
+    hdmf.build.objectmapper.ObjectMapper.__dtypes, hdmf.build.manager.TypeMap._spec_dtype_map,
+    hdmf.validate.validator.__allowable, and backend dtype maps
+    see https://hdmf-schema-language.readthedocs.io/en/latest/description.html#dtype
+    """
     primary_dtype_synonyms = {
         'float': ["float", "float32"],
         'double': ["double", "float64"],
@@ -179,6 +188,7 @@ _ref_args = [
 
 
 class RefSpec(ConstructableDict):
+    """Specification for object- and region-reference data types used with DatasetSpec and AttributedSpec"""
     __allowable_types = ('object', 'region')
 
     @docval(*_ref_args)
@@ -800,6 +810,7 @@ _link_args = [
 
 
 class LinkSpec(Spec):
+    """Specification for Links"""
 
     @docval(*_link_args)
     def __init__(self, **kwargs):
