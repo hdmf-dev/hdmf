@@ -2852,6 +2852,57 @@ class TestDTRReferences(TestCase):
             pd.testing.assert_frame_equal(ret, expected)
 
 
+class TestDataIOReferences(H5RoundTripMixin, TestCase):
+
+    def setUpContainer(self):
+        """Test roundtrip of a table with an expandable column of references."""
+        group1 = Container('group1')
+        group2 = Container('group2')
+
+        table = DynamicTable(
+            name='table',
+            description='test table'
+        )
+        table.add_column(
+            name='x',
+            description='test column of ints'
+        )
+        table.add_column(
+            name='y',
+            description='test column of reference'
+        )
+        table.add_row(id=101, x=1, y=group1)
+        table.add_row(id=102, x=2, y=group2)
+        table.id.set_data_io(H5DataIO, {'maxshape': (None,), 'chunks': True})
+        table.x.set_data_io(H5DataIO, {'maxshape': (None,), 'chunks': True})
+        table.y.set_data_io(H5DataIO, {'maxshape': (None,), 'chunks': True})
+
+        multi_container = SimpleMultiContainer(name='multi')
+        multi_container.add_container(group1)
+        multi_container.add_container(group2)
+        multi_container.add_container(table)
+
+        return multi_container
+
+    def test_append(self, cache_spec=False):
+        """Write the container to an HDF5 file, read the container from the file, and append to it."""
+
+        # write file
+        with HDF5IO(self.filename, manager=get_manager(), mode='w') as write_io:
+            write_io.write(self.container, cache_spec=cache_spec)
+
+        # read container from file
+        self.reader = HDF5IO(self.filename, manager=get_manager(), mode='a')
+        read_container = self.reader.read()
+        self.assertContainerEqual(read_container, self.container, ignore_name=True)
+        self.assertContainerEqual(read_container['table']['y'][-1], read_container['group2'])
+
+        # append row
+        group1 = read_container['group1']
+        read_container['table'].add_row(id=103, x=3, y=group1)
+
+        self.assertContainerEqual(read_container['table']['y'][-1], group1)
+
 class TestVectorIndexDtype(TestCase):
 
     def set_up_array_index(self):

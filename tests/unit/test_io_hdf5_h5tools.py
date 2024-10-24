@@ -21,7 +21,7 @@ from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
 from hdmf.container import Container
 from hdmf import Data, docval
-from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError
+from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError, append_data
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.spec.spec import GroupSpec, DtypeSpec
@@ -3039,6 +3039,41 @@ class TestExport(TestCase):
             read_bucket1 = read_io.read()
             self.assertEqual(len(read_bucket1.baz_data.data), 2)
             self.assertIs(read_bucket1.baz_data.data[1], read_bucket1.bazs["new"])
+
+    def test_append_dataset_of_references_compound(self):
+        """Test that exporting a written container with a dataset of references of compound data type works."""
+        bazs = []
+        baz_pairs = []
+        num_bazs = 10
+        for i in range(num_bazs):
+            b = Baz(name='baz%d' % i)
+            bazs.append(b)
+            baz_pairs.append((i, b))
+        baz_cpd_data = BazCpdData(name='baz_cpd_data1', data=H5DataIO(baz_pairs, maxshape=(None,)))
+        bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_cpd_data=baz_cpd_data)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='w') as write_io:
+            write_io.write(bucket)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as append_io:
+            read_bucket1 = append_io.read()
+            new_baz = Baz(name='new')
+            read_bucket1.add_baz(new_baz)
+            append_io.write(read_bucket1)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as ref_io:
+            read_bucket1 = ref_io.read()
+            cpd_DoR = read_bucket1.baz_cpd_data.data
+            builder = ref_io.manager.get_builder(read_bucket1.bazs['new'])
+            ref = ref_io._create_ref(builder)
+            append_data(cpd_DoR.dataset, (11, ref))
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='r') as read_io:
+            read_bucket2 = read_io.read()
+
+            self.assertEqual(read_bucket2.baz_cpd_data.data[-1][0], 11)
+            self.assertIs(read_bucket2.baz_cpd_data.data[-1][1], read_bucket2.bazs['new'])
+
 
     def test_append_dataset_of_references_orphaned_target(self):
         bazs = []
