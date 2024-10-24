@@ -19,7 +19,6 @@ import logging
 from ...array import Array
 from ...data_utils import DataIO, AbstractDataChunkIterator, append_data
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
-from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
 from ...utils import docval, getargs, popargs, get_docval, get_data_shape
 
@@ -418,28 +417,6 @@ class H5SpecReader(SpecReader):
             self.__cache = self.__read(ns_path)
         ret = self.__cache['namespaces']
         return ret
-
-
-class H5RegionSlicer(RegionSlicer):
-
-    @docval({'name': 'dataset', 'type': (Dataset, H5Dataset), 'doc': 'the HDF5 dataset to slice'},
-            {'name': 'region', 'type': RegionReference, 'doc': 'the region reference to use to slice'})
-    def __init__(self, **kwargs):
-        self.__dataset = getargs('dataset', kwargs)
-        self.__regref = getargs('region', kwargs)
-        self.__len = self.__dataset.regionref.selection(self.__regref)[0]
-        self.__region = None
-
-    def __read_region(self):
-        if self.__region is None:
-            self.__region = self.__dataset[self.__regref]
-
-    def __getitem__(self, idx):
-        self.__read_region()
-        return self.__region[idx]
-
-    def __len__(self):
-        return self.__len
 
 
 class H5DataIO(DataIO):
