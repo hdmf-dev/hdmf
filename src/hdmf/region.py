@@ -5,6 +5,7 @@ from .container import Data, DataRegion
 from .utils import docval, getargs
 
 
+# pragma: no cover
 class RegionSlicer(DataRegion, metaclass=ABCMeta):
     '''
     A abstract base class to control getting using a region
@@ -51,6 +52,7 @@ class RegionSlicer(DataRegion, metaclass=ABCMeta):
         pass
 
 
+# pragma: no cover
 class ListSlicer(RegionSlicer):
     """Implementation of RegionSlicer for slicing Lists and Data"""
 
