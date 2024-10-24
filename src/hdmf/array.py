@@ -93,64 +93,6 @@ class AbstractSortedArray(Array, metaclass=ABCMeta):
         else:
             return a
 
-    def __eq__(self, other):
-        if isinstance(other, list):
-            ret = list()
-            for i in other:
-                eq = self == i
-                ret.append(eq)
-            ret = sorted(ret, key=self.__sort)
-            tmp = list()
-            for i in range(1, len(ret)):
-                a, b = ret[i - 1], ret[i]
-                if isinstance(a, tuple):
-                    if isinstance(b, tuple):
-                        if a[1] >= b[0]:
-                            b[0] = a[0]
-                        else:
-                            tmp.append(slice(*a))
-                    else:
-                        if b > a[1]:
-                            tmp.append(slice(*a))
-                        elif b == a[1]:
-                            a[1] == b + 1
-                        else:
-                            ret[i] = a
-                else:
-                    if isinstance(b, tuple):
-                        if a < b[0]:
-                            tmp.append(a)
-                    else:
-                        if b - a == 1:
-                            ret[i] = (a, b)
-                        else:
-                            tmp.append(a)
-            if isinstance(ret[-1], tuple):
-                tmp.append(slice(*ret[-1]))
-            else:
-                tmp.append(ret[-1])
-            ret = tmp
-            return ret
-        elif isinstance(other, tuple):
-            ge = self >= other[0]
-            ge = ge.start
-            lt = self < other[1]
-            lt = lt.stop
-            if ge == lt:
-                return ge
-            else:
-                return slice(ge, lt)
-        else:
-            lower = self.__lower(other)
-            upper = self.__upper(other)
-            d = upper - lower
-            if d == 1:
-                return lower
-            elif d == 0:
-                return None
-            else:
-                return slice(lower, upper)
-
     def __ne__(self, other):
         eq = self == other
         if isinstance(eq, tuple):
