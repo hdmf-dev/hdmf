@@ -750,9 +750,7 @@ class HDF5IO(HDMFIO):
         for k, v in h5obj.attrs.items():
             if k == SPEC_LOC_ATTR:  # ignore cached spec
                 continue
-            if isinstance(v, RegionReference):
-                raise ValueError("cannot read region reference attributes yet")
-            elif isinstance(v, Reference):
+            if isinstance(v, Reference):
                 ret[k] = self.__read_ref(h5obj.file[v])
             else:
                 ret[k] = v
@@ -919,7 +917,6 @@ class HDF5IO(HDMFIO):
         "ref": H5_REF,
         "reference": H5_REF,
         "object": H5_REF,
-        "region": H5_REGREF,
         "isodatetime": H5_TEXT,
         "datetime": H5_TEXT,
     }
@@ -1237,29 +1234,12 @@ class HDF5IO(HDMFIO):
                 dset = self.__scalar_fill__(parent, name, data, options)
             else:
                 dset = self.__list_fill__(parent, name, data, options)
-        # Write a dataset containing references, i.e., a region or object reference.
+        # Write a dataset containing references, i.e., object reference.
         # NOTE: we can ignore options['io_settings'] for scalar data
         elif self.__is_ref(options['dtype']):
             _dtype = self.__dtypes.get(options['dtype'])
-            # Write a scalar data region reference dataset
-            if isinstance(data, RegionBuilder):
-                dset = parent.require_dataset(name, shape=(), dtype=_dtype)
-                self.__set_written(builder)
-                self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing a "
-                                  "region reference. attributes: %s"
-                                  % (name, list(attributes.keys())))
-
-                @self.__queue_ref
-                def _filler():
-                    self.logger.debug("Resolving region reference and setting attribute on dataset '%s' "
-                                      "containing attributes: %s"
-                                      % (name, list(attributes.keys())))
-                    ref = self.__get_ref(data.builder, data.region)
-                    dset = parent[name]
-                    dset[()] = ref
-                    self.set_attributes(dset, attributes)
             # Write a scalar object reference dataset
-            elif isinstance(data, ReferenceBuilder):
+            if isinstance(data, ReferenceBuilder):
                 dset = parent.require_dataset(name, dtype=_dtype, shape=())
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing an "
@@ -1277,44 +1257,24 @@ class HDF5IO(HDMFIO):
                     self.set_attributes(dset, attributes)
             # Write an array dataset of references
             else:
-                # Write a array of region references
-                if options['dtype'] == 'region':
-                    dset = parent.require_dataset(name, dtype=_dtype, shape=(len(data),), **options['io_settings'])
-                    self.__set_written(builder)
-                    self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
-                                      "region references. attributes: %s"
-                                      % (name, list(attributes.keys())))
-
-                    @self.__queue_ref
-                    def _filler():
-                        self.logger.debug("Resolving region references and setting attribute on dataset '%s' "
-                                          "containing attributes: %s"
-                                          % (name, list(attributes.keys())))
-                        refs = list()
-                        for item in data:
-                            refs.append(self.__get_ref(item.builder, item.region))
-                        dset = parent[name]
-                        dset[()] = refs
-                        self.set_attributes(dset, attributes)
                 # Write array of object references
-                else:
-                    dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
-                    self.__set_written(builder)
-                    self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
-                                      "object references. attributes: %s"
-                                      % (name, list(attributes.keys())))
+                dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
+                self.__set_written(builder)
+                self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
+                                  "object references. attributes: %s"
+                                  % (name, list(attributes.keys())))
 
-                    @self.__queue_ref
-                    def _filler():
-                        self.logger.debug("Resolving object references and setting attribute on dataset '%s' "
-                                          "containing attributes: %s"
-                                          % (name, list(attributes.keys())))
-                        refs = list()
-                        for item in data:
-                            refs.append(self.__get_ref(item))
-                        dset = parent[name]
-                        dset[()] = refs
-                        self.set_attributes(dset, attributes)
+                @self.__queue_ref
+                def _filler():
+                    self.logger.debug("Resolving object references and setting attribute on dataset '%s' "
+                                      "containing attributes: %s"
+                                      % (name, list(attributes.keys())))
+                    refs = list()
+                    for item in data:
+                        refs.append(self.__get_ref(item))
+                    dset = parent[name]
+                    dset[()] = refs
+                    self.set_attributes(dset, attributes)
             return
         # write a "regular" dataset
         else:
@@ -1502,11 +1462,9 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference',
              'default': None},
-            {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the region reference indexing object',
-             'default': None},
             returns='the reference', rtype=Reference)
     def __get_ref(self, **kwargs):
-        container, region = getargs('container', 'region', kwargs)
+        container = getargs('container', kwargs)
         if container is None:
             return None
         if isinstance(container, Builder):
@@ -1523,20 +1481,9 @@ class HDF5IO(HDMFIO):
             builder = self.manager.build(container)
         path = self.__get_path(builder)
 
-        self.logger.debug("Getting reference at path '%s'" % path)
-        if isinstance(container, RegionBuilder):
-            region = container.region
-        if region is not None:
-            dset = self.__file[path]
-            if not isinstance(dset, Dataset):
-                raise ValueError('cannot create region reference without Dataset')
-            return self.__file[path].regionref[region]
-        else:
-            return self.__file[path].ref
+        return self.__file[path].ref
 
     @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference',
-             'default': None},
-            {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the region reference indexing object',
              'default': None},
             returns='the reference', rtype=Reference)
     def _create_ref(self, **kwargs):
@@ -1568,17 +1515,6 @@ class HDF5IO(HDMFIO):
         # queueing reference resolution, based on reference
         # dependency
         self.__ref_queue.append(func)
-
-    def __rec_get_ref(self, ref_list):
-        ret = list()
-        for elem in ref_list:
-            if isinstance(elem, (list, tuple)):
-                ret.append(self.__rec_get_ref(elem))
-            elif isinstance(elem, (Builder, Container)):
-                ret.append(self.__get_ref(elem))
-            else:
-                ret.append(elem)
-        return ret
 
     @property
     def mode(self):
