@@ -963,41 +963,23 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return _filler
 
     def __get_ref_builder(self, builder, dtype, shape, container, build_manager):
-        bldr_data = None
-        if dtype.is_region():
-            if shape is None:
-                if not isinstance(container, DataRegion):
-                    msg = "'container' must be of type DataRegion if spec represents region reference"
-                    raise ValueError(msg)
-                self.logger.debug("Setting %s '%s' data to region reference builder"
-                                  % (builder.__class__.__name__, builder.name))
-                target_builder = self.__get_target_builder(container.data, build_manager, builder)
-                bldr_data = RegionBuilder(container.region, target_builder)
-            else:
-                self.logger.debug("Setting %s '%s' data to list of region reference builders"
-                                  % (builder.__class__.__name__, builder.name))
-                bldr_data = list()
-                for d in container.data:
-                    target_builder = self.__get_target_builder(d.target, build_manager, builder)
-                    bldr_data.append(RegionBuilder(d.slice, target_builder))
-        else:
-            self.logger.debug("Setting object reference dataset on %s '%s' data"
+        self.logger.debug("Setting object reference dataset on %s '%s' data"
+                          % (builder.__class__.__name__, builder.name))
+        if isinstance(container, Data):
+            self.logger.debug("Setting %s '%s' data to list of reference builders"
                               % (builder.__class__.__name__, builder.name))
-            if isinstance(container, Data):
-                self.logger.debug("Setting %s '%s' data to list of reference builders"
-                                  % (builder.__class__.__name__, builder.name))
-                bldr_data = list()
-                for d in container.data:
-                    target_builder = self.__get_target_builder(d, build_manager, builder)
-                    bldr_data.append(ReferenceBuilder(target_builder))
-                if isinstance(container.data, H5DataIO):
-                    # This is here to support appending a dataset of references.
-                    bldr_data = H5DataIO(bldr_data, **container.data.get_io_params())
-            else:
-                self.logger.debug("Setting %s '%s' data to reference builder"
-                                  % (builder.__class__.__name__, builder.name))
-                target_builder = self.__get_target_builder(container, build_manager, builder)
-                bldr_data = ReferenceBuilder(target_builder)
+            bldr_data = list()
+            for d in container.data:
+                target_builder = self.__get_target_builder(d, build_manager, builder)
+                bldr_data.append(ReferenceBuilder(target_builder))
+            if isinstance(container.data, H5DataIO):
+                # This is here to support appending a dataset of references.
+                bldr_data = H5DataIO(bldr_data, **container.data.get_io_params())
+        else:
+            self.logger.debug("Setting %s '%s' data to reference builder"
+                              % (builder.__class__.__name__, builder.name))
+            target_builder = self.__get_target_builder(container, build_manager, builder)
+            bldr_data = ReferenceBuilder(target_builder)
         return bldr_data
 
     def __get_target_builder(self, container, build_manager, builder):

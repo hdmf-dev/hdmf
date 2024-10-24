@@ -440,7 +440,7 @@ class TypeMap:
         #      needing this argument in deepcopy. Doesn't hurt anything, though.
         return self.__copy__()
 
-    def copy_mappers(self, type_map):
+    def copy_mappers(self, type_map): # pragma: no cover
         for namespace in self.__ns_catalog.namespaces:
             if namespace not in type_map.__container_types:
                 continue
