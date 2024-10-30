@@ -476,36 +476,43 @@ class TestHTMLRepr(TestCase):
     def test_repr_html_array(self):
         obj = self.ContainerWithData(data=np.array([1, 2, 3, 4], dtype=np.int64), str="hello")
         expected_html_table = (
-            'class="container-fields">NumPy Array<br><table class="data-info"><tbody><tr><th style="text-align: '
-            'left">shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">dtype</'
-            'th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Array size</th><td '
-            'style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]</div></details><div '
-            'style="margin-left: 0px;" class="container-fields"><span class="field-key" title=".str">str: </'
-            'span><span class="field-value">hello</span></div></div>'
+            'class="container-fields">NumPy array<br><table class="data-info"><tbody><tr><th style="text-align: '
+            'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Shape'
+            '</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">Array size</th><td '
+            'style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]'
+        )
+        self.assertIn(expected_html_table, obj._repr_html_())
+
+    def test_repr_html_array_large_arrays_not_displayed(self):
+        obj = self.ContainerWithData(data=np.arange(200, dtype=np.int64), str="hello")
+        expected_html_table = (
+            'class="container-fields">NumPy array<br><table class="data-info"><tbody><tr><th style="text-align: '
+            'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Shape'
+            '</th><td style="text-align: left">(200,)</td></tr><tr><th style="text-align: left">Array size</th><td '
+            'style="text-align: left">1.56 KiB</td></tr></tbody></table></div></details>'
         )
         self.assertIn(expected_html_table, obj._repr_html_())
 
     def test_repr_html_hdf5_dataset(self):
-
-        # Open an HDF5 file in write mode
-        with h5py.File('data.h5', 'w') as file:
-            dataset = file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+        with HDF5IO('array_data.h5', mode='w') as io:
+            dataset = io._file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
             obj = self.ContainerWithData(data=dataset, str="hello")
+            obj.read_io = io
+
             expected_html_table = (
-                'class="container-fields">HDF5 Dataset<br><table class="data-info"><tbody><tr><th style="text-align: '
-                'left">shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">dtype</'
-                'th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Array size</th><td '
-                'style="text-align: left">32.00 bytes</td></tr><tr><th style="text-align: left">chunks</th><td '
-                'style="text-align: left">None</td></tr><tr><th style="text-align: left">compression</th><td '
-                'style="text-align: left">None</td></tr><tr><th style="text-align: left">compression_opts</th><td '
-                'style="text-align: left">None</td></tr><tr><th style="text-align: left">compression_ratio</th><td '
-                'style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4]</div></details><div '
-                'style="margin-left: 0px;" class="container-fields"><span class="field-key" title=".str">str: </'
-                'span><span class="field-value">hello</span></div></div>'
+                'class="container-fields">HDF5 dataset<br><table class="data-info"><tbody><tr><th style="text-align: '
+                'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">'
+                'Shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">Array size'
+                '</th><td style="text-align: left">32.00 bytes</td></tr><tr><th style="text-align: left">Chunk shape'
+                '</th><td style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression</th><td '
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression opts</th><td '
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression ratio</th><td '
+                'style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4]'
             )
 
             self.assertIn(expected_html_table, obj._repr_html_())
-        os.remove('data.h5')
+
+        os.remove('array_data.h5')
 
 class TestData(TestCase):
 
