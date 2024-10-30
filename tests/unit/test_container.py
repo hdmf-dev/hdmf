@@ -1,7 +1,6 @@
 import numpy as np
 from uuid import uuid4, UUID
 import os
-import h5py
 
 from hdmf.container import AbstractContainer, Container, Data, HERDManager
 from hdmf.common.resources import HERD

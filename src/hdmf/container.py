@@ -12,7 +12,8 @@ import numpy as np
 import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator
-from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict, get_basic_array_info, generate_array_html_repr
+from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict,
+                    get_basic_array_info, generate_array_html_repr)
 
 from .term_set import TermSet, TermSetWrapper
 

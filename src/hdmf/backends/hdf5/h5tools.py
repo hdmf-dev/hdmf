@@ -19,7 +19,8 @@ from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildM
 from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
-from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset, get_basic_array_info, generate_array_html_repr
+from ...utils import (docval, getargs, popargs, get_data_shape, get_docval, StrDataset,
+                      get_basic_array_info, generate_array_html_repr)
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
