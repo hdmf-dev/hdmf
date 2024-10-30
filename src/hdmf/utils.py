@@ -967,6 +967,54 @@ def is_ragged(data):
 
     return False
 
+def get_basic_array_info(array):
+    def convert_bytes_to_str(bytes_size):
+        suffixes = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
+        i = 0
+        while bytes_size >= 1024 and i < len(suffixes)-1:
+            bytes_size /= 1024.
+            i += 1
+        return f"{bytes_size:.2f} {suffixes[i]}"
+
+    if hasattr(array, "nbytes"):  # TODO: Remove this after h5py minimal version is larger than 3.0
+        array_size_in_bytes = array.nbytes
+    else:
+        array_size_in_bytes = array.size * array.dtype.itemsize
+    array_size_repr = convert_bytes_to_str(array_size_in_bytes)
+    basic_array_info_dict = {"Data type": array.dtype, "Shape": array.shape, "Array size": array_size_repr}
+
+    return basic_array_info_dict
+
+def generate_array_html_repr(backend_info_dict, array, dataset_type=None):
+    def html_table(item_dicts) -> str:
+        """
+        Generates an html table from a dictionary
+        """
+        report = '<table class="data-info">'
+        report += "<tbody>"
+        for k, v in item_dicts.items():
+            report += (
+                f"<tr>"
+                f'<th style="text-align: left">{k}</th>'
+                f'<td style="text-align: left">{v}</td>'
+                f"</tr>"
+            )
+        report += "</tbody>"
+        report += "</table>"
+        return report
+
+    array_info_html = html_table(backend_info_dict)
+    repr_html = dataset_type + "<br>" + array_info_html if dataset_type is not None else array_info_html
+
+    if hasattr(array, "nbytes"):  # TODO: Remove this after h5py minimal version is larger than 3.0
+        array_size = array.nbytes
+    else:
+        array_size = array.size * array.dtype.itemsize
+    array_is_small = array_size < 1024 * 0.1 # 10 % a kilobyte to display the array
+    if array_is_small:
+        repr_html += "<br>" + str(np.asarray(array))
+
+    return repr_html
 
 class LabelledDict(dict):
     """A dict wrapper that allows querying by an attribute of the values and running a callable on removed items.
