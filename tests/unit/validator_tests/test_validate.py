@@ -524,6 +524,38 @@ class TestDtypeValidation(TestCase):
         results = self.vmap.validate(bar_builder)
         self.assertEqual(len(results), 0)
 
+class TestReferenceValidation(ValidatorTestBase):
+    def getSpecs(self):
+        qux_spec = DatasetSpec(
+            doc='a simple scalar dataset',
+            data_type_def='Qux',
+            dtype='int',
+            shape=None
+        )
+        bar_spec = GroupSpec('A test group specification with a reference dataset',
+                         data_type_def='Bar',
+                         datasets=[DatasetSpec('an example dataset',
+                                               dtype=RefSpec('Qux', reftype='object'),
+                                               name='data',
+                                               shape=(None, ))],
+                         attributes=[AttributeSpec('attr1',
+                                                   'an example attribute',
+                                                   dtype=RefSpec('Qux', reftype='object'),
+                                                   shape=(None, ))])
+        return (qux_spec, bar_spec)
+
+    def test_invalid_reference(self):
+        """Test that validator does not allow another data type where a reference is specified."""
+        value = np.array([1.0, 2.0, 3.0])
+        bar_builder = GroupBuilder('my_bar',
+                                    attributes={'data_type': 'Bar', 'attr1': value},
+                                    datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        result_strings = set([str(s) for s in results])
+        expected_errors = {"Bar/attr1 (my_bar.attr1): incorrect type - expected 'object reference', got 'float64'",
+                           "Bar/data (my_bar/data): incorrect type - expected 'object reference', got 'float64'"}
+        self.assertEqual(result_strings, expected_errors)
+
 class Test1DArrayValidation(TestCase):
 
     def set_up_spec(self, dtype):

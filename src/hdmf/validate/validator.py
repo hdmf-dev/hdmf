@@ -436,7 +436,11 @@ class DatasetValidator(BaseStorageValidator):
             try:
                 dtype, string_format = get_type(data, builder.dtype)
                 if not check_type(self.spec.dtype, dtype, string_format):
-                    ret.append(DtypeError(self.get_spec_loc(self.spec), self.spec.dtype, dtype,
+                    if isinstance(self.spec.dtype, RefSpec):
+                        expected = f'{self.spec.dtype.reftype} reference'
+                    else:
+                        expected = self.spec.dtype
+                    ret.append(DtypeError(self.get_spec_loc(self.spec), expected, dtype,
                                           location=self.get_builder_loc(builder)))
             except EmptyArrayError:
                 # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
