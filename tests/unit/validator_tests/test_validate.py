@@ -545,7 +545,6 @@ class TestReferenceValidation(ValidatorTestBase):
         return (qux_spec, bar_spec)
 
     def test_invalid_reference(self):
-        # setup spec
         """Test that validator does not allow another data type where a reference is specified."""
         value = np.array([1.0, 2.0, 3.0])
         bar_builder = GroupBuilder('my_bar',
