@@ -8,6 +8,7 @@ from hdmf.testing import TestCase
 from hdmf.utils import docval
 from hdmf.common import DynamicTable, VectorData, DynamicTableRegion
 from hdmf.backends.hdf5.h5tools import HDF5IO
+from hdmf.backends.io import HDMFIO
 
 
 class Subcontainer(Container):
@@ -507,6 +508,42 @@ class TestHTMLRepr(TestCase):
                 'style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression opts</th><td '
                 'style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression ratio</th><td '
                 'style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4]'
+            )
+
+            self.assertIn(expected_html_table, obj._repr_html_())
+
+        os.remove('array_data.h5')
+
+    def test_repr_html_hdmf_io(self):
+        with HDF5IO('array_data.h5', mode='w') as io:
+            dataset = io._file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+            obj = self.ContainerWithData(data=dataset, str="hello")
+
+            class OtherIO(HDMFIO):
+
+                @staticmethod
+                def can_read(path):
+                    pass
+
+                def read_builder(self):
+                    pass
+
+                def write_builder(self, **kwargs):
+                    pass
+
+                def open(self):
+                    pass
+
+                def close(self):
+                    pass
+
+            obj.read_io = OtherIO()
+
+            expected_html_table = (
+                'class="container-fields"><table class="data-info"><tbody><tr><th style="text-align: '
+                'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">'
+                'Shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">Array size'
+                '</th><td style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]'
             )
 
             self.assertIn(expected_html_table, obj._repr_html_())
