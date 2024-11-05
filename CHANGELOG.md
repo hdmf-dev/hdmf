@@ -4,6 +4,7 @@
 
 ### Enhancements
 - Added support for expandable datasets of references for untyped and compound data types. @stephprince [#1188](https://github.com/hdmf-dev/hdmf/pull/1188)
+- Improved html representation of data in `Containers` @h-mayorquin [#1100](https://github.com/hdmf-dev/hdmf/pull/1100)
 
 ### Bug fixes
 - Fixed inaccurate error message when validating reference data types. @stephprince [#1199](https://github.com/hdmf-dev/hdmf/pull/1199)

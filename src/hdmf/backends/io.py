@@ -5,7 +5,7 @@ from pathlib import Path
 from ..build import BuildManager, GroupBuilder
 from ..container import Container, HERDManager
 from .errors import UnsupportedOperation
-from ..utils import docval, getargs, popargs
+from ..utils import docval, getargs, popargs, get_basic_array_info, generate_array_html_repr
 from warnings import warn
 
 
@@ -187,6 +187,14 @@ class HDMFIO(metaclass=ABCMeta):
     def close(self):
         ''' Close this HDMFIO object to further reading/writing'''
         pass
+
+    @staticmethod
+    def generate_dataset_html(dataset):
+        """Generates an html representation for a dataset"""
+        array_info_dict = get_basic_array_info(dataset)
+        repr_html = generate_array_html_repr(array_info_dict, dataset)
+
+        return repr_html
 
     def __enter__(self):
         return self
