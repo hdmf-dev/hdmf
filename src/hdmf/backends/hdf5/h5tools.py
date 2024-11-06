@@ -1611,7 +1611,7 @@ class HDF5IO(HDMFIO):
 
         array_info_dict = get_basic_array_info(dataset)
         if isinstance(dataset, h5py.Dataset):
-            
+
             # get info from hdf5 dataset
             compressed_size = dataset.id.get_storage_size()
             if hasattr(dataset, "nbytes"):  # TODO: Remove this after h5py minimal version is larger than 3.0
@@ -1619,16 +1619,16 @@ class HDF5IO(HDMFIO):
             else:
                 uncompressed_size = dataset.size * dataset.dtype.itemsize
             compression_ratio = uncompressed_size / compressed_size if compressed_size != 0 else "undefined"
-            
+
             hdf5_info_dict = {
                             "Chunk shape": dataset.chunks,
                             "Compression": dataset.compression,
                             "Compression opts": dataset.compression_opts,
                             "Compression ratio": compression_ratio,
                             }
-            
+
             array_info_dict.update(hdf5_info_dict)
-        
+
         # generate html repr
         repr_html = generate_array_html_repr(array_info_dict, dataset, "HDF5 dataset")
 
