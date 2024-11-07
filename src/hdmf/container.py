@@ -304,7 +304,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
     def __init__(self, **kwargs):
         name = getargs('name', kwargs)
         if ('/' in name or ':' in name) and not self._in_construct_mode:
-            raise ValueError(f"name '{name}' cannot contain '/' or ':'")
+            raise ValueError(f"name '{name}' cannot contain a '/' or ':'")
         self.__name = name
         self.__field_values = dict()
         self.__read_io = None
