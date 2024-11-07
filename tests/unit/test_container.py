@@ -179,7 +179,7 @@ class TestContainer(TestCase):
 
     def test_slash_restriction(self):
         self.assertRaises(ValueError, Container, 'bad/name')
-    
+
     def test_colon_restriction(self):
         self.assertRaises(ValueError, Container, 'bad:name')
 
