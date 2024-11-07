@@ -179,6 +179,9 @@ class TestContainer(TestCase):
 
     def test_slash_restriction(self):
         self.assertRaises(ValueError, Container, 'bad/name')
+    
+    def test_colon_restriction(self):
+        self.assertRaises(ValueError, Container, 'bad:name')
 
     def test_set_modified_parent(self):
         """Test that set modified properly sets parent modified
