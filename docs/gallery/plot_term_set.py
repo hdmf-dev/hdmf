@@ -65,6 +65,8 @@ for this tutorial, which provides a concise example of how a term set schema loo
     For more information how to properly format the schema to support LinkML Dynamic Enumerations, please
     refer to https://linkml.io/linkml/schemas/enums.html#dynamic-enums.
 """
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_termset.png'
+
 from hdmf.common import DynamicTable, VectorData
 import os
 import numpy as np
