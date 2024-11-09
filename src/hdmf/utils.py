@@ -985,7 +985,7 @@ def get_basic_array_info(array):
 
     return basic_array_info_dict
 
-def generate_array_html_repr(backend_info_dict, array, dataset_type=None):
+def generate_array_html_repr(array_info_dict, array, dataset_type=None):
     def html_table(item_dicts) -> str:
         """
         Generates an html table from a dictionary
@@ -1003,14 +1003,22 @@ def generate_array_html_repr(backend_info_dict, array, dataset_type=None):
         report += "</table>"
         return report
 
-    array_info_html = html_table(backend_info_dict)
+    array_info_html = html_table(array_info_dict)
     repr_html = dataset_type + "<br>" + array_info_html if dataset_type is not None else array_info_html
 
-    if hasattr(array, "nbytes"):  # TODO: Remove this after h5py minimal version is larger than 3.0
-        array_size = array.nbytes
+    # Array like might lack nbytes (h5py < 3.0) or size (DataIO object)
+    if hasattr(array, "nbytes"):  
+        array_size_bytes = array.nbytes
     else:
-        array_size = array.size * array.dtype.itemsize
-    array_is_small = array_size < 1024 * 0.1 # 10 % a kilobyte to display the array
+        if hasattr(array, "size"):
+            array_size = array.size
+        else:
+            import math 
+            array_size = math.prod(array.shape)
+        array_size_bytes = array_size * array.dtype.itemsize
+    
+    # Heuristic for displaying data
+    array_is_small = array_size_bytes < 1024 * 0.1 # 10 % a kilobyte to display the array
     if array_is_small:
         repr_html += "<br>" + str(np.asarray(array))
 

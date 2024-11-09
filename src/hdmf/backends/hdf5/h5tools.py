@@ -1611,7 +1611,7 @@ class HDF5IO(HDMFIO):
 
         array_info_dict = get_basic_array_info(dataset)
         if isinstance(dataset, h5py.Dataset):
-
+            dataset_type = "HDF5 dataset"
             # get info from hdf5 dataset
             compressed_size = dataset.id.get_storage_size()
             if hasattr(dataset, "nbytes"):  # TODO: Remove this after h5py minimal version is larger than 3.0
@@ -1629,7 +1629,11 @@ class HDF5IO(HDMFIO):
 
             array_info_dict.update(hdf5_info_dict)
 
-        # generate html repr
-        repr_html = generate_array_html_repr(array_info_dict, dataset, "HDF5 dataset")
+        elif isinstance(dataset, np.ndarray):
+            dataset_type = "NumPy array"
+        else:
+            dataset_type = dataset.__class__.__name__
+            
+        repr_html = generate_array_html_repr(array_info_dict, dataset, dataset_type)
 
         return repr_html

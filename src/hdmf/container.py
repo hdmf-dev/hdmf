@@ -722,9 +722,9 @@ class Container(AbstractContainer):
         if isinstance(value, (int, float, str, bool)):
             return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
                    f' title="{access_code}">{key}: </span><span class="field-value">{value}</span></div>'
-
-        is_array_data = isinstance(value, (np.ndarray, h5py.Dataset, DataIO)) or \
-            (hasattr(value, "store") and hasattr(value, "shape"))  # Duck typing for zarr array
+        
+        # Basic array attributes
+        is_array_data = hasattr(value, "shape") and hasattr(value, "dtype")
 
         if is_array_data:
             html_content = self._generate_array_html(value, level + 1)
@@ -753,13 +753,24 @@ class Container(AbstractContainer):
     def _generate_array_html(self, array, level):
         """Generates HTML for array data"""
 
-        read_io = self.get_read_io()  # if the Container was read from file, get IO object
-        if read_io is not None:
-            repr_html = read_io.generate_dataset_html(array)
-        else:
+        is_numpy_array = isinstance(array, np.ndarray)
+        it_was_read_with_io = self.get_read_io() is not None
+        is_data_io = isinstance(array, DataIO)
+        
+        if is_numpy_array:
             array_info_dict = get_basic_array_info(array)
             repr_html = generate_array_html_repr(array_info_dict, array, "NumPy array")
-
+        elif is_data_io:
+            array_info_dict = get_basic_array_info(array.data)
+            repr_html = generate_array_html_repr(array_info_dict, array.data, "DataIO")
+        elif it_was_read_with_io:  # The backend handles the representation    
+            read_io = self.get_read_io()
+            repr_html = read_io.generate_dataset_html(array)
+        else:  # Not sure which object could get here 
+            object_class = array.__class__.__name__
+            array_info_dict = get_basic_array_info(array.data)
+            repr_html = generate_array_html_repr(array_info_dict, array.data, object_class)
+        
         return f'<div style="margin-left: {level * 20}px;" class="container-fields">{repr_html}</div>'
 
     @staticmethod
