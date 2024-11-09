@@ -1633,7 +1633,7 @@ class HDF5IO(HDMFIO):
             dataset_type = "NumPy array"
         else:
             dataset_type = dataset.__class__.__name__
-            
+
         repr_html = generate_array_html_repr(array_info_dict, dataset, dataset_type)
 
         return repr_html

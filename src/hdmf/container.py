@@ -722,7 +722,7 @@ class Container(AbstractContainer):
         if isinstance(value, (int, float, str, bool)):
             return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
                    f' title="{access_code}">{key}: </span><span class="field-value">{value}</span></div>'
-        
+
         # Basic array attributes
         is_array_data = hasattr(value, "shape") and hasattr(value, "dtype")
 
@@ -756,21 +756,21 @@ class Container(AbstractContainer):
         is_numpy_array = isinstance(array, np.ndarray)
         it_was_read_with_io = self.get_read_io() is not None
         is_data_io = isinstance(array, DataIO)
-        
+
         if is_numpy_array:
             array_info_dict = get_basic_array_info(array)
             repr_html = generate_array_html_repr(array_info_dict, array, "NumPy array")
         elif is_data_io:
             array_info_dict = get_basic_array_info(array.data)
             repr_html = generate_array_html_repr(array_info_dict, array.data, "DataIO")
-        elif it_was_read_with_io:  # The backend handles the representation    
+        elif it_was_read_with_io:  # The backend handles the representation
             read_io = self.get_read_io()  # Note that sometimes numpy array have a read_io attribute
             repr_html = read_io.generate_dataset_html(array)
-        else:  # Not sure which object could get here 
+        else:  # Not sure which object could get here
             object_class = array.__class__.__name__
             array_info_dict = get_basic_array_info(array.data)
             repr_html = generate_array_html_repr(array_info_dict, array.data, object_class)
-        
+
         return f'<div style="margin-left: {level * 20}px;" class="container-fields">{repr_html}</div>'
 
     @staticmethod

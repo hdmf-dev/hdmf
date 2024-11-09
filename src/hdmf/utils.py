@@ -1007,16 +1007,16 @@ def generate_array_html_repr(array_info_dict, array, dataset_type=None):
     repr_html = dataset_type + "<br>" + array_info_html if dataset_type is not None else array_info_html
 
     # Array like might lack nbytes (h5py < 3.0) or size (DataIO object)
-    if hasattr(array, "nbytes"):  
+    if hasattr(array, "nbytes"):
         array_size_bytes = array.nbytes
     else:
         if hasattr(array, "size"):
             array_size = array.size
         else:
-            import math 
+            import math
             array_size = math.prod(array.shape)
         array_size_bytes = array_size * array.dtype.itemsize
-    
+
     # Heuristic for displaying data
     array_is_small = array_size_bytes < 1024 * 0.1 # 10 % a kilobyte to display the array
     if array_is_small:
