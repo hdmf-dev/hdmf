@@ -764,7 +764,7 @@ class Container(AbstractContainer):
             array_info_dict = get_basic_array_info(array.data)
             repr_html = generate_array_html_repr(array_info_dict, array.data, "DataIO")
         elif it_was_read_with_io:  # The backend handles the representation    
-            read_io = self.get_read_io()
+            read_io = self.get_read_io()  # Note that sometimes numpy array have a read_io attribute
             repr_html = read_io.generate_dataset_html(array)
         else:  # Not sure which object could get here 
             object_class = array.__class__.__name__
