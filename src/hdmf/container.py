@@ -754,7 +754,7 @@ class Container(AbstractContainer):
         """Generates HTML for array data"""
 
         read_io = self.get_read_io()  # if the Container was read from file, get IO object
-        if read_io is not None:
+        if read_io is not None: # Note that sometimes numpy array have a read_io attribute
             repr_html = read_io.generate_dataset_html(array)
         else:
             array_info_dict = get_basic_array_info(array)
