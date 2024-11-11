@@ -21,7 +21,7 @@ from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
 from ..spec.spec import BaseStorageSpec
-from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape
+from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape, StrDataset
 
 _const_arg = '__constructor_arg'
 
@@ -212,7 +212,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if (isinstance(value, np.ndarray) or
                 (hasattr(value, 'astype') and hasattr(value, 'dtype'))):
             if spec_dtype_type is _unicode:
-                ret = value.astype('U')
+                if isinstance(value, StrDataset):
+                    ret = value
+                else:
+                    ret = value.astype('U')
                 ret_dtype = "utf8"
             elif spec_dtype_type is _ascii:
                 ret = value.astype('S')
