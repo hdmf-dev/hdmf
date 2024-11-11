@@ -1608,7 +1608,7 @@ class HDF5IO(HDMFIO):
     @staticmethod
     def generate_dataset_html(dataset):
         """Generates an html representation for a dataset for the HDF5IO class"""
-
+        
         array_info_dict = get_basic_array_info(dataset)
         if isinstance(dataset, h5py.Dataset):
             dataset_type = "HDF5 dataset"
@@ -1626,7 +1626,6 @@ class HDF5IO(HDMFIO):
                             "Compression opts": dataset.compression_opts,
                             "Compression ratio": compression_ratio,
                             }
-
             array_info_dict.update(hdf5_info_dict)
 
         elif isinstance(dataset, np.ndarray):
