@@ -9,6 +9,7 @@
 
 ### Bug fixes
 - Fixed inaccurate error message when validating reference data types. @stephprince [#1199](https://github.com/hdmf-dev/hdmf/pull/1199)
+- Fixed incorrect dtype conversion of a StrDataset. @stephprince [#1205](https://github.com/hdmf-dev/hdmf/pull/1205)
 
 ## HDMF 3.14.5 (October 6, 2024)
 
