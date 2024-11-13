@@ -16,7 +16,6 @@ import warnings
 import os
 import logging
 
-from ...array import Array
 from ...data_utils import DataIO, AbstractDataChunkIterator, append_data
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...spec import SpecWriter, SpecReader
@@ -84,7 +83,7 @@ class HDF5IODataChunkIteratorQueue(deque):
 
 
 class H5Dataset(HDMFDataset):
-    @docval({'name': 'dataset', 'type': (Dataset, Array), 'doc': 'the HDF5 file lazily evaluate'},
+    @docval({'name': 'dataset', 'type': (Dataset), 'doc': 'the HDF5 file lazily evaluate'},
             {'name': 'io', 'type': 'hdmf.backends.hdf5.h5tools.HDF5IO',
              'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
@@ -188,7 +187,7 @@ class ContainerResolverMixin(ContainerResolver):
 
 class AbstractH5TableDataset(DatasetOfReferences):
 
-    @docval({'name': 'dataset', 'type': (Dataset, Array), 'doc': 'the HDF5 file lazily evaluate'},
+    @docval({'name': 'dataset', 'type': (Dataset), 'doc': 'the HDF5 file lazily evaluate'},
             {'name': 'io', 'type': 'hdmf.backends.hdf5.h5tools.HDF5IO',
              'doc': 'the IO object that was used to read the underlying dataset'},
             {'name': 'types', 'type': (list, tuple),

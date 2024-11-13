@@ -15,7 +15,7 @@ from .warnings import (MissingRequiredBuildWarning, DtypeConversionWarning, Inco
                        IncorrectDatasetShapeBuildWarning)
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
-from ..container import AbstractContainer, Data, DataRegion
+from ..container import AbstractContainer, Data
 from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
