@@ -12,7 +12,8 @@ import numpy as np
 import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator
-from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
+from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict,
+                    get_basic_array_info, generate_array_html_repr)
 
 from .term_set import TermSet, TermSetWrapper
 
@@ -302,8 +303,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
     def __init__(self, **kwargs):
         name = getargs('name', kwargs)
-        if '/' in name:
-            raise ValueError("name '" + name + "' cannot contain '/'")
+        if ('/' in name or ':' in name) and not self._in_construct_mode:
+            raise ValueError(f"name '{name}' cannot contain a '/' or ':'")
         self.__name = name
         self.__field_values = dict()
         self.__read_io = None
@@ -707,8 +708,6 @@ class Container(AbstractContainer):
             for index, item in enumerate(fields):
                 access_code += f'[{index}]'
                 html_repr += self._generate_field_html(index, item, level, access_code)
-        elif isinstance(fields, np.ndarray):
-            html_repr += self._generate_array_html(fields, level)
         else:
             pass
 
@@ -724,18 +723,23 @@ class Container(AbstractContainer):
             return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
                    f' title="{access_code}">{key}: </span><span class="field-value">{value}</span></div>'
 
-        if hasattr(value, "generate_html_repr"):
-            html_content = value.generate_html_repr(level + 1, access_code)
+        is_array_data = isinstance(value, (np.ndarray, h5py.Dataset, DataIO)) or \
+            (hasattr(value, "store") and hasattr(value, "shape"))  # Duck typing for zarr array
 
+        if is_array_data:
+            html_content = self._generate_array_html(value, level + 1)
+        elif hasattr(value, "generate_html_repr"):
+            html_content = value.generate_html_repr(level + 1, access_code)
         elif hasattr(value, '__repr_html__'):
             html_content = value.__repr_html__()
-
-        elif hasattr(value, "fields"):
+        elif hasattr(value, "fields"):  # Note that h5py.Dataset has a fields attribute so there is an implicit order
             html_content = self._generate_html_repr(value.fields, level + 1, access_code, is_field=True)
         elif isinstance(value, (list, dict, np.ndarray)):
             html_content = self._generate_html_repr(value, level + 1, access_code, is_field=False)
         else:
             html_content = f'<span class="field-key">{value}</span>'
+
+
         html_repr = (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
             f'class="container-fields field-key" title="{access_code}"><b>{key}</b></summary>'
@@ -745,10 +749,18 @@ class Container(AbstractContainer):
 
         return html_repr
 
+
     def _generate_array_html(self, array, level):
-        """Generates HTML for a NumPy array."""
-        str_ = str(array).replace("\n", "</br>")
-        return f'<div style="margin-left: {level * 20}px;" class="container-fields">{str_}</div>'
+        """Generates HTML for array data"""
+
+        read_io = self.get_read_io()  # if the Container was read from file, get IO object
+        if read_io is not None: # Note that sometimes numpy array have a read_io attribute
+            repr_html = read_io.generate_dataset_html(array)
+        else:
+            array_info_dict = get_basic_array_info(array)
+            repr_html = generate_array_html_repr(array_info_dict, array, "NumPy array")
+
+        return f'<div style="margin-left: {level * 20}px;" class="container-fields">{repr_html}</div>'
 
     @staticmethod
     def __smart_str(v, num_indent):

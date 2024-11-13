@@ -19,7 +19,8 @@ from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildM
 from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
-from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset
+from ...utils import (docval, getargs, popargs, get_data_shape, get_docval, StrDataset,
+                      get_basic_array_info, generate_array_html_repr)
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
@@ -1539,3 +1540,32 @@ class HDF5IO(HDMFIO):
             data = H5DataIO(data)
         """
         return H5DataIO.__init__(**kwargs)
+
+    @staticmethod
+    def generate_dataset_html(dataset):
+        """Generates an html representation for a dataset for the HDF5IO class"""
+
+        array_info_dict = get_basic_array_info(dataset)
+        if isinstance(dataset, h5py.Dataset):
+
+            # get info from hdf5 dataset
+            compressed_size = dataset.id.get_storage_size()
+            if hasattr(dataset, "nbytes"):  # TODO: Remove this after h5py minimal version is larger than 3.0
+                uncompressed_size = dataset.nbytes
+            else:
+                uncompressed_size = dataset.size * dataset.dtype.itemsize
+            compression_ratio = uncompressed_size / compressed_size if compressed_size != 0 else "undefined"
+
+            hdf5_info_dict = {
+                            "Chunk shape": dataset.chunks,
+                            "Compression": dataset.compression,
+                            "Compression opts": dataset.compression_opts,
+                            "Compression ratio": compression_ratio,
+                            }
+
+            array_info_dict.update(hdf5_info_dict)
+
+        # generate html repr
+        repr_html = generate_array_html_repr(array_info_dict, dataset, "HDF5 dataset")
+
+        return repr_html
