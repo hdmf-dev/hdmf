@@ -501,7 +501,7 @@ class TypeMap:
         If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
         created and returned.
 
-        Replaces get_container_cls but namespace is optional. If namespace is unknown, it will be looked up from
+        Namespace is optional. If namespace is unknown, it will be looked up from
         all namespaces.
         """
         namespace, data_type, post_init_method, autogen = getargs('namespace', 'data_type',

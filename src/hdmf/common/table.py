@@ -775,8 +775,8 @@ class DynamicTable(Container):
         index, table, enum, col_cls, check_ragged = popargs('index', 'table', 'enum', 'col_cls', 'check_ragged', kwargs)
 
         if isinstance(index, VectorIndex):
-            warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
-                 "deprecated in a future version of HDMF.", category=FutureWarning, stacklevel=3)
+            msg = "Passing a VectorIndex may lead to unexpected behavior. This functionality is not supported."
+            raise ValueError(msg)
 
         if name in self.__colids:  # column has already been added
             msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
