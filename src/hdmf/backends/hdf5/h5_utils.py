@@ -8,7 +8,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from copy import copy
 
-from h5py import Group, Dataset, RegionReference, Reference, special_dtype
+from h5py import Group, Dataset, Reference, special_dtype
 from h5py import filters as h5py_filters
 import json
 import numpy as np
@@ -93,10 +93,6 @@ class H5Dataset(HDMFDataset):
     @property
     def io(self):
         return self.__io
-
-    @property
-    def regionref(self):
-        return self.dataset.regionref
 
     @property
     def ref(self):
@@ -197,9 +193,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
         super().__init__(**kwargs)
         self.__refgetters = dict()
         for i, t in enumerate(types):
-            if t is RegionReference:
-                self.__refgetters[i] = self.__get_regref
-            elif t is Reference:
+            if t is Reference:
                 self.__refgetters[i] = self._get_ref
             elif t is str:
                 # we need this for when we read compound data types
@@ -221,8 +215,6 @@ class AbstractH5TableDataset(DatasetOfReferences):
                     t = sub.metadata['ref']
                     if t is Reference:
                         tmp.append('object')
-                    elif t is RegionReference:
-                        tmp.append('region')
             else:
                 tmp.append(sub.type.__name__)
         self.__dtype = tmp
@@ -255,10 +247,6 @@ class AbstractH5TableDataset(DatasetOfReferences):
         """
         return string.decode('utf-8') if isinstance(string, bytes) else string
 
-    def __get_regref(self, ref):
-        obj = self._get_ref(ref)
-        return obj[ref]
-
     def resolve(self, manager):
         return self[0:len(self)]
 
@@ -279,18 +267,6 @@ class AbstractH5ReferenceDataset(DatasetOfReferences):
     @property
     def dtype(self):
         return 'object'
-
-
-class AbstractH5RegionDataset(AbstractH5ReferenceDataset):
-
-    def __getitem__(self, arg):
-        obj = super().__getitem__(arg)
-        ref = self.dataset[arg]
-        return obj[ref]
-
-    @property
-    def dtype(self):
-        return 'region'
 
 
 class ContainerH5TableDataset(ContainerResolverMixin, AbstractH5TableDataset):
@@ -335,28 +311,6 @@ class BuilderH5ReferenceDataset(BuilderResolverMixin, AbstractH5ReferenceDataset
     @classmethod
     def get_inverse_class(cls):
         return ContainerH5ReferenceDataset
-
-
-class ContainerH5RegionDataset(ContainerResolverMixin, AbstractH5RegionDataset):
-    """
-    A reference-resolving dataset for resolving region references that returns
-    resolved references as Containers
-    """
-
-    @classmethod
-    def get_inverse_class(cls):
-        return BuilderH5RegionDataset
-
-
-class BuilderH5RegionDataset(BuilderResolverMixin, AbstractH5RegionDataset):
-    """
-    A reference-resolving dataset for resolving region references that returns
-    resolved references as Builders
-    """
-
-    @classmethod
-    def get_inverse_class(cls):
-        return ContainerH5RegionDataset
 
 
 class H5SpecWriter(SpecWriter):

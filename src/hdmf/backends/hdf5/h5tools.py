@@ -7,14 +7,14 @@ from pathlib import Path, PurePosixPath as pp
 
 import numpy as np
 import h5py
-from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
+from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, check_dtype
 
-from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset, H5DataIO,
+from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5TableDataset, H5DataIO,
                        H5SpecReader, H5SpecWriter, HDF5IODataChunkIteratorQueue)
 from ..io import HDMFIO
 from ..errors import UnsupportedOperation
 from ..warnings import BrokenLinkWarning
-from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
+from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,
                       ReferenceBuilder, TypeMap, ObjectMapper)
 from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
@@ -28,7 +28,6 @@ SPEC_LOC_ATTR = '.specloc'
 H5_TEXT = special_dtype(vlen=str)
 H5_BINARY = special_dtype(vlen=bytes)
 H5_REF = special_dtype(ref=Reference)
-H5_REGREF = special_dtype(ref=RegionReference)
 
 RDCC_NBYTES = 32*2**20  # set raw data chunk cache size = 32 MiB
 
@@ -693,10 +692,7 @@ class HDF5IO(HDMFIO):
                 target = h5obj.file[scalar]
                 target_builder = self.__read_dataset(target)
                 self.__set_built(target.file.filename, target.id, target_builder)
-                if isinstance(scalar, RegionReference):
-                    d = RegionBuilder(scalar, target_builder)
-                else:
-                    d = ReferenceBuilder(target_builder)
+                d = ReferenceBuilder(target_builder)
                 kwargs['data'] = d
                 kwargs['dtype'] = d.dtype
             elif h5obj.dtype.kind == 'V':  # scalar compound data type
@@ -713,9 +709,6 @@ class HDF5IO(HDMFIO):
                 elem1 = h5obj[tuple([0] * (h5obj.ndim - 1) + [0])]
                 if isinstance(elem1, (str, bytes)):
                     d = self._check_str_dtype(h5obj)
-                elif isinstance(elem1, RegionReference):  # read list of references
-                    d = BuilderH5RegionDataset(h5obj, self)
-                    kwargs['dtype'] = d.dtype
                 elif isinstance(elem1, Reference):
                     d = BuilderH5ReferenceDataset(h5obj, self)
                     kwargs['dtype'] = d.dtype
