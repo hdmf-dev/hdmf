@@ -1475,6 +1475,7 @@ class HDF5IO(HDMFIO):
             builder = self.manager.build(container)
         path = self.__get_path(builder)
 
+        self.logger.debug("Getting reference at path '%s'" % path)
         return self.__file[path].ref
 
     @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference',
