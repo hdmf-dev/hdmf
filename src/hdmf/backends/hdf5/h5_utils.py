@@ -83,7 +83,7 @@ class HDF5IODataChunkIteratorQueue(deque):
 
 
 class H5Dataset(HDMFDataset):
-    @docval({'name': 'dataset', 'type': (Dataset), 'doc': 'the HDF5 file lazily evaluate'},
+    @docval({'name': 'dataset', 'type': Dataset, 'doc': 'the HDF5 file lazily evaluate'},
             {'name': 'io', 'type': 'hdmf.backends.hdf5.h5tools.HDF5IO',
              'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
@@ -183,7 +183,7 @@ class ContainerResolverMixin(ContainerResolver):
 
 class AbstractH5TableDataset(DatasetOfReferences):
 
-    @docval({'name': 'dataset', 'type': (Dataset), 'doc': 'the HDF5 file lazily evaluate'},
+    @docval({'name': 'dataset', 'type': Dataset, 'doc': 'the HDF5 file lazily evaluate'},
             {'name': 'io', 'type': 'hdmf.backends.hdf5.h5tools.HDF5IO',
              'doc': 'the IO object that was used to read the underlying dataset'},
             {'name': 'types', 'type': (list, tuple),
