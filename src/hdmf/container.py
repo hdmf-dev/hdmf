@@ -1,5 +1,4 @@
 import types
-from abc import abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
 from typing import Type, Optional
@@ -990,25 +989,6 @@ class Data(AbstractContainer):
 
         Subclasses should override this function to perform class-specific validation.
         """
-        pass
-
-
-class DataRegion(Data):
-
-    @property
-    @abstractmethod
-    def data(self):
-        '''
-        The target data that this region applies to
-        '''
-        pass
-
-    @property
-    @abstractmethod
-    def region(self):
-        '''
-        The region that indexes into data e.g. slice or list of indices
-        '''
         pass
 
 

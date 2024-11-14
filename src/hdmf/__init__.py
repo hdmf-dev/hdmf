@@ -1,6 +1,6 @@
 from . import query
 from .backends.hdf5.h5_utils import H5Dataset
-from .container import Container, Data, DataRegion, HERDManager
+from .container import Container, Data, HERDManager
 from .utils import docval, getargs
 from .term_set import TermSet, TermSetWrapper, TypeConfigurator
 
