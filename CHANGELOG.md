@@ -3,7 +3,7 @@
 ## HDMF 4.0.0 (Upcoming)
 
 ### Deprecations
-- The following classes have been deprecated and removed: Array, AbstractSortedArray, SortedArray, LinSpace, Query, RegionSlicer, ListSlicer, H5RegionSlicer, DataRegion. The following methods have been deprecated and removed: get_container_cls, add_child, set_dataio (now refactored as set_data_io). We have also removed all early evelopment for region references. @mavaylon1 [#1998](https://github.com/hdmf-dev/hdmf/pull/1198)
+- The following classes have been deprecated and removed: Array, AbstractSortedArray, SortedArray, LinSpace, Query, RegionSlicer, ListSlicer, H5RegionSlicer, DataRegion. The following methods have been deprecated and removed: fmt_docval_args, call_docval_func, get_container_cls, add_child, set_dataio (now refactored as set_data_io). We have also removed all early evelopment for region references. @mavaylon1 [#1998](https://github.com/hdmf-dev/hdmf/pull/1198)
 
 ### Enhancements
 - Added support for expandable datasets of references for untyped and compound data types. @stephprince [#1188](https://github.com/hdmf-dev/hdmf/pull/1188)

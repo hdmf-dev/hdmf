@@ -7,15 +7,6 @@ from .utils import ExtenderMeta, docval_macro, docval, getargs
 
 @docval_macro('array_data')
 class HDMFDataset(metaclass=ExtenderMeta):
-    __operations__ = (
-        '__lt__',
-        '__gt__',
-        '__le__',
-        '__ge__',
-        '__eq__',
-        '__ne__',
-    )
-
     def __evaluate_key(self, key):
         if isinstance(key, tuple) and len(key) == 0:
             return key
