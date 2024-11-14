@@ -28,7 +28,7 @@ class HDMFDataset(metaclass=ExtenderMeta):
         idx = self.__evaluate_key(key)
         return self.dataset[idx]
 
-    @docval({'name': 'dataset', 'type': ('array_data'), 'doc': 'the HDF5 file lazily evaluate'})
+    @docval({'name': 'dataset', 'type': 'array_data', 'doc': 'the HDF5 file lazily evaluate'})
     def __init__(self, **kwargs):
         super().__init__()
         self.__dataset = getargs('dataset', kwargs)
