@@ -7,7 +7,7 @@ dependencies:
   - python==3.13
   - h5py==3.11.0
   - matplotlib==3.8.4
-  - numpy==2.0.0
+  - numpy==2.1.0
   - pandas==2.2.2
   - python-dateutil==2.8.2
   - pytest==8.1.2  # regression introduced in pytest 8.2.*, will be fixed in 8.3.0
