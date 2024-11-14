@@ -1,5 +1,4 @@
 import types
-from abc import abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
 from typing import Type, Optional
@@ -467,21 +466,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
     def children(self):
         return tuple(self.__children)
 
-    @docval({'name': 'child', 'type': 'Container',
-             'doc': 'the child Container for this Container', 'default': None})
-    def add_child(self, **kwargs):
-        warn(DeprecationWarning('add_child is deprecated. Set the parent attribute instead.'))
-        child = getargs('child', kwargs)
-        if child is not None:
-            # if child.parent is a Container, then the mismatch between child.parent and parent
-            # is used to make a soft/external link from the parent to a child elsewhere
-            # if child.parent is not a Container, it is either None or a Proxy and should be set to self
-            if not isinstance(child.parent, AbstractContainer):
-                # actually add the child to the parent in parent setter
-                child.parent = self
-        else:
-            warn('Cannot add None as child to a container %s' % self.name)
-
     @classmethod
     def type_hierarchy(cls):
         return cls.__mro__
@@ -913,20 +897,6 @@ class Data(AbstractContainer):
         """
         return get_data_shape(self.__data)
 
-    @docval({'name': 'dataio', 'type': DataIO, 'doc': 'the DataIO to apply to the data held by this Data'})
-    def set_dataio(self, **kwargs):
-        """
-        Apply DataIO object to the data held by this Data object
-        """
-        warn(
-            "Data.set_dataio() is deprecated. Please use Data.set_data_io() instead.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-        dataio = getargs('dataio', kwargs)
-        dataio.data = self.__data
-        self.__data = dataio
-
     def set_data_io(
         self,
         data_io_class: Type[DataIO],
@@ -1019,25 +989,6 @@ class Data(AbstractContainer):
 
         Subclasses should override this function to perform class-specific validation.
         """
-        pass
-
-
-class DataRegion(Data):
-
-    @property
-    @abstractmethod
-    def data(self):
-        '''
-        The target data that this region applies to
-        '''
-        pass
-
-    @property
-    @abstractmethod
-    def region(self):
-        '''
-        The region that indexes into data e.g. slice or list of indices
-        '''
         pass
 
 
