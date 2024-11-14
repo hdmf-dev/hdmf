@@ -1,5 +1,5 @@
 # minimum versions of package dependencies for installing HDMF
-h5py==3.1.0
+h5py==2.10.0
 jsonschema==3.2.0
 numpy==1.19.3
 pandas==1.2.0
