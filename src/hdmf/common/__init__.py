@@ -108,11 +108,7 @@ def register_map(**kwargs):
 
 
 def __get_resources():
-    try:
-        from importlib.resources import files
-    except ImportError:
-        # TODO: Remove when python 3.9 becomes the new minimum
-        from importlib_resources import files
+    from importlib.resources import files
 
     __location_of_this_file = files(__name__)
     __core_ns_file_name = 'namespace.yaml'
