@@ -6,4 +6,3 @@ ruamel.yaml==0.18.2
 pandas==2.2.3
 scipy==1.14.1; python_version >= "3.10"
 scipy==1.11.3; python_version < "3.10"
-
