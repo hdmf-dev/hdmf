@@ -1492,7 +1492,7 @@ class HDF5IO(HDMFIO):
         if isinstance(dtype, dict):  # may be dict from reading a compound dataset
             return self.__is_ref(dtype['dtype'])
         if isinstance(dtype, str):
-            return dtype == DatasetBuilder.OBJECT_REF_TYPE or dtype == DatasetBuilder.REGION_REF_TYPE
+            return dtype == DatasetBuilder.OBJECT_REF_TYPE
         return False
 
     def __queue_ref(self, func):
