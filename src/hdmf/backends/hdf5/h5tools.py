@@ -908,8 +908,6 @@ class HDF5IO(HDMFIO):
         "utf-8": H5_TEXT,
         "ascii": H5_BINARY,
         "bytes": H5_BINARY,
-        "ref": H5_REF,
-        "reference": H5_REF,
         "object": H5_REF,
         "isodatetime": H5_TEXT,
         "datetime": H5_TEXT,
