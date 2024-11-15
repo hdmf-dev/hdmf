@@ -38,7 +38,6 @@ class DtypeHelper:
         'uint32': ["uint32", "uint"],
         'uint64': ["uint64"],
         'object': ['object'],
-        'region': ['region'],
         'numeric': ['numeric'],
         'isodatetime': ["isodatetime", "datetime", "date"]
     }
@@ -174,12 +173,13 @@ _target_type_key = 'target_type'
 
 _ref_args = [
     {'name': _target_type_key, 'type': str, 'doc': 'the target type GroupSpec or DatasetSpec'},
-    {'name': 'reftype', 'type': str, 'doc': 'the type of references this is i.e. region or object'},
+    {'name': 'reftype', 'type': str, 
+     'doc': 'the type of reference this is. only "object" is supported currently.'},
 ]
 
 
 class RefSpec(ConstructableDict):
-    __allowable_types = ('object', 'region')
+    __allowable_types = ('object', )
 
     @docval(*_ref_args)
     def __init__(self, **kwargs):
@@ -199,10 +199,6 @@ class RefSpec(ConstructableDict):
     def reftype(self):
         '''The type of reference'''
         return self['reftype']
-
-    @docval(rtype=bool, returns='True if this RefSpec specifies a region reference, False otherwise')
-    def is_region(self):
-        return self['reftype'] == 'region'
 
 
 _attr_args = [
