@@ -30,12 +30,12 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
 dependencies = [
-    "h5py>=2.10",
-    "jsonschema>=2.6.0",
-    'numpy>=1.18',
-    "pandas>=1.0.5",
+    "h5py>=3.1.0",
+    "jsonschema>=3.2.0",
+    'numpy>=1.19.3',
+    "pandas>=1.2.0",
     "ruamel.yaml>=0.16",
-    "scipy>=1.4",
+    "scipy>=1.7",
 ]
 dynamic = ["version"]
 
