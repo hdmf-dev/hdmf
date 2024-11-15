@@ -173,7 +173,7 @@ _target_type_key = 'target_type'
 
 _ref_args = [
     {'name': _target_type_key, 'type': str, 'doc': 'the target type GroupSpec or DatasetSpec'},
-    {'name': 'reftype', 'type': str, 
+    {'name': 'reftype', 'type': str,
      'doc': 'the type of reference this is. only "object" is supported currently.'},
 ]
 
