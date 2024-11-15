@@ -1,4 +1,5 @@
 # minimum versions of package dependencies for installing HDMF
+# NOTE: these should match the minimum bound for dependencies in pyproject.toml
 h5py==3.1.0
 jsonschema==3.2.0
 numpy==1.19.3
