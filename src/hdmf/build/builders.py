@@ -427,4 +427,3 @@ class ReferenceBuilder(dict):
     def builder(self):
         """The target builder object."""
         return self['builder']
-
