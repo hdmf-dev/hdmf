@@ -1,4 +1,4 @@
-from .builders import Builder, DatasetBuilder, GroupBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
+from .builders import Builder, DatasetBuilder, GroupBuilder, LinkBuilder, ReferenceBuilder
 from .classgenerator import CustomClassGenerator, MCIClassGenerator
 from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError, ContainerConfigurationError,
                      ConstructError)
