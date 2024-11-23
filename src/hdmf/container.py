@@ -707,8 +707,11 @@ class Container(AbstractContainer):
             return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
                    f' title="{access_code}">{key}: </span><span class="field-value">{value}</span></div>'
 
-        is_array_data = isinstance(value, (np.ndarray, h5py.Dataset, DataIO)) or \
-            (hasattr(value, "store") and hasattr(value, "shape"))  # Duck typing for zarr array
+        # Detects array-like objects that conform to the Array Interface specification
+        # (e.g., NumPy arrays, HDF5 datasets, DataIO objects). Objects must have both
+        # 'shape' and 'dtype' attributes. Iterators are excluded as they lack 'shape'.
+        # This approach keeps the implementation generic without coupling to specific backends methods
+        is_array_data = hasattr(value, "shape") and hasattr(value, "dtype")
 
         if is_array_data:
             html_content = self._generate_array_html(value, level + 1)
@@ -735,14 +738,29 @@ class Container(AbstractContainer):
 
 
     def _generate_array_html(self, array, level):
-        """Generates HTML for array data"""
+        """Generates HTML for array data (e.g., NumPy arrays, HDF5 datasets, Zarr datasets and DataIO objects)."""
 
-        read_io = self.get_read_io()  # if the Container was read from file, get IO object
-        if read_io is not None: # Note that sometimes numpy array have a read_io attribute
-            repr_html = read_io.generate_dataset_html(array)
-        else:
+        is_numpy_array = isinstance(array, np.ndarray)
+        read_io = self.get_read_io()
+        it_was_read_with_io = read_io is not None
+        is_data_io = isinstance(array, DataIO)
+
+        if is_numpy_array:
             array_info_dict = get_basic_array_info(array)
             repr_html = generate_array_html_repr(array_info_dict, array, "NumPy array")
+        elif is_data_io:
+            array_info_dict = get_basic_array_info(array.data)
+            repr_html = generate_array_html_repr(array_info_dict, array.data, "DataIO")
+        elif it_was_read_with_io:
+            # The backend handles the representation here. Two special cases worth noting:
+            # 1. Array-type attributes (e.g., start_frame in ImageSeries) remain NumPy arrays
+            #    even when their parent container has an IO
+            # 2. Data may have been modified after being read from storage
+            repr_html = read_io.generate_dataset_html(array)
+        else:  # Not sure which object could get here
+            object_class = array.__class__.__name__
+            array_info_dict = get_basic_array_info(array.data)
+            repr_html = generate_array_html_repr(array_info_dict, array.data, object_class)
 
         return f'<div style="margin-left: {level * 20}px;" class="container-fields">{repr_html}</div>'
 
