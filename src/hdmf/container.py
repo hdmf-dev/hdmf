@@ -741,7 +741,8 @@ class Container(AbstractContainer):
         """Generates HTML for array data (e.g., NumPy arrays, HDF5 datasets, Zarr datasets and DataIO objects)."""
 
         is_numpy_array = isinstance(array, np.ndarray)
-        it_was_read_with_io = self.get_read_io() is not None
+        read_io = self.get_read_io()
+        it_was_read_with_io = read_io is not None
         is_data_io = isinstance(array, DataIO)
 
         if is_numpy_array:
@@ -755,7 +756,6 @@ class Container(AbstractContainer):
             # 1. Array-type attributes (e.g., start_frame in ImageSeries) remain NumPy arrays
             #    even when their parent container has an IO
             # 2. Data may have been modified after being read from storage
-            read_io = self.get_read_io()
             repr_html = read_io.generate_dataset_html(array)
         else:  # Not sure which object could get here
             object_class = array.__class__.__name__
