@@ -8,7 +8,7 @@ import numpy as np
 
 from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
 from .errors import ExpectedArrayError, IncorrectQuantityError
-from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
+from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
 from ..spec import SpecNamespace
@@ -124,9 +124,6 @@ def get_type(data, builder_dtype=None):
     # Bytes data
     elif isinstance(data, bytes):
         return 'ascii', get_string_format(data)
-    # RegionBuilder data
-    elif isinstance(data, RegionBuilder):
-        return 'region', None
     # ReferenceBuilder data
     elif isinstance(data, ReferenceBuilder):
         return 'object', None
