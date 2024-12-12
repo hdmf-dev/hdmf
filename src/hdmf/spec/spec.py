@@ -319,7 +319,9 @@ class BaseStorageSpec(Spec):
         default_name = getargs('default_name', kwargs)
         if default_name:
             if "/" in default_name:
-                raise ValueError(f"Default name '{default_name}' is invalid. Names of Groups and Datasets cannot contain '/'")
+                raise ValueError(
+                    f"Default name '{default_name}' is invalid. Names of Groups and Datasets cannot contain '/'"
+                )
             if name is not None:
                 warn("found 'default_name' with 'name' - ignoring 'default_name'")
             else:
