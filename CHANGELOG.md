@@ -10,6 +10,7 @@
 - Added support for expandable datasets of references for untyped and compound data types. @stephprince [#1188](https://github.com/hdmf-dev/hdmf/pull/1188)
 - Improved html representation of data in `Container` objects. @h-mayorquin [#1100](https://github.com/hdmf-dev/hdmf/pull/1100)
 - Added error when using colon for `Container` name. A colon cannot be used as a group name when writing to Zarr on Windows. @stephprince [#1202](https://github.com/hdmf-dev/hdmf/pull/1202)
+- Adjusted testing for hdmf-zarr. @rly [#1222](https://github.com/hdmf-dev/hdmf/pull/1222)
 
 ### Bug fixes
 - Fixed inaccurate error message when validating reference data types. @stephprince [#1199](https://github.com/hdmf-dev/hdmf/pull/1199)
