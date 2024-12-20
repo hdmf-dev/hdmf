@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from datetime import datetime, date
 
 import numpy as np
+from h5py import RegionReference
 
 from ..utils import docval, getargs, get_docval
 
@@ -319,10 +320,11 @@ class GroupBuilder(BaseBuilder):
 
 class DatasetBuilder(BaseBuilder):
     OBJECT_REF_TYPE = 'object'
+    REGION_REF_TYPE = 'region'
 
     @docval({'name': 'name', 'type': str, 'doc': 'The name of the dataset.'},
             {'name': 'data',
-             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', Iterable, datetime, date),
+             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', 'RegionBuilder', Iterable, datetime, date),
              'doc': 'The data in this dataset.', 'default': None},
             {'name': 'dtype', 'type': (type, np.dtype, str, list),
              'doc': 'The datatype of this dataset.', 'default': None},
@@ -427,3 +429,20 @@ class ReferenceBuilder(dict):
     def builder(self):
         """The target builder object."""
         return self['builder']
+
+
+class RegionBuilder(ReferenceBuilder):
+
+    @docval({'name': 'region', 'type': (slice, tuple, list, RegionReference),
+             'doc': 'The region, i.e. slice or indices, into the target dataset.'},
+            {'name': 'builder', 'type': DatasetBuilder, 'doc': 'The dataset this region reference applies to.'})
+    def __init__(self, **kwargs):
+        """Create a builder object for a region reference."""
+        region, builder = getargs('region', 'builder', kwargs)
+        super().__init__(builder)
+        self['region'] = region
+
+    @property
+    def region(self):
+        """The selected region of the target dataset."""
+        return self['region']

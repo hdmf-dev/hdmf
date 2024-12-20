@@ -6,7 +6,7 @@ from copy import copy
 
 import numpy as np
 
-from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, BaseBuilder
+from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, BaseBuilder
 from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError, ContainerConfigurationError,
                      ConstructError)
 from .manager import Proxy, BuildManager
@@ -1214,6 +1214,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 continue
             if isinstance(attr_val, (GroupBuilder, DatasetBuilder)):
                 ret[attr_spec] = manager.construct(attr_val)
+            elif isinstance(attr_val, RegionBuilder):  # pragma: no cover
+                raise ValueError("RegionReferences as attributes is not yet supported")
             elif isinstance(attr_val, ReferenceBuilder):
                 ret[attr_spec] = manager.construct(attr_val.builder)
             else:
