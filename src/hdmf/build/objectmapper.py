@@ -6,7 +6,7 @@ from copy import copy
 
 import numpy as np
 
-from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, BaseBuilder
+from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, RegionBuilder, BaseBuilder
 from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError, ContainerConfigurationError,
                      ConstructError)
 from .manager import Proxy, BuildManager
@@ -15,7 +15,7 @@ from .warnings import (MissingRequiredBuildWarning, DtypeConversionWarning, Inco
                        IncorrectDatasetShapeBuildWarning)
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
-from ..container import AbstractContainer, Data
+from ..container import AbstractContainer, Data, DataRegion
 from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
@@ -966,23 +966,41 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return _filler
 
     def __get_ref_builder(self, builder, dtype, shape, container, build_manager):
-        self.logger.debug("Setting object reference dataset on %s '%s' data"
-                          % (builder.__class__.__name__, builder.name))
-        if isinstance(container, Data):
-            self.logger.debug("Setting %s '%s' data to list of reference builders"
-                              % (builder.__class__.__name__, builder.name))
-            bldr_data = list()
-            for d in container.data:
-                target_builder = self.__get_target_builder(d, build_manager, builder)
-                bldr_data.append(ReferenceBuilder(target_builder))
-            if isinstance(container.data, H5DataIO):
-                # This is here to support appending a dataset of references.
-                bldr_data = H5DataIO(bldr_data, **container.data.get_io_params())
+        bldr_data = None
+        if dtype.is_region():
+            if shape is None:
+                if not isinstance(container, DataRegion):
+                    msg = "'container' must be of type DataRegion if spec represents region reference"
+                    raise ValueError(msg)
+                self.logger.debug("Setting %s '%s' data to region reference builder"
+                                  % (builder.__class__.__name__, builder.name))
+                target_builder = self.__get_target_builder(container.data, build_manager, builder)
+                bldr_data = RegionBuilder(container.region, target_builder)
+            else:
+                self.logger.debug("Setting %s '%s' data to list of region reference builders"
+                                  % (builder.__class__.__name__, builder.name))
+                bldr_data = list()
+                for d in container.data:
+                    target_builder = self.__get_target_builder(d.target, build_manager, builder)
+                    bldr_data.append(RegionBuilder(d.slice, target_builder))
         else:
-            self.logger.debug("Setting %s '%s' data to reference builder"
+            self.logger.debug("Setting object reference dataset on %s '%s' data"
                               % (builder.__class__.__name__, builder.name))
-            target_builder = self.__get_target_builder(container, build_manager, builder)
-            bldr_data = ReferenceBuilder(target_builder)
+            if isinstance(container, Data):
+                self.logger.debug("Setting %s '%s' data to list of reference builders"
+                                  % (builder.__class__.__name__, builder.name))
+                bldr_data = list()
+                for d in container.data:
+                    target_builder = self.__get_target_builder(d, build_manager, builder)
+                    bldr_data.append(ReferenceBuilder(target_builder))
+                if isinstance(container.data, H5DataIO):
+                    # This is here to support appending a dataset of references.
+                    bldr_data = H5DataIO(bldr_data, **container.data.get_io_params())
+            else:
+                self.logger.debug("Setting %s '%s' data to reference builder"
+                                  % (builder.__class__.__name__, builder.name))
+                target_builder = self.__get_target_builder(container, build_manager, builder)
+                bldr_data = ReferenceBuilder(target_builder)
         return bldr_data
 
     def __get_target_builder(self, container, build_manager, builder):
@@ -1214,6 +1232,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 continue
             if isinstance(attr_val, (GroupBuilder, DatasetBuilder)):
                 ret[attr_spec] = manager.construct(attr_val)
+            elif isinstance(attr_val, RegionBuilder):  # pragma: no cover
+                raise ValueError("RegionReferences as attributes is not yet supported")
             elif isinstance(attr_val, ReferenceBuilder):
                 ret[attr_spec] = manager.construct(attr_val.builder)
             else:

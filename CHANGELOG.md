@@ -1,11 +1,6 @@
 # HDMF Changelog
 
-## HDMF 4.0.0 (Upcoming)
-
-### Deprecations
-- The following classes have been deprecated and removed: Array, AbstractSortedArray, SortedArray, LinSpace, Query, RegionSlicer, ListSlicer, H5RegionSlicer, DataRegion, RegionBuilder. The following methods have been deprecated and removed: fmt_docval_args, call_docval_func, get_container_cls, add_child, set_dataio (now refactored as set_data_io). We have also removed all early development for region references. @mavaylon1, @rly [#1998](https://github.com/hdmf-dev/hdmf/pull/1198), [#1212](https://github.com/hdmf-dev/hdmf/pull/1212)
-- Importing from hdmf.build.map is no longer supported. Import from hdmf.build instead. @rly [#1221](https://github.com/hdmf-dev/hdmf/pull/1221)
-- Python 3.8 has been deprecated. Python 3.9 is the new minimum with support for Python 3.13. @mavaylon1 [#1209](https://github.com/hdmf-dev/hdmf/pull/1209)
+## HDMF 3.14.6 (Upcoming)
 
 ### Enhancements
 - Added support for expandable datasets of references for untyped and compound data types. @stephprince [#1188](https://github.com/hdmf-dev/hdmf/pull/1188)
