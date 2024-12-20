@@ -429,7 +429,9 @@ class TestDynamicTable(TestCase):
         table.add_column(name='qux', description='qux column')
         ind = VectorIndex(name='quux', data=list(), target=table['qux'])
 
-        with self.assertRaises(ValueError):
+        msg = ("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
+               "deprecated in a future version of HDMF.")
+        with self.assertWarnsWith(FutureWarning, msg):
             table.add_column(name='bad', description='bad column', index=ind)
 
     def test_add_column_multi_index(self):
