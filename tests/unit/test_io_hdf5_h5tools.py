@@ -1847,7 +1847,7 @@ class H5DataIOValid(TestCase):
             self.assertTrue(self.foo2.my_data.valid)  # test valid
             self.assertEqual(len(self.foo2.my_data), 5)  # test len
             self.assertEqual(self.foo2.my_data.shape, (5,))  # test getattr with shape
-            self.assertTrue(np.array_equal(np.array(self.foo2.my_data), [1, 2, 3, 4, 5]))  # test array conversion
+            np.testing.assert_array_equal(self.foo2.my_data, [1, 2, 3, 4, 5])  # test array conversion
 
             # test loop through iterable
             match = [1, 2, 3, 4, 5]
