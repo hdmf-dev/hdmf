@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from ..container import Container, Data, DataRegion, MultiContainerInterface
+from ..container import Container, Data, MultiContainerInterface
 from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from ..utils import docval, getargs, ExtenderMeta, get_docval, popargs, AllowPositional
@@ -195,7 +195,7 @@ class CustomClassGenerator:
         if isinstance(dtype, tuple):
             for sub in dtype:
                 ret = ret or cls._ischild(sub)
-        elif isinstance(dtype, type) and issubclass(dtype, (Container, Data, DataRegion)):
+        elif isinstance(dtype, type) and issubclass(dtype, (Container, Data)):
             ret = True
         return ret
 
