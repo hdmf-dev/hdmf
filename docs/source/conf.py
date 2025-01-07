@@ -87,6 +87,7 @@ linkcheck_ignore = [
 
 nitpicky = True
 nitpick_ignore = [('py:class', 'Intracomm'),
+                  ('py:class', 'h5py.RegionReference'),
                   ('py:class', 'h5py._hl.dataset.Dataset'),
                   ('py:class', 'function'),
                   ('py:class', 'unittest.case.TestCase'),
