@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 4.0.0 (Upcoming)
+
+### Bug fixes
+- Added checks to ensure that group and dataset spec names and default names do not contain slashes. @bendichter [#1219](https://github.com/hdmf-dev/hdmf/pull/1219)
+
 ## HDMF 3.14.6 (December 20, 2024)
 
 ### Enhancements

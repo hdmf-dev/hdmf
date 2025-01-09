@@ -261,3 +261,17 @@ class DatasetSpecTests(TestCase):
                "'dtype': 'int', 'required': True}")
         with self.assertWarnsWith(UserWarning, msg):
             DatasetSpec.build_spec(spec_dict)
+
+    def test_constructor_validates_name(self):
+        with self.assertRaisesWith(
+                ValueError,
+                "Name 'one/two' is invalid. Names of Groups and Datasets cannot contain '/'",
+        ):
+            DatasetSpec(doc='my first dataset', dtype='int', name='one/two')
+
+    def test_constructor_validates_default_name(self):
+        with self.assertRaisesWith(
+                ValueError,
+                "Default name 'one/two' is invalid. Names of Groups and Datasets cannot contain '/'",
+        ):
+            DatasetSpec(doc='my first dataset', dtype='int', default_name='one/two', data_type_def='test')
