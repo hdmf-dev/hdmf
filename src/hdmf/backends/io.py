@@ -1,3 +1,4 @@
+"""Module defining the base classes for defining an HDMF I/O backend"""
 from abc import ABCMeta, abstractmethod
 import os
 from pathlib import Path
@@ -10,6 +11,17 @@ from warnings import warn
 
 
 class HDMFIO(metaclass=ABCMeta):
+    """
+    Base class for implementing a new I/O backend for HDMF
+
+    Derived classes must implement the following abstract methods:
+
+    * :py:meth:`~hdmf.backends.io.HDMFIO.read_builder`
+    * :py:meth:`~hdmf.backends.io.HDMFIO.write_builder`
+    * :py:meth:`~hdmf.backends.io.HDMFIO.open`
+    * :py:meth:`~hdmf.backends.io.HDMFIO.close`
+    * :py:meth:`~hdmf.backends.io.HDMFIO.can_read`
+    """
 
     @staticmethod
     @abstractmethod

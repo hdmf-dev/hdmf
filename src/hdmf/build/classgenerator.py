@@ -1,3 +1,4 @@
+"""Module iplementing functionaltiy for automatically generating Container classes from type Specs"""
 from copy import deepcopy
 from datetime import datetime, date
 from collections.abc import Callable

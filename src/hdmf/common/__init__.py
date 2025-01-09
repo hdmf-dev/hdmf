@@ -1,5 +1,5 @@
-'''This package will contain functions, classes, and objects
-for reading and writing data in according to the HDMF-common specification
+'''
+Package for reading and writing data in accordance with the HDMF-common-schema specification
 '''
 import os.path
 from copy import deepcopy
@@ -108,6 +108,11 @@ def register_map(**kwargs):
 
 
 def __get_resources():
+    """
+    Get the available schema resources
+
+    :returns: Dict with information about the available namespace YAML file(s)
+    """
     try:
         from importlib.resources import files
     except ImportError:
@@ -124,7 +129,7 @@ def __get_resources():
 
 
 def _get_resources():
-    # LEGACY: Needed to support legacy implementation.
+    """LEGACY: Needed to support legacy implementation, use :py:meth:`~hdmf.common.__get_resources` instead. """
     return __get_resources()
 
 
@@ -141,6 +146,11 @@ def load_namespaces(**kwargs):
 
 
 def available_namespaces():
+    """
+    Get the names of the namespaces available in the NamespaceCatalog in the global __TYPE_MAP.
+
+    :return: Tuple of strings with the names of the available namespaces
+    """
     return __TYPE_MAP.namespace_catalog.namespaces
 
 

@@ -1,3 +1,4 @@
+"""Collection of classes for specifying , managing, and reading namespaces, e.g, SpecNamespace, NamespaceCatalog etc."""
 import os.path
 import ruamel.yaml as yaml
 import string
@@ -29,7 +30,7 @@ _namespace_args = [
 
 class SpecNamespace(dict):
     """
-    A namespace for specifications
+    Specify a namespace for specifications
     """
 
     __types_key = 'data_types'
@@ -173,7 +174,7 @@ class SpecNamespace(dict):
 
 
 class SpecReader(metaclass=ABCMeta):
-
+    """Base interface for implementing reader classes for format specifications"""
     @docval({'name': 'source', 'type': str, 'doc': 'the source from which this reader reads from'})
     def __init__(self, **kwargs):
         self.__source = getargs('source', kwargs)
@@ -192,6 +193,7 @@ class SpecReader(metaclass=ABCMeta):
 
 
 class YAMLSpecReader(SpecReader):
+    """Read specification from YAML"""
 
     @docval({'name': 'indir', 'type': str, 'doc': 'the path spec files are relative to', 'default': '.'})
     def __init__(self, **kwargs):
@@ -223,6 +225,7 @@ class YAMLSpecReader(SpecReader):
 
 
 class NamespaceCatalog:
+    """A catalog for storing  multiple Namespaces"""
 
     @docval({'name': 'group_spec_cls', 'type': type,
              'doc': 'the class to use for group specifications', 'default': GroupSpec},

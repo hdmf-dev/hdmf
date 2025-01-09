@@ -46,7 +46,7 @@ help:
 	@echo "  apidoc     to build RST from source code"
 
 clean:
-	-rm -rf $(BUILDDIR)/* $(RSTDIR)/$(PKGNAME)*.rst $(GALLERYDIR)/*.hdf5 $(GALLERYDIR)/*.sqlite $(RSTDIR)/tutorials
+	-rm -rf $(BUILDDIR)/* $(RSTDIR)/$(PKGNAME)*.rst $(GALLERYDIR)/*.hdf5 $(GALLERYDIR)/*.sqlite $(RSTDIR)/_autosummary $(RSTDIR)/tutorials
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html

@@ -1,3 +1,4 @@
+"""Collection of classes used to manage the data translation process, e.g., BuildManager and TypeMap. """
 import logging
 from collections import OrderedDict, deque
 from copy import copy
