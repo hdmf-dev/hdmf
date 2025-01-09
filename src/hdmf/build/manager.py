@@ -490,20 +490,6 @@ class TypeMap:
                     self.register_container_type(new_ns, dt, container_cls)
         return deps
 
-    @docval({"name": "namespace", "type": str, "doc": "the namespace containing the data_type"},
-            {"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
-            {"name": "autogen", "type": bool, "doc": "autogenerate class if one does not exist", "default": True},
-            returns='the class for the given namespace and data_type', rtype=type)
-    def get_container_cls(self, **kwargs):
-        """Get the container class from data type specification.
-        If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
-        created and returned.
-        """
-        # NOTE: this internally used function get_container_cls will be removed in favor of get_dt_container_cls
-        # Deprecated: Will be removed by HDMF 4.0
-        namespace, data_type, autogen = getargs('namespace', 'data_type', 'autogen', kwargs)
-        return self.get_dt_container_cls(data_type, namespace, autogen)
-
     @docval({"name": "data_type", "type": str, "doc": "the data type to create a AbstractContainer class for"},
             {"name": "namespace", "type": str, "doc": "the namespace containing the data_type", "default": None},
             {'name': 'post_init_method', 'type': Callable, 'default': None,
@@ -515,7 +501,7 @@ class TypeMap:
         If no class has been associated with the ``data_type`` from ``namespace``, a class will be dynamically
         created and returned.
 
-        Replaces get_container_cls but namespace is optional. If namespace is unknown, it will be looked up from
+        Namespace is optional. If namespace is unknown, it will be looked up from
         all namespaces.
         """
         namespace, data_type, post_init_method, autogen = getargs('namespace', 'data_type',

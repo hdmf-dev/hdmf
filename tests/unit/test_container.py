@@ -213,18 +213,6 @@ class TestContainer(TestCase):
         obj = species.all_objects
         self.assertEqual(sorted(list(obj.keys())), sorted([species.object_id, species.id.object_id, col1.object_id]))
 
-    def test_add_child(self):
-        """Test that add child creates deprecation warning and also properly sets child's parent and modified
-        """
-        parent_obj = Container('obj1')
-        child_obj = Container('obj2')
-        parent_obj.set_modified(False)
-        with self.assertWarnsWith(DeprecationWarning, 'add_child is deprecated. Set the parent attribute instead.'):
-            parent_obj.add_child(child_obj)
-        self.assertIs(child_obj.parent, parent_obj)
-        self.assertTrue(parent_obj.modified)
-        self.assertIs(parent_obj.children[0], child_obj)
-
     def test_parent_set_link_warning(self):
         col1 = VectorData(
             name='col1',
