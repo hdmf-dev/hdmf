@@ -76,7 +76,7 @@ intersphinx_mapping = {
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "h5py": ("https://docs.h5py.org/en/latest/", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
-    "zarr": ("https://zarr.readthedocs.io/en/stable/", None),
+    "zarr": ("https://zarr.readthedocs.io/en/v2.18.4/", None), # TODO - update when hdmf-zarr supports Zarr 3.0
 }
 
 # these links cannot be checked in github actions
