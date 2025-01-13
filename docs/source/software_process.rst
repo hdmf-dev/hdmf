@@ -45,7 +45,7 @@ pyproject.toml_ contains a list of package dependencies and their version ranges
 running HDMF. As a library, upper bound version constraints create more harm than good in the long term (see this
 `blog post`_) so we avoid setting upper bounds on requirements.
 
-When setting lower bounds, make sure to specify the lower bounds in both pyproject.toml_ and 
+When setting lower bounds, make sure to specify the lower bounds in both pyproject.toml_ and
 requirements-min.txt_. The latter is used in automated testing to ensure that the package runs
 correctly using the minimum versions of dependencies.
 
@@ -64,7 +64,7 @@ Testing Requirements
 
 pyproject.toml_ contains the optional dependency group "test" with testing requirements.
 
-See tox.ini_ and the GitHub Actions workflows for how different testing environments are 
+See tox.ini_ and the GitHub Actions workflows for how different testing environments are
 defined using the optional dependency groups.
 
 environment-ros3.yml_ lists the dependencies used to test ROS3 streaming in HDMF which
