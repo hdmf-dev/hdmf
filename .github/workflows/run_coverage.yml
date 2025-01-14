@@ -31,7 +31,7 @@ jobs:
           - { os: macos-latest  , opt_req: false }
     env:  # used by codecov-action
       OS: ${{ matrix.os }}
-      PYTHON: '3.13'
+      PYTHON: '3.12'  # TODO: Update to 3.13 when linkml and its deps support 3.13
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
