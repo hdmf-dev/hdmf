@@ -50,11 +50,13 @@ jobs:
 
       - name: Install package
         if: ${{ ! matrix.opt_req }}
-        run: python -m pip install ".[test]"
+        run: |
+          python -m pip install ".[test]"
 
       - name: Install package with optional dependencies
         if: ${{ matrix.opt_req }}
-        run: python -m pip install ".[test,full]"
+        run: |
+          python -m pip install ".[test,full]"
 
       - name: Run tests and generate coverage report
         run: |
