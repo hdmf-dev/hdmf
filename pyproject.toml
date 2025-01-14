@@ -154,6 +154,7 @@ exclude = [
   "src/hdmf/_due.py",
   "docs/source/tutorials/",
   "docs/_build/",
+  "scripts/"
 ]
 line-length = 120
 
