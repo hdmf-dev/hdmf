@@ -13,6 +13,7 @@
 - Updated copyright dates. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
 - Created optional dependency groups in `pyproject.toml` and update GitHub Actions workflows to use those instead of requirements files.  @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
 - Stopped using pinned dependencies in the docs and testing. These are not necessary for library testing, confuse new users and developers, and add maintenance burden. Current dependencies are stable enough that they need not be pinned and users can report the libraries they use. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Stopped redundant testing using a conda environment. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
 - Adopted changelog format conventions: https://keepachangelog.com/en/1.1.0/ . @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
 
 ### Added
