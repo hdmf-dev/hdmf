@@ -71,7 +71,7 @@ docs = [
 ]
 
 # all possible dependencies
-all = ["hdmf-zarr[full,test,docs]"]
+all = ["hdmf[full,test,docs]"]
 
 [project.urls]
 "Homepage" = "https://github.com/hdmf-dev/hdmf"
