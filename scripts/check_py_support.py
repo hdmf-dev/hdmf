@@ -12,7 +12,7 @@ The script provides:
 - Summary statistics of compatibility status
 
 Usage:
-    python check_py_support.py
+    python scripts/check_py_support.py
 
 Requirements:
     - Python 3.11+
