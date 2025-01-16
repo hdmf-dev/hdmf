@@ -24,7 +24,7 @@ formats: all
 # Optionally set the version of Python and requirements required to build your docs
 python:
   install:
-    - path: .[docs,full] # path to the package relative to the root
+    - path: .[docs,tqdm,zarr,termset] # path to the package relative to the root
 
 # Optionally include all submodules
 submodules:
