@@ -12,6 +12,7 @@ The script provides:
 - Summary statistics of compatibility status
 
 Usage:
+    # Run this command from the root of the repo
     python scripts/check_py_support.py
 
 Requirements:
