@@ -56,7 +56,7 @@ body:
         - "3.11"
         - "3.10"
         - "3.9"
-        - "other"
+        - "newer"
     validations:
       required: true
   - type: textarea
