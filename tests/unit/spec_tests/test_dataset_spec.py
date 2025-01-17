@@ -245,3 +245,33 @@ class DatasetSpecTests(TestCase):
                 group = GroupSpec('A group', name='group',
                                   data_type_inc=data_type_inc, data_type_def=data_type_def)
                 self.assertEqual(group.data_type, data_type)
+
+    def test_constructor_value(self):
+        spec = DatasetSpec(doc='my first dataset', dtype='int', name='dataset1', value=42)
+        assert spec.value == 42
+
+    def test_build_warn_extra_args(self):
+        spec_dict = {
+            'name': 'dataset1',
+            'doc': 'test dataset',
+            'dtype': 'int',
+            'required': True,
+        }
+        msg = ("Unexpected keys ['required'] in spec {'name': 'dataset1', 'doc': 'test dataset', "
+               "'dtype': 'int', 'required': True}")
+        with self.assertWarnsWith(UserWarning, msg):
+            DatasetSpec.build_spec(spec_dict)
+
+    def test_constructor_validates_name(self):
+        with self.assertRaisesWith(
+                ValueError,
+                "Name 'one/two' is invalid. Names of Groups and Datasets cannot contain '/'",
+        ):
+            DatasetSpec(doc='my first dataset', dtype='int', name='one/two')
+
+    def test_constructor_validates_default_name(self):
+        with self.assertRaisesWith(
+                ValueError,
+                "Default name 'one/two' is invalid. Names of Groups and Datasets cannot contain '/'",
+        ):
+            DatasetSpec(doc='my first dataset', dtype='int', default_name='one/two', data_type_def='test')

@@ -314,6 +314,16 @@ class GroupSpecTests(TestCase):
         expected = AttributeSpec('namespace', 'the namespace for the data type of this object', 'text', required=False)
         self.assertDictEqual(GroupSpec.get_namespace_spec(), expected)
 
+    def test_build_warn_extra_args(self):
+        spec_dict = {
+            'name': 'group1',
+            'doc': 'test group',
+            'required': True,
+        }
+        msg = "Unexpected keys ['required'] in spec {'name': 'group1', 'doc': 'test group', 'required': True}"
+        with self.assertWarnsWith(UserWarning, msg):
+            GroupSpec.build_spec(spec_dict)
+
 
 class TestNotAllowedConfig(TestCase):
 
