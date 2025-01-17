@@ -1,7 +1,7 @@
 import numpy as np
 from hdmf.testing import TestCase
-from hdmf.utils import (docval, fmt_docval_args, get_docval, getargs, popargs, AllowPositional, get_docval_macro,
-                        docval_macro, popargs_to_dict, call_docval_func)
+from hdmf.utils import (docval, get_docval, getargs, popargs, AllowPositional, get_docval_macro,
+                        docval_macro, popargs_to_dict)
 
 
 class MyTestClass(object):
@@ -136,80 +136,6 @@ class TestDocValidator(TestCase):
         method1(self, arg1=[1, 2])
         with self.assertRaises(ValueError):
             method1(self, arg1=[[1, 1, 1]])
-
-    fmt_docval_warning_msg = (
-        "fmt_docval_args will be deprecated in a future version of HDMF. Instead of using fmt_docval_args, "
-        "call the function directly with the kwargs. Please note that fmt_docval_args "
-        "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
-        "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
-        "is set), then you will need to pop the extra arguments out of kwargs before calling the function."
-    )
-
-    def test_fmt_docval_args(self):
-        """ Test that fmt_docval_args parses the args and strips extra args """
-        test_kwargs = {
-            'arg1': 'a string',
-            'arg2': 1,
-            'arg3': True,
-            'hello': 'abc',
-            'list': ['abc', 1, 2, 3]
-        }
-        with self.assertWarnsWith(PendingDeprecationWarning, self.fmt_docval_warning_msg):
-            rec_args, rec_kwargs = fmt_docval_args(self.test_obj.basic_add2_kw, test_kwargs)
-        exp_args = ['a string', 1]
-        self.assertListEqual(rec_args, exp_args)
-        exp_kwargs = {'arg3': True}
-        self.assertDictEqual(rec_kwargs, exp_kwargs)
-
-    def test_fmt_docval_args_no_docval(self):
-        """ Test that fmt_docval_args raises an error when run on function without docval """
-        def method1(self, **kwargs):
-            pass
-
-        with self.assertRaisesRegex(ValueError, r"no docval found on .*method1.*"):
-            with self.assertWarnsWith(PendingDeprecationWarning, self.fmt_docval_warning_msg):
-                fmt_docval_args(method1, {})
-
-    def test_fmt_docval_args_allow_extra(self):
-        """ Test that fmt_docval_args works """
-        test_kwargs = {
-            'arg1': 'a string',
-            'arg2': 1,
-            'arg3': True,
-            'hello': 'abc',
-            'list': ['abc', 1, 2, 3]
-        }
-        with self.assertWarnsWith(PendingDeprecationWarning, self.fmt_docval_warning_msg):
-            rec_args, rec_kwargs = fmt_docval_args(self.test_obj.basic_add2_kw_allow_extra, test_kwargs)
-        exp_args = ['a string', 1]
-        self.assertListEqual(rec_args, exp_args)
-        exp_kwargs = {'arg3': True, 'hello': 'abc', 'list': ['abc', 1, 2, 3]}
-        self.assertDictEqual(rec_kwargs, exp_kwargs)
-
-    def test_call_docval_func(self):
-        """Test that call_docval_func strips extra args and calls the function."""
-        test_kwargs = {
-            'arg1': 'a string',
-            'arg2': 1,
-            'arg3': True,
-            'hello': 'abc',
-            'list': ['abc', 1, 2, 3]
-        }
-        msg = (
-            "call_docval_func will be deprecated in a future version of HDMF. Instead of using call_docval_func, "
-            "call the function directly with the kwargs. Please note that call_docval_func "
-            "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
-            "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
-            "is set), then you will need to pop the extra arguments out of kwargs before calling the function."
-        )
-        with self.assertWarnsWith(PendingDeprecationWarning, msg):
-            ret_kwargs = call_docval_func(self.test_obj.basic_add2_kw, test_kwargs)
-        exp_kwargs = {
-            'arg1': 'a string',
-            'arg2': 1,
-            'arg3': True
-        }
-        self.assertDictEqual(ret_kwargs, exp_kwargs)
 
     def test_docval_add(self):
         """Test that docval works with a single positional
@@ -736,8 +662,12 @@ class TestDocValidator(TestCase):
         self.assertEqual(method(self, np.uint(1)), np.uint(1))
         self.assertEqual(method(self, np.uint(2)), np.uint(2))
 
+        # the string rep of uint changes from numpy 1 to 2 ("1" to "np.uint64(1)"), so do not hardcode the string
+        uint_str1 = np.uint(1).__repr__()
+        uint_str2 = np.uint(2).__repr__()
+
         msg = ("TestDocValidator.test_enum_uint.<locals>.method: "
-               "forbidden value for 'arg1' (got 3, expected (1, 2))")
+               "forbidden value for 'arg1' (got 3, expected (%s, %s))" % (uint_str1, uint_str2))
         with self.assertRaisesWith(ValueError, msg):
             method(self, np.uint(3))
 
@@ -767,8 +697,11 @@ class TestDocValidator(TestCase):
         self.assertEqual(method(self, 'true'), 'true')
         self.assertEqual(method(self, np.uint(1)), np.uint(1))
 
+        # the string rep of uint changes from numpy 1 to 2 ("1" to "np.uint64(1)"), so do not hardcode the string
+        uint_str = np.uint(1).__repr__()
+
         msg = ("TestDocValidator.test_enum_bool_mixed.<locals>.method: "
-               "forbidden value for 'arg1' (got 0, expected (True, 1, 1.0, 'true', 1))")
+               "forbidden value for 'arg1' (got 0, expected (True, 1, 1.0, 'true', %s))" % uint_str)
         with self.assertRaisesWith(ValueError, msg):
             method(self, 0)
 

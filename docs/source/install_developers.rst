@@ -52,11 +52,11 @@ Option 2: Using conda
 
 The `conda package and environment management system`_ is an alternate way of managing virtual environments.
 First, install Anaconda_ to install the ``conda`` tool. Then create and
-activate a new virtual environment called ``"hdmf-env"`` with Python 3.12 installed.
+activate a new virtual environment called ``"hdmf-env"`` with Python 3.13 installed.
 
 .. code:: bash
 
-    conda create --name hdmf-env python=3.12
+    conda create --name hdmf-env python=3.13
     conda activate hdmf-env
 
 Similar to a virtual environment created with ``venv``, a conda environment
@@ -73,7 +73,7 @@ environment by using the ``conda remove --name hdmf-venv --all`` command.
     For advanced users, we recommend using Mambaforge_, a faster version of the conda package manager
     that includes conda-forge as a default channel.
 
-.. _Anaconda: https://www.anaconda.com/products/distribution
+.. _Anaconda: https://www.anaconda.com/download
 .. _Mambaforge: https://github.com/conda-forge/miniforge
 
 Install from GitHub
@@ -88,8 +88,7 @@ package requirements using the pip_ Python package manager, and install HDMF in 
 
     git clone --recurse-submodules https://github.com/hdmf-dev/hdmf.git
     cd hdmf
-    pip install -r requirements.txt -r requirements-dev.txt -r requirements-doc.txt -r requirements-opt.txt
-    pip install -e .
+    pip install -e ".[all]"
 
 .. note::
 
