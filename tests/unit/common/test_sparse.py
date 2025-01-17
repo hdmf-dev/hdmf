@@ -33,7 +33,6 @@ class TestCSRMatrix(TestCase):
         received = CSRMatrix(data=sps_mat)
         self.assertContainerEqual(received, expected, ignore_hdmf_attrs=True)
 
-    @unittest.skipIf(not SCIPY_INSTALLED, "scipy is not installed")
     def test_2d_data(self):
         data = np.array([[1, 0, 2], [0, 0, 3], [4, 5, 6]])
         csr_mat = CSRMatrix(data=data)
