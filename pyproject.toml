@@ -49,6 +49,29 @@ termset = [
     "pyyaml>=6.0.1",
 ]
 
+# development dependencies
+test = [
+    "codespell",
+    "pre-commit",
+    "pytest",
+    "pytest-cov",
+    "python-dateutil",
+    "ruff",
+    "tox",
+]
+
+# documentation dependencies
+docs = [
+    "matplotlib",
+    "sphinx>=4",  # improved support for docutils>=0.17
+    "sphinx_rtd_theme>=1",  # <1 does not work with docutils>=0.17
+    "sphinx-gallery",
+    "sphinx-copybutton",
+]
+
+# all possible dependencies
+all = ["hdmf[tqdm,zarr,termset,test,docs]"]
+
 [project.urls]
 "Homepage" = "https://github.com/hdmf-dev/hdmf"
 "Bug Tracker" = "https://github.com/hdmf-dev/hdmf/issues"
@@ -130,6 +153,7 @@ exclude = [
   "src/hdmf/_due.py",
   "docs/source/tutorials/",
   "docs/_build/",
+  "scripts/"
 ]
 line-length = 120
 

@@ -1,15 +1,23 @@
 # HDMF Changelog
 
-## HDMF 4.0.0 (Upcoming)
+## [Unreleased]
 
 ### Breaking changes
 - The following classes have been deprecated and removed: Array, AbstractSortedArray, SortedArray, LinSpace, Query, RegionSlicer, ListSlicer, H5RegionSlicer, DataRegion, RegionBuilder. The following methods have been deprecated and removed: fmt_docval_args, call_docval_func, get_container_cls, add_child, set_dataio (now refactored as set_data_io). We have also removed all early development for region references. @mavaylon1, @rly [#1998](https://github.com/hdmf-dev/hdmf/pull/1198), [#1212](https://github.com/hdmf-dev/hdmf/pull/1212)
-- Importing from hdmf.build.map is no longer supported. Import from hdmf.build instead. @rly [#1221](https://github.com/hdmf-dev/hdmf/pull/1221)
-- Python 3.8 has reached end of life. Drop support for Python 3.8 and add support for Python 3.13. @mavaylon1 [#1209](https://github.com/hdmf-dev/hdmf/pull/1209)
+- Importing from `hdmf.build.map` is no longer supported. Import from `hdmf.build` instead. @rly [#1221](https://github.com/hdmf-dev/hdmf/pull/1221)
+- Python 3.8 has reached end of life. Dropped support for Python 3.8 and add support for Python 3.13. @mavaylon1 [#1209](https://github.com/hdmf-dev/hdmf/pull/1209)
 - Support for Zarr is limited to versions < 3. @rly [#1229](https://github.com/hdmf-dev/hdmf/pull/1229)
 
-### Bug fixes
+### Changed
 - Added checks to ensure that group and dataset spec names and default names do not contain slashes. @bendichter [#1219](https://github.com/hdmf-dev/hdmf/pull/1219)
+- Updated copyright dates. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Created optional dependency groups in `pyproject.toml` and update GitHub Actions workflows to use those instead of requirements files.  @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Stopped using pinned dependencies in the docs and testing. These are not necessary for library testing, confuse new users and developers, and add maintenance burden. Current dependencies are stable enough that they need not be pinned and users can report the libraries they use. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Stopped redundant testing using a conda environment. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Adopted changelog format conventions: https://keepachangelog.com/en/1.1.0/ . @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+
+### Added
+- Added script to check Python version support for HDMF dependencies. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
 
 ## HDMF 3.14.6 (December 20, 2024)
 
