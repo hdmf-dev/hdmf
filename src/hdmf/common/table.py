@@ -7,7 +7,6 @@ import re
 from collections import OrderedDict
 from typing import NamedTuple, Union
 from warnings import warn
-# import h5py
 
 import numpy as np
 import pandas as pd
@@ -1622,13 +1621,6 @@ class EnumData(VectorData):
             return idx
         if not np.isscalar(idx):
             idx = np.asarray(idx)
-            # if isinstance(self.elements.data, h5py.Dataset):
-            #     # h5py datasets cannot index with an array of indices that are not in increasing order
-            #     # so unpack them one by one
-            #     ret = np.empty(idx.shape, dtype=self.elements.data.dtype)
-            #     for i, j in enumerate(idx.ravel()):
-            #         ret[i] = self.elements.get(j, **kwargs)
-            # else:
             ret = np.asarray(self.elements.get(idx.ravel(), **kwargs)).reshape(idx.shape)
             if join:
                 ret = ''.join(ret.ravel())
