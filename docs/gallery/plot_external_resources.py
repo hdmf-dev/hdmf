@@ -101,6 +101,11 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="HERD is experimental*")
 
 try:
+    import linkml_runtime  # noqa: F401
+except ImportError as e:
+    raise ImportError("Please install linkml-runtime to run this example: pip install linkml-runtime") from e
+
+try:
     dir_path = os.path.dirname(os.path.abspath(__file__))
     yaml_file = os.path.join(dir_path, 'example_term_set.yaml')
 except NameError:

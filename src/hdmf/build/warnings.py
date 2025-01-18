@@ -15,6 +15,13 @@ class IncorrectQuantityBuildWarning(BuildWarning):
     pass
 
 
+class IncorrectDatasetShapeBuildWarning(BuildWarning):
+    """
+    Raised when a dataset has a shape that is not allowed by the spec.
+    """
+    pass
+
+
 class MissingRequiredBuildWarning(BuildWarning):
     """
     Raised when a required field is missing.

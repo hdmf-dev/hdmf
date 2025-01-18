@@ -1,12 +1,17 @@
 from datetime import datetime, date
 
 import numpy as np
+import h5py
+import unittest
+
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.build import ObjectMapper
 from hdmf.data_utils import DataChunkIterator
 from hdmf.spec import DatasetSpec, RefSpec, DtypeSpec
 from hdmf.testing import TestCase
+from hdmf.utils import StrDataset
 
+H5PY_3 = h5py.__version__.startswith('3')
 
 class TestConvertDtype(TestCase):
 
@@ -320,6 +325,19 @@ class TestConvertDtype(TestCase):
                 ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
                 self.assertIs(ret, value)
                 self.assertEqual(ret_dtype, 'utf8')
+
+    @unittest.skipIf(not H5PY_3, "Use StrDataset only for h5py 3+")
+    def test_text_spec_str_dataset(self):
+        text_spec_types = ['text', 'utf', 'utf8', 'utf-8']
+        for spec_type in text_spec_types:
+            with self.subTest(spec_type=spec_type):
+                with h5py.File("test.h5", "w", driver="core", backing_store=False) as f:
+                    spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+                    value = StrDataset(f.create_dataset('data', data=['a', 'b', 'c']), None)
+                    ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+                    self.assertIs(ret, value)
+                    self.assertEqual(ret_dtype, 'utf8')
 
     def test_ascii_spec(self):
         ascii_spec_types = ['ascii', 'bytes']

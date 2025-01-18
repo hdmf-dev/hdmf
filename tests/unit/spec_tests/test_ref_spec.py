@@ -15,9 +15,3 @@ class RefSpecTests(TestCase):
     def test_wrong_reference_type(self):
         with self.assertRaises(ValueError):
             RefSpec('TimeSeries', 'unknownreftype')
-
-    def test_isregion(self):
-        spec = RefSpec('TimeSeries', 'object')
-        self.assertFalse(spec.is_region())
-        spec = RefSpec('Data', 'region')
-        self.assertTrue(spec.is_region())

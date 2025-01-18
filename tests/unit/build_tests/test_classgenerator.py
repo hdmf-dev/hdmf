@@ -2,11 +2,14 @@ import numpy as np
 import os
 import shutil
 import tempfile
+from warnings import warn
 
 from hdmf.build import TypeMap, CustomClassGenerator
 from hdmf.build.classgenerator import ClassGenerator, MCIClassGenerator
 from hdmf.container import Container, Data, MultiContainerInterface, AbstractContainer
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec
+from hdmf.spec import (
+    GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec, RefSpec
+)
 from hdmf.testing import TestCase
 from hdmf.utils import get_docval, docval
 
@@ -82,6 +85,79 @@ class TestClassGenerator(TestCase):
         self.assertTrue(hasattr(cls, '__init__'))
 
 
+class TestPostInitGetClass(TestCase):
+    def setUp(self):
+        def post_init_method(self, **kwargs):
+            attr1 = kwargs['attr1']
+            if attr1<10:
+                msg = "attr1 should be >=10"
+                warn(msg)
+        self.post_init=post_init_method
+
+    def test_post_init(self):
+        spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Baz',
+            attributes=[
+                AttributeSpec(name='attr1', doc='a int attribute', dtype='int')
+            ]
+        )
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(spec, 'test.yaml')
+        namespace = SpecNamespace(
+            doc='a test namespace',
+            name=CORE_NAMESPACE,
+            schema=[{'source': 'test.yaml'}],
+            version='0.1.0',
+            catalog=spec_catalog
+        )
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+
+        cls = type_map.get_dt_container_cls('Baz', CORE_NAMESPACE, self.post_init)
+
+        with self.assertWarns(Warning):
+            cls(name='instance', attr1=9)
+
+    def test_multi_container_post_init(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='a dataset',
+                    dtype='int',
+                    name='data',
+                    attributes=[AttributeSpec(name='attr2', doc='an integer attribute', dtype='int')]
+                )
+            ],
+            attributes=[AttributeSpec(name='attr1', doc='a string attribute', dtype='text')])
+
+        multi_spec = GroupSpec(doc='A test extension that contains a multi',
+                               data_type_def='Multi',
+                               groups=[GroupSpec(data_type_inc=bar_spec, doc='test multi', quantity='*')],
+                                attributes=[AttributeSpec(name='attr1', doc='a float attribute', dtype='float')])
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(bar_spec, 'test.yaml')
+        spec_catalog.register_spec(multi_spec, 'test.yaml')
+        namespace = SpecNamespace(
+            doc='a test namespace',
+            name=CORE_NAMESPACE,
+            schema=[{'source': 'test.yaml'}],
+            version='0.1.0',
+            catalog=spec_catalog
+        )
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        Multi = type_map.get_dt_container_cls('Multi', CORE_NAMESPACE, self.post_init)
+
+        with self.assertWarns(Warning):
+            Multi(name='instance', attr1=9.1)
+
 class TestDynamicContainer(TestCase):
 
     def setUp(self):
@@ -106,16 +182,19 @@ class TestDynamicContainer(TestCase):
         baz_spec = GroupSpec('A test extension with no Container class',
                              data_type_def='Baz', data_type_inc=self.bar_spec,
                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
-                                         AttributeSpec('attr4', 'another float attribute', 'float')])
+                                         AttributeSpec('attr4', 'another float attribute', 'float'),
+                                         AttributeSpec('attr_array', 'an array attribute', 'text', shape=(None,)),])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4'}
+        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'attr_array', 'skip_post_init'}
         received_args = set()
+
         for x in get_docval(cls.__init__):
             if x['name'] != 'foo':
                 received_args.add(x['name'])
                 with self.subTest(name=x['name']):
-                    self.assertNotIn('default', x)
+                    if x['name'] != 'skip_post_init':
+                        self.assertNotIn('default', x)
         self.assertSetEqual(expected_args, received_args)
         self.assertEqual(cls.__name__, 'Baz')
         self.assertTrue(issubclass(cls, Bar))
@@ -135,7 +214,7 @@ class TestDynamicContainer(TestCase):
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'foo'}
+        expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'attr_array', 'foo', 'skip_post_init'}
         received_args = set(map(lambda x: x['name'], get_docval(cls.__init__)))
         self.assertSetEqual(expected_args, received_args)
         self.assertEqual(cls.__name__, 'Baz')
@@ -285,13 +364,14 @@ class TestDynamicContainer(TestCase):
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
-        expected_args = {'name', 'data', 'attr2', 'attr3', 'attr4'}
+        expected_args = {'name', 'data', 'attr2', 'attr3', 'attr4', 'skip_post_init'}
         received_args = set()
         for x in get_docval(cls.__init__):
             if x['name'] != 'foo':
                 received_args.add(x['name'])
                 with self.subTest(name=x['name']):
-                    self.assertNotIn('default', x)
+                    if x['name'] != 'skip_post_init':
+                        self.assertNotIn('default', x)
         self.assertSetEqual(expected_args, received_args)
         self.assertTrue(issubclass(cls, FixedAttrBar))
         inst = cls(name="My Baz", data=[1, 2, 3, 4], attr2=1000, attr3=98.6, attr4=1.0)
@@ -445,7 +525,7 @@ class TestDynamicContainerFixedValue(TestCase):
 
     def test_init_docval(self):
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)  # generate the class
-        expected_args = {'name'}  # 'attr1' should not be included
+        expected_args = {'name', 'skip_post_init'}  # 'attr1' should not be included
         received_args = set()
         for x in get_docval(cls.__init__):
             received_args.add(x['name'])
@@ -518,6 +598,8 @@ class TestDynamicContainerIncludingFixedName(TestCase):
             {'name': 'my_baz1', 'doc': 'A composition inside with a fixed name', 'type': baz1_cls},
             {'name': 'my_baz2', 'doc': 'A composition inside with a fixed name', 'type': baz2_cls},
             {'name': 'my_baz1_link', 'doc': 'A composition inside without a fixed name', 'type': baz1_cls},
+            {'name': 'skip_post_init', 'type': bool, 'default': False,
+             'doc': 'bool to skip post_init'}
         ))
 
     def test_init_fields(self):
@@ -654,9 +736,18 @@ class TestGetClassSeparateNamespace(TestCase):
                 GroupSpec(data_type_inc='Bar', doc='a bar', quantity='?')
             ]
         )
+        moo_spec = DatasetSpec(
+            doc='A test dataset that is a 1D array of object references of Baz',
+            data_type_def='Moo',
+            shape=(None,),
+            dtype=RefSpec(
+                reftype='object',
+                target_type='Baz'
+            )
+        )
         create_load_namespace_yaml(
             namespace_name='ndx-test',
-            specs=[baz_spec],
+            specs=[baz_spec, moo_spec],
             output_dir=self.test_dir,
             incl_types={
                 CORE_NAMESPACE: ['Bar'],
@@ -747,6 +838,171 @@ class TestGetClassSeparateNamespace(TestCase):
         qux_cls = self.type_map.get_dt_container_cls('Qux', 'ndx-test')
 
         self._check_classes(baz_cls, bar_cls, bar_cls2, qux_cls, qux_cls2)
+
+class TestGetClassObjectReferences(TestCase):
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+        if os.path.exists(self.test_dir):  # start clean
+            self.tearDown()
+        os.mkdir(self.test_dir)
+        self.type_map = TypeMap()
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir)
+
+    def test_get_class_include_dataset_of_references(self):
+        """Test that get_class resolves datasets of object references."""
+        qux_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Qux'
+        )
+        moo_spec = DatasetSpec(
+            doc='A test dataset that is a 1D array of object references of Qux',
+            data_type_def='Moo',
+            shape=(None,),
+            dtype=RefSpec(
+                reftype='object',
+                target_type='Qux'
+            ),
+        )
+
+        create_load_namespace_yaml(
+            namespace_name='ndx-test',
+            specs=[qux_spec, moo_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map
+        )
+        # no types should be resolved to start
+        assert self.type_map.get_container_classes('ndx-test') == []
+
+        self.type_map.get_dt_container_cls('Moo', 'ndx-test')
+        # now, Moo and Qux should be resolved
+        assert len(self.type_map.get_container_classes('ndx-test')) == 2
+        assert "Moo" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+        assert "Qux" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+
+    def test_get_class_include_attribute_object_reference(self):
+        """Test that get_class resolves data types with an attribute that is an object reference."""
+        qux_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Qux'
+        )
+        woo_spec = DatasetSpec(
+            doc='A test dataset that has a scalar object reference to a Qux',
+            data_type_def='Woo',
+            attributes=[
+                AttributeSpec(
+                    name='attr1',
+                    doc='a string attribute',
+                    dtype=RefSpec(reftype='object', target_type='Qux')
+                ),
+            ]
+        )
+        create_load_namespace_yaml(
+            namespace_name='ndx-test',
+            specs=[qux_spec, woo_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map
+        )
+        # no types should be resolved to start
+        assert self.type_map.get_container_classes('ndx-test') == []
+
+        self.type_map.get_dt_container_cls('Woo', 'ndx-test')
+        # now, Woo and Qux should be resolved
+        assert len(self.type_map.get_container_classes('ndx-test')) == 2
+        assert "Woo" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+        assert "Qux" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+
+    def test_get_class_include_nested_object_reference(self):
+        """Test that get_class resolves nested datasets that are object references."""
+        qux_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Qux'
+        )
+        spam_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Spam',
+            shape=(None,),
+            dtype=RefSpec(
+                reftype='object',
+                target_type='Qux'
+            ),
+        )
+        goo_spec = GroupSpec(
+            doc='A test dataset that has a nested dataset (Spam) that has a scalar object reference to a Qux',
+            data_type_def='Goo',
+            datasets=[
+                DatasetSpec(
+                    doc='a dataset',
+                    data_type_inc='Spam',
+                ),
+            ],
+        )
+
+        create_load_namespace_yaml(
+            namespace_name='ndx-test',
+            specs=[qux_spec, spam_spec, goo_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map
+        )
+        # no types should be resolved to start
+        assert self.type_map.get_container_classes('ndx-test') == []
+
+        self.type_map.get_dt_container_cls('Goo', 'ndx-test')
+        # now, Goo, Spam, and Qux should be resolved
+        assert len(self.type_map.get_container_classes('ndx-test')) == 3
+        assert "Goo" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+        assert "Spam" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+        assert "Qux" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+
+    def test_get_class_include_nested_attribute_object_reference(self):
+        """Test that get_class resolves nested datasets that have an attribute that is an object reference."""
+        qux_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Qux'
+        )
+        bam_spec = DatasetSpec(
+            doc='A test extension',
+            data_type_def='Bam',
+            attributes=[
+                AttributeSpec(
+                    name='attr1',
+                    doc='a string attribute',
+                    dtype=RefSpec(reftype='object', target_type='Qux')
+                ),
+            ],
+        )
+        boo_spec = GroupSpec(
+            doc='A test dataset that has a nested dataset (Spam) that has a scalar object reference to a Qux',
+            data_type_def='Boo',
+            datasets=[
+                DatasetSpec(
+                    doc='a dataset',
+                    data_type_inc='Bam',
+                ),
+            ],
+        )
+
+        create_load_namespace_yaml(
+            namespace_name='ndx-test',
+            specs=[qux_spec, bam_spec, boo_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map
+        )
+        # no types should be resolved to start
+        assert self.type_map.get_container_classes('ndx-test') == []
+
+        self.type_map.get_dt_container_cls('Boo', 'ndx-test')
+        # now, Boo, Bam, and Qux should be resolved
+        assert len(self.type_map.get_container_classes('ndx-test')) == 3
+        assert "Boo" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+        assert "Bam" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
+        assert "Qux" in [c.__name__ for c in self.type_map.get_container_classes('ndx-test')]
 
 
 class EmptyBar(Container):

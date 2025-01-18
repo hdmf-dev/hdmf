@@ -2,12 +2,15 @@ from copy import copy, deepcopy
 import os
 import urllib.request
 import h5py
+import warnings
 
+from hdmf.backends.hdf5.h5tools import HDF5IO
 from hdmf.build import TypeMap, BuildManager
 from hdmf.common import get_hdf5io, get_type_map
 from hdmf.spec import GroupSpec, DatasetSpec, SpecNamespace, NamespaceBuilder, NamespaceCatalog
 from hdmf.testing import TestCase
 from hdmf.utils import docval, get_docval
+
 
 
 class TestRos3(TestCase):
@@ -77,6 +80,8 @@ class TestRos3(TestCase):
 
         self.manager = BuildManager(type_map)
 
+        warnings.filterwarnings(action="ignore", message="Ignoring cached namespace .*")
+
     def tearDown(self):
         if os.path.exists(self.ns_filename):
             os.remove(self.ns_filename)
@@ -88,6 +93,57 @@ class TestRos3(TestCase):
 
         with get_hdf5io(s3_path, "r", manager=self.manager, driver="ros3") as io:
             io.read()
+
+    def test_basic_read_with_aws_region(self):
+        s3_path = "https://dandiarchive.s3.amazonaws.com/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
+
+        with get_hdf5io(s3_path, "r", manager=self.manager, driver="ros3", aws_region="us-east-2") as io:
+            io.read()
+
+    def test_basic_read_s3_with_aws_region(self):
+        # NOTE: if an s3 path is used with ros3 driver, aws_region must be specified
+        s3_path = "s3://dandiarchive/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
+
+        with get_hdf5io(s3_path, "r", manager=self.manager, driver="ros3", aws_region="us-east-2") as io:
+            io.read()
+            assert io.aws_region == "us-east-2"
+
+    def test_get_namespaces(self):
+        s3_path = "https://dandiarchive.s3.amazonaws.com/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
+
+        namespaces = HDF5IO.get_namespaces(s3_path, driver="ros3")
+        self.assertEqual(namespaces, {'core': '2.3.0', 'hdmf-common': '1.5.0', 'hdmf-experimental': '0.1.0'})
+
+    def test_get_namespaces_with_aws_region(self):
+        s3_path = "https://dandiarchive.s3.amazonaws.com/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
+
+        namespaces = HDF5IO.get_namespaces(s3_path, driver="ros3", aws_region="us-east-2")
+        self.assertEqual(namespaces, {'core': '2.3.0', 'hdmf-common': '1.5.0', 'hdmf-experimental': '0.1.0'})
+
+    def test_get_namespaces_s3_with_aws_region(self):
+        s3_path = "s3://dandiarchive/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
+
+        namespaces = HDF5IO.get_namespaces(s3_path, driver="ros3", aws_region="us-east-2")
+        self.assertEqual(namespaces, {'core': '2.3.0', 'hdmf-common': '1.5.0', 'hdmf-experimental': '0.1.0'})
+
+    def test_load_namespaces(self):
+        s3_path = "https://dandiarchive.s3.amazonaws.com/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
+
+        HDF5IO.load_namespaces(self.manager.namespace_catalog, path=s3_path, driver="ros3")
+        assert set(self.manager.namespace_catalog.namespaces) == set(["core", "hdmf-common", "hdmf-experimental"])
+
+    def test_load_namespaces_with_aws_region(self):
+        s3_path = "https://dandiarchive.s3.amazonaws.com/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
+
+        HDF5IO.load_namespaces(self.manager.namespace_catalog, path=s3_path, driver="ros3", aws_region="us-east-2")
+        assert set(self.manager.namespace_catalog.namespaces) == set(["core", "hdmf-common", "hdmf-experimental"])
+
+    def test_load_namespaces_s3_with_aws_region(self):
+        s3_path = "s3://dandiarchive/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
+
+        HDF5IO.load_namespaces(self.manager.namespace_catalog, path=s3_path, driver="ros3", aws_region="us-east-2")
+        assert set(self.manager.namespace_catalog.namespaces) == set(["core", "hdmf-common", "hdmf-experimental"])
+
 
 # Util functions and classes to enable loading of the NWB namespace -- see pynwb/src/pynwb/spec.py
 
