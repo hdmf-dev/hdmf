@@ -7,3 +7,8 @@ namespaces:
           termset: example_test_term_set.yaml
       VectorIndex:
         data: ...
+  foo_namespace:
+    version: ...
+    data_types:
+      ExtensionContainer:
+        description:

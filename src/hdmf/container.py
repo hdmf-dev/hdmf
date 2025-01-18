@@ -86,9 +86,14 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if name in self.fields:
                 msg = "can't set attribute '%s' -- already set" % name
                 raise AttributeError(msg)
-            self.fields[name] = self._field_config(arg_name=name, val=val)
-
+            self.fields[name] = self._field_config(arg_name=name,
+                                                   val=val,
+                                                   type_map=self._get_type_map())
         return setter
+
+    def _get_type_map(self):
+        from hdmf.common import get_type_map # circular import
+        return get_type_map()
 
     @property
     def data_type(self):
@@ -97,8 +102,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         """
         return getattr(self, self._data_type_attr)
 
-
-    def _field_config(self, arg_name, val):
+    def _field_config(self, arg_name, val, type_map):
         """
         This method will be called in the setter. The termset configuration will be used (if loaded)
         to check for a defined TermSet associated with the field. If found, the value of the field
@@ -108,9 +112,12 @@ class AbstractContainer(metaclass=ExtenderMeta):
         itself is only one file. When a user loads custom configs, the config is appended/modified.
         The modifications are not written to file, avoiding permanent modifications.
         """
-        # load termset configuration file from global Config
-        from hdmf.common import get_type_map # circular import
-        type_map = get_type_map()
+        # If the val has been manually wrapped then skip checking the config for the attr
+        if isinstance(val, TermSetWrapper):
+            msg = "Field value already wrapped with TermSetWrapper."
+            warn(msg)
+            return val
+
         configurator = type_map.type_config
 
         if len(configurator.path)>0:
@@ -119,8 +126,9 @@ class AbstractContainer(metaclass=ExtenderMeta):
             termset_config = configurator.config
         else:
             return val
+
         # check to see that the namespace for the container is in the config
-        if self.namespace not in type_map.container_types:
+        if self.namespace not in termset_config['namespaces']:
             msg = "%s not found within loaded configuration." % self.namespace
             warn(msg)
             return val
@@ -134,33 +142,29 @@ class AbstractContainer(metaclass=ExtenderMeta):
                 warn(msg)
                 return val
             else:
-                for attr in config_namespace['data_types'][data_type]:
-                    obj_mapper = type_map.get_map(self)
+                # Get the ObjectMapper
+                obj_mapper = type_map.get_map(self)
 
-                    # get the spec according to attr name in schema
-                    # Note: this is the name for the field in the config
-                    spec = obj_mapper.get_attr_spec(attr)
+                # Get the spec for the constructor arg
+                spec = obj_mapper.get_carg_spec(arg_name)
+                if spec is None:
+                    msg = "Spec not found for %s." % arg_name
+                    warn(msg)
+                    return val
 
-                    # In the case of dealing with datasets directly or not defined in the spec.
-                    # (Data/VectorData/DynamicTable/etc)
-                    if spec is None:
-                        msg = "Spec not found for %s." % attr
-                        warn(msg)
-                        return val
-                    else:
-                        # If the val has been manually wrapped then skip checking the config for the attr
-                        if isinstance(val, TermSetWrapper):
-                            msg = "Field value already wrapped with TermSetWrapper."
-                            warn(msg)
-                            return val
-                        else:
-                            # From the spec, get the mapped attribute name
-                            mapped_attr_name = obj_mapper.get_attribute(spec)
-                            termset_path = os.path.join(CUR_DIR,
-                                                        config_namespace['data_types'][data_type][mapped_attr_name]['termset'])
-                            termset = TermSet(term_schema_path=termset_path)
-                            val = TermSetWrapper(value=val, termset=termset)
-                            return val
+                # Get spec attr name
+                mapped_attr_name = obj_mapper.get_attribute(spec)
+
+                config_data_type = config_namespace['data_types'][data_type]
+                try:
+                    config_termset_path = config_data_type[mapped_attr_name]
+                except KeyError:
+                    return val
+
+                termset_path = os.path.join(CUR_DIR, config_termset_path['termset'])
+                termset = TermSet(term_schema_path=termset_path)
+                val = TermSetWrapper(value=val, termset=termset)
+                return val
 
     @classmethod
     def _getter(cls, field):

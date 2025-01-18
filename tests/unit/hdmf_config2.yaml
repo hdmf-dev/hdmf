@@ -9,7 +9,7 @@ namespaces:
         description:
           termset: example_test_term_set.yaml
       VectorData:
-        description: ...
+        name:
   namespace2:
     version: 0
     data_types:
