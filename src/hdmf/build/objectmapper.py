@@ -838,8 +838,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
     def __get_dimension_labels_from_spec(self, data, spec_shape, spec_dims, spec_dtype) -> tuple:
         if spec_shape is None or spec_dims is None:
             return None
-        
-        
+
+
         if isinstance(spec_dtype, RefSpec):
             # This assumes only one-dimensional dataset of references
             data_shape  = (len(data), )
@@ -847,11 +847,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 error_message = (
                     "Support for building multi-dimensional datasets of references is not yet implemented."
                     "Open an issue in HDMF if you need this feature."
-                ) 
+                )
                 raise NotImplementedError(error_message)
         else:
             data_shape = get_data_shape(data)
-        
+
         # if shape is a list of allowed shapes, find the index of the shape that matches the data
         if isinstance(spec_shape[0], list):
             match_shape_inds = list()
