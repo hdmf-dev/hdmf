@@ -738,7 +738,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     msg = "'container' must be of type Data with DatasetSpec"
                     raise ValueError(msg)
                 spec_dtype, spec_shape, spec_dims, spec = self.__check_dset_spec(self.spec, spec_ext)
-                dimension_labels = self.__get_dimension_labels_from_spec(container.data, spec_shape, spec_dims)
+                dimension_labels = self.__get_dimension_labels_from_spec(container.data, spec_shape, spec_dims, spec_dtype,)
                 if isinstance(spec_dtype, RefSpec):
                     self.logger.debug("Building %s '%s' as a dataset of references (source: %s)"
                                       % (container.__class__.__name__, container.name, repr(source)))
@@ -835,10 +835,23 @@ class ObjectMapper(metaclass=ExtenderMeta):
             spec = ext
         return dtype, shape, dims, spec
 
-    def __get_dimension_labels_from_spec(self, data, spec_shape, spec_dims) -> tuple:
+    def __get_dimension_labels_from_spec(self, data, spec_shape, spec_dims, spec_dtype) -> tuple:
         if spec_shape is None or spec_dims is None:
             return None
-        data_shape = get_data_shape(data)
+        
+        
+        if isinstance(spec_dtype, RefSpec):
+            # This assumes only one-dimensional dataset of references
+            data_shape  = (len(data), )
+            if len(spec_shape) != 1:
+                error_message = (
+                    "Support for building multi-dimensional datasets of references is not yet implemented."
+                    "Open an issue in HDMF if you need this feature."
+                ) 
+                raise NotImplementedError(error_message)
+        else:
+            data_shape = get_data_shape(data)
+        
         # if shape is a list of allowed shapes, find the index of the shape that matches the data
         if isinstance(spec_shape[0], list):
             match_shape_inds = list()
