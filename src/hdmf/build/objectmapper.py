@@ -738,7 +738,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     msg = "'container' must be of type Data with DatasetSpec"
                     raise ValueError(msg)
                 spec_dtype, spec_shape, spec_dims, spec = self.__check_dset_spec(self.spec, spec_ext)
-                dimension_labels = self.__get_dimension_labels_from_spec(container.data, spec_shape, spec_dims, spec_dtype,)
+                dimension_labels = self.__get_dimension_labels_from_spec(
+                    container.data,
+                    spec_shape,
+                    spec_dims,
+                    spec_dtype,
+                )
                 if isinstance(spec_dtype, RefSpec):
                     self.logger.debug("Building %s '%s' as a dataset of references (source: %s)"
                                       % (container.__class__.__name__, container.name, repr(source)))
@@ -838,7 +843,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
     def __get_dimension_labels_from_spec(self, data, spec_shape, spec_dims, spec_dtype) -> tuple:
         if spec_shape is None or spec_dims is None:
             return None
-
 
         if isinstance(spec_dtype, RefSpec):
             # This assumes only one-dimensional dataset of references
