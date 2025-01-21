@@ -35,7 +35,6 @@ dependencies = [
     'numpy>=1.19.3',
     "pandas>=1.2.0",
     "ruamel.yaml>=0.16",
-    "scipy>=1.7",
 ]
 dynamic = ["version"]
 
