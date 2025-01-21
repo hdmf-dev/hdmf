@@ -19,6 +19,9 @@
 ### Added
 - Added script to check Python version support for HDMF dependencies. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
 
+### Fixed
+- Fixed issue with `DynamicTable.add_column` not allowing subclasses of `DynamicTableRegion` or `EnumData`. @rly [#1091](https://github.com/hdmf-dev/hdmf/pull/1091)
+
 ## HDMF 3.14.6 (December 20, 2024)
 
 ### Enhancements
@@ -98,9 +101,6 @@ is available on build (during the write process), but not on read of a dataset f
 
 ### Bug Fixes
 - Fixed `TermSetWrapper` warning raised during the setters. @mavaylon1 [#1116](https://github.com/hdmf-dev/hdmf/pull/1116)
-
-### Bug fixes
-- Fixed issue with `DynamicTable.add_column` not allowing subclasses of `DynamicTableRegion` or `EnumData`. @rly [#1091](https://github.com/hdmf-dev/hdmf/pull/1091)
 
 ## HDMF 3.13.0 (March 20, 2024)
 
