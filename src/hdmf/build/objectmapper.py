@@ -847,7 +847,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if isinstance(spec_dtype, RefSpec):
             # This assumes only one-dimensional dataset of references
             data_shape  = (len(data), )
-            if len(spec_shape) != 1:
+            if len(spec_shape) > 1:
                 error_message = (
                     "Support for building multi-dimensional datasets of references is not yet implemented."
                     "Open an issue in HDMF if you need this feature."
