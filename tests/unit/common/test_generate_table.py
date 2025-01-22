@@ -251,9 +251,9 @@ class TestDynamicDynamicTable(TestCase):
         test_dtr_table = self.TestDTRTable(name='test_dtr_table', description='my table',
                                            target_tables={'optional_custom_dtr_col': test_table})
 
-        self.assertIsInstance(test_dtr_table.optional_custom_dtr_col, self.CustomDTR)
-        self.assertEqual(test_dtr_table.optional_custom_dtr_col.description, "a test DynamicTableRegion column")
-        self.assertIs(test_dtr_table.optional_custom_dtr_col.table, test_table)
+        self.assertIsInstance(test_dtr_table['optional_custom_dtr_col'], self.CustomDTR)
+        self.assertEqual(test_dtr_table['optional_custom_dtr_col'].description, "a test DynamicTableRegion column")
+        self.assertIs(test_dtr_table['optional_custom_dtr_col'].table, test_table)
 
         test_dtr_table.add_row(ref_col=0, indexed_ref_col=[0, 1], optional_custom_dtr_col=0)
         test_dtr_table.add_row(ref_col=0, indexed_ref_col=[0, 1], optional_custom_dtr_col=1)
@@ -297,3 +297,17 @@ class TestDynamicDynamicTable(TestCase):
             for err in errors:
                 raise Exception(err)
         self.reader.close()
+
+    def test_add_custom_dtr_column(self):
+        test_table = self.TestTable(name='test_table', description='my test table')
+        test_table.add_column(
+            name='custom_dtr_column',
+            description='this is a custom DynamicTableRegion column',
+            col_cls=self.CustomDTR,
+        )
+        self.assertIsInstance(test_table['custom_dtr_column'], self.CustomDTR)
+        self.assertEqual(test_table['custom_dtr_column'].description, 'this is a custom DynamicTableRegion column')
+
+        test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], custom_dtr_column=0)
+        test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0], custom_dtr_column=1)
+        self.assertEqual(test_table['custom_dtr_column'].data, [0, 1])
