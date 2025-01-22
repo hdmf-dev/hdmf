@@ -816,7 +816,6 @@ class DynamicTable(Container):
                              "and come from an enumerable set of elements" % name)
         # Update col_cls if table is specified
         if table is not False:
-            # breakpoint()
             if col_cls is None:
                  col_cls = DynamicTableRegion
             if isinstance(table, DynamicTable):
