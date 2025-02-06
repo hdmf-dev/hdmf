@@ -401,6 +401,52 @@ class TestResolveAttrs(TestCase):
         with self.assertRaisesWith(ValueError, "Attribute 'attribute4' not found"):
             self.inc_group_spec.is_inherited_attribute('attribute4')
 
+    def test_is_overridden_spec_nested(self):
+        """Test that is_overridden_spec correctly identifies overridden specs in nested structures."""
+        # Create base spec with a dataset containing an attribute
+        base_dataset = DatasetSpec('Base dataset',
+                                 'int',
+                                 name='test_dataset',
+                                 attributes=[AttributeSpec('attr1', 'Base attr', 'text')])
+        base_group = GroupSpec('Base group',
+                             name='test_group',
+                             attributes=[AttributeSpec('attr1', 'Base attr', 'text')])
+        base_spec = GroupSpec('A base group',
+                            data_type_def='BaseType',
+                            datasets=[base_dataset],
+                            groups=[base_group])
+
+        # Create extending spec that overrides both dataset and group with new attribute values
+        override_dataset = DatasetSpec('Override dataset',
+                                     'int',
+                                     name='test_dataset',
+                                     attributes=[AttributeSpec('attr1', 'Override attr', 'text')])
+        override_group = GroupSpec('Override group',
+                                 name='test_group',
+                                 attributes=[AttributeSpec('attr1', 'Override attr', 'text')])
+        ext_spec = GroupSpec('An extending group',
+                           data_type_inc='BaseType',
+                           data_type_def='ExtType',
+                           datasets=[override_dataset],
+                           groups=[override_group])
+
+        # Resolve the extension
+        ext_spec.resolve_spec(base_spec)
+
+        # Test attribute in overridden dataset is marked as overridden
+        dataset_attr = ext_spec.get_dataset('test_dataset').get_attribute('attr1')
+        self.assertTrue(ext_spec.is_overridden_spec(dataset_attr))
+
+        # Test attribute in overridden group is marked as overridden
+        group_attr = ext_spec.get_group('test_group').get_attribute('attr1')
+        self.assertTrue(ext_spec.is_overridden_spec(group_attr))
+
+        # Test attributes in base spec are not marked as overridden
+        base_dataset_attr = base_spec.get_dataset('test_dataset').get_attribute('attr1')
+        base_group_attr = base_spec.get_group('test_group').get_attribute('attr1')
+        self.assertFalse(base_spec.is_overridden_spec(base_dataset_attr))
+        self.assertFalse(base_spec.is_overridden_spec(base_group_attr))
+
     def test_is_overridden_group(self):
         """Test that is_overridden_group correctly identifies overridden groups."""
         # Create base spec with a group
