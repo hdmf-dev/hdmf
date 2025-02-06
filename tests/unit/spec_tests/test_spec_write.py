@@ -95,11 +95,11 @@ class TestNamespaceBuilder(TestSpec):
                                    doc='Extensions for my lab',
                                    title='My lab extensions')
         self.ns_builder.export(self.namespace_path)
-        
+
         # Additional paths for export tests
         self.output_path = "test_export.namespace.yaml"
         self.source_path = "test_source.yaml"
-        
+
         # Create a test spec for reuse
         self.test_spec = GroupSpec('A test group',
                                  data_type_def='TestGroup',
@@ -112,7 +112,7 @@ class TestNamespaceBuilder(TestSpec):
             os.remove(self.ext_source_path)
         if os.path.exists(self.namespace_path):
             os.remove(self.namespace_path)
-            
+
         # Additional cleanup for export tests
         if os.path.exists(self.output_path):
             os.remove(self.output_path)
@@ -128,9 +128,9 @@ class TestNamespaceBuilder(TestSpec):
         """Test export with included types from source."""
         self.ns_builder.include_type('TestType1', source=self.source_path)
         self.ns_builder.include_type('TestType2', source=self.source_path)
-        
+
         self.ns_builder.export(self.output_path)
-        
+
         # Verify the exported namespace
         with open(self.output_path, 'r') as f:
             content = f.read()
@@ -145,9 +145,9 @@ class TestNamespaceBuilder(TestSpec):
         namespace = "test_namespace"
         self.ns_builder.include_namespace(namespace)
         self.ns_builder.include_type('TestType1', namespace=namespace)
-        
+
         self.ns_builder.export(self.output_path)
-        
+
         # Verify the exported namespace
         with open(self.output_path, 'r') as f:
             content = f.read()
@@ -158,7 +158,7 @@ class TestNamespaceBuilder(TestSpec):
         """Test export with source containing specs."""
         self.ns_builder.add_spec(self.source_path, self.test_spec)
         self.ns_builder.export(self.output_path)
-        
+
         # Verify the spec was written to source file
         self.assertTrue(os.path.exists(self.source_path))
         with open(self.source_path, 'r') as f:
@@ -171,7 +171,7 @@ class TestNamespaceBuilder(TestSpec):
         # Add both an included type and a spec to the same source
         self.ns_builder.include_type('TestType', source=self.source_path)
         self.ns_builder.add_spec(self.source_path, self.test_spec)
-        
+
         # Verify export raises error
         with self.assertRaises(ValueError):
             self.ns_builder.export(self.output_path)
@@ -182,9 +182,9 @@ class TestNamespaceBuilder(TestSpec):
                                  doc='Test documentation',
                                  title='Test Title')
         self.ns_builder.add_spec(self.source_path, self.test_spec)
-        
+
         self.ns_builder.export(self.output_path)
-        
+
         # Verify doc and title in namespace file
         with open(self.output_path, 'r') as f:
             content = f.read()
@@ -274,7 +274,7 @@ class TestYAMLSpecWrite(TestSpec):
         self.ns_builder.add_source(source=self.ext_source_path,
                                    doc='Extensions for my lab',
                                    title='My lab extensions')
-        
+
         # Create a temporary YAML file for reorder_yaml testing
         self.temp_yaml = 'temp_test.yaml'
         with open(self.temp_yaml, 'w') as f:
@@ -319,14 +319,14 @@ groups:
     def test_reorder_yaml(self):
         """Test that reorder_yaml correctly loads, reorders, and saves a YAML file."""
         writer = YAMLSpecWriter()
-        
+
         # Reorder the YAML file
         writer.reorder_yaml(self.temp_yaml)
-        
+
         # Read the reordered content
         with open(self.temp_yaml, 'r') as f:
             content = f.read()
-        
+
         # Verify the order of keys in the reordered content
         # The name should come before dtype and doc
         name_pos = content.find('name: test name')
@@ -334,7 +334,7 @@ groups:
         doc_pos = content.find('doc: test doc')
         self.assertLess(name_pos, dtype_pos)
         self.assertLess(dtype_pos, doc_pos)
-        
+
         # Verify nested structures are also reordered
         attr_block = content[content.find('- name: attr1'):content.find('groups:')]
         self.assertLess(attr_block.find('name: attr1'), attr_block.find('dtype: float'))
@@ -343,7 +343,7 @@ groups:
     def test_sort_keys(self):
         """Test that sort_keys correctly orders dictionary keys according to the predefined order."""
         writer = YAMLSpecWriter()
-        
+
         # Test basic ordering with predefined keys
         input_dict = {
             'doc': 'documentation',
@@ -354,11 +354,11 @@ groups:
             'groups': [3]
         }
         result = writer.sort_keys(input_dict)
-        
+
         # Check that the keys are in the correct order
         expected_order = ['name', 'dtype', 'doc', 'attributes', 'datasets', 'groups']
         self.assertEqual(list(result.keys()), expected_order)
-        
+
         # Test neurodata_type_def positioning
         input_dict = {
             'doc': 'documentation',
@@ -368,7 +368,7 @@ groups:
         }
         result = writer.sort_keys(input_dict)
         self.assertEqual(list(result.keys())[0], 'neurodata_type_def')
-        
+
         # Test nested dictionary ordering
         input_dict = {
             'doc': 'documentation',
@@ -381,7 +381,7 @@ groups:
         }
         result = writer.sort_keys(input_dict)
         self.assertEqual(list(result['nested'].keys()), ['name', 'dtype', 'attributes', 'groups'])
-        
+
         # Test list handling
         input_dict = {
             'attributes': [
