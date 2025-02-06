@@ -147,6 +147,37 @@ class TestNamespaceBuilder(TestSpec):
                                                namespace_cls=SpecNamespace,
                                                date=self.date)
 
+    def test_include_type(self):
+        """Test including types from source files and namespaces."""
+        # Test including type from source
+        source_path = "test_source.yaml"
+        self.ns_builder.include_type('TestType', source=source_path)
+        self.assertIn(source_path, self.ns_builder._NamespaceBuilder__sources)
+        self.assertIn('TestType', self.ns_builder._NamespaceBuilder__sources[source_path].get('data_types', []))
+
+        # Test including type from namespace
+        namespace = "test_namespace"
+        self.ns_builder.include_type('TestType2', namespace=namespace)
+        self.assertIn(namespace, self.ns_builder._NamespaceBuilder__namespaces)
+        self.assertIn('TestType2', self.ns_builder._NamespaceBuilder__namespaces[namespace].get('data_types', []))
+
+        # Test error when neither source nor namespace is provided
+        msg = "must specify 'source' or 'namespace' when including type"
+        with self.assertRaisesWith(ValueError, msg):
+            self.ns_builder.include_type('TestType3')
+
+        # Test including multiple types from same source
+        self.ns_builder.include_type('TestType4', source=source_path)
+        types_in_source = self.ns_builder._NamespaceBuilder__sources[source_path].get('data_types', [])
+        self.assertIn('TestType', types_in_source)
+        self.assertIn('TestType4', types_in_source)
+
+        # Test including multiple types from same namespace
+        self.ns_builder.include_type('TestType5', namespace=namespace)
+        types_in_namespace = self.ns_builder._NamespaceBuilder__namespaces[namespace].get('data_types', [])
+        self.assertIn('TestType2', types_in_namespace)
+        self.assertIn('TestType5', types_in_namespace)
+
 
 class TestYAMLSpecWrite(TestSpec):
 
@@ -157,12 +188,34 @@ class TestYAMLSpecWrite(TestSpec):
         self.ns_builder.add_source(source=self.ext_source_path,
                                    doc='Extensions for my lab',
                                    title='My lab extensions')
+        
+        # Create a temporary YAML file for reorder_yaml testing
+        self.temp_yaml = 'temp_test.yaml'
+        with open(self.temp_yaml, 'w') as f:
+            f.write("""
+doc: test doc
+name: test name
+dtype: int
+attributes:
+- name: attr1
+  doc: attr1 doc
+  dtype: float
+groups:
+- name: group1
+  doc: group1 doc
+  datasets:
+  - name: dataset1
+    doc: dataset1 doc
+    dtype: int
+""")
 
     def tearDown(self):
         if os.path.exists(self.ext_source_path):
             os.remove(self.ext_source_path)
         if os.path.exists(self.namespace_path):
             os.remove(self.namespace_path)
+        if os.path.exists(self.temp_yaml):
+            os.remove(self.temp_yaml)
 
     def test_init(self):
         temp = YAMLSpecWriter('.')
@@ -176,6 +229,83 @@ class TestYAMLSpecWrite(TestSpec):
 
     def test_get_name(self):
         self.assertEqual(self.ns_name, self.ns_builder.name)
+
+    def test_reorder_yaml(self):
+        """Test that reorder_yaml correctly loads, reorders, and saves a YAML file."""
+        writer = YAMLSpecWriter()
+        
+        # Reorder the YAML file
+        writer.reorder_yaml(self.temp_yaml)
+        
+        # Read the reordered content
+        with open(self.temp_yaml, 'r') as f:
+            content = f.read()
+        
+        # Verify the order of keys in the reordered content
+        # The name should come before dtype and doc
+        name_pos = content.find('name: test name')
+        dtype_pos = content.find('dtype: int')
+        doc_pos = content.find('doc: test doc')
+        self.assertLess(name_pos, dtype_pos)
+        self.assertLess(dtype_pos, doc_pos)
+        
+        # Verify nested structures are also reordered
+        attr_block = content[content.find('- name: attr1'):content.find('groups:')]
+        self.assertLess(attr_block.find('name: attr1'), attr_block.find('dtype: float'))
+        self.assertLess(attr_block.find('dtype: float'), attr_block.find('doc: attr1 doc'))
+
+    def test_sort_keys(self):
+        """Test that sort_keys correctly orders dictionary keys according to the predefined order."""
+        writer = YAMLSpecWriter()
+        
+        # Test basic ordering with predefined keys
+        input_dict = {
+            'doc': 'documentation',
+            'dtype': 'int',
+            'name': 'test_name',
+            'attributes': [1],
+            'datasets': [2],
+            'groups': [3]
+        }
+        result = writer.sort_keys(input_dict)
+        
+        # Check that the keys are in the correct order
+        expected_order = ['name', 'dtype', 'doc', 'attributes', 'datasets', 'groups']
+        self.assertEqual(list(result.keys()), expected_order)
+        
+        # Test neurodata_type_def positioning
+        input_dict = {
+            'doc': 'documentation',
+            'name': 'test_name',
+            'neurodata_type_def': 'MyType',
+            'attributes': [1]
+        }
+        result = writer.sort_keys(input_dict)
+        self.assertEqual(list(result.keys())[0], 'neurodata_type_def')
+        
+        # Test nested dictionary ordering
+        input_dict = {
+            'doc': 'documentation',
+            'nested': {
+                'groups': [1],
+                'name': 'nested_name',
+                'dtype': 'int',
+                'attributes': [2]
+            }
+        }
+        result = writer.sort_keys(input_dict)
+        self.assertEqual(list(result['nested'].keys()), ['name', 'dtype', 'attributes', 'groups'])
+        
+        # Test list handling
+        input_dict = {
+            'attributes': [
+                {'doc': 'attr1', 'name': 'attr1_name', 'dtype': 'int'},
+                {'doc': 'attr2', 'name': 'attr2_name', 'dtype': 'float'}
+            ]
+        }
+        result = writer.sort_keys(input_dict)
+        for attr in result['attributes']:
+            self.assertEqual(list(attr.keys()), ['name', 'dtype', 'doc'])
 
 
 class TestExportSpec(TestSpec):
