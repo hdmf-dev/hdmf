@@ -88,22 +88,108 @@ class TestNamespaceBuilder(TestSpec):
 
     def setUp(self):
         super().setUp()
+        # Original setup
         for data_type in self.data_types:
             self.ns_builder.add_spec(source=self.ext_source_path, spec=data_type)
         self.ns_builder.add_source(source=self.ext_source_path,
                                    doc='Extensions for my lab',
                                    title='My lab extensions')
         self.ns_builder.export(self.namespace_path)
+        
+        # Additional paths for export tests
+        self.output_path = "test_export.namespace.yaml"
+        self.source_path = "test_source.yaml"
+        
+        # Create a test spec for reuse
+        self.test_spec = GroupSpec('A test group',
+                                 data_type_def='TestGroup',
+                                 datasets=[],
+                                 attributes=[])
 
     def tearDown(self):
+        # Original cleanup
         if os.path.exists(self.ext_source_path):
             os.remove(self.ext_source_path)
         if os.path.exists(self.namespace_path):
             os.remove(self.namespace_path)
+            
+        # Additional cleanup for export tests
+        if os.path.exists(self.output_path):
+            os.remove(self.output_path)
+        if os.path.exists(self.source_path):
+            os.remove(self.source_path)
 
     def test_export_namespace(self):
+        """Test basic namespace export functionality."""
         self._test_namespace_file()
         self._test_extensions_file()
+
+    def test_export_with_included_types(self):
+        """Test export with included types from source."""
+        self.ns_builder.include_type('TestType1', source=self.source_path)
+        self.ns_builder.include_type('TestType2', source=self.source_path)
+        
+        self.ns_builder.export(self.output_path)
+        
+        # Verify the exported namespace
+        with open(self.output_path, 'r') as f:
+            content = f.read()
+            # Check that both types are included
+            self.assertIn('TestType1', content)
+            self.assertIn('TestType2', content)
+            # Check they're included from the correct source
+            self.assertIn(self.source_path, content)
+
+    def test_export_with_included_namespaces(self):
+        """Test export with included namespaces."""
+        namespace = "test_namespace"
+        self.ns_builder.include_namespace(namespace)
+        self.ns_builder.include_type('TestType1', namespace=namespace)
+        
+        self.ns_builder.export(self.output_path)
+        
+        # Verify the exported namespace
+        with open(self.output_path, 'r') as f:
+            content = f.read()
+            self.assertIn(namespace, content)
+            self.assertIn('TestType1', content)
+
+    def test_export_source_with_specs(self):
+        """Test export with source containing specs."""
+        self.ns_builder.add_spec(self.source_path, self.test_spec)
+        self.ns_builder.export(self.output_path)
+        
+        # Verify the spec was written to source file
+        self.assertTrue(os.path.exists(self.source_path))
+        with open(self.source_path, 'r') as f:
+            content = f.read()
+            self.assertIn('TestGroup', content)
+            self.assertIn('A test group', content)
+
+    def test_export_source_conflict_error(self):
+        """Test error when trying to both include from and write to same source."""
+        # Add both an included type and a spec to the same source
+        self.ns_builder.include_type('TestType', source=self.source_path)
+        self.ns_builder.add_spec(self.source_path, self.test_spec)
+        
+        # Verify export raises error
+        with self.assertRaises(ValueError):
+            self.ns_builder.export(self.output_path)
+
+    def test_export_source_with_doc_title(self):
+        """Test export with source containing doc and title."""
+        self.ns_builder.add_source(self.source_path,
+                                 doc='Test documentation',
+                                 title='Test Title')
+        self.ns_builder.add_spec(self.source_path, self.test_spec)
+        
+        self.ns_builder.export(self.output_path)
+        
+        # Verify doc and title in namespace file
+        with open(self.output_path, 'r') as f:
+            content = f.read()
+            self.assertIn('Test documentation', content)
+            self.assertIn('Test Title', content)
 
     def test_read_namespace(self):
         ns_catalog = NamespaceCatalog()
