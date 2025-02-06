@@ -391,6 +391,19 @@ groups:
         for attr in result['attributes']:
             self.assertEqual(list(attr.keys()), ['name', 'dtype', 'doc'])
 
+        # Test tuple handling
+        input_tuple = (
+            {'doc': 'item1', 'name': 'name1', 'dtype': 'int'},
+            {'doc': 'item2', 'name': 'name2', 'dtype': 'float'}
+        )
+        result = writer.sort_keys(input_tuple)
+        # Convert generator to list for testing
+        result_list = list(result)
+        for item in result_list:
+            self.assertEqual(list(item.keys()), ['name', 'dtype', 'doc'])
+        # Verify the original order is maintained
+        self.assertEqual(result_list[0]['name'], 'name1')
+        self.assertEqual(result_list[1]['name'], 'name2')
 
 class TestExportSpec(TestSpec):
 
