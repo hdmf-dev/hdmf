@@ -401,6 +401,45 @@ class TestResolveAttrs(TestCase):
         with self.assertRaisesWith(ValueError, "Attribute 'attribute4' not found"):
             self.inc_group_spec.is_inherited_attribute('attribute4')
 
+    def test_is_overridden_group(self):
+        """Test that is_overridden_group correctly identifies overridden groups."""
+        # Create base spec with a group
+        base_group = GroupSpec('Base group',
+                             name='test_group',
+                             attributes=[])
+        base_spec = GroupSpec('A base group',
+                            data_type_def='BaseType',
+                            groups=[base_group])
+        
+        # Create extending spec that overrides the group
+        override_group = GroupSpec('Override group',
+                                 name='test_group',
+                                 attributes=[])
+        ext_spec = GroupSpec('An extending group',
+                           data_type_inc='BaseType',
+                           data_type_def='ExtType',
+                           groups=[override_group])
+        
+        # Resolve the extension
+        ext_spec.resolve_spec(base_spec)
+        
+        # Test base spec has no overridden groups
+        self.assertFalse(base_spec.is_overridden_group('test_group'))
+        
+        # Test extending spec correctly identifies overridden group
+        self.assertTrue(ext_spec.is_overridden_group('test_group'))
+        
+        # Test non-existent group raises error
+        with self.assertRaisesWith(ValueError, "Group 'nonexistent_group' not found in spec"):
+            ext_spec.is_overridden_group('nonexistent_group')
+        
+        # Test new group in extending spec is not overridden
+        new_group = GroupSpec('New group',
+                            name='new_group',
+                            attributes=[])
+        ext_spec.set_group(new_group)
+        self.assertFalse(ext_spec.is_overridden_group('new_group'))
+
     def test_is_overridden_attribute(self):
         self.assertFalse(self.def_group_spec.is_overridden_attribute('attribute1'))
         self.assertFalse(self.def_group_spec.is_overridden_attribute('attribute2'))

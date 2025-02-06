@@ -88,7 +88,6 @@ class TestNamespaceBuilder(TestSpec):
 
     def setUp(self):
         super().setUp()
-        # Original setup
         for data_type in self.data_types:
             self.ns_builder.add_spec(source=self.ext_source_path, spec=data_type)
         self.ns_builder.add_source(source=self.ext_source_path,
@@ -107,7 +106,6 @@ class TestNamespaceBuilder(TestSpec):
                                  attributes=[])
 
     def tearDown(self):
-        # Original cleanup
         if os.path.exists(self.ext_source_path):
             os.remove(self.ext_source_path)
         if os.path.exists(self.namespace_path):
