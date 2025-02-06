@@ -409,6 +409,84 @@ class TestResolveAttrs(TestCase):
         self.assertFalse(self.inc_group_spec.is_overridden_attribute('attribute3'))
         with self.assertRaisesWith(ValueError, "Attribute 'attribute4' not found"):
             self.inc_group_spec.is_overridden_attribute('attribute4')
+    
+    def test_resolve_group_inheritance(self):
+        """Test resolution of inherited groups in GroupSpec.resolve_spec."""
+        # Create base group with named and unnamed groups
+        unnamed_group = GroupSpec('An unnamed group',
+                                data_type_def='UnnamedType',
+                                attributes=[])
+        named_group = GroupSpec('A named group',
+                              name='named_group',
+                              attributes=[])
+        base_groups = [unnamed_group, named_group]
+        
+        base_spec = GroupSpec('A test group',
+                            data_type_def='BaseType',
+                            groups=base_groups)
+
+        # Create extending group that overrides the named group and adds a new one
+        override_group = GroupSpec('Override named group',
+                                 name='named_group',
+                                 attributes=[])
+        new_group = GroupSpec('A new group',
+                            name='new_group',
+                            attributes=[])
+        ext_groups = [override_group, new_group]
+        
+        ext_spec = GroupSpec('An extending group',
+                           data_type_inc='BaseType',
+                           data_type_def='ExtType',
+                           groups=ext_groups)
+        
+        # Resolve the extension
+        ext_spec.resolve_spec(base_spec)
+        
+        # Test unnamed group is added to data_types
+        self.assertEqual(ext_spec.get_data_type('UnnamedType'), unnamed_group)
+        
+        # Test named group is overridden
+        resolved_group = ext_spec.get_group('named_group')
+        self.assertEqual(resolved_group.doc, 'Override named group')
+        self.assertTrue(ext_spec.is_overridden_spec(resolved_group))
+        
+        # Test new group is added
+        new_resolved = ext_spec.get_group('new_group')
+        self.assertEqual(new_resolved.doc, 'A new group')
+        self.assertFalse(ext_spec.is_overridden_spec(new_resolved))
+
+    def test_resolve_group_inheritance_multiple(self):
+        """Test resolution of multiple levels of group inheritance."""
+        # Base spec with a named group
+        base_group = GroupSpec('Base group',
+                             name='test_group',
+                             attributes=[])
+        base_spec = GroupSpec('A base group',
+                            data_type_def='BaseType',
+                            groups=[base_group])
+        
+        # First extension overrides the group
+        mid_group = GroupSpec('Mid group',
+                            name='test_group',
+                            attributes=[])
+        mid_spec = GroupSpec('A middle group',
+                           data_type_inc='BaseType',
+                           data_type_def='MidType',
+                           groups=[mid_group])
+        
+        # Second extension inherits without override
+        ext_spec = GroupSpec('An extending group',
+                           data_type_inc='MidType',
+                           data_type_def='ExtType')
+        
+        # Resolve the extensions
+        mid_spec.resolve_spec(base_spec)
+        ext_spec.resolve_spec(mid_spec)
+        
+        # Test group inheritance through multiple levels
+        resolved_group = ext_spec.get_group('test_group')
+        self.assertEqual(resolved_group.doc, 'Mid group')
+        self.assertTrue(ext_spec.is_inherited_spec(resolved_group))
 
 
 class TestResolveGroupSameAttributeName(TestCase):

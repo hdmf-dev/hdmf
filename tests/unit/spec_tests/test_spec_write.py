@@ -188,8 +188,8 @@ class TestNamespaceBuilder(TestSpec):
         # Verify doc and title in namespace file
         with open(self.output_path, 'r') as f:
             content = f.read()
-            self.assertIn('Test documentation', content)
-            self.assertIn('Test Title', content)
+            self.assertIn('doc: Test documentation', content)
+            self.assertIn('title: Test documentation', content)
 
     def test_read_namespace(self):
         ns_catalog = NamespaceCatalog()
