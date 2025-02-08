@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## [Unreleased]
+
+### Changed
+- Removed `requirements-min.txt` in favor of the `min-reqs` optional dependency group in `pyproject.toml`. @rly [#1246](https://github.com/hdmf-dev/hdmf/pull/1246)
+- Updated GitHub actions and ruff configuration. @rly [#1246](https://github.com/hdmf-dev/hdmf/pull/1246)
+
 ## HDMF 4.0.0 (January 22, 2025)
 
 ### Breaking changes
