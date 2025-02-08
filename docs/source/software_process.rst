@@ -45,8 +45,8 @@ pyproject.toml_ contains a list of package dependencies and their version ranges
 running HDMF. As a library, upper bound version constraints create more harm than good in the long term (see this
 `blog post`_) so we avoid setting upper bounds on requirements.
 
-When setting lower bounds, make sure to specify the lower bounds in the ``[project] dependencies`` key and 
-``[project.optional-dependencies] min-reqs`` key in pyproject.toml_. 
+When setting lower bounds, make sure to specify the lower bounds in the ``[project] dependencies`` key and
+``[project.optional-dependencies] min-reqs`` key in pyproject.toml_.
 The latter is used in automated testing to ensure that the package runs
 correctly using the minimum versions of dependencies.
 
