@@ -1052,7 +1052,7 @@ class GroupSpec(BaseStorageSpec):
             if parent_name is None:
                 parent_name = spec.parent.data_type
             if isinstance(spec.parent, DatasetSpec):
-                if (parent_name in self.__datasets and self.is_inherited_dataset(parent_name) and 
+                if (parent_name in self.__datasets and self.is_inherited_dataset(parent_name) and
                     self.__datasets[parent_name].get_attribute(spec_name) is not None):
                         return True
             else:
