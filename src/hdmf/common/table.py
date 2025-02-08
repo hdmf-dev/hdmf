@@ -304,7 +304,7 @@ class DynamicTable(Container):
                     except AttributeError:   # raises error when "__columns__" is not an attr of item
                         continue
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},  # noqa: C901
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},
             {'name': 'description', 'type': str, 'doc': 'a description of what is in this table'},
             {'name': 'id', 'type': ('array_data', 'data', ElementIdentifiers), 'doc': 'the identifiers for this table',
              'default': None},
@@ -749,7 +749,7 @@ class DynamicTable(Container):
             return False
         return self.to_dataframe().equals(other.to_dataframe())
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},  # noqa: C901
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},

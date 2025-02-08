@@ -1000,9 +1000,9 @@ class HERD(Container):
         directory = os.path.dirname(os.path.realpath(path))
         return directory
 
-    @classmethod  # noqa: C901
+    @classmethod
     @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
-    def from_zip(cls, **kwargs):
+    def from_zip(cls, **kwargs):  # noqa: C901
         """
         Method to read in zipped tsv files to populate HERD.
         """
