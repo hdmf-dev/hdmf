@@ -706,7 +706,7 @@ class DynamicTable(Container):
         self._validate_new_row(data)
         self._add_extra_predefined_columns(data)
 
-        
+
         if row_id is None:
             row_id = data.pop('id', None)
         if row_id is None:
