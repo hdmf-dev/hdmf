@@ -605,7 +605,7 @@ class HERD(Container):
             {'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
              'default': None},
             )
-    def add_ref(self, **kwargs):
+    def add_ref(self, **kwargs):  # noqa: C901
         """
         Add information about an external reference used in this file.
 
