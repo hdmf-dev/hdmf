@@ -638,26 +638,9 @@ class DynamicTable(Container):
         """Number of rows in the table"""
         return len(self.id)
 
-    @docval({'name': 'data', 'type': dict, 'doc': 'the data to put in this row', 'default': None},
-            {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
-            {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
-             'default': False},
-            {'name': 'check_ragged', 'type': bool, 'default': True,
-             'doc': ('whether or not to check for ragged arrays when adding data to the table. '
-                     'Set to False to avoid checking every element if performance issues occur.')},
-            allow_extra=True)
-    def add_row(self, **kwargs):
-        """
-        Add a row to the table. If *id* is not provided, it will auto-increment.
-        """
-        data, row_id, enforce_unique_id, check_ragged = popargs('data', 'id', 'enforce_unique_id', 'check_ragged',
-                                                                kwargs)
-        data = data if data is not None else kwargs
-
+    def _validate_new_row(self, data: dict):
+        """Validate a row of new data to be added."""
         bad_data = []
-        extra_columns = set(list(data.keys())) - set(list(self.__colids.keys()))
-        missing_columns = set(list(self.__colids.keys())) - set(list(data.keys()))
-
         for colname, colnum in self.__colids.items():
             if colname not in data:
                 raise ValueError("column '%s' missing" % colname)
@@ -675,7 +658,12 @@ class DynamicTable(Container):
             msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
             raise ValueError(msg)
 
-        # check to see if any of the extra columns just need to be added
+    def _add_extra_predefined_columns(self, data: dict):
+        """Add columns that are predefined, have not been added, and are present in the new row data.
+        Also check to see if all extra row data keys have corresponding columns in the table.
+        """
+        extra_columns = set(list(data.keys())) - set(list(self.__colids.keys()))
+
         if extra_columns:
             for col in self.__columns__:
                 if col['name'] in extra_columns:
@@ -691,14 +679,34 @@ class DynamicTable(Container):
                                            if k not in DynamicTable.__reserved_colspec_keys})
                     extra_columns.remove(col['name'])
 
-        if extra_columns or missing_columns:
+        if extra_columns:
             raise ValueError(
                 '\n'.join([
                     'row data keys don\'t match available columns',
                     'you supplied {} extra keys: {}'.format(len(extra_columns), extra_columns),
-                    'and were missing {} keys: {}'.format(len(missing_columns), missing_columns)
                 ])
             )
+
+    @docval({'name': 'data', 'type': dict, 'doc': 'the data to put in this row', 'default': None},
+            {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
+            {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
+             'default': False},
+            {'name': 'check_ragged', 'type': bool, 'default': True,
+             'doc': ('whether or not to check for ragged arrays when adding data to the table. '
+                     'Set to False to avoid checking every element if performance issues occur.')},
+            allow_extra=True)
+    def add_row(self, **kwargs):
+        """
+        Add a row to the table. If *id* is not provided, it will auto-increment.
+        """
+        data, row_id, enforce_unique_id, check_ragged = popargs('data', 'id', 'enforce_unique_id', 'check_ragged',
+                                                                kwargs)
+        data = data if data is not None else kwargs
+
+        self._validate_new_row(data)
+        self._add_extra_predefined_columns(data)
+
+        
         if row_id is None:
             row_id = data.pop('id', None)
         if row_id is None:
