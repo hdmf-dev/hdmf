@@ -1056,7 +1056,7 @@ class GroupSpec(BaseStorageSpec):
                     self.__datasets[parent_name].get_attribute(spec_name) is not None):
                         return True
             else:
-                if (parent_name in self.__groups and self.is_inherited_group(parent_name) and :
+                if (parent_name in self.__groups and self.is_inherited_group(parent_name) and
                     self.__groups[parent_name].get_attribute(spec_name) is not None):
                         return True
         return False

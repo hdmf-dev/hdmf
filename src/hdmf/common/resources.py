@@ -544,7 +544,7 @@ class HERD(Container):
         if len(missing_terms)>0:
             return {"missing_terms": missing_terms}
 
-    def _validate_object(self, container, attribute, field):
+    def _validate_object(self, container, attribute, field, file):
         if attribute is None:  # Trivial Case
             relative_path = ''
             object_field = self._check_object_field(file=file,
@@ -588,6 +588,7 @@ class HERD(Container):
                                                             container=parent,
                                                             relative_path=relative_path,
                                                             field=field)
+        return object_field
 
 
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
@@ -676,7 +677,7 @@ class HERD(Container):
                 msg = 'This entity already exists. Ignoring new entity uri'
                 warn(msg, stacklevel=3)
 
-        object_field = self._validate_object(container, attribute, field)
+        object_field = self._validate_object(container, attribute, field, file)
 
         #######################################
         # Validate Parameters and Populate HERD
