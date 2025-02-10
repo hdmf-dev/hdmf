@@ -3984,4 +3984,3 @@ class TestExpand(TestCase):
                                  [7, 8, 9]])
             npt.assert_array_equal(read_quxbucket.qux_data.data[:], expected)
             self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None,3))
-
