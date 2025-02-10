@@ -7,19 +7,20 @@ from pathlib import Path, PurePosixPath as pp
 
 import numpy as np
 import h5py
-from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, RegionReference, check_dtype
+from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, check_dtype
 
-from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5RegionDataset, BuilderH5TableDataset, H5DataIO,
+from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5TableDataset, H5DataIO,
                        H5SpecReader, H5SpecWriter, HDF5IODataChunkIteratorQueue)
 from ..io import HDMFIO
 from ..errors import UnsupportedOperation
 from ..warnings import BrokenLinkWarning
-from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager, RegionBuilder,
+from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildManager,
                       ReferenceBuilder, TypeMap, ObjectMapper)
 from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
-from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset
+from ...utils import (docval, getargs, popargs, get_data_shape, get_docval, StrDataset,
+                      get_basic_array_info, generate_array_html_repr)
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
@@ -27,7 +28,6 @@ SPEC_LOC_ATTR = '.specloc'
 H5_TEXT = special_dtype(vlen=str)
 H5_BINARY = special_dtype(vlen=bytes)
 H5_REF = special_dtype(ref=Reference)
-H5_REGREF = special_dtype(ref=RegionReference)
 
 RDCC_NBYTES = 32*2**20  # set raw data chunk cache size = 32 MiB
 
@@ -694,14 +694,15 @@ class HDF5IO(HDMFIO):
                 target = h5obj.file[scalar]
                 target_builder = self.__read_dataset(target)
                 self.__set_built(target.file.filename, target.id, target_builder)
-                if isinstance(scalar, RegionReference):
-                    d = RegionBuilder(scalar, target_builder)
-                else:
-                    d = ReferenceBuilder(target_builder)
+                d = ReferenceBuilder(target_builder)
                 kwargs['data'] = d
                 kwargs['dtype'] = d.dtype
             elif h5obj.dtype.kind == 'V':  # scalar compound data type
                 kwargs['data'] = np.array(scalar, dtype=h5obj.dtype)
+                cpd_dt = h5obj.dtype
+                ref_cols = [check_dtype(ref=cpd_dt[i]) or check_dtype(vlen=cpd_dt[i]) for i in range(len(cpd_dt))]
+                d = BuilderH5TableDataset(h5obj, self, ref_cols)
+                kwargs['dtype'] = HDF5IO.__compound_dtype_to_list(h5obj.dtype, d.dtype)
             else:
                 kwargs["data"] = scalar
         else:
@@ -710,9 +711,6 @@ class HDF5IO(HDMFIO):
                 elem1 = h5obj[tuple([0] * (h5obj.ndim - 1) + [0])]
                 if isinstance(elem1, (str, bytes)):
                     d = self._check_str_dtype(h5obj)
-                elif isinstance(elem1, RegionReference):  # read list of references
-                    d = BuilderH5RegionDataset(h5obj, self)
-                    kwargs['dtype'] = d.dtype
                 elif isinstance(elem1, Reference):
                     d = BuilderH5ReferenceDataset(h5obj, self)
                     kwargs['dtype'] = d.dtype
@@ -748,9 +746,7 @@ class HDF5IO(HDMFIO):
         for k, v in h5obj.attrs.items():
             if k == SPEC_LOC_ATTR:  # ignore cached spec
                 continue
-            if isinstance(v, RegionReference):
-                raise ValueError("cannot read region reference attributes yet")
-            elif isinstance(v, Reference):
+            if isinstance(v, Reference):
                 ret[k] = self.__read_ref(h5obj.file[v])
             else:
                 ret[k] = v
@@ -919,10 +915,7 @@ class HDF5IO(HDMFIO):
         "utf-8": H5_TEXT,
         "ascii": H5_BINARY,
         "bytes": H5_BINARY,
-        "ref": H5_REF,
-        "reference": H5_REF,
         "object": H5_REF,
-        "region": H5_REGREF,
         "isodatetime": H5_TEXT,
         "datetime": H5_TEXT,
     }
@@ -1245,29 +1238,13 @@ class HDF5IO(HDMFIO):
                 dset = self.__scalar_fill__(parent, name, data, options)
             else:
                 dset = self.__list_fill__(parent, name, data, matched_spec_shape, expandable, options)
-        # Write a dataset containing references, i.e., a region or object reference.
+        # Write a dataset containing references, i.e., object reference.
+
         # NOTE: we can ignore options['io_settings'] for scalar data
         elif self.__is_ref(options['dtype']):
             _dtype = self.__dtypes.get(options['dtype'])
-            # Write a scalar data region reference dataset
-            if isinstance(data, RegionBuilder):
-                dset = parent.require_dataset(name, shape=(), dtype=_dtype)
-                self.__set_written(builder)
-                self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing a "
-                                  "region reference. attributes: %s"
-                                  % (name, list(attributes.keys())))
-
-                @self.__queue_ref
-                def _filler():
-                    self.logger.debug("Resolving region reference and setting attribute on dataset '%s' "
-                                      "containing attributes: %s"
-                                      % (name, list(attributes.keys())))
-                    ref = self.__get_ref(data.builder, data.region)
-                    dset = parent[name]
-                    dset[()] = ref
-                    self.set_attributes(dset, attributes)
             # Write a scalar object reference dataset
-            elif isinstance(data, ReferenceBuilder):
+            if isinstance(data, ReferenceBuilder):
                 dset = parent.require_dataset(name, dtype=_dtype, shape=())
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing an "
@@ -1285,44 +1262,24 @@ class HDF5IO(HDMFIO):
                     self.set_attributes(dset, attributes)
             # Write an array dataset of references
             else:
-                # Write a array of region references
-                if options['dtype'] == 'region':
-                    dset = parent.require_dataset(name, dtype=_dtype, shape=(len(data),), **options['io_settings'])
-                    self.__set_written(builder)
-                    self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
-                                      "region references. attributes: %s"
-                                      % (name, list(attributes.keys())))
-
-                    @self.__queue_ref
-                    def _filler():
-                        self.logger.debug("Resolving region references and setting attribute on dataset '%s' "
-                                          "containing attributes: %s"
-                                          % (name, list(attributes.keys())))
-                        refs = list()
-                        for item in data:
-                            refs.append(self.__get_ref(item.builder, item.region))
-                        dset = parent[name]
-                        dset[()] = refs
-                        self.set_attributes(dset, attributes)
                 # Write array of object references
-                else:
-                    dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
-                    self.__set_written(builder)
-                    self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
-                                      "object references. attributes: %s"
-                                      % (name, list(attributes.keys())))
+                dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
+                self.__set_written(builder)
+                self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
+                                  "object references. attributes: %s"
+                                  % (name, list(attributes.keys())))
 
-                    @self.__queue_ref
-                    def _filler():
-                        self.logger.debug("Resolving object references and setting attribute on dataset '%s' "
-                                          "containing attributes: %s"
-                                          % (name, list(attributes.keys())))
-                        refs = list()
-                        for item in data:
-                            refs.append(self.__get_ref(item))
-                        dset = parent[name]
-                        dset[()] = refs
-                        self.set_attributes(dset, attributes)
+                @self.__queue_ref
+                def _filler():
+                    self.logger.debug("Resolving object references and setting attribute on dataset '%s' "
+                                      "containing attributes: %s"
+                                      % (name, list(attributes.keys())))
+                    refs = list()
+                    for item in data:
+                        refs.append(self.__get_ref(item))
+                    dset = parent[name]
+                    dset[()] = refs
+                    self.set_attributes(dset, attributes)
             return
         # write a "regular" dataset
         else:
@@ -1515,11 +1472,9 @@ class HDF5IO(HDMFIO):
 
     @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference',
              'default': None},
-            {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the region reference indexing object',
-             'default': None},
             returns='the reference', rtype=Reference)
     def __get_ref(self, **kwargs):
-        container, region = getargs('container', 'region', kwargs)
+        container = getargs('container', kwargs)
         if container is None:
             return None
         if isinstance(container, Builder):
@@ -1537,19 +1492,9 @@ class HDF5IO(HDMFIO):
         path = self.__get_path(builder)
 
         self.logger.debug("Getting reference at path '%s'" % path)
-        if isinstance(container, RegionBuilder):
-            region = container.region
-        if region is not None:
-            dset = self.__file[path]
-            if not isinstance(dset, Dataset):
-                raise ValueError('cannot create region reference without Dataset')
-            return self.__file[path].regionref[region]
-        else:
-            return self.__file[path].ref
+        return self.__file[path].ref
 
     @docval({'name': 'container', 'type': (Builder, Container, ReferenceBuilder), 'doc': 'the object to reference',
-             'default': None},
-            {'name': 'region', 'type': (slice, list, tuple), 'doc': 'the region reference indexing object',
              'default': None},
             returns='the reference', rtype=Reference)
     def _create_ref(self, **kwargs):
@@ -1563,7 +1508,7 @@ class HDF5IO(HDMFIO):
         if isinstance(dtype, dict):  # may be dict from reading a compound dataset
             return self.__is_ref(dtype['dtype'])
         if isinstance(dtype, str):
-            return dtype == DatasetBuilder.OBJECT_REF_TYPE or dtype == DatasetBuilder.REGION_REF_TYPE
+            return dtype == DatasetBuilder.OBJECT_REF_TYPE
         return False
 
     def __queue_ref(self, func):
@@ -1581,17 +1526,6 @@ class HDF5IO(HDMFIO):
         # queueing reference resolution, based on reference
         # dependency
         self.__ref_queue.append(func)
-
-    def __rec_get_ref(self, ref_list):
-        ret = list()
-        for elem in ref_list:
-            if isinstance(elem, (list, tuple)):
-                ret.append(self.__rec_get_ref(elem))
-            elif isinstance(elem, (Builder, Container)):
-                ret.append(self.__get_ref(elem))
-            else:
-                ret.append(elem)
-        return ret
 
     @property
     def mode(self):
@@ -1616,3 +1550,35 @@ class HDF5IO(HDMFIO):
             data = H5DataIO(data)
         """
         return H5DataIO.__init__(**kwargs)
+
+    @staticmethod
+    def generate_dataset_html(dataset):
+        """Generates an html representation for a dataset for the HDF5IO class"""
+
+        array_info_dict = get_basic_array_info(dataset)
+        if isinstance(dataset, h5py.Dataset):
+            dataset_type = "HDF5 dataset"
+            # get info from hdf5 dataset
+            compressed_size = dataset.id.get_storage_size()
+            if hasattr(dataset, "nbytes"):  # TODO: Remove this after h5py minimal version is larger than 3.0
+                uncompressed_size = dataset.nbytes
+            else:
+                uncompressed_size = dataset.size * dataset.dtype.itemsize
+            compression_ratio = uncompressed_size / compressed_size if compressed_size != 0 else "undefined"
+
+            hdf5_info_dict = {
+                            "Chunk shape": dataset.chunks,
+                            "Compression": dataset.compression,
+                            "Compression opts": dataset.compression_opts,
+                            "Compression ratio": compression_ratio,
+                            }
+            array_info_dict.update(hdf5_info_dict)
+
+        elif isinstance(dataset, np.ndarray):
+            dataset_type = "NumPy array"
+        else:
+            dataset_type = dataset.__class__.__name__
+
+        repr_html = generate_array_html_repr(array_info_dict, dataset, dataset_type)
+
+        return repr_html

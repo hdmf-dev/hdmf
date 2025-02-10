@@ -67,8 +67,9 @@ def run_gallery_tests():
                 )
                 _import_from_file(script)
         except (ImportError, ValueError) as e:
-            if "linkml" in str(e):
-                pass  # this is OK because linkml is not always installed
+            if "Please install linkml-runtime to run this example" in str(e):
+                # this is OK because linkml is not always installed
+                print(f"Skipping {script} because linkml-runtime is not installed")
             else:
                 raise e
         except Exception:

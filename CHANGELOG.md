@@ -1,10 +1,53 @@
 # HDMF Changelog
 
-## HDMF 4.0.0 (Upcoming)
-### Enhancements
-- Added support for datasets to be expandable by default for the HDF5 backend. @mavaylon1 [#1158](https://github.com/hdmf-dev/hdmf/pull/1158)
 
-## HDMF 3.14.4 (August 22, 2024)
+## HDMF 4.0.0 (January 22, 2025)
+
+### Breaking changes
+- The following classes have been deprecated and removed: Array, AbstractSortedArray, SortedArray, LinSpace, Query, RegionSlicer, ListSlicer, H5RegionSlicer, DataRegion, RegionBuilder. The following methods have been deprecated and removed: fmt_docval_args, call_docval_func, get_container_cls, add_child, set_dataio (now refactored as set_data_io). We have also removed all early development for region references. @mavaylon1, @rly [#1998](https://github.com/hdmf-dev/hdmf/pull/1198), [#1212](https://github.com/hdmf-dev/hdmf/pull/1212)
+- Importing from `hdmf.build.map` is no longer supported. Import from `hdmf.build` instead. @rly [#1221](https://github.com/hdmf-dev/hdmf/pull/1221)
+- Python 3.8 has reached end of life. Dropped support for Python 3.8 and add support for Python 3.13. @mavaylon1 [#1209](https://github.com/hdmf-dev/hdmf/pull/1209)
+- Support for Zarr is limited to versions < 3. @rly [#1229](https://github.com/hdmf-dev/hdmf/pull/1229)
+- Scipy is no longer a required dependency. Users using the `CSRMatrix` data type should install `scipy` separately or with `pip install "hdmf[sparse]"`. @rly [#1140](https://github.com/hdmf-dev/hdmf/pull/1140)
+
+### Changed
+- Added checks to ensure that group and dataset spec names and default names do not contain slashes. @bendichter [#1219](https://github.com/hdmf-dev/hdmf/pull/1219)
+- Updated copyright dates. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Created optional dependency groups in `pyproject.toml` and update GitHub Actions workflows to use those instead of requirements files.  @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Stopped using pinned dependencies in the docs and testing. These are not necessary for library testing, confuse new users and developers, and add maintenance burden. Current dependencies are stable enough that they need not be pinned and users can report the libraries they use. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Stopped redundant testing using a conda environment. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Adopted changelog format conventions: https://keepachangelog.com/en/1.1.0/ . @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+
+### Added
+- Added script to check Python version support for HDMF dependencies. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+
+### Fixed
+- Fixed issue with `DynamicTable.add_column` not allowing subclasses of `DynamicTableRegion` or `EnumData`. @rly [#1091](https://github.com/hdmf-dev/hdmf/pull/1091)
+
+## HDMF 3.14.6 (December 20, 2024)
+
+### Enhancements
+- Added support for expandable datasets of references for untyped and compound data types. @stephprince [#1188](https://github.com/hdmf-dev/hdmf/pull/1188)
+- Improved html representation of data in `Container` objects. @h-mayorquin [#1100](https://github.com/hdmf-dev/hdmf/pull/1100)
+- Added error when using colon for `Container` name. A colon cannot be used as a group name when writing to Zarr on Windows. @stephprince [#1202](https://github.com/hdmf-dev/hdmf/pull/1202)
+- Adjusted testing for hdmf-zarr. @rly [#1222](https://github.com/hdmf-dev/hdmf/pull/1222)
+
+### Bug fixes
+- Fixed inaccurate error message when validating reference data types. @stephprince [#1199](https://github.com/hdmf-dev/hdmf/pull/1199)
+- Fixed incorrect dtype conversion of a StrDataset. @stephprince [#1205](https://github.com/hdmf-dev/hdmf/pull/1205)
+
+## HDMF 3.14.5 (October 6, 2024)
+
+### Enhancements
+- Added support for overriding backend configurations of `h5py.Dataset` objects in `Container.set_data_io`. @pauladkisson [#1172](https://github.com/hdmf-dev/hdmf/pull/1172)
+
+### Bug fixes
+- Fixed bug in writing of string arrays to an HDF5 file that were read from an HDF5 file that was introduced in 3.14.4. @rly @stephprince
+  [#1189](https://github.com/hdmf-dev/hdmf/pull/1189)
+- Fixed export of scalar datasets with a compound data type. @stephprince [#1185](https://github.com/hdmf-dev/hdmf/pull/1185)
+- Fixed mamba-related error in conda-based GitHub Actions. @rly [#1194](https://github.com/hdmf-dev/hdmf/pull/1194)
+
+## HDMF 3.14.4 (September 4, 2024)
 
 ### Enhancements
 - Added support to append to a dataset of references for HDMF-Zarr. @mavaylon1 [#1157](https://github.com/hdmf-dev/hdmf/pull/1157)

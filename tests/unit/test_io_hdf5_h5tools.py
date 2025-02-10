@@ -24,7 +24,7 @@ from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
 from hdmf.container import Container
 from hdmf import Data, docval
-from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError
+from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError, append_data
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.spec.spec import GroupSpec, DtypeSpec
@@ -1871,7 +1871,7 @@ class H5DataIOValid(TestCase):
             self.assertTrue(self.foo2.my_data.valid)  # test valid
             self.assertEqual(len(self.foo2.my_data), 5)  # test len
             self.assertEqual(self.foo2.my_data.shape, (5,))  # test getattr with shape
-            self.assertTrue(np.array_equal(np.array(self.foo2.my_data), [1, 2, 3, 4, 5]))  # test array conversion
+            np.testing.assert_array_equal(self.foo2.my_data, [1, 2, 3, 4, 5])  # test array conversion
 
             # test loop through iterable
             match = [1, 2, 3, 4, 5]
@@ -3064,6 +3064,41 @@ class TestExport(TestCase):
             self.assertEqual(len(read_bucket1.baz_data.data), 2)
             self.assertIs(read_bucket1.baz_data.data[1], read_bucket1.bazs["new"])
 
+    def test_append_dataset_of_references_compound(self):
+        """Test that exporting a written container with a dataset of references of compound data type works."""
+        bazs = []
+        baz_pairs = []
+        num_bazs = 10
+        for i in range(num_bazs):
+            b = Baz(name='baz%d' % i)
+            bazs.append(b)
+            baz_pairs.append((i, b))
+        baz_cpd_data = BazCpdData(name='baz_cpd_data1', data=H5DataIO(baz_pairs, maxshape=(None,)))
+        bucket = BazBucket(name='bucket1', bazs=bazs.copy(), baz_cpd_data=baz_cpd_data)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='w') as write_io:
+            write_io.write(bucket)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as append_io:
+            read_bucket1 = append_io.read()
+            new_baz = Baz(name='new')
+            read_bucket1.add_baz(new_baz)
+            append_io.write(read_bucket1)
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='a') as ref_io:
+            read_bucket1 = ref_io.read()
+            cpd_DoR = read_bucket1.baz_cpd_data.data
+            builder = ref_io.manager.get_builder(read_bucket1.bazs['new'])
+            ref = ref_io._create_ref(builder)
+            append_data(cpd_DoR.dataset, (11, ref))
+
+        with HDF5IO(self.paths[0], manager=get_baz_buildmanager(), mode='r') as read_io:
+            read_bucket2 = read_io.read()
+
+            self.assertEqual(read_bucket2.baz_cpd_data.data[-1][0], 11)
+            self.assertIs(read_bucket2.baz_cpd_data.data[-1][1], read_bucket2.bazs['new'])
+
+
     def test_append_dataset_of_references_orphaned_target(self):
         bazs = []
         num_bazs = 1
@@ -3825,6 +3860,11 @@ class TestContainerSetDataIO(TestCase):
                 self.data2 = kwargs["data2"]
 
         self.obj = ContainerWithData("name", [1, 2, 3, 4, 5], None)
+        self.file_path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.file_path):
+            os.remove(self.file_path)
 
     def test_set_data_io(self):
         self.obj.set_data_io("data1", H5DataIO, data_io_kwargs=dict(chunks=True))
@@ -3847,6 +3887,31 @@ class TestContainerSetDataIO(TestCase):
         self.assertIsInstance(self.obj.data1, H5DataIO)
         self.assertTrue(self.obj.data1.io_settings["chunks"])
 
+    def test_set_data_io_h5py_dataset(self):
+        file = File(self.file_path, 'w')
+        data = file.create_dataset('data', data=[1, 2, 3, 4, 5], chunks=(3,))
+        class ContainerWithData(Container):
+            __fields__ = ('data',)
+
+            @docval(
+                {"name": "name", "doc": "name", "type": str},
+                {'name': 'data', 'doc': 'field1 doc', 'type': h5py.Dataset},
+            )
+            def __init__(self, **kwargs):
+                super().__init__(name=kwargs["name"])
+                self.data = kwargs["data"]
+
+        container = ContainerWithData("name", data)
+        container.set_data_io(
+            "data",
+            H5DataIO,
+            data_io_kwargs=dict(chunks=(2,)),
+            data_chunk_iterator_class=DataChunkIterator,
+        )
+
+        self.assertIsInstance(container.data, H5DataIO)
+        self.assertEqual(container.data.io_settings["chunks"], (2,))
+        file.close()
 
 class TestDataSetDataIO(TestCase):
 
@@ -3855,6 +3920,11 @@ class TestDataSetDataIO(TestCase):
             pass
 
         self.data = MyData("my_data", [1, 2, 3])
+        self.file_path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.file_path):
+            os.remove(self.file_path)
 
     def test_set_data_io(self):
         self.data.set_data_io(H5DataIO, dict(chunks=True))
@@ -3914,3 +3984,4 @@ class TestExpand(TestCase):
                                  [7, 8, 9]])
             npt.assert_array_equal(read_quxbucket.qux_data.data[:], expected)
             self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None,3))
+

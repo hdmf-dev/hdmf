@@ -38,7 +38,6 @@ class DtypeHelper:
         'uint32': ["uint32", "uint"],
         'uint64': ["uint64"],
         'object': ['object'],
-        'region': ['region'],
         'numeric': ['numeric'],
         'isodatetime': ["isodatetime", "datetime", "date"]
     }
@@ -174,12 +173,13 @@ _target_type_key = 'target_type'
 
 _ref_args = [
     {'name': _target_type_key, 'type': str, 'doc': 'the target type GroupSpec or DatasetSpec'},
-    {'name': 'reftype', 'type': str, 'doc': 'the type of references this is i.e. region or object'},
+    {'name': 'reftype', 'type': str,
+     'doc': 'the type of reference this is. only "object" is supported currently.'},
 ]
 
 
 class RefSpec(ConstructableDict):
-    __allowable_types = ('object', 'region')
+    __allowable_types = ('object', )
 
     @docval(*_ref_args)
     def __init__(self, **kwargs):
@@ -199,10 +199,6 @@ class RefSpec(ConstructableDict):
     def reftype(self):
         '''The type of reference'''
         return self['reftype']
-
-    @docval(rtype=bool, returns='True if this RefSpec specifies a region reference, False otherwise')
-    def is_region(self):
-        return self['reftype'] == 'region'
 
 
 _attr_args = [
@@ -314,12 +310,18 @@ class BaseStorageSpec(Spec):
     def __init__(self, **kwargs):
         name, doc, quantity, attributes, linkable, data_type_def, data_type_inc = \
             getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
+        if name is not None and "/" in name:
+            raise ValueError(f"Name '{name}' is invalid. Names of Groups and Datasets cannot contain '/'")
         if name is None and data_type_def is None and data_type_inc is None:
             raise ValueError("Cannot create Group or Dataset spec with no name "
                              "without specifying '%s' and/or '%s'." % (self.def_key(), self.inc_key()))
         super().__init__(doc, name=name)
         default_name = getargs('default_name', kwargs)
         if default_name:
+            if "/" in default_name:
+                raise ValueError(
+                    f"Default name '{default_name}' is invalid. Names of Groups and Datasets cannot contain '/'"
+                )
             if name is not None:
                 warn("found 'default_name' with 'name' - ignoring 'default_name'")
             else:

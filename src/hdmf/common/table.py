@@ -521,7 +521,7 @@ class DynamicTable(Container):
                                     description=col['description'],
                                     index=col.get('index', False),
                                     table=col.get('table', False),
-                                    col_cls=col.get('class', VectorData),
+                                    col_cls=col.get('class'),
                                     # Pass through extra kwargs for add_column that subclasses may have added
                                     **{k: col[k] for k in col.keys()
                                        if k not in DynamicTable.__reserved_colspec_keys})
@@ -564,10 +564,13 @@ class DynamicTable(Container):
                 if not column_conf.get('table', False):
                     raise ValueError("Column '%s' must be a DynamicTableRegion to have a target table."
                                         % colname)
-                self.add_column(name=column_conf['name'],
-                                description=column_conf['description'],
-                                index=column_conf.get('index', False),
-                                table=True)
+                self.add_column(
+                    name=column_conf['name'],
+                    description=column_conf['description'],
+                    index=column_conf.get('index', False),
+                    table=True,
+                    col_cls=column_conf.get('class'),
+                )
             if isinstance(self[colname], VectorIndex):
                 col = self[colname].target
             else:
@@ -681,7 +684,7 @@ class DynamicTable(Container):
                                         index=col.get('index', False),
                                         table=col.get('table', False),
                                         enum=col.get('enum', False),
-                                        col_cls=col.get('class', VectorData),
+                                        col_cls=col.get('class'),
                                         # Pass through extra keyword arguments for add_column that
                                         # subclasses may have added
                                         **{k: col[k] for k in col.keys()
@@ -753,7 +756,7 @@ class DynamicTable(Container):
              'default': False},
             {'name': 'enum', 'type': (bool, 'array_data'), 'default': False,
              'doc': ('whether or not this column contains data from a fixed set of elements')},
-            {'name': 'col_cls', 'type': type, 'default': VectorData,
+            {'name': 'col_cls', 'type': type, 'default': None,
              'doc': ('class to use to represent the column data. If table=True, this field is ignored and a '
                      'DynamicTableRegion object is used. If enum=True, this field is ignored and a EnumData '
                      'object is used.')},
@@ -775,8 +778,8 @@ class DynamicTable(Container):
         index, table, enum, col_cls, check_ragged = popargs('index', 'table', 'enum', 'col_cls', 'check_ragged', kwargs)
 
         if isinstance(index, VectorIndex):
-            warn("Passing a VectorIndex in for index may lead to unexpected behavior. This functionality will be "
-                 "deprecated in a future version of HDMF.", category=FutureWarning, stacklevel=3)
+            msg = "Passing a VectorIndex may lead to unexpected behavior. This functionality is not supported."
+            raise ValueError(msg)
 
         if name in self.__colids:  # column has already been added
             msg = "column '%s' already exists in %s '%s'" % (name, self.__class__.__name__, self.name)
@@ -805,29 +808,39 @@ class DynamicTable(Container):
                        % (name, self.__class__.__name__, spec_index))
                 warn(msg, stacklevel=3)
 
-            spec_col_cls = self.__uninit_cols[name].get('class', VectorData)
-            if col_cls != spec_col_cls:
-                msg = ("Column '%s' is predefined in %s with class=%s which does not match the entered "
-                       "col_cls argument. The predefined class spec will be ignored. "
-                       "Please ensure the new column complies with the spec. "
-                       "This will raise an error in a future version of HDMF."
-                       % (name, self.__class__.__name__, spec_col_cls))
-                warn(msg, stacklevel=2)
-
         ckwargs = dict(kwargs)
 
         # Add table if it's been specified
         if table and enum:
             raise ValueError("column '%s' cannot be both a table region "
                              "and come from an enumerable set of elements" % name)
+        # Update col_cls if table is specified
         if table is not False:
-            col_cls = DynamicTableRegion
+            if col_cls is None:
+                 col_cls = DynamicTableRegion
             if isinstance(table, DynamicTable):
                 ckwargs['table'] = table
+        # Update col_cls if enum is specified
         if enum is not False:
-            col_cls = EnumData
+            if col_cls is None:
+                col_cls = EnumData
             if isinstance(enum, (list, tuple, np.ndarray, VectorData)):
                 ckwargs['elements'] = enum
+        # Update col_cls to the default VectorData if col_cls is None
+        if col_cls is None:
+            col_cls = VectorData
+
+        if name in self.__uninit_cols:  # column is a predefined optional column from the spec
+            # check the given values against the predefined optional column spec. if they do not match, raise a warning
+            # and ignore the given arguments. users should not be able to override these values
+            spec_col_cls = self.__uninit_cols[name].get('class')
+            if spec_col_cls is not None and col_cls != spec_col_cls:
+                msg = ("Column '%s' is predefined in %s with class=%s which does not match the entered "
+                       "col_cls argument. The predefined class spec will be ignored. "
+                       "Please ensure the new column complies with the spec. "
+                       "This will raise an error in a future version of HDMF."
+                       % (name, self.__class__.__name__, spec_col_cls))
+                warn(msg, stacklevel=2)
 
         # If the user provided a list of lists that needs to be indexed, then we now need to flatten the data
         # We can only create the index actual VectorIndex once we have the VectorData column so we compute
@@ -873,7 +886,7 @@ class DynamicTable(Container):
         if col in self.__uninit_cols:
             self.__uninit_cols.pop(col)
 
-        if col_cls is EnumData:
+        if issubclass(col_cls, EnumData):
             columns.append(col.elements)
             col.elements.parent = self
 

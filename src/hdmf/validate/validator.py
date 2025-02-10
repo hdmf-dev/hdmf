@@ -8,7 +8,7 @@ import numpy as np
 
 from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
 from .errors import ExpectedArrayError, IncorrectQuantityError
-from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
+from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
 from ..spec import SpecNamespace
@@ -124,9 +124,6 @@ def get_type(data, builder_dtype=None):
     # Bytes data
     elif isinstance(data, bytes):
         return 'ascii', get_string_format(data)
-    # RegionBuilder data
-    elif isinstance(data, RegionBuilder):
-        return 'region', None
     # ReferenceBuilder data
     elif isinstance(data, ReferenceBuilder):
         return 'object', None
@@ -147,7 +144,7 @@ def get_type(data, builder_dtype=None):
     # Case for h5py.Dataset and other I/O specific array types
     else:
         # Compound dtype
-        if builder_dtype and len(builder_dtype) > 1:
+        if builder_dtype and isinstance(builder_dtype, list):
             dtypes = []
             string_formats = []
             for i in range(len(builder_dtype)):
@@ -436,12 +433,16 @@ class DatasetValidator(BaseStorageValidator):
             try:
                 dtype, string_format = get_type(data, builder.dtype)
                 if not check_type(self.spec.dtype, dtype, string_format):
-                    ret.append(DtypeError(self.get_spec_loc(self.spec), self.spec.dtype, dtype,
+                    if isinstance(self.spec.dtype, RefSpec):
+                        expected = f'{self.spec.dtype.reftype} reference'
+                    else:
+                        expected = self.spec.dtype
+                    ret.append(DtypeError(self.get_spec_loc(self.spec), expected, dtype,
                                           location=self.get_builder_loc(builder)))
             except EmptyArrayError:
                 # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                 pass
-        if builder.dtype is not None and len(builder.dtype) > 1 and len(np.shape(builder.data)) == 0:
+        if isinstance(builder.dtype, list) and len(np.shape(builder.data)) == 0:
             shape = ()  # scalar compound dataset
         elif isinstance(builder.dtype, list):
             shape = (len(builder.data), )  # only 1D datasets with compound types are supported
