@@ -160,6 +160,11 @@ class VectorIndex(VectorData):
         """
         self.add_vector(arg, **kwargs)
 
+    def __get_slice(self, arg, **kwargs):
+        start = 0 if arg == 0 else self.data[arg - 1]
+        end = self.data[arg]
+        return slice(start, end)
+
     def __getitem_helper(self, arg, **kwargs):
         """
         Internal helper function used by __getitem__ to retrieve a data value from self.target
@@ -199,8 +204,20 @@ class VectorIndex(VectorData):
                     arg = np.where(arg)[0]
                 indices = arg
             ret = list()
-            for i in indices:
-                ret.append(self.__getitem_helper(i, **kwargs))
+            if len(indices) > 0: # This is for test_to_hierarchical_dataframe_empty_tables
+                try:
+                    data = self.target.get(slice(None),  **kwargs)
+                    slices = [self.__get_slice(i) for i in indices]
+                    if isinstance(data, pd.DataFrame):
+                        ret = [data.iloc[s] for s in slices]
+                    else:
+                        ret = [data[s] for s in slices]
+                except IndexError:
+                    """
+                    Note: TODO: test_to_hierarchical_dataframe_indexed_dtr_on_last_level
+                    """
+                    for i in indices:
+                        ret.append(self.__getitem_helper(i, **kwargs))
             return ret
 
 
@@ -1440,7 +1457,6 @@ class DynamicTableRegion(VectorData):
             return ret
         elif isinstance(arg, (list, slice, np.ndarray)):
             idx = arg
-
             # get the data at the specified indices
             if isinstance(self.data, (tuple, list)) and isinstance(idx, (list, np.ndarray)):
                 ret = [self.data[i] for i in idx]
