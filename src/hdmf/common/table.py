@@ -160,7 +160,7 @@ class VectorIndex(VectorData):
         """
         self.add_vector(arg, **kwargs)
 
-    def __get_slice(self, arg, **kwargs):
+    def __get_slice(self, arg):
         start = 0 if arg == 0 else self.data[arg - 1]
         end = self.data[arg]
         return slice(start, end)
@@ -173,9 +173,8 @@ class VectorIndex(VectorData):
         :param kwargs: any additional arguments to *get* method of the self.target VectorData
         :return: Scalar or list of values retrieved
         """
-        start = 0 if arg == 0 else self.data[arg - 1]
-        end = self.data[arg]
-        return self.target.get(slice(start, end), **kwargs)
+        slices = self.__get_slice(arg)
+        return self.target.get(slices, **kwargs)
 
     def __getitem__(self, arg):
         """
