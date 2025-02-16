@@ -1,10 +1,25 @@
 from hdmf.common import CSRMatrix
 from hdmf.testing import TestCase, H5RoundTripMixin
-
-import scipy.sparse as sps
 import numpy as np
+import unittest
+
+try:
+    import scipy.sparse as sps
+    SCIPY_INSTALLED = True
+except ImportError:
+    SCIPY_INSTALLED = False
 
 
+@unittest.skipIf(SCIPY_INSTALLED, "scipy is installed")
+class TestCSRMatrixNoScipy(TestCase):
+
+    def test_import_error(self):
+        data = np.array([[1, 0, 2], [0, 0, 3], [4, 5, 6]])
+        with self.assertRaises(ImportError):
+            CSRMatrix(data=data)
+
+
+@unittest.skipIf(not SCIPY_INSTALLED, "scipy is not installed")
 class TestCSRMatrix(TestCase):
 
     def test_from_sparse_matrix(self):
@@ -153,7 +168,7 @@ class TestCSRMatrix(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             CSRMatrix(data=data, indices=indices, indptr=indptr, shape=shape)
 
-
+@unittest.skipIf(not SCIPY_INSTALLED, "scipy is not installed")
 class TestCSRMatrixRoundTrip(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
@@ -164,6 +179,7 @@ class TestCSRMatrixRoundTrip(H5RoundTripMixin, TestCase):
         return CSRMatrix(data=data, indices=indices, indptr=indptr, shape=shape)
 
 
+@unittest.skipIf(not SCIPY_INSTALLED, "scipy is not installed")
 class TestCSRMatrixRoundTripFromLists(H5RoundTripMixin, TestCase):
     """Test that CSRMatrix works with lists as well"""
 

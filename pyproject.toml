@@ -35,13 +35,13 @@ dependencies = [
     'numpy>=1.19.3',
     "pandas>=1.2.0",
     "ruamel.yaml>=0.16",
-    "scipy>=1.7",
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 tqdm = ["tqdm>=4.41.0"]
 zarr = ["zarr>=2.12.0,<3"]
+sparse = ["scipy>=1.7"]
 termset = [
     "linkml-runtime>=1.5.5",
     "schemasheets>=0.1.23",
@@ -70,7 +70,7 @@ docs = [
 ]
 
 # all possible dependencies
-all = ["hdmf[tqdm,zarr,termset,test,docs]"]
+all = ["hdmf[tqdm,zarr,sparse,termset,test,docs]"]
 
 [project.urls]
 "Homepage" = "https://github.com/hdmf-dev/hdmf"
