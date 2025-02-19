@@ -209,11 +209,6 @@ class VectorIndex(VectorData):
                 # When len(indices) == 0, ret is expected to be an empty list, defined above.
                 try:
                     data = self.target.get(slice(None),  **kwargs)
-                    slices = [self.__get_slice(i) for i in indices]
-                    if isinstance(data, pd.DataFrame):
-                        ret = [data.iloc[s] for s in slices]
-                    else:
-                        ret = [data[s] for s in slices]
                 except IndexError:
                     """
                     Note: TODO: test_to_hierarchical_dataframe_indexed_dtr_on_last_level.
@@ -221,6 +216,14 @@ class VectorIndex(VectorData):
                     """
                     for i in indices:
                         ret.append(self.__getitem_helper(i, **kwargs))
+
+                    return ret
+
+                slices = [self.__get_slice(i) for i in indices]
+                if isinstance(data, pd.DataFrame):
+                    ret = [data.iloc[s] for s in slices]
+                else:
+                    ret = [data[s] for s in slices]
             return ret
 
 
