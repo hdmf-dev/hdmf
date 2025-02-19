@@ -1,6 +1,9 @@
 # HDMF Changelog
 
-## [Unreleased]
+## HDMF 4.0.1
+
+### Enhancements
+- Optimized `get` within `VectorIndex` to be more efficient when retrieving a dataset of references. @mavaylon1 [#1248](https://github.com/hdmf-dev/hdmf/pull/1248)
 
 ### Changed
 - `hdmf.monitor` is unused and undocumented. It has been deprecated and will be removed in HDMF 5.0. @rly [#1245](https://github.com/hdmf-dev/hdmf/pull/1245)
