@@ -203,7 +203,10 @@ class VectorIndex(VectorData):
                     arg = np.where(arg)[0]
                 indices = arg
             ret = list()
-            if len(indices) > 0: # This is for test_to_hierarchical_dataframe_empty_tables
+            if len(indices) > 0:
+                # Note: len(indices) == 0 for test_to_hierarchical_dataframe_empty_tables.
+                # This is an edge case test for to_hierarchical_dataframe() on empty tables.
+                # When len(indices) == 0, ret is expected to be an empty list, defiend above.
                 try:
                     data = self.target.get(slice(None),  **kwargs)
                     slices = [self.__get_slice(i) for i in indices]
@@ -213,7 +216,8 @@ class VectorIndex(VectorData):
                         ret = [data[s] for s in slices]
                 except IndexError:
                     """
-                    Note: TODO: test_to_hierarchical_dataframe_indexed_dtr_on_last_level
+                    Note: TODO: test_to_hierarchical_dataframe_indexed_dtr_on_last_level.
+                    This is the old way to get the data and not an untested feature.
                     """
                     for i in indices:
                         ret.append(self.__getitem_helper(i, **kwargs))
