@@ -206,7 +206,7 @@ class VectorIndex(VectorData):
             if len(indices) > 0:
                 # Note: len(indices) == 0 for test_to_hierarchical_dataframe_empty_tables.
                 # This is an edge case test for to_hierarchical_dataframe() on empty tables.
-                # When len(indices) == 0, ret is expected to be an empty list, defiend above.
+                # When len(indices) == 0, ret is expected to be an empty list, defined above.
                 try:
                     data = self.target.get(slice(None),  **kwargs)
                     slices = [self.__get_slice(i) for i in indices]
