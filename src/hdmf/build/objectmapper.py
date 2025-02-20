@@ -184,7 +184,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         cls.__no_convert.add(obj_type)
 
-    @classmethod  # noqa: C901
+    @classmethod
     def convert_dtype(cls, spec, value, spec_dtype=None):  # noqa: C901
         """
         Convert values to the specified dtype. For example, if a literal int
@@ -276,7 +276,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 np.issubdtype(value_dtype, np.integer)):
             raise ValueError("Cannot convert from %s to 'numeric' specification dtype." % value_type)
 
-    @classmethod  # noqa: C901
+    @classmethod
     def __check_edgecases(cls, spec, value, spec_dtype):  # noqa: C901
         """
         Check edge cases in converting data to a dtype

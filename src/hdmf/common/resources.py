@@ -544,6 +544,53 @@ class HERD(Container):
         if len(missing_terms)>0:
             return {"missing_terms": missing_terms}
 
+    def _validate_object(self, container, attribute, field, file):
+        if attribute is None:  # Trivial Case
+            relative_path = ''
+            object_field = self._check_object_field(file=file,
+                                                    container=container,
+                                                    relative_path=relative_path,
+                                                    field=field)
+        else:  # DataType Attribute Case
+            attribute_object = getattr(container, attribute)  # returns attribute object
+            if isinstance(attribute_object, AbstractContainer):
+                relative_path = ''
+                object_field = self._check_object_field(file=file,
+                                                        container=attribute_object,
+                                                        relative_path=relative_path,
+                                                        field=field)
+            else:  # Non-DataType Attribute Case:
+                obj_mapper = self.type_map.get_map(container)
+                spec = obj_mapper.get_attr_spec(attr_name=attribute)
+                parent_spec = spec.parent  # return the parent spec of the attribute
+                if parent_spec.data_type is None:
+                    while parent_spec.data_type is None:
+                        parent_spec = parent_spec.parent  # find the closest parent with a data_type
+                    parent_cls = self.type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
+                    if isinstance(container, parent_cls):
+                        parent = container
+                        # We need to get the path of the spec for relative_path
+                        absolute_path = spec.path
+                        relative_path = absolute_path[absolute_path.find('/')+1:]
+                        object_field = self._check_object_field(file=file,
+                                                                container=parent,
+                                                                relative_path=relative_path,
+                                                                field=field)
+                    else:
+                        msg = 'Container not the nearest data_type'
+                        raise ValueError(msg)
+                else:
+                    parent = container  # container needs to be the parent
+                    absolute_path = spec.path
+                    relative_path = absolute_path[absolute_path.find('/')+1:]
+                    # this regex removes everything prior to the container on the absolute_path
+                    object_field = self._check_object_field(file=file,
+                                                            container=parent,
+                                                            relative_path=relative_path,
+                                                            field=field)
+        return object_field
+
+
     @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
              'doc': ('The Container/Data object that uses the key or '
                      'the object_id for the Container/Data object that uses the key.')},
@@ -558,7 +605,7 @@ class HERD(Container):
             {'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
              'default': None},
             )
-    def add_ref(self, **kwargs):
+    def add_ref(self, **kwargs):  # noqa: C901
         """
         Add information about an external reference used in this file.
 
@@ -630,52 +677,7 @@ class HERD(Container):
                 msg = 'This entity already exists. Ignoring new entity uri'
                 warn(msg, stacklevel=3)
 
-        #################
-        # Validate Object
-        #################
-        if attribute is None:  # Trivial Case
-            relative_path = ''
-            object_field = self._check_object_field(file=file,
-                                                    container=container,
-                                                    relative_path=relative_path,
-                                                    field=field)
-        else:  # DataType Attribute Case
-            attribute_object = getattr(container, attribute)  # returns attribute object
-            if isinstance(attribute_object, AbstractContainer):
-                relative_path = ''
-                object_field = self._check_object_field(file=file,
-                                                        container=attribute_object,
-                                                        relative_path=relative_path,
-                                                        field=field)
-            else:  # Non-DataType Attribute Case:
-                obj_mapper = self.type_map.get_map(container)
-                spec = obj_mapper.get_attr_spec(attr_name=attribute)
-                parent_spec = spec.parent  # return the parent spec of the attribute
-                if parent_spec.data_type is None:
-                    while parent_spec.data_type is None:
-                        parent_spec = parent_spec.parent  # find the closest parent with a data_type
-                    parent_cls = self.type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
-                    if isinstance(container, parent_cls):
-                        parent = container
-                        # We need to get the path of the spec for relative_path
-                        absolute_path = spec.path
-                        relative_path = absolute_path[absolute_path.find('/')+1:]
-                        object_field = self._check_object_field(file=file,
-                                                                container=parent,
-                                                                relative_path=relative_path,
-                                                                field=field)
-                    else:
-                        msg = 'Container not the nearest data_type'
-                        raise ValueError(msg)
-                else:
-                    parent = container  # container needs to be the parent
-                    absolute_path = spec.path
-                    relative_path = absolute_path[absolute_path.find('/')+1:]
-                    # this regex removes everything prior to the container on the absolute_path
-                    object_field = self._check_object_field(file=file,
-                                                            container=parent,
-                                                            relative_path=relative_path,
-                                                            field=field)
+        object_field = self._validate_object(container, attribute, field, file)
 
         #######################################
         # Validate Parameters and Populate HERD
@@ -1000,7 +1002,7 @@ class HERD(Container):
 
     @classmethod
     @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
-    def from_zip(cls, **kwargs):
+    def from_zip(cls, **kwargs):  # noqa: C901
         """
         Method to read in zipped tsv files to populate HERD.
         """
@@ -1075,11 +1077,12 @@ class HERD(Container):
                 msg = "Key Index out of range in EntityKeyTable. Please check for alterations."
                 raise ValueError(msg)
 
-
-        er = HERD(files=files,
-                               keys=keys,
-                               entities=entities,
-                               entity_keys=entity_keys,
-                               objects=objects,
-                               object_keys=object_keys)
+        er = HERD(
+            files=files,
+            keys=keys,
+            entities=entities,
+            entity_keys=entity_keys,
+            objects=objects,
+            object_keys=object_keys
+        )
         return er

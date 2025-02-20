@@ -472,9 +472,9 @@ class GroupValidator(BaseStorageValidator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},  # noqa: C901
+    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
-    def validate(self, **kwargs):  # noqa: C901
+    def validate(self, **kwargs):
         builder = getargs('builder', kwargs)
         errors = super().validate(builder)
         errors.extend(self.__validate_children(builder))

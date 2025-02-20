@@ -6,6 +6,8 @@
 - Optimized `get` within `VectorIndex` to be more efficient when retrieving a dataset of references. @mavaylon1 [#1248](https://github.com/hdmf-dev/hdmf/pull/1248)
 
 ### Changed
+- Removed `requirements-min.txt` in favor of the `min-reqs` optional dependency group in `pyproject.toml`. @rly [#1246](https://github.com/hdmf-dev/hdmf/pull/1246)
+- Updated GitHub actions and ruff configuration. @rly [#1246](https://github.com/hdmf-dev/hdmf/pull/1246)
 - `hdmf.monitor` is unused and undocumented. It has been deprecated and will be removed in HDMF 5.0. @rly [#1245](https://github.com/hdmf-dev/hdmf/pull/1245)
 
 ## HDMF 4.0.0 (January 22, 2025)

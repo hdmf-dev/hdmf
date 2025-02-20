@@ -2,8 +2,7 @@ Prepare for release of HDMF [version]
 
 ### Before merging:
 - [ ] Make sure all PRs to be included in this release have been merged to `dev`.
-- [ ] Major and minor releases: Update dependency ranges in `pyproject.toml` and minimums in
-  `requirements-min.txt` as needed.
+- [ ] Major and minor releases: Update dependency ranges in `pyproject.toml` as needed.
 - [ ] Check legal file dates and information in `Legal.txt`, `license.txt`, `README.rst`, `docs/source/conf.py`,
   and any other locations as needed
 - [ ] Update `pyproject.toml` as needed
