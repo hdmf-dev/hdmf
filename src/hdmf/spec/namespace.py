@@ -605,12 +605,15 @@ class NamespaceCatalog:
                 other_warnings.append(version_info)  # for all other namespaces, issue a warning for compatibility
 
         if core_warnings:
-            warning_msg.append(f'{("\n").join(core_warnings)}\nPlease update to the latest package versions.')
+            joined_warnings = "\n".join(core_warnings)
+            warning_msg.append(f'{joined_warnings}\nPlease update to the latest package versions.')
         if other_warnings:
-            warning_msg.append(f'{("\n").join(other_warnings)}\nIgnore this warning if these versions are compatible.')
+            joined_warnings = "\n".join(other_warnings)
+            warning_msg.append(f'{joined_warnings}\nIgnore this warning if these versions are compatible.')
         if warning_msg:
+            joined_warnings = "\n".join(warning_msg)
             warn(f'Ignoring the following cached namespace(s) because another version is already loaded:\n'
-                 f'{("\n").join(warning_msg)}', category=UserWarning, stacklevel=2)
+                 f'{joined_warnings}', category=UserWarning, stacklevel=2)
 
     def _order_deps(self, deps):
         """
