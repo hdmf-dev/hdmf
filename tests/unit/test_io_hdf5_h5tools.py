@@ -2241,7 +2241,7 @@ class TestLoadNamespaces(TestCase):
                                        cached_version='0.1.0',
                                        new_version='100.0.0')
 
-        # test warning is raised when loading the file and a newer verison is cached
+        # test warning is raised when loading the file and a newer version is cached
         msg = ("Ignoring the following cached namespace(s) because another version is already loaded:\n"
                "test_ext1 - cached version: 100.0.0, loaded version: 0.1.0\n"
                "test_ext2 - cached version: 100.0.0, loaded version: 0.1.0\n"
