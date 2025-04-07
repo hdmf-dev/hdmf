@@ -293,13 +293,13 @@ class TestCatchDupNS(TestCase):
             ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path2))
         for w in ws:
             self.assertTrue(str(w.message) != msg)
-    
+
     def test_catch_dup_name_core_newer(self):
         new_ns_version = '100.0.0'
         ns_builder1 = NamespaceBuilder('Extension doc', self.core_ns, version=new_ns_version)
         ns_builder1.add_spec(self.ext_source1, GroupSpec('doc', data_type_def='MyType'))
         ns_builder1.export(self.ns_path1, outdir=self.tempdir)
-        
+
         # create new catalog and merge the loaded core namespace catalog
         ns_catalog = NamespaceCatalog()
         ns_catalog.merge(self.ns_catalog)
@@ -316,20 +316,20 @@ class TestCatchDupNS(TestCase):
         ns_builder1 = NamespaceBuilder('Extension doc', self.core_ns, version=new_ns_version)
         ns_builder1.add_spec(self.ext_source1, GroupSpec('doc', data_type_def='MyType'))
         ns_builder1.export(self.ns_path1, outdir=self.tempdir)
-        
+
         # create new catalog and merge the loaded core namespace catalog
         ns_catalog = NamespaceCatalog()
         ns_catalog.merge(self.ns_catalog)
 
         # test no warning if loading older namespace than one already loaded
         ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
-    
+
     def test_catch_dup_name_core_same(self):
         new_ns_version = self.core_ns_version
         ns_builder1 = NamespaceBuilder('Extension doc', self.core_ns, version=new_ns_version)
         ns_builder1.add_spec(self.ext_source1, GroupSpec('doc', data_type_def='MyType'))
         ns_builder1.export(self.ns_path1, outdir=self.tempdir)
-        
+
         # create new catalog and merge the loaded core namespace catalog
         ns_catalog = NamespaceCatalog()
         ns_catalog.merge(self.ns_catalog)

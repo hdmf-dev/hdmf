@@ -527,7 +527,7 @@ class NamespaceCatalog:
              'doc': 'whether or not to include objects from included/parent spec objects', 'default': True},
             {'name': 'reader',
              'type': (SpecReader, dict),
-             'doc': 'the SpecReader or dict of SpecReader classes to use for reading specifications', 
+             'doc': 'the SpecReader or dict of SpecReader classes to use for reading specifications',
              'default': None},
             returns='a dictionary describing the dependencies of loaded namespaces', rtype=dict)
     def load_namespaces(self, **kwargs):
@@ -569,7 +569,7 @@ class NamespaceCatalog:
             to_load = list()
             namespaces = r.read_namespace(namespace_path)
             for ns in namespaces:
-                if ns['name'] in self.__namespaces: 
+                if ns['name'] in self.__namespaces:
                     if ns['version'] != self.__namespaces.get(ns['name'])['version']:
                         cached_version = ns['version']
                         loaded_version = self.__namespaces.get(ns['name'])['version']

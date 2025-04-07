@@ -2227,20 +2227,20 @@ class TestLoadNamespaces(TestCase):
         manager = BuildManager(type_map)
         container = FooFile()
 
-        path = get_temp_filepath() 
+        path = get_temp_filepath()
         with HDF5IO(path, manager=manager, mode='w') as io:
             io.write(container)
-    
+
         # modify the versions of the example namespaces
-        self.replace_cached_ns_version(path=path, 
-                                       namespace='test_ext1', 
-                                       cached_version='0.1.0', 
+        self.replace_cached_ns_version(path=path,
+                                       namespace='test_ext1',
+                                       cached_version='0.1.0',
                                        new_version='100.0.0')
-        self.replace_cached_ns_version(path=path, 
-                                       namespace='test_ext2', 
-                                       cached_version='0.1.0', 
+        self.replace_cached_ns_version(path=path,
+                                       namespace='test_ext2',
+                                       cached_version='0.1.0',
                                        new_version='100.0.0')
-        
+
         # test warning is raised when loading the file and a newer verison is cached
         msg = ("Ignoring the following cached namespace(s) because another version is already loaded:\n"
                "test_ext1 - cached version: 100.0.0, loaded version: 0.1.0\n"
