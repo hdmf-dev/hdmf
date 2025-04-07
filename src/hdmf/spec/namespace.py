@@ -602,7 +602,7 @@ class NamespaceCatalog:
             if name in self.__core_namespace and is_newer_version(cached_version, loaded_version):
                 core_warnings.append(version_info)  # for core namespaces, warn if the cached version is newer
             elif name not in self.__core_namespace:
-                other_warnings.append(version_info)  # for all other namespaces, issue a warning for compatability
+                other_warnings.append(version_info)  # for all other namespaces, issue a warning for compatibility
 
         if core_warnings:
             warning_msg.append(f'{("\n").join(core_warnings)}\nPlease update to the latest package versions.')

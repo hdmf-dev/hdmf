@@ -4,6 +4,7 @@
 
 ### Enhancements
 - Optimized `get` within `VectorIndex` to be more efficient when retrieving a dataset of references. @mavaylon1 [#1248](https://github.com/hdmf-dev/hdmf/pull/1248)
+- Enhanced warnings about ignoring cached namespaces. @stephprince [#1258](https://github.com/hdmf-dev/hdmf/pull/1258)
 
 ### Changed
 - Removed `requirements-min.txt` in favor of the `min-reqs` optional dependency group in `pyproject.toml`. @rly [#1246](https://github.com/hdmf-dev/hdmf/pull/1246)
