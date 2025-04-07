@@ -876,6 +876,16 @@ def is_ragged(data):
 
     return False
 
+def is_newer_version(version_a, version_b):
+    # this method could be replaced by packaging.version if packaging is added as a dependency
+    for a, b in zip(version_a, version_b):
+        if a > b:
+            return True
+        elif a < b:
+            return False
+
+    return False
+
 def get_basic_array_info(array):
     def convert_bytes_to_str(bytes_size):
         suffixes = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
