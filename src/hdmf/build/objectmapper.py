@@ -1,3 +1,4 @@
+import datetime
 import logging
 import re
 import warnings
@@ -92,6 +93,17 @@ def _ascii(s):
         raise ValueError("Expected unicode or ascii string, got %s" % type(s))
 
 
+def _isoformat(s):
+    """
+    A helper function for converting to ISO format
+    """
+    if isinstance(s, (datetime.datetime, datetime.date)):
+        return s.isoformat()
+    elif isinstance(s, str):  # probably already converted to isoformat
+        return s
+    else:
+        raise ValueError("Expected datetime, got %s" % type(s))
+
 class ObjectMapper(metaclass=ExtenderMeta):
     '''A class for mapping between Spec objects and AbstractContainer attributes
 
@@ -125,8 +137,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         "utf-8": _unicode,
         "ascii": _ascii,
         "bytes": _ascii,
-        "isodatetime": _ascii,
-        "datetime": _ascii,
+        "isodatetime": _isoformat,
+        "datetime": _isoformat,
     }
 
     __no_convert = set()
@@ -217,8 +229,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 else:
                     ret = value.astype('U')
                 ret_dtype = "utf8"
-            elif spec_dtype_type is _ascii:
-                ret = value.astype('S')
+            elif spec_dtype_type in (_ascii, _isoformat):
+                ret = value.astype('S')  # this works for datetime objects
                 ret_dtype = "ascii"
             else:
                 dtype_func, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
@@ -232,7 +244,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if len(value) == 0:
                 if spec_dtype_type is _unicode:
                     ret_dtype = 'utf8'
-                elif spec_dtype_type is _ascii:
+                elif spec_dtype_type in (_ascii, _isoformat):
                     ret_dtype = 'ascii'
                 else:
                     ret_dtype = spec_dtype_type
@@ -248,15 +260,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
             ret = value
             if spec_dtype_type is _unicode:
                 ret_dtype = "utf8"
-            elif spec_dtype_type is _ascii:
+            elif spec_dtype_type in (_ascii, _isoformat):
                 ret_dtype = "ascii"
             else:
                 ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
         else:
-            if spec_dtype_type in (_unicode, _ascii):
-                ret_dtype = 'ascii'
+            if spec_dtype_type in (_unicode, _ascii, _isoformat):
                 if spec_dtype_type is _unicode:
                     ret_dtype = 'utf8'
+                else:
+                    ret_dtype = 'ascii'
                 ret = spec_dtype_type(value)
             else:
                 dtype_func, warning_msg = cls.__resolve_numeric_dtype(type(value), spec_dtype_type)
@@ -311,6 +324,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 elif np.issubdtype(value.dtype, np.dtype('O')):
                     # Only variable-length strings should ever appear as generic objects.
                     # Everything else should have a well-defined type
+                    # NOTE: a datetime object would be converted to a string by this check
+                    # but users should not provide arrays of datetime objects to an untyped/generic spec
                     ret_dtype = 'utf8'
                 else:
                     ret_dtype = value.dtype.type
@@ -325,7 +340,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 cls.__check_convert_numeric(ret_dtype)
             if ret_dtype is str:
                 ret_dtype = 'utf8'
-            elif ret_dtype is bytes:
+            elif ret_dtype in (bytes, datetime.datetime, datetime.date):
                 ret_dtype = 'ascii'
             return value, ret_dtype
         if isinstance(spec_dtype, RefSpec):
@@ -604,6 +619,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     def __convert_string(self, value, spec):
         """Convert string types to the specified dtype."""
+        # TODO: combine this with the logic in convert_dtype
         def __apply_string_type(value, string_type):
             # NOTE: if a user passes a h5py.Dataset that is not wrapped with a hdmf.utils.StrDataset,
             # then this conversion may not be correct. Users should unpack their string h5py.Datasets
@@ -628,7 +644,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     string_type = str
                 elif 'ascii' in spec.dtype:
                     string_type = bytes
-                elif 'isodatetime' in spec.dtype:
+                elif 'datetime' in spec.dtype:
                     def string_type(x):
                         return x.isoformat()  # method works for both date and datetime
                 if string_type is not None:

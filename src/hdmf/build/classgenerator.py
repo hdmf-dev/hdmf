@@ -1,11 +1,12 @@
 from copy import deepcopy
 from datetime import datetime, date
 from collections.abc import Callable
+import warnings
 
 import numpy as np
 
 from ..container import Container, Data, MultiContainerInterface
-from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec
+from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec, DatasetSpec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from ..utils import docval, getargs, ExtenderMeta, get_docval, popargs, AllowPositional
 
@@ -72,7 +73,7 @@ class ClassGenerator:
                         break  # each field_spec should be processed by only one generator
 
             for class_generator in self.__custom_generators:
-                class_generator.post_process(classdict, bases, docval_args, spec)
+                class_generator.post_process(classdict, bases, docval_args, spec, type_map)
 
             for class_generator in reversed(self.__custom_generators):
                 # go in reverse order so that base init is added first and
@@ -245,7 +246,7 @@ class CustomClassGenerator:
         docval_arg = dict(
             name=attr_name,
             doc=field_spec.doc,
-            type=cls._get_type(field_spec, type_map)
+            type=dtype,
         )
         shape = getattr(field_spec, 'shape', None)
         if shape is not None:
@@ -278,12 +279,13 @@ class CustomClassGenerator:
             docval_args.append(arg)
 
     @classmethod
-    def post_process(cls, classdict, bases, docval_args, spec):
+    def post_process(cls, classdict, bases, docval_args, spec, type_map):
         """Convert classdict['__fields__'] to tuple and update docval args for a fixed name and default name.
         :param classdict: The class dictionary to convert with '__fields__' key (or a different bases[0]._fieldsname)
         :param bases: The list of base classes.
         :param docval_args: The dict of docval arguments.
         :param spec: The spec for the container class to generate.
+        :param type_map: The type map to use.
         """
         # convert classdict['__fields__'] from list to tuple if present
         for b in bases:
@@ -300,6 +302,33 @@ class CustomClassGenerator:
 
         # set default name in docval args if provided
         cls._set_default_name(docval_args, spec.default_name)
+
+        if isinstance(spec, DatasetSpec):
+            # handle the data field specially
+            # fixed and default values are not supported for datasets
+            if getattr(spec, 'value', None) is not None:
+                warnings.warn(
+                    "Generating a class for a dataset with a fixed value is not supported. "
+                    "The fixed value will be ignored."
+                )
+            if getattr(spec, 'default_value', None) is not None:
+                warnings.warn(
+                    "Generating a class for a dataset with a default value is not supported. "
+                    "The default value will be ignored."
+                )
+
+            data_docval_arg = dict(name='data', doc=spec.doc)
+            shape = spec.shape
+            if shape is None and spec.dims is None:
+                if spec.dtype is not None:
+                    dtype = cls._get_type_from_spec_dtype(spec.dtype)
+                else:
+                    dtype = ('scalar_data', 'array_data', 'data')
+            else:
+                dtype = ('array_data', 'data')
+                data_docval_arg['shape'] = shape
+            data_docval_arg['type'] = dtype
+            cls._add_to_docval_args(docval_args, data_docval_arg)
 
     @classmethod
     def _get_attrs_not_to_set_init(cls, classdict, parent_docval_args):
@@ -406,12 +435,13 @@ class MCIClassGenerator(CustomClassGenerator):
         cls._add_to_docval_args(docval_args, docval_arg)
 
     @classmethod
-    def post_process(cls, classdict, bases, docval_args, spec):
+    def post_process(cls, classdict, bases, docval_args, spec, type_map):
         """Add MultiContainerInterface to the list of base classes.
         :param classdict: The class dictionary.
         :param bases: The list of base classes.
         :param docval_args: The dict of docval arguments.
         :param spec: The spec for the container class to generate.
+        :param type_map: The type map to use.
         """
         if '__clsconf__' in classdict:
             # do not add MCI as a base if a base is already a subclass of MultiContainerInterface

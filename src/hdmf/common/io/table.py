@@ -99,12 +99,13 @@ class DynamicTableGenerator(CustomClassGenerator):
         # do not add DynamicTable columns to init docval
 
     @classmethod
-    def post_process(cls, classdict, bases, docval_args, spec):
+    def post_process(cls, classdict, bases, docval_args, spec, type_map):
         """Convert classdict['__columns__'] to tuple.
         :param classdict: The class dictionary.
         :param bases: The list of base classes.
         :param docval_args: The dict of docval arguments.
         :param spec: The spec for the container class to generate.
+        :param type_map: The type map to use.
         """
         # convert classdict['__columns__'] from list to tuple if present
         columns = classdict.get('__columns__')

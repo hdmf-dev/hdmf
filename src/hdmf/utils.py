@@ -1,5 +1,6 @@
 import collections
 import copy as _copy
+import datetime
 import types
 import warnings
 from abc import ABCMeta
@@ -11,7 +12,7 @@ import numpy as np
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float, bytes, bool],
+    'scalar_data': [str, int, float, bytes, bool, datetime.datetime, datetime.date],
     'data': []
 }
 

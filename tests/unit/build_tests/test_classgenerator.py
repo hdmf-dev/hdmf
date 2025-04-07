@@ -1,3 +1,4 @@
+import datetime
 import numpy as np
 import os
 import shutil
@@ -35,7 +36,7 @@ class TestClassGenerator(TestCase):
                 classdict.setdefault('process_field_spec', list()).append(attr_name)
 
             @classmethod
-            def post_process(cls, classdict, bases, docval_args, spec):
+            def post_process(cls, classdict, bases, docval_args, spec, type_map):
                 classdict['post_process'] = True
 
         spec = GroupSpec(
@@ -509,6 +510,36 @@ class TestDynamicContainer(TestCase):
             attr3=5.
         )
         assert len(multi.bars) == 1
+
+    def test_get_class_include_scalar_datetime_attribute(self):
+        """Test that get_class resolves a scalar datetime attribute."""
+        goo_spec = GroupSpec(
+            doc='A test group that has a scalar datetime attribute',
+            data_type_def='Goo',
+            attributes=[
+                AttributeSpec(
+                    name='attr1',
+                    doc='a scalar datetime attribute',
+                    dtype='datetime',
+                ),
+            ]
+        )
+        self.spec_catalog.register_spec(goo_spec, 'extension.yaml')
+        goo_cls = self.type_map.get_dt_container_cls('Goo', CORE_NAMESPACE)
+        goo = goo_cls(name='my_goo', attr1=datetime.datetime(2020, 1, 1, 0, 0, 0))
+        self.assertEqual(goo.attr1, datetime.datetime(2020, 1, 1, 0, 0, 0))
+
+    def test_get_class_include_scalar_datetime_dataset(self):
+        """Test that get_class resolves a scalar datetime dataset."""
+        goo_spec = DatasetSpec(
+            doc='A test dataset with dtype datetime',
+            data_type_def='Goo',
+            dtype='datetime',
+        )
+        self.spec_catalog.register_spec(goo_spec, 'extension.yaml')
+        goo_cls = self.type_map.get_dt_container_cls('Goo', CORE_NAMESPACE)
+        goo = goo_cls(name='my_goo', data=datetime.datetime(2020, 1, 1, 0, 0, 0))
+        self.assertEqual(goo.data, datetime.datetime(2020, 1, 1, 0, 0, 0))
 
 
 class TestDynamicContainerFixedValue(TestCase):
@@ -1321,7 +1352,7 @@ class TestBaseProcessFieldSpec(TestCase):
         docval_args = [{'name': 'name', 'type': str, 'doc': 'name'},
                        {'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
                         'shape': [None]}]
-        CustomClassGenerator.post_process(classdict, bases, docval_args, spec)
+        CustomClassGenerator.post_process(classdict, bases, docval_args, spec, self.type_map)
 
         expected = [{'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
                      'shape': [None]}]
@@ -1348,7 +1379,7 @@ class TestBaseProcessFieldSpec(TestCase):
         docval_args = [{'name': 'name', 'type': str, 'doc': 'name'},
                        {'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
                         'shape': [None]}]
-        CustomClassGenerator.post_process(classdict, bases, docval_args, spec)
+        CustomClassGenerator.post_process(classdict, bases, docval_args, spec, self.type_map)
 
         expected = [{'name': 'name', 'type': str, 'doc': 'name', 'default': 'MyBaz'},
                     {'name': 'attr1', 'type': ('array_data', 'data'), 'doc': 'a string attribute',
@@ -1450,7 +1481,7 @@ class TestMCIProcessFieldSpec(TestCase):
         )
         bases = [Bar]
         docval_args = []
-        MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
+        MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec, self.type_map)
         self.assertEqual(bases, [Bar, MultiContainerInterface])
 
     def test_post_process_already_multi(self):
@@ -1478,7 +1509,7 @@ class TestMCIProcessFieldSpec(TestCase):
         )
         bases = [Multi1]
         docval_args = []
-        MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
+        MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec, self.type_map)
         self.assertEqual(bases, [Multi1])
 
     def test_post_process_container(self):
@@ -1505,5 +1536,5 @@ class TestMCIProcessFieldSpec(TestCase):
         )
         bases = [Container]
         docval_args = []
-        MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec)
+        MCIClassGenerator.post_process(classdict, bases, docval_args, multi_spec, self.type_map)
         self.assertEqual(bases, [MultiContainerInterface, Container])
