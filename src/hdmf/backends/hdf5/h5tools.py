@@ -275,37 +275,6 @@ class HDF5IO(HDMFIO):
         return used_version_names
 
     @classmethod
-    def _order_deps(cls, deps):
-        """
-        Order namespaces according to dependency for loading into a NamespaceCatalog
-
-        Args:
-            deps (dict): a dictionary that maps a namespace name to a list of name of
-                         the namespaces on which the namespace is directly dependent
-                         Example: {'a': ['b', 'c'], 'b': ['d'], 'c': ['d'], 'd': []}
-                         Expected output: ['d', 'b', 'c', 'a']
-        """
-        order = list()
-        keys = list(deps.keys())
-        deps = dict(deps)
-        for k in keys:
-            if k in deps:
-                cls.__order_deps_aux(order, deps, k)
-        return order
-
-    @classmethod
-    def __order_deps_aux(cls, order, deps, key):
-        """
-        A recursive helper function for _order_deps
-        """
-        if key not in deps:
-            return
-        subdeps = deps.pop(key)
-        for subk in subdeps:
-            cls.__order_deps_aux(order, deps, subk)
-        order.append(key)
-
-    @classmethod
     @docval({'name': 'source_filename', 'type': str, 'doc': 'the path to the HDF5 file to copy'},
             {'name': 'dest_filename', 'type': str, 'doc': 'the name of the destination file'},
             {'name': 'expand_external', 'type': bool, 'doc': 'expand external links into new objects', 'default': True},
