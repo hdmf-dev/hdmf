@@ -202,24 +202,13 @@ class HDF5IO(HDMFIO):
             namespaces = list(spec_group.keys())
 
         readers = dict()
-        deps = dict()
         for ns in namespaces:
             latest_version = namespace_versions[ns]
             ns_group = spec_group[ns][latest_version]
             reader = H5SpecReader(ns_group)
             readers[ns] = reader
-            # for each namespace in the 'namespace' dataset, track all included namespaces (dependencies)
-            for spec_ns in reader.read_namespace(cls.__ns_spec_path):
-                deps[ns] = list()
-                for s in spec_ns['schema']:
-                    dep = s.get('namespace')
-                    if dep is not None:
-                        deps[ns].append(dep)
 
-        order = cls._order_deps(deps)
-        for ns in order:
-            reader = readers[ns]
-            d.update(namespace_catalog.load_namespaces(cls.__ns_spec_path, reader=reader))
+        d.update(namespace_catalog.load_namespaces(cls.__ns_spec_path, reader=readers))
 
         return d
 
