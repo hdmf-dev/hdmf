@@ -241,8 +241,8 @@ class NamespaceCatalog:
 
         core_namespace = getargs('core_namespace', kwargs)
         if core_namespace is None:
-            from ..common import CORE_NAMESPACE
-            self.__core_namespace = [CORE_NAMESPACE]
+            from ..common import CORE_NAMESPACE, EXP_NAMESPACE
+            self.__core_namespace = [CORE_NAMESPACE, EXP_NAMESPACE]
         else:
             self.__core_namespace = [core_namespace]
 
