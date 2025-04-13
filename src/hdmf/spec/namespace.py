@@ -242,6 +242,11 @@ class NamespaceCatalog:
         core_namespace = getargs('core_namespace', kwargs)
         if core_namespace is None:
             from ..common import CORE_NAMESPACE, EXP_NAMESPACE
+            # NOTE: even though HDMF does not guarantee backwards compatibility with schema
+            # using an older version of the experimental namespace, in practice, this has not been
+            # an issue, and it is costly to determine whether there is an incompatibility before issuing
+            # a warning. so, we ignore the experimental namespace warning by default. 
+            # see https://github.com/hdmf-dev/hdmf/pull/1258
             self.__core_namespace = [CORE_NAMESPACE, EXP_NAMESPACE]
         else:
             self.__core_namespace = [core_namespace]
