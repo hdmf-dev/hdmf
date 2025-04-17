@@ -339,7 +339,7 @@ class TestCatchDupNS(TestCase):
         # create new catalog and merge the loaded core namespace catalog
         ns_catalog = NamespaceCatalog()
         ns_catalog.merge(self.ns_catalog)
-        
+
         msg = (f'Ignoring the following cached namespace(s) because another version is already loaded:\n'
                f'{self.core_ns} - cached version: {new_ns_version}, loaded version: {self.core_ns_version}\n'
                f'Please update to the latest package versions.')

@@ -240,7 +240,7 @@ if os.path.exists(__resources['namespace_path']):
     # as a "core_namespace" in the NamespaceCatalog.
     # see https://github.com/hdmf-dev/hdmf/pull/1258
     __TYPE_MAP = TypeMap(NamespaceCatalog(core_namespaces=[CORE_NAMESPACE, EXP_NAMESPACE],))
-    
+
     load_namespaces(__resources['namespace_path'])
 
     # import these so the TypeMap gets populated
