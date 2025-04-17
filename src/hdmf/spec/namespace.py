@@ -230,8 +230,8 @@ class NamespaceCatalog:
              'doc': 'the class to use for dataset specifications', 'default': DatasetSpec},
             {'name': 'spec_namespace_cls', 'type': type,
              'doc': 'the class to use for specification namespaces', 'default': SpecNamespace},
-            {'name': 'core_namespace', 'type': str,
-             'doc': 'the name of the core namespace', 'default': None})
+            {'name': 'core_namespaces', 'type': list,
+             'doc': 'the names of the core namespaces', 'default': list()})
     def __init__(self, **kwargs):
         """Create a catalog for storing  multiple Namespaces"""
         self.__namespaces = OrderedDict()
@@ -239,17 +239,8 @@ class NamespaceCatalog:
         self.__group_spec_cls = getargs('group_spec_cls', kwargs)
         self.__spec_namespace_cls = getargs('spec_namespace_cls', kwargs)
 
-        core_namespace = getargs('core_namespace', kwargs)
-        if core_namespace is None:
-            from ..common import CORE_NAMESPACE, EXP_NAMESPACE
-            # NOTE: even though HDMF does not guarantee backwards compatibility with schema
-            # using an older version of the experimental namespace, in practice, this has not been
-            # an issue, and it is costly to determine whether there is an incompatibility before issuing
-            # a warning. so, we ignore the experimental namespace warning by default.
-            # see https://github.com/hdmf-dev/hdmf/pull/1258
-            self.__core_namespace = [CORE_NAMESPACE, EXP_NAMESPACE]
-        else:
-            self.__core_namespace = [core_namespace]
+        core_namespaces = getargs('core_namespaces', kwargs)
+        self.__core_namespaces = core_namespaces
 
         # keep track of all spec objects ever loaded, so we don't have
         # multiple object instances of a spec
@@ -263,7 +254,7 @@ class NamespaceCatalog:
         ret = NamespaceCatalog(self.__group_spec_cls,
                                self.__dataset_spec_cls,
                                self.__spec_namespace_cls)
-        ret.__core_namespace = copy(self.__core_namespace)
+        ret.__core_namespaces = copy(self.__core_namespaces)
         ret.__namespaces = copy(self.__namespaces)
         ret.__loaded_specs = copy(self.__loaded_specs)
         ret.__included_specs = copy(self.__included_specs)
@@ -274,7 +265,7 @@ class NamespaceCatalog:
         for name, namespace in ns_catalog.__namespaces.items():
             self.add_namespace(name, namespace)
 
-        self.__core_namespace.extend(ns_catalog.__core_namespace)
+        self.__core_namespaces.extend(ns_catalog.__core_namespaces)
 
     @property
     @docval(returns='a tuple of the available namespaces', rtype=tuple)
@@ -298,9 +289,9 @@ class NamespaceCatalog:
         return self.__spec_namespace_cls
 
     @property
-    def core_namespace(self):
-        """The core namespace used in this NamespaceCatalog"""
-        return self.__core_namespace
+    def core_namespaces(self):
+        """The core namespaces used in this NamespaceCatalog"""
+        return self.__core_namespaces
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this namespace'},
             {'name': 'namespace', 'type': SpecNamespace, 'doc': 'the SpecNamespace object'})
@@ -604,9 +595,9 @@ class NamespaceCatalog:
         warning_msg = list()
         for name, cached_version, loaded_version in ignored_namespaces:
             version_info = f"{name} - cached version: {cached_version}, loaded version: {loaded_version}"
-            if name in self.__core_namespace and is_newer_version(cached_version, loaded_version):
+            if name in self.__core_namespaces and is_newer_version(cached_version, loaded_version):
                 core_warnings.append(version_info)  # for core namespaces, warn if the cached version is newer
-            elif name not in self.__core_namespace:
+            elif name not in self.__core_namespaces:
                 other_warnings.append(version_info)  # for all other namespaces, issue a warning for compatibility
 
         if core_warnings:

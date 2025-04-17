@@ -233,8 +233,14 @@ def get_hdf5io(**kwargs):
 # load the hdmf-common namespace
 __resources = __get_resources()
 if os.path.exists(__resources['namespace_path']):
-    __TYPE_MAP = TypeMap(NamespaceCatalog())
-
+    # NOTE: even though HDMF does not guarantee backwards compatibility with schema
+    # using an older version of the experimental namespace, in practice, this has not been
+    # an issue, and it is costly to determine whether there is an incompatibility before issuing
+    # a warning. so, we ignore the experimental namespace warning by default by specifying it
+    # as a "core_namespace" in the NamespaceCatalog.
+    # see https://github.com/hdmf-dev/hdmf/pull/1258
+    __TYPE_MAP = TypeMap(NamespaceCatalog(core_namespaces=[CORE_NAMESPACE, EXP_NAMESPACE],))
+    
     load_namespaces(__resources['namespace_path'])
 
     # import these so the TypeMap gets populated
