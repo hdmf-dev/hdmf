@@ -250,7 +250,7 @@ class TestCatchDupNS(TestCase):
         # get core namespace
         hdmf_typemap = get_type_map()
         self.ns_catalog = hdmf_typemap.namespace_catalog
-        self.core_ns = self.ns_catalog.core_namespace[0]
+        self.core_ns = self.ns_catalog.core_namespaces[0]
         self.core_ns_version = self.ns_catalog.get_namespace(self.core_ns)['version']
 
     def tearDown(self):
@@ -322,7 +322,13 @@ class TestCatchDupNS(TestCase):
         ns_catalog.merge(self.ns_catalog)
 
         # test no warning if loading older namespace than one already loaded
-        ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
+        msg = (f'Ignoring the following cached namespace(s) because another version is already loaded:\n'
+               f'{self.core_ns} - cached version: {new_ns_version}, loaded version: {self.core_ns_version}\n'
+               f'Please update to the latest package versions.')
+        with warnings.catch_warnings(record=True) as ws:
+            ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
+        for w in ws:
+            self.assertTrue(str(w.message) != msg)
 
     def test_catch_dup_name_core_same(self):
         new_ns_version = self.core_ns_version
@@ -333,9 +339,14 @@ class TestCatchDupNS(TestCase):
         # create new catalog and merge the loaded core namespace catalog
         ns_catalog = NamespaceCatalog()
         ns_catalog.merge(self.ns_catalog)
-
-        ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
-
+        
+        msg = (f'Ignoring the following cached namespace(s) because another version is already loaded:\n'
+               f'{self.core_ns} - cached version: {new_ns_version}, loaded version: {self.core_ns_version}\n'
+               f'Please update to the latest package versions.')
+        with warnings.catch_warnings(record=True) as ws:
+            ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
+        for w in ws:
+            self.assertTrue(str(w.message) != msg)
 
 class TestCustomSpecClasses(TestCase):
 
