@@ -33,7 +33,7 @@ class TermSet:
         try:
             from linkml_runtime.utils.schemaview import SchemaView
         except ImportError:
-            msg = "Install linkml_runtime"
+            msg = "There is an issue with importing linkml_runtime. Please make sure a compatible version of linkml_runtime is installed."
             raise ValueError(msg)
 
         self.term_schema_path = term_schema_path
@@ -165,9 +165,9 @@ class TermSet:
         try:
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
-        except ImportError:   # pragma: no cover
-            msg = "Install schemasheets."
-            raise ValueError(msg)
+        except ImportError as e:   # pragma: no cover
+            msg = "There is an issue with importing schemasheets. Please make sure a compatible version of schemascheets is installed."
+            raise ValueError(msg) from e
 
         schema_maker = SchemaMaker()
         tsv_file_paths = glob.glob(self.schemasheets_folder + "/*.tsv")
@@ -194,7 +194,7 @@ class TermSet:
                 warnings.filterwarnings("ignore", category=DeprecationWarning)
                 from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
         except ImportError:   # pragma: no cover
-            msg = 'Install oaklib.'
+            msg = "There is an issue with importing oaklib. Please make sure a compatible version of oaklib is installed."
             raise ValueError(msg)
         expander = ValueSetExpander()
         # TODO: linkml should raise a warning if the schema does not have dynamic enums
