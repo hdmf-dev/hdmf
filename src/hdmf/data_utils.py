@@ -26,7 +26,6 @@ def append_data(data, arg):
         data.append(arg)
         return data
     elif isinstance(data, np.ndarray):
-        breakpoint()
         if len(data.dtype)>0: # data is a structured array
             return np.append(data, arg)
         elif np.ndim(arg) < np.ndim(data): # arg is a scalar or row vector

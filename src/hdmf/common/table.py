@@ -738,7 +738,7 @@ class DynamicTable(Container):
             if row_id in self.id:
                 raise ValueError("id %i already in the table" % row_id)
         self.id.append(row_id)
-        breakpoint()
+
         for colname, colnum in self.__colids.items():
             if colname not in data:
                 raise ValueError("column '%s' missing" % colname)
