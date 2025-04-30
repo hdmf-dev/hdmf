@@ -1,9 +1,10 @@
 # HDMF Changelog
 
-## HDMF 4.0.1
+## HDMF 4.0.1 (Upcoming)
 
 ### Enhancements
 - Optimized `get` within `VectorIndex` to be more efficient when retrieving a dataset of references. @mavaylon1 [#1248](https://github.com/hdmf-dev/hdmf/pull/1248)
+- Added support in append for same dimensional args for numpy arrays. @mavaylon1 [#1261](https://github.com/hdmf-dev/hdmf/pull/1261)
 
 ### Changed
 - Removed `requirements-min.txt` in favor of the `min-reqs` optional dependency group in `pyproject.toml`. @rly [#1246](https://github.com/hdmf-dev/hdmf/pull/1246)
