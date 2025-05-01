@@ -4,7 +4,7 @@ from copy import copy
 from collections.abc import Callable
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
-from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
+from .classgenerator import ClassGeneratorManager, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
 from ..term_set import TypeConfigurator
 from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, RefSpec
@@ -416,7 +416,7 @@ class TypeMap:
         self.__container_types = OrderedDict()
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
-        self.__class_generator = ClassGenerator()
+        self.__class_generator = ClassGeneratorManager()
         self.type_config = type_config
 
         self.register_generator(CustomClassGenerator)

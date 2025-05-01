@@ -10,7 +10,7 @@ from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from ..utils import docval, getargs, ExtenderMeta, get_docval, popargs, AllowPositional
 
 
-class ClassGenerator:
+class ClassGeneratorManager:
 
     def __init__(self):
         self.__custom_generators = []
@@ -21,7 +21,7 @@ class ClassGenerator:
 
     @docval({'name': 'generator', 'type': type, 'doc': 'the CustomClassGenerator class to register'})
     def register_generator(self, **kwargs):
-        """Add a custom class generator to this ClassGenerator.
+        """Add a custom class generator to this ClassGeneratorManager.
 
         Generators added later are run first. Duplicates are moved to the top of the list.
         """
