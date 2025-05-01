@@ -251,13 +251,27 @@ that represents it.
 If you do not have an :py:class:`~hdmf.container.Container` subclass to associate with your extension specification,
 a dynamically created class is created by default.
 
-To use the dynamic class, you will need to retrieve the class object using the function :py:func:`~hdmf.common.get_class`.
+To use a dynamic class, retrieve the class object using :py:func:~hdmf.common.get_class, which takes the name of
+the data type and its associated namespace as arguments. This function creates the class's __init__ method,
+initializing instance variables for each attribute defined in the specification. It also automatically generates
+corresponding getters and setters for those attributes.
+
+You are never able to see or directly alter the class. You are able to provide a method to be executed after
+`__init__` as the parameter within :py:func:~hdmf.common.get_class.
+
 Once you have retrieved the class object, you can use it just like you would a statically defined class.
 
 .. code-block:: python
 
     from hdmf.common import get_class
-    MyExtensionContainer = get_class('my_namespace', 'MyExtension')
+
+    def post_init_method(self, **kwargs):
+            attr1 = kwargs['attr1']
+            if attr1<10:
+                msg = "attr1 should be >=10"
+                warn(msg)
+
+    MyExtensionContainer = get_class('MyExtensionContainer', 'my_namespace', post_init_method)
     my_ext_inst = MyExtensionContainer(...)
 
 
