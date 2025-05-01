@@ -46,7 +46,7 @@ Specifying datasets is done with :py:class:`~hdmf.spec.spec.DatasetSpec`.
 Using datasets to specify tables
 ++++++++++++++++++++++++++++++++
 
-Tables can be specified using :py:class:`~hdmf.spec.spec.DtypeSpec`. To specify a table, provide a
+Tables can be specified using :py:class:`~hdmf.spec.spec.DtypeSpec`. To specify a row based table, provide a
 list of :py:class:`~hdmf.spec.spec.DtypeSpec` objects to the *dtype* argument.
 
 .. code-block:: python
@@ -184,9 +184,9 @@ Create a new namespace with extensions
     # include an existing namespace - this will include all specifications in that namespace
     ns_builder.include_namespace('collab_ns')
 
-    # save the namespace and extensions
-    ns_path = 'mylab.namespace.yaml'
-    ns_builder.export(ns_path)
+    output_dir = './spec' # path to folder to store generated YAML schemas.
+    new_data_types = [ext1, ext2]
+    export_spec(ns_builder, new_data_types, output_dir)
 
 
 .. tip::
@@ -252,7 +252,7 @@ If you do not have an :py:class:`~hdmf.container.Container` subclass to associat
 a dynamically created class is created by default.
 
 To use a dynamic class, retrieve the class object using :py:func:~hdmf.common.get_class, which takes the name of
-the data type and its associated namespace as arguments. This function creates the class's __init__ method,
+the data type and its associated namespace as arguments. This function creates the class's `__init__` method,
 initializing instance variables for each attribute defined in the specification. It also automatically generates
 corresponding getters and setters for those attributes.
 
@@ -320,8 +320,8 @@ If your :py:class:`~hdmf.container.Container` extension requires custom mapping 
 
 Documenting Extensions
 ----------------------
-
-Coming soon!
+Please refer to the following on the documenting extensions:
+.. _Documenting an Extension Tutorial: https://nwb-overview.readthedocs.io/en/latest/extensions_tutorial/6_documenting_extension.html
 
 Further Reading
 ---------------
