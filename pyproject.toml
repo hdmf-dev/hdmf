@@ -49,7 +49,7 @@ zarr = [
 sparse = ["scipy>=1.7"]
 termset = [
     "linkml-runtime>=1.5.5",
-    "schemasheets>=0.1.23",
+    "schemasheets>=0.4.0rc1",
     "oaklib>=0.5.12",
     "pyyaml>=6.0.1",
 ]

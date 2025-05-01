@@ -351,3 +351,22 @@ class TestGlobalTypeConfig(TestCase):
             ExtensionContainer(name='foo',
                                namespace='foo_namespace',
                                description='Homo sapiens')
+
+
+class TestOptionalDepsNotInstalled(TestCase):
+
+    def setUp(self):
+        if REQUIREMENTS_INSTALLED:
+            self.skipTest("optional modules are installed")
+
+    def test_schemasheets_not_installed(self):
+        with self.assertRaises(ImportError):
+            TermSet(schemasheets_folder="tests/unit/test_term_set_input/schemasheets")
+
+    def test_linkml_runtime_not_installed(self):
+        with self.assertRaises(ImportError):
+            TermSet(term_schema_path="tests/unit/example_test_term_set.yaml")
+
+    def test_oaklib_not_installed(self):
+        with self.assertRaises(ImportError):
+            TermSet(term_schema_path="tests/unit/example_dynamic_term_set.yaml", dynamic=True)
