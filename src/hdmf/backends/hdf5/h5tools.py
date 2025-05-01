@@ -1538,23 +1538,40 @@ class HDF5IO(HDMFIO):
         """Generates an html representation for a dataset for the HDF5IO class"""
 
         array_info_dict = get_basic_array_info(dataset)
-        if isinstance(dataset, h5py.Dataset):
+        if isinstance(dataset, str):
+            dataset_type = "String data"
+            # For string data from LINDI, add basic info about the string
+            string_info_dict = {
+                "Size": len(dataset),
+                "Type": "string"
+            }
+            array_info_dict.update(string_info_dict)
+        elif isinstance(dataset, h5py.Dataset):
             dataset_type = "HDF5 dataset"
-            # get info from hdf5 dataset
-            compressed_size = dataset.id.get_storage_size()
-            if hasattr(dataset, "nbytes"):  # TODO: Remove this after h5py minimal version is larger than 3.0
-                uncompressed_size = dataset.nbytes
-            else:
-                uncompressed_size = dataset.size * dataset.dtype.itemsize
-            compression_ratio = uncompressed_size / compressed_size if compressed_size != 0 else "undefined"
 
-            hdf5_info_dict = {
-                            "Chunk shape": dataset.chunks,
-                            "Compression": dataset.compression,
-                            "Compression opts": dataset.compression_opts,
-                            "Compression ratio": compression_ratio,
-                            }
-            array_info_dict.update(hdf5_info_dict)
+            array_info_dict.update({
+                "Chunk shape": dataset.chunks,
+            })
+
+            if hasattr(dataset, "id") and hasattr(dataset.id, "get_storage_size"):
+                compressed_size = dataset.id.get_storage_size()
+                
+                # get info from hdf5 dataset
+                if hasattr(dataset, "nbytes"):
+                    uncompressed_size = dataset.nbytes
+                else:
+                    uncompressed_size = dataset.size * dataset.dtype.itemsize
+                compression_ratio = uncompressed_size / compressed_size if compressed_size != 0 else "undefined"
+                array_info_dict.update({"Compression ratio": compression_ratio})
+
+            try:
+                array_info_dict.update({
+                    "Compression": dataset.compression,
+                    "Compression opts": dataset.compression_opts,
+                })
+            except:
+                pass  # doesn't work for LINDI
+
 
         elif isinstance(dataset, np.ndarray):
             dataset_type = "NumPy array"

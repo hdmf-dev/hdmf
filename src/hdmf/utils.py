@@ -929,7 +929,7 @@ def generate_array_html_repr(array_info_dict, array, dataset_type=None):
     # Heuristic for displaying data
     array_is_small = array_size_bytes < 1024 * 0.1 # 10 % a kilobyte to display the array
     if array_is_small:
-        repr_html += "<br>" + str(np.asarray(array))
+        repr_html += "<br>" + str(array[()])
 
     return repr_html
 
