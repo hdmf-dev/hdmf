@@ -320,8 +320,7 @@ If your :py:class:`~hdmf.container.Container` extension requires custom mapping 
 
 Documenting Extensions
 ----------------------
-Please refer to the following on the documenting extensions:
-.. _Documenting an Extension Tutorial: https://nwb-overview.readthedocs.io/en/latest/extensions_tutorial/6_documenting_extension.html
+Please refer to the following on the documenting extensions: https://nwb-overview.readthedocs.io/en/latest/extensions_tutorial/6_documenting_extension.html
 
 Further Reading
 ---------------
