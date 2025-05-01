@@ -1555,7 +1555,7 @@ class HDF5IO(HDMFIO):
 
             if hasattr(dataset, "id") and hasattr(dataset.id, "get_storage_size"):
                 compressed_size = dataset.id.get_storage_size()
-                
+
                 # get info from hdf5 dataset
                 if hasattr(dataset, "nbytes"):
                     uncompressed_size = dataset.nbytes
