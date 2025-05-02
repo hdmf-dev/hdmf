@@ -22,6 +22,14 @@ class TestAppendData(TestCase):
         with self.assertRaises(ValueError):
             append_data(data, 4)
 
+    def test_append_1D_to_2D(self):
+        data = np.array([[1, 2], [3, 4]])
+        arg = np.array([5, 6])
+        new = append_data(data, arg)
+        assert_array_equal(new, np.array([[1, 2],
+                                       [3, 4],
+                                       [5, 6]]))
+
     def test_append_same_dim_array_arg(self):
         data = np.array([[1, 2], [3, 4]])
         arg = np.array([[5, 6]])
