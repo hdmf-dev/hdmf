@@ -189,7 +189,6 @@ Create a new namespace with extensions
     export_spec(ns_builder, new_data_types, output_dir)
 
 
-.. tip::
 
     Using the API to generate extensions (rather than writing YAML sources directly) helps avoid errors in the specification
     (e.g., due to missing required keys or invalid values) and ensure compliance of the extension definition with the
@@ -308,7 +307,6 @@ If your :py:class:`~hdmf.container.Container` extension requires custom mapping 
 
     register_map(MyExtensionContainer, MyExtensionMapper)
 
-.. tip::
 
     ObjectMappers allow you to customize how objects in the spec are mapped to attributes of your Container in
     Python. This is useful, e.g., in cases where you want to customize the default mapping.
@@ -318,9 +316,9 @@ If your :py:class:`~hdmf.container.Container` extension requires custom mapping 
 
 .. _documenting-extensions:
 
-Documenting Extensions
+NWB
 ----------------------
-Please refer to the following on the documenting extensions: https://nwb-overview.readthedocs.io/en/latest/extensions_tutorial/6_documenting_extension.html
+To see how to extend the NWB format and how to best document extensions, refer to NWB Overview: https://nwb-overview.readthedocs.io/en/latest/extensions_tutorial/6_documenting_extension.html
 
 Further Reading
 ---------------
