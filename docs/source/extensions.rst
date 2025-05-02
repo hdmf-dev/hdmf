@@ -46,7 +46,7 @@ Specifying datasets is done with :py:class:`~hdmf.spec.spec.DatasetSpec`.
 Using datasets to specify tables
 ++++++++++++++++++++++++++++++++
 
-Tables can be specified using :py:class:`~hdmf.spec.spec.DtypeSpec`. To specify a row based table, provide a
+Row-based tables can be specified using :py:class:`~hdmf.spec.spec.DtypeSpec`. To specify a table, provide a
 list of :py:class:`~hdmf.spec.spec.DtypeSpec` objects to the *dtype* argument.
 
 .. code-block:: python
