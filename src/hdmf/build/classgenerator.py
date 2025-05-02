@@ -70,8 +70,9 @@ class ClassGeneratorManager:
                 for class_generator in self.__custom_generators:  # pragma: no branch
                     # each generator can update classdict and docval_args
                     if class_generator.apply_generator_to_field(field_spec, bases, type_map):
-                        # process_field_spec extracts field metadata (name, type, doc, shape, default, constraints) from the schema spec and adds it to classdict
-                        # under __fields__ for later use in generating dynamic properties.
+                        # process_field_spec extracts field metadata (name, type, doc, shape, default, constraints)
+                        # from the schema spec and adds it to classdict under __fields__ for later use in
+                        # generating dynamic properties.
                         # Also creates a corresponding docval argument for the class constructor.
                         class_generator.process_field_spec(classdict, docval_args, parent_cls, attr_name,
                                                            not_inherited_fields, type_map, spec)
