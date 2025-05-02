@@ -5,6 +5,7 @@
 ### Enhancements
 - Optimized `get` within `VectorIndex` to be more efficient when retrieving a dataset of references. @mavaylon1 [#1248](https://github.com/hdmf-dev/hdmf/pull/1248)
 - Improved error messages when optional requirements are not installed. @rly [#1263](https://github.com/hdmf-dev/hdmf/pull/1263)
+- Updated Extension documentation. Renamed `ClassGenerator` to `ClassGeneratorManager`. @mavaylon1[#1268](https://github.com/hdmf-dev/hdmf/pull/1268)
 
 ### Changed
 - Removed `requirements-min.txt` in favor of the `min-reqs` optional dependency group in `pyproject.toml`. @rly [#1246](https://github.com/hdmf-dev/hdmf/pull/1246)
