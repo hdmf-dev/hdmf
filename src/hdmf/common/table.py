@@ -742,12 +742,12 @@ class DynamicTable(Container):
         for colname, colnum in self.__colids.items():
             if colname not in data:
                 raise ValueError("column '%s' missing" % colname)
-            c = self.__df_cols[colnum]
-            if isinstance(c, VectorIndex):
-                c.add_vector(data[colname])
+            col = self.__df_cols[colnum]
+            if isinstance(col, VectorIndex):
+                col.add_vector(data[colname])
             else:
-                c.add_row(data[colname])
-                if check_ragged and is_ragged(c.data):
+                col.add_row(data[colname])
+                if check_ragged and is_ragged(col.data):
                     warn(("Data has elements with different lengths and therefore cannot be coerced into an "
                           "N-dimensional array. Use the 'index' argument when creating a column to add rows "
                           "with different lengths."),
