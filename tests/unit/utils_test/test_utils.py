@@ -2,6 +2,7 @@ import os
 
 import h5py
 import numpy as np
+from hdmf.container import Data
 from hdmf.data_utils import DataChunkIterator, DataIO
 from hdmf.testing import TestCase
 from hdmf.utils import get_data_shape, to_uint_array
@@ -157,6 +158,21 @@ class TestGetDataShape(TestCase):
 
         res = get_data_shape(data, strict_no_data_load=True)  # no error raised means data was not loaded
         self.assertIsNone(res)
+
+    def test_list_with_Data_objects(self):
+        # list of Data objects
+        res = get_data_shape([Data(name="a", data=[1, 2]), Data(name="b", data=[3, 4])])
+        self.assertTupleEqual(res, (2, ))
+
+        # list of list of Data objects
+        res = get_data_shape(
+            [
+                [Data(name="a", data=[1, 2, 3]), Data(name="b", data=[3, 4, 5]), Data(name="c", data=[3, 4, 5])],
+                [Data(name="d", data=[1, 2, 3]), Data(name="e", data=[3, 4, 5]), Data(name="f", data=[3, 4, 5])],
+            ]
+        )
+        self.assertTupleEqual(res, (2, 3))
+
 
     def test_strict_no_data_load(self):
         """Test get_data_shape with strict_no_data_load=True on nested lists/tuples is the same as when it is False."""
