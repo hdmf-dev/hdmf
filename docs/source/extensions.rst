@@ -251,9 +251,9 @@ If you do not have an :py:class:`~hdmf.container.Container` subclass to associat
 a dynamically created class is created by default.
 
 To use a dynamic class, retrieve the class object using :py:func:~hdmf.common.get_class, which takes the name of
-the data type and its associated namespace as arguments. This function creates the class's `__init__` method,
+the data type and its associated namespace as arguments. This function creates the class `__init__` method,
 initializing instance variables for each attribute defined in the specification. It also automatically generates
-corresponding getters and setters for those attributes.
+corresponding getters and setters for those attributes by populating the `__fields__` dict.
 
 You are never able to see or directly alter the class. You are able to provide a method to be executed after
 `__init__` as the parameter within :py:func:~hdmf.common.get_class.
