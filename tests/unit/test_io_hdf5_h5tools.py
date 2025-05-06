@@ -2140,6 +2140,40 @@ class TestLoadNamespaces(TestCase):
         if os.path.exists(self.path):
             os.remove(self.path)
 
+    def create_test_namespace(self, name, version, source):
+        file_spec = GroupSpec(doc="A FooFile", data_type_def='FooFile')
+        spec_catalog = SpecCatalog()
+        namespace = SpecNamespace(
+            doc='a test namespace',
+            name=name,
+            schema=[{'source': source}],
+            version=version,
+            catalog=spec_catalog
+        )
+        spec_catalog.register_spec(file_spec, source)
+        return namespace
+
+    def write_test_file(self, path, ns_name, ns_source, version, mode):
+        namespace = self.create_test_namespace(ns_name, version, ns_source)
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(ns_name, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(ns_name, 'FooFile', FooFile)
+        manager = BuildManager(type_map)
+        container = FooFile()
+        with HDF5IO(path, manager=manager, mode=mode) as io:
+            io.write(container)
+
+        return namespace_catalog
+
+    def replace_cached_ns_version(self, path, namespace, cached_version, new_version):
+        with h5py.File(path, mode='r+') as f:
+            old_dict = f[f'/specifications/{namespace}/{cached_version}/namespace'][()].decode('utf-8')
+            new_dict = old_dict.replace(f'"version":"{cached_version}"', f'"version":"{new_version}"')
+
+            f[f'/specifications/{namespace}/{cached_version}/namespace'][()] = new_dict
+            f.move(f'/specifications/{namespace}/{cached_version}', f'/specifications/{namespace}/{new_version}')
+
     def test_load_namespaces_none_version(self):
         """Test that reading a file with a cached namespace and None version works but raises a warning."""
         # make the file have group name "None" instead of "0.1.0" (namespace version is used as group name)
@@ -2177,6 +2211,45 @@ class TestLoadNamespaces(TestCase):
                "'%s'. Please notify the extension author." % (CORE_NAMESPACE, SpecNamespace.UNVERSIONED))
         with self.assertWarnsWith(UserWarning, msg):
             HDF5IO.load_namespaces(ns_catalog, self.path)
+
+    def test_load_namespaces_multiple_duplicate_versions(self):
+        """Test that loading a file with a cached namespace will warn if newer version than already loaded namespace"""
+
+        # write file with two different namespaces
+        namespace_catalog = NamespaceCatalog()
+        ns1 = self.create_test_namespace('test_ext1', '0.1.0', 'test1.yaml')
+        ns2 = self.create_test_namespace('test_ext2', '0.1.0', 'test2.yaml')
+        namespace_catalog.add_namespace('test_ext1', ns1)
+        namespace_catalog.add_namespace('test_ext2', ns2)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type('test_ext1', 'FooFile', FooFile)
+        type_map.register_container_type('test_ext2', 'FooFile', FooFile)
+        manager = BuildManager(type_map)
+        container = FooFile()
+
+        path = get_temp_filepath()
+        with HDF5IO(path, manager=manager, mode='w') as io:
+            io.write(container)
+
+        # modify the versions of the example namespaces
+        self.replace_cached_ns_version(path=path,
+                                       namespace='test_ext1',
+                                       cached_version='0.1.0',
+                                       new_version='100.0.0')
+        self.replace_cached_ns_version(path=path,
+                                       namespace='test_ext2',
+                                       cached_version='0.1.0',
+                                       new_version='100.0.0')
+
+        # test warning is raised when loading the file and a newer version is cached
+        msg = ("Ignoring the following cached namespace(s) because another version is already loaded:\n"
+               "test_ext1 - cached version: 100.0.0, loaded version: 0.1.0\n"
+               "test_ext2 - cached version: 100.0.0, loaded version: 0.1.0\n"
+               "The loaded extension(s) may not be compatible with the cached extension(s) in the file. "
+               "Please check the extension documentation and ignore this warning if these versions are "
+               "compatible.")
+        with self.assertWarnsWith(UserWarning, msg):
+            HDF5IO.load_namespaces(namespace_catalog, path)
 
     def test_load_namespaces_path(self):
         """Test that loading namespaces given a path is OK and returns the correct dictionary."""

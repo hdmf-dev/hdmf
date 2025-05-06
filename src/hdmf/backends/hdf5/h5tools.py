@@ -202,24 +202,13 @@ class HDF5IO(HDMFIO):
             namespaces = list(spec_group.keys())
 
         readers = dict()
-        deps = dict()
         for ns in namespaces:
             latest_version = namespace_versions[ns]
             ns_group = spec_group[ns][latest_version]
             reader = H5SpecReader(ns_group)
             readers[ns] = reader
-            # for each namespace in the 'namespace' dataset, track all included namespaces (dependencies)
-            for spec_ns in reader.read_namespace(cls.__ns_spec_path):
-                deps[ns] = list()
-                for s in spec_ns['schema']:
-                    dep = s.get('namespace')
-                    if dep is not None:
-                        deps[ns].append(dep)
 
-        order = cls._order_deps(deps)
-        for ns in order:
-            reader = readers[ns]
-            d.update(namespace_catalog.load_namespaces(cls.__ns_spec_path, reader=reader))
+        d.update(namespace_catalog.load_namespaces(cls.__ns_spec_path, reader=readers))
 
         return d
 
@@ -284,37 +273,6 @@ class HDF5IO(HDMFIO):
             used_version_names[ns] = version_names[-1]  # save the largest in alphanumeric order
 
         return used_version_names
-
-    @classmethod
-    def _order_deps(cls, deps):
-        """
-        Order namespaces according to dependency for loading into a NamespaceCatalog
-
-        Args:
-            deps (dict): a dictionary that maps a namespace name to a list of name of
-                         the namespaces on which the namespace is directly dependent
-                         Example: {'a': ['b', 'c'], 'b': ['d'], 'c': ['d'], 'd': []}
-                         Expected output: ['d', 'b', 'c', 'a']
-        """
-        order = list()
-        keys = list(deps.keys())
-        deps = dict(deps)
-        for k in keys:
-            if k in deps:
-                cls.__order_deps_aux(order, deps, k)
-        return order
-
-    @classmethod
-    def __order_deps_aux(cls, order, deps, key):
-        """
-        A recursive helper function for _order_deps
-        """
-        if key not in deps:
-            return
-        subdeps = deps.pop(key)
-        for subk in subdeps:
-            cls.__order_deps_aux(order, deps, subk)
-        order.append(key)
 
     @classmethod
     @docval({'name': 'source_filename', 'type': str, 'doc': 'the path to the HDF5 file to copy'},
