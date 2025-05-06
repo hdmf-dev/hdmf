@@ -2245,7 +2245,9 @@ class TestLoadNamespaces(TestCase):
         msg = ("Ignoring the following cached namespace(s) because another version is already loaded:\n"
                "test_ext1 - cached version: 100.0.0, loaded version: 0.1.0\n"
                "test_ext2 - cached version: 100.0.0, loaded version: 0.1.0\n"
-               "Ignore this warning if these versions are compatible.")
+               "The loaded extension(s) may not be compatible with the cached extension(s) in the file. "
+               "Please check the extension documentation and ignore this warning if these versions are "
+               "compatible.")
         with self.assertWarnsWith(UserWarning, msg):
             HDF5IO.load_namespaces(namespace_catalog, path)
 

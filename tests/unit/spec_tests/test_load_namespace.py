@@ -270,7 +270,9 @@ class TestCatchDupNS(TestCase):
 
         msg = ("Ignoring the following cached namespace(s) because another version is already loaded:\n"
                "test_ext - cached version: 0.2.0, loaded version: 0.1.0\n"
-               "Ignore this warning if these versions are compatible.")
+               "The loaded extension(s) may not be compatible with the cached extension(s) in the file. "
+               "Please check the extension documentation and ignore this warning if these versions are "
+               "compatible.")
         with self.assertWarnsWith(UserWarning, msg):
             ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path2))
 
@@ -288,11 +290,14 @@ class TestCatchDupNS(TestCase):
         # no warning should be raised (but don't just check for 0 warnings -- warnings can come from other sources)
         msg = ("Ignoring the following cached namespace(s) because another version is already loaded:\n"
                "test_ext - cached version: 0.1.0, loaded version: 0.1.0\n"
-               "Ignore this warning if these versions are compatible.")
+               "The loaded extension(s) may not be compatible with the cached extension(s) in the file. "
+               "Please check the extension documentation and ignore this warning if these versions are "
+               "compatible.")
         with warnings.catch_warnings(record=True) as ws:
             ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path2))
         for w in ws:
             self.assertTrue(str(w.message) != msg)
+            warnings.warn(str(w.message), w.category)
 
     def test_catch_dup_name_core_newer(self):
         new_ns_version = '100.0.0'
@@ -329,6 +334,7 @@ class TestCatchDupNS(TestCase):
             ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
         for w in ws:
             self.assertTrue(str(w.message) != msg)
+            warnings.warn(str(w.message), w.category)
 
     def test_catch_dup_name_core_same(self):
         new_ns_version = self.core_ns_version
@@ -347,6 +353,7 @@ class TestCatchDupNS(TestCase):
             ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
         for w in ws:
             self.assertTrue(str(w.message) != msg)
+            warnings.warn(str(w.message), w.category)
 
 class TestCustomSpecClasses(TestCase):
 

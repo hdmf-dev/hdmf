@@ -605,7 +605,9 @@ class NamespaceCatalog:
             warning_msg.append(f'{joined_warnings}\nPlease update to the latest package versions.')
         if other_warnings:
             joined_warnings = "\n".join(other_warnings)
-            warning_msg.append(f'{joined_warnings}\nIgnore this warning if these versions are compatible.')
+            warning_msg.append(f'{joined_warnings}\nThe loaded extension(s) may not be compatible with the cached '
+                               'extension(s) in the file. Please check the extension documentation and ignore this '
+                               'warning if these versions are compatible.')
         if warning_msg:
             joined_warnings = "\n".join(warning_msg)
             warn(f'Ignoring the following cached namespace(s) because another version is already loaded:\n'
