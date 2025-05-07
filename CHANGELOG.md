@@ -4,6 +4,7 @@
 
 ### Enhancements
 - Optimized `get` within `VectorIndex` to be more efficient when retrieving a dataset of references. @mavaylon1 [#1248](https://github.com/hdmf-dev/hdmf/pull/1248)
+- Enhanced warnings about ignoring cached namespaces. @stephprince [#1258](https://github.com/hdmf-dev/hdmf/pull/1258)
 - Added support in append for same dimensional args for numpy arrays. @mavaylon1 [#1261](https://github.com/hdmf-dev/hdmf/pull/1261)
 - Improved error messages when optional requirements are not installed. @rly [#1263](https://github.com/hdmf-dev/hdmf/pull/1263)
 

@@ -5,7 +5,7 @@ import numpy as np
 from hdmf.container import Data
 from hdmf.data_utils import DataChunkIterator, DataIO
 from hdmf.testing import TestCase
-from hdmf.utils import get_data_shape, to_uint_array
+from hdmf.utils import get_data_shape, to_uint_array, is_newer_version
 
 
 class TestGetDataShape(TestCase):
@@ -220,3 +220,21 @@ class TestToUintArray(TestCase):
         arr = [0., 1., 2.]
         with self.assertRaisesWith(ValueError, 'Cannot convert array of dtype float64 to uint.'):
             to_uint_array(arr)
+
+class TestVersionComparison(TestCase):
+    """Test the version comparison functionality in NamespaceCatalog."""
+
+    def test_is_newer_version(self):
+        """Test basic version comparison scenarios."""
+        # test when first version is newer
+        self.assertTrue(is_newer_version("10.0.0", "2.0.0"))
+        self.assertTrue(is_newer_version("1.1.0", "1.0.0"))
+        self.assertTrue(is_newer_version("1.0.1", "1.0.0"))
+
+        # test when second version is newer
+        self.assertFalse(is_newer_version("2.0.0", "10.0.0"))
+        self.assertFalse(is_newer_version("1.0.0", "1.1.0"))
+        self.assertFalse(is_newer_version("1.0.0", "1.0.1"))
+
+        # test when versions are equal
+        self.assertFalse(is_newer_version("1.0.0", "1.0.0"))
