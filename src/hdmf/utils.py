@@ -811,6 +811,7 @@ def get_data_shape(data, strict_no_data_load=False):
     :return: Tuple of ints indicating the size of known dimensions. Dimensions for which the size is unknown
              will be set to None.
     """
+    from hdmf.container import Data
 
     def __get_shape_helper(local_data):
         shape = list()
@@ -818,7 +819,8 @@ def get_data_shape(data, strict_no_data_load=False):
             shape.append(len(local_data))
             if len(local_data):
                 el = next(iter(local_data))
-                if not isinstance(el, (str, bytes)):
+                # If local_data is a list/tuple of Data, do not iterate into the objects
+                if not isinstance(el, (str, bytes, Data)):
                     shape.extend(__get_shape_helper(el))
         return tuple(shape)
 
