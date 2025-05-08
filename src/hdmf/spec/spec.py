@@ -525,7 +525,7 @@ class BaseStorageSpec(Spec):
     def data_type_inc(self):
         ''' The data type this specification inherits '''
         return self.get(self.inc_key())
-        
+
 
     @property
     def data_type_def(self):
