@@ -421,10 +421,20 @@ class NamespaceCatalog:
         """Replace instances of data_type_def/inc in spec_dict with new values from spec_cls."""
         # this is necessary because the def_key and inc_key may be different in each namespace
         # NOTE: this does not handle more than one custom set of keys
+        # breakpoint()
         if parent_cls.def_key() in spec_dict:
             spec_dict[spec_cls.def_key()] = spec_dict.pop(parent_cls.def_key())
         if parent_cls.inc_key() in spec_dict:
             spec_dict[spec_cls.inc_key()] = spec_dict.pop(parent_cls.inc_key())
+        # parent_def_key = parent_cls.__private_attributes__["_def_key"].get_default()
+        # if parent_def_key in spec_dict:
+        #     spec_def_key = spec_cls.__private_attributes__["_def_key"].get_default()
+        #     spec_dict[spec_def_key] = spec_dict.pop(parent_def_key)
+        #
+        # parent_inc_key = parent_cls.__private_attributes__["_inc_key"].get_default()
+        # if parent_inc_key in spec_dict:
+        #     spec_inc_key = spec_cls.__private_attributes__["_inc_key"].get_default()
+        #     spec_dict[spec_inc_key] = spec_dict.pop(parent_inc_key)
 
     def __resolve_includes(self, spec_cls, spec_dict, catalog):
         """Replace data type inc strings with the spec definition so the new spec is built with included fields.

@@ -2,6 +2,8 @@ import re
 from abc import ABCMeta
 from collections import OrderedDict
 from warnings import warn
+from pydantic import validate_call, BaseModel
+from typing import Optional, Self
 
 from ..utils import docval, getargs, popargs, get_docval
 
@@ -101,45 +103,13 @@ class ConstructableDict(dict, metaclass=ABCMeta):
         return cls(**kwargs)
 
 
-class Spec(ConstructableDict):
+class Spec(BaseModel):
     ''' A base specification class
     '''
-
-    @docval({'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-            {'name': 'name', 'type': str, 'doc': 'The name of this attribute', 'default': None},
-            {'name': 'required', 'type': bool, 'doc': 'whether or not this attribute is required', 'default': True},
-            {'name': 'parent', 'type': 'hdmf.spec.spec.Spec', 'doc': 'the parent of this spec', 'default': None})
-    def __init__(self, **kwargs):
-        name, doc, required, parent = getargs('name', 'doc', 'required', 'parent', kwargs)
-        super().__init__()
-        self['doc'] = doc
-        if name is not None:
-            self['name'] = name
-        if not required:
-            self['required'] = required
-        self._parent = parent
-
-    @property
-    def doc(self):
-        ''' Documentation on what this Spec is specifying '''
-        return self.get('doc', None)
-
-    @property
-    def name(self):
-        ''' The name of the object being specified '''
-        return self.get('name', None)
-
-    @property
-    def parent(self):
-        ''' The parent specification of this specification '''
-        return self._parent
-
-    @parent.setter
-    def parent(self, spec):
-        ''' Set the parent of this specification '''
-        if self._parent is not None:
-            raise AttributeError('Cannot re-assign parent.')
-        self._parent = spec
+    doc: str
+    name: Optional[str] = None
+    required: bool = True
+    parent: Optional[Self] = None
 
     @classmethod
     def build_const_args(cls, spec_dict):
@@ -167,6 +137,69 @@ class Spec(ConstructableDict):
 
 #    def __eq__(self, other):
 #        return id(self) == id(other)
+# class Spec(ConstructableDict):
+#     ''' A base specification class
+#     '''
+#
+#     @docval({'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
+#             {'name': 'name', 'type': str, 'doc': 'The name of this attribute', 'default': None},
+#             {'name': 'required', 'type': bool, 'doc': 'whether or not this attribute is required', 'default': True},
+#             {'name': 'parent', 'type': 'hdmf.spec.spec.Spec', 'doc': 'the parent of this spec', 'default': None})
+#     def __init__(self, **kwargs):
+#         name, doc, required, parent = getargs('name', 'doc', 'required', 'parent', kwargs)
+#         super().__init__()
+#         self['doc'] = doc
+#         if name is not None:
+#             self['name'] = name
+#         if not required:
+#             self['required'] = required
+#         self._parent = parent
+#
+#     @property
+#     def doc(self):
+#         ''' Documentation on what this Spec is specifying '''
+#         return self.get('doc', None)
+#
+#     @property
+#     def name(self):
+#         ''' The name of the object being specified '''
+#         return self.get('name', None)
+#
+#     @property
+#     def parent(self):
+#         ''' The parent specification of this specification '''
+#         return self._parent
+#
+#     @parent.setter
+#     def parent(self, spec):
+#         ''' Set the parent of this specification '''
+#         if self._parent is not None:
+#             raise AttributeError('Cannot re-assign parent.')
+#         self._parent = spec
+#
+#     @classmethod
+#     def build_const_args(cls, spec_dict):
+#         ''' Build constructor arguments for this Spec class from a dictionary '''
+#         ret = super().build_const_args(spec_dict)
+#         return ret
+#
+#     def __hash__(self):
+#         return id(self)
+#
+#     @property
+#     def path(self):
+#         stack = list()
+#         tmp = self
+#         while tmp is not None:
+#             name = tmp.name
+#             if name is None:
+#                 name = tmp.data_type_def
+#                 if name is None:
+#                     name = tmp.data_type_inc
+#             stack.append(name)
+#             tmp = tmp.parent
+#         return "/".join(reversed(stack))
+
 
 
 _target_type_key = 'target_type'
@@ -301,10 +334,10 @@ _attrbl_args = [
 class BaseStorageSpec(Spec):
     ''' A specification for any object that can hold attributes. '''
 
-    __inc_key = 'data_type_inc'
-    __def_key = 'data_type_def'
-    __type_key = 'data_type'
-    __id_key = 'object_id'
+    inc_key = 'data_type_inc'
+    def_key = 'data_type_def'
+    type_key = 'data_type'
+    id_key = 'object_id'
 
     @docval(*_attrbl_args)
     def __init__(self, **kwargs):
@@ -460,44 +493,39 @@ class BaseStorageSpec(Spec):
         return self.get('linkable', True)
 
     @classmethod
-    def id_key(cls):
-        ''' Get the key used to store data ID on an instance
-
-        Override this method to use a different name for 'object_id'
+    def def_key(cls):
         '''
-        return cls.__id_key
-
-    @classmethod
-    def type_key(cls):
-        ''' Get the key used to store data type on an instance
-
-        Override this method to use a different name for 'data_type'. HDMF supports combining schema
-        that uses 'data_type' and at most one different name for 'data_type'.
+        Get the key used to define a data_type definition.
         '''
-        return cls.__type_key
+        # Directly access the class attribute to avoid method conflict
+        return cls.__dict__.get("def_key", "data_type_def")
 
     @classmethod
     def inc_key(cls):
-        ''' Get the key used to define a data_type include.
-
-        Override this method to use a different keyword for 'data_type_inc'. HDMF supports combining schema
-        that uses 'data_type_inc' and at most one different name for 'data_type_inc'.
         '''
-        return cls.__inc_key
+        Get the key used to define a data_type include.
+        '''
+        return cls.__dict__.get("inc_key", "data_type_inc")
 
     @classmethod
-    def def_key(cls):
-        ''' Get the key used to define a data_type definition.
-
-        Override this method to use a different keyword for 'data_type_def' HDMF supports combining schema
-        that uses 'data_type_def' and at most one different name for 'data_type_def'.
+    def type_key(cls):
         '''
-        return cls.__def_key
+        Get the key used to store data type on an instance.
+        '''
+        return cls.__dict__.get("type_key", "data_type")
+
+    @classmethod
+    def id_key(cls):
+        '''
+        Get the key used to store data ID on an instance.
+        '''
+        return cls.__dict__.get("id_key", "object_id")
 
     @property
     def data_type_inc(self):
         ''' The data type this specification inherits '''
         return self.get(self.inc_key())
+        
 
     @property
     def data_type_def(self):
