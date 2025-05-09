@@ -340,8 +340,6 @@ groups:
 
     def test_sort_keys(self):
         """Test that sort_keys correctly orders dictionary keys according to the predefined order."""
-        writer = YAMLSpecWriter()
-
         # Test basic ordering with predefined keys
         input_dict = {
             'doc': 'documentation',
@@ -351,7 +349,7 @@ groups:
             'datasets': [2],
             'groups': [3]
         }
-        result = writer.sort_keys(input_dict)
+        result = YAMLSpecWriter.sort_keys(input_dict)
 
         # Check that the keys are in the correct order
         expected_order = ['name', 'dtype', 'doc', 'attributes', 'datasets', 'groups']
@@ -364,7 +362,7 @@ groups:
             'neurodata_type_def': 'MyType',
             'attributes': [1]
         }
-        result = writer.sort_keys(input_dict)
+        result = YAMLSpecWriter.sort_keys(input_dict)
         self.assertEqual(list(result.keys())[0], 'neurodata_type_def')
 
         # Test nested dictionary ordering
@@ -377,7 +375,7 @@ groups:
                 'attributes': [2]
             }
         }
-        result = writer.sort_keys(input_dict)
+        result = YAMLSpecWriter.sort_keys(input_dict)
         self.assertEqual(list(result['nested'].keys()), ['name', 'dtype', 'attributes', 'groups'])
 
         # Test list handling
@@ -387,7 +385,7 @@ groups:
                 {'doc': 'attr2', 'name': 'attr2_name', 'dtype': 'float'}
             ]
         }
-        result = writer.sort_keys(input_dict)
+        result = YAMLSpecWriter.sort_keys(input_dict)
         for attr in result['attributes']:
             self.assertEqual(list(attr.keys()), ['name', 'dtype', 'doc'])
 
@@ -396,7 +394,7 @@ groups:
             {'doc': 'item1', 'name': 'name1', 'dtype': 'int'},
             {'doc': 'item2', 'name': 'name2', 'dtype': 'float'}
         )
-        result = writer.sort_keys(input_tuple)
+        result = YAMLSpecWriter.sort_keys(input_tuple)
         # Convert generator to list for testing
         result_list = list(result)
         for item in result_list:
