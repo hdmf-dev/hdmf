@@ -14,6 +14,7 @@
 - `hdmf.monitor` is unused and undocumented. It has been deprecated and will be removed in HDMF 5.0. @rly [#1245](https://github.com/hdmf-dev/hdmf/pull/1245)
 - Restricted numcodecs dependency to <0.16 due to incompatibility with the latest zarr<3 version. @rly [#1257](https://github.com/hdmf-dev/hdmf/pull/1257)
 - Increased minimum requirement for optional schemasheets dependency to 0.4.0rc1 due to incompatibility with linkml-runtime. @rly [#1263](https://github.com/hdmf-dev/hdmf/pull/1263)
+- Refactored `YamlSpecWriter.sort_keys` to be a static method so that it can be cleanly used elsewhere. @rly [#1274](https://github.com/hdmf-dev/hdmf/pull/1274)
 
 ### Fixed
 - Fixed `get_data_shape` returning the wrong shape for lists of Data objects. @rly [#1270](https://github.com/hdmf-dev/hdmf/pull/1270)
