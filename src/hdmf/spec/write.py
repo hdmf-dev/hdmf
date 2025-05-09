@@ -92,12 +92,12 @@ class YAMLSpecWriter(SpecWriter):
                 keys.remove('name')
                 keys.insert(0, 'name')
             return yaml.comments.CommentedMap(
-                yaml.compat.ordereddict([(k, sort_keys(obj[k])) for k in keys])
+                yaml.compat.ordereddict([(k, YAMLSpecWriter.sort_keys(obj[k])) for k in keys])
             )
         elif isinstance(obj, list):
-            return [sort_keys(v) for v in obj]
+            return [YAMLSpecWriter.sort_keys(v) for v in obj]
         elif isinstance(obj, tuple):
-            return (sort_keys(v) for v in obj)
+            return (YAMLSpecWriter.sort_keys(v) for v in obj)
         else:
             return obj
 
