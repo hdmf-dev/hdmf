@@ -202,6 +202,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         if spec_dtype is None:
             spec_dtype = spec.dtype
+        # Disallow structured arrays (compound dtypes) if the spec has no dtype
+        if spec_dtype is None:
+            if isinstance(value, np.ndarray) and value.dtype.fields is not None:
+                """
+                value.dtype.fields is not None will check to see if the array
+                has a compound dtype. Using a compound data type
+                without defining an extension is currently not supported.
+                """
+                raise ValueError(
+                    f"Spec '{spec.name}' received a structured/compound dtype, "
+                    f"but no dtype was specified in the spec. "
+                    f"Structured dtypes must be explicitly defined in the schema or a extension."
+                )
         ret, ret_dtype = cls.__check_edgecases(spec, value, spec_dtype)
         if ret is not None or ret_dtype is not None:
             return ret, ret_dtype
