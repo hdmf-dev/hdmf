@@ -809,8 +809,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                 data = container.data
                             bldr_data, dtype = self.convert_dtype(spec, data, spec_dtype=spec_dtype)
                         except Exception as ex:
-                            msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
-                            raise Exception(msg) from ex
+                            msg = f"could not resolve dtype for {type(container).__name__} '{container.name}'"
+                            full_msg = f"{msg}: {str(ex)}"
+                            raise Exception(full_msg) from ex
+
                         builder = DatasetBuilder(
                             name,
                             data=bldr_data,
