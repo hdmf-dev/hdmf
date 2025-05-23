@@ -283,16 +283,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         if isinstance(value, complex):
             raise ValueError("Complex numbers are not supported")
-        
+
         # Check numpy array
         if isinstance(value, np.ndarray) and np.issubdtype(value.dtype, np.complexfloating):
             raise ValueError("Complex numbers are not supported")
-            
+
         # Check list/tuple elements
         if isinstance(value, (list, tuple)):
             for item in value:
                 cls.__check_for_complex_numbers(item)
-                
+
     @classmethod
     def __check_edgecases(cls, spec, value, spec_dtype):  # noqa: C901
         """
