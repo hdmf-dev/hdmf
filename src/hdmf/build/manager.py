@@ -4,7 +4,7 @@ from copy import copy
 from collections.abc import Callable
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
-from .classgenerator import ClassGenerator, CustomClassGenerator, MCIClassGenerator
+from .classgenerator import ClassGeneratorManager, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
 from ..term_set import TypeConfigurator
 from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, RefSpec
@@ -416,7 +416,7 @@ class TypeMap:
         self.__container_types = OrderedDict()
         self.__data_types = dict()
         self.__default_mapper_cls = mapper_cls
-        self.__class_generator = ClassGenerator()
+        self.__class_generator_manager = ClassGeneratorManager()
         self.type_config = type_config
 
         self.register_generator(CustomClassGenerator)
@@ -461,7 +461,7 @@ class TypeMap:
                 self.register_container_type(namespace, data_type, container_cls)
         for container_cls in type_map.__mapper_cls:
             self.register_map(container_cls, type_map.__mapper_cls[container_cls])
-        for custom_generators in reversed(type_map.__class_generator.custom_generators):
+        for custom_generators in reversed(type_map.__class_generator_manager.custom_generators):
             # iterate in reverse order because generators are stored internally as a stack
             self.register_generator(custom_generators)
 
@@ -469,7 +469,7 @@ class TypeMap:
     def register_generator(self, **kwargs):
         """Add a custom class generator."""
         generator = getargs('generator', kwargs)
-        self.__class_generator.register_generator(generator)
+        self.__class_generator_manager.register_generator(generator)
 
     @docval(*get_docval(NamespaceCatalog.load_namespaces),
             returns="the namespaces loaded from the given file", rtype=dict)
@@ -525,7 +525,7 @@ class TypeMap:
             self.__check_dependent_types(spec, namespace)
             parent_cls = self.__get_parent_cls(namespace, data_type, spec)
             attr_names = self.__default_mapper_cls.get_attr_names(spec)
-            cls = self.__class_generator.generate_class(data_type=data_type,
+            cls = self.__class_generator_manager.generate_class(data_type=data_type,
                                                         spec=spec,
                                                         parent_cls=parent_cls,
                                                         attr_names=attr_names,
