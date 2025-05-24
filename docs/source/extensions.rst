@@ -159,8 +159,8 @@ Create a new namespace with extensions
 
     # create a builder for the namespace
     ns_builder = NamespaceBuilder(
-        doc="Extension for use in my laboratory", 
-        name="mylab", 
+        doc="Extension for use in my laboratory",
+        name="mylab",
         version="0.1.0",
         ...
     )
