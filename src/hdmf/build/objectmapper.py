@@ -185,7 +185,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         cls.__no_convert.add(obj_type)
 
     @classmethod
-    def convert_dtype(cls, spec, value, spec_dtype=None):  # noqa: C901
+    def convert_dtype(cls, spec, value, spec_dtype=None) -> tuple:  # noqa: C901
         """
         Convert values to the specified dtype. For example, if a literal int
         is passed in to a field that is specified as a unsigned integer, this function
@@ -277,10 +277,29 @@ class ObjectMapper(metaclass=ExtenderMeta):
             raise ValueError("Cannot convert from %s to 'numeric' specification dtype." % value_type)
 
     @classmethod
+    def __check_for_complex_numbers(cls, value):
+        """
+        Check if a value contains complex numbers and raise a ValueError if found.
+        """
+        if isinstance(value, complex):
+            raise ValueError("Complex numbers are not supported")
+
+        # Check numpy array
+        if isinstance(value, np.ndarray) and np.issubdtype(value.dtype, np.complexfloating):
+            raise ValueError("Complex numbers are not supported")
+
+        # Check list/tuple elements
+        if isinstance(value, (list, tuple)):
+            for item in value:
+                cls.__check_for_complex_numbers(item)
+
+    @classmethod
     def __check_edgecases(cls, spec, value, spec_dtype):  # noqa: C901
         """
         Check edge cases in converting data to a dtype
         """
+        # Check for complex numbers first
+        cls.__check_for_complex_numbers(value)
         if value is None:
             # Data is missing. Determine dtype from spec
             dt = spec_dtype

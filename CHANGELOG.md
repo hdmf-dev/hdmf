@@ -19,6 +19,7 @@
 
 ### Fixed
 - Fixed `get_data_shape` returning the wrong shape for lists of Data objects. @rly [#1270](https://github.com/hdmf-dev/hdmf/pull/1270)
+- Added protection against complex numbers in arrays and other data types. @bendichter [#1279](https://github.com/hdmf-dev/hdmf/pull/1279)
 
 ## HDMF 4.0.0 (January 22, 2025)
 
