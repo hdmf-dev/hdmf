@@ -158,37 +158,36 @@ Create a new namespace with extensions
     from hdmf.spec import GroupSpec, NamespaceBuilder
 
     # create a builder for the namespace
-    ns_builder = NamespaceBuilder("Extension for use in my laboratory", "mylab", ...)
+    ns_builder = NamespaceBuilder(
+        doc="Extension for use in my laboratory", 
+        name="mylab", 
+        version="0.1.0",
+        ...
+    )
+
+    # include an existing namespace - this will include all specifications in that namespace
+    ns_builder.include_namespace('collab_ns')
 
     # create extensions
-    ext1 = GroupSpec('A custom SpikeEventSeries interface',
+    ext1 = GroupSpec(doc='A custom SpikeEventSeries interface',
                         attributes=[...]
                         datasets=[...],
                         groups=[...],
                         data_type_inc='SpikeEventSeries',
                         data_type_def='MyExtendedSpikeEventSeries')
 
-    ext2 = GroupSpec('A custom EventDetection interface',
+    ext2 = GroupSpec(doc='A custom EventDetection interface',
                         attributes=[...]
                         datasets=[...],
                         groups=[...],
                         data_type_inc='EventDetection',
                         data_type_def='MyExtendedEventDetection')
 
-
-    # add the extension
-    ext_source = 'mylab.specs.yaml'
-    ns_builder.add_spec(ext_source, ext1)
-    ns_builder.add_spec(ext_source, ext2)
-
-    # include an existing namespace - this will include all specifications in that namespace
-    ns_builder.include_namespace('collab_ns')
-
     output_dir = './spec' # path to folder to store generated YAML schemas.
     new_data_types = [ext1, ext2]
     export_spec(ns_builder, new_data_types, output_dir)
 
-
+.. tip::
 
     Using the API to generate extensions (rather than writing YAML sources directly) helps avoid errors in the specification
     (e.g., due to missing required keys or invalid values) and ensure compliance of the extension definition with the
@@ -251,12 +250,13 @@ If you do not have an :py:class:`~hdmf.container.Container` subclass to associat
 a dynamically created class is created by default.
 
 To use a dynamic class, retrieve the class object using :py:func:~hdmf.common.get_class, which takes the name of
-the data type and its associated namespace as arguments. This function creates the class `__init__` method,
+the data type and its associated namespace as arguments. This function creates the class ``__init__`` method,
 initializing instance variables for each attribute defined in the specification. It also automatically generates
-corresponding getters and setters for those attributes by populating the `__fields__` dict.
+corresponding getters and setters for those attributes by populating the ``__fields__`` dict.
 
-You are never able to see or directly alter the class. You are able to provide a method to be executed after
-`__init__` as the parameter within :py:func:~hdmf.common.get_class.
+The source code for the class is not written to disk and so you cannot easily inspect or modify the class code.
+However, you are able to provide a method to be executed after
+``__init__`` as an argument for :py:func:~hdmf.common.get_class.
 
 Once you have retrieved the class object, you can use it just like you would a statically defined class.
 
@@ -270,7 +270,7 @@ Once you have retrieved the class object, you can use it just like you would a s
                 msg = "attr1 should be >=10"
                 warn(msg)
 
-    MyExtensionContainer = get_class('MyExtensionContainer', 'my_namespace', post_init_method)
+    MyExtensionContainer = get_class('MyExtensionContainer', 'my_namespace', post_init_method=post_init_method)
     my_ext_inst = MyExtensionContainer(...)
 
 
@@ -317,7 +317,7 @@ If your :py:class:`~hdmf.container.Container` extension requires custom mapping 
 .. _documenting-extensions:
 
 NWB
-----------------------
+---
 To see how to extend the NWB format and how to best document extensions, refer to NWB Overview: https://nwb-overview.readthedocs.io/en/latest/extensions_tutorial/6_documenting_extension.html
 
 Further Reading
