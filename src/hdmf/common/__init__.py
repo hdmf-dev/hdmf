@@ -149,16 +149,16 @@ def available_namespaces():
         is_method=False)
 def get_class(**kwargs):
     """Get the class object of the Container subclass corresponding to a given neurdata_type.
+    
     For developers:
-    Get class can eventually lead to the ClassGeneratorManager.
-
-    get_class -> get_dt_container_cls
-    -- get_dt_container_cls will get the container class from data type specification. If it is None,
+    get_class can eventually lead to the ClassGeneratorManager.
+    
+    1. get_class calls get_dt_container_cls.
+    2. get_dt_container_cls will get the container class from data type specification. If it is None,
        then one will be generated.
-    Generation:
-    -- spec is pulled from the catalog
-    -- parent clas and attr_names are pulled from the spec
-    -- generate_class is called from the ClassGeneratorManager
+    3. if one is generated, then the spec is pulled from the catalog
+    4. the parent class and attr_names are pulled from the spec
+    5. generate_class is called from the ClassGeneratorManager
 
     Remember that the generation of a class means the __init__ is being created for you. You don't ever see it.
     The generation also builds the docval for the __init__ and prepares the __fields__ dict for creating
