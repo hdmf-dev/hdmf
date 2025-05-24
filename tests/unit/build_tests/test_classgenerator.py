@@ -5,7 +5,7 @@ import tempfile
 from warnings import warn
 
 from hdmf.build import TypeMap, CustomClassGenerator
-from hdmf.build.classgenerator import ClassGenerator, MCIClassGenerator
+from hdmf.build.classgenerator import ClassGeneratorManager, MCIClassGenerator
 from hdmf.container import Container, Data, MultiContainerInterface, AbstractContainer
 from hdmf.spec import (
     GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec, RefSpec
@@ -17,10 +17,10 @@ from .test_io_map import Bar
 from tests.unit.helpers.utils import CORE_NAMESPACE, create_test_type_map, create_load_namespace_yaml
 
 
-class TestClassGenerator(TestCase):
+class TestClassGeneratorManager(TestCase):
 
     def test_register_generator(self):
-        """Test TypeMap.register_generator and ClassGenerator.register_generator."""
+        """Test TypeMap.register_generator and ClassGeneratorManager.register_generator."""
 
         class MyClassGenerator(CustomClassGenerator):
 
@@ -77,8 +77,8 @@ class TestClassGenerator(TestCase):
             type_map.register_generator(NotACustomClassGenerator)
 
     def test_no_generators(self):
-        """Test that a ClassGenerator without registered generators does nothing."""
-        cg = ClassGenerator()
+        """Test that a ClassGeneratorManager without registered generators does nothing."""
+        cg = ClassGeneratorManager()
         spec = GroupSpec(doc='A test group spec with a data type', data_type_def='Baz')
         cls = cg.generate_class(data_type='Baz', spec=spec, parent_cls=Container, attr_names={}, type_map=TypeMap())
         self.assertEqual(cls.__mro__, (cls, Container, AbstractContainer, object))
@@ -707,7 +707,7 @@ class TestGetClassSeparateNamespace(TestCase):
         self.assertTrue(issubclass(cls, Bar))
 
     def _build_separate_namespaces(self):
-        # create an empty extension to test ClassGenerator._get_container_type resolution
+        # create an empty extension to test ClassGeneratorManager._get_container_type resolution
         # the Bar class has not been mapped yet to the bar spec
         qux_spec = DatasetSpec(
             doc='A test extension',
