@@ -149,10 +149,10 @@ def available_namespaces():
         is_method=False)
 def get_class(**kwargs):
     """Get the class object of the Container subclass corresponding to a given neurdata_type.
-    
+
     For developers:
     get_class can eventually lead to the ClassGeneratorManager.
-    
+
     1. get_class calls get_dt_container_cls.
     2. get_dt_container_cls will get the container class from data type specification. If it is None,
        then one will be generated.
