@@ -9,7 +9,7 @@ from warnings import warn
 
 from .catalog import SpecCatalog
 from .spec import DatasetSpec, GroupSpec
-from ..utils import docval, getargs, popargs, get_docval
+from ..utils import docval, getargs, popargs, get_docval, is_newer_version
 
 _namespace_args = [
     {'name': 'doc', 'type': str, 'doc': 'a description about what this namespace represents'},
@@ -229,13 +229,19 @@ class NamespaceCatalog:
             {'name': 'dataset_spec_cls', 'type': type,
              'doc': 'the class to use for dataset specifications', 'default': DatasetSpec},
             {'name': 'spec_namespace_cls', 'type': type,
-             'doc': 'the class to use for specification namespaces', 'default': SpecNamespace})
+             'doc': 'the class to use for specification namespaces', 'default': SpecNamespace},
+            {'name': 'core_namespaces', 'type': list,
+             'doc': 'the names of the core namespaces', 'default': list()})
     def __init__(self, **kwargs):
         """Create a catalog for storing  multiple Namespaces"""
         self.__namespaces = OrderedDict()
         self.__dataset_spec_cls = getargs('dataset_spec_cls', kwargs)
         self.__group_spec_cls = getargs('group_spec_cls', kwargs)
         self.__spec_namespace_cls = getargs('spec_namespace_cls', kwargs)
+
+        core_namespaces = getargs('core_namespaces', kwargs)
+        self.__core_namespaces = core_namespaces
+
         # keep track of all spec objects ever loaded, so we don't have
         # multiple object instances of a spec
         self.__loaded_specs = dict()
@@ -248,6 +254,7 @@ class NamespaceCatalog:
         ret = NamespaceCatalog(self.__group_spec_cls,
                                self.__dataset_spec_cls,
                                self.__spec_namespace_cls)
+        ret.__core_namespaces = copy(self.__core_namespaces)
         ret.__namespaces = copy(self.__namespaces)
         ret.__loaded_specs = copy(self.__loaded_specs)
         ret.__included_specs = copy(self.__included_specs)
@@ -257,6 +264,8 @@ class NamespaceCatalog:
     def merge(self, ns_catalog):
         for name, namespace in ns_catalog.__namespaces.items():
             self.add_namespace(name, namespace)
+
+        self.__core_namespaces.extend(ns_catalog.__core_namespaces)
 
     @property
     @docval(returns='a tuple of the available namespaces', rtype=tuple)
@@ -278,6 +287,11 @@ class NamespaceCatalog:
     def spec_namespace_cls(self):
         """The SpecNamespace class used in this NamespaceCatalog"""
         return self.__spec_namespace_cls
+
+    @property
+    def core_namespaces(self):
+        """The core namespaces used in this NamespaceCatalog"""
+        return self.__core_namespaces
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this namespace'},
             {'name': 'namespace', 'type': SpecNamespace, 'doc': 'the SpecNamespace object'})
@@ -508,36 +522,122 @@ class NamespaceCatalog:
              'type': bool,
              'doc': 'whether or not to include objects from included/parent spec objects', 'default': True},
             {'name': 'reader',
-             'type': SpecReader,
-             'doc': 'the class to user for reading specifications', 'default': None},
+             'type': (SpecReader, dict),
+             'doc': 'the SpecReader or dict of SpecReader classes to use for reading specifications',
+             'default': None},
             returns='a dictionary describing the dependencies of loaded namespaces', rtype=dict)
     def load_namespaces(self, **kwargs):
         """Load the namespaces in the given file"""
         namespace_path, resolve, reader = getargs('namespace_path', 'resolve', 'reader', kwargs)
+
+        # determine which readers and order of readers to use for loading specs
         if reader is None:
             # load namespace definition from file
             if not os.path.exists(namespace_path):
                 msg = "namespace file '%s' not found" % namespace_path
                 raise IOError(msg)
-            reader = YAMLSpecReader(indir=os.path.dirname(namespace_path))
-        ns_path_key = os.path.join(reader.source, os.path.basename(namespace_path))
-        ret = self.__included_specs.get(ns_path_key)
-        if ret is None:
-            ret = dict()
+            ordered_readers = [YAMLSpecReader(indir=os.path.dirname(namespace_path))]
+        elif isinstance(reader, SpecReader):
+            ordered_readers = [reader]  # only one reader
         else:
-            return ret
-        namespaces = reader.read_namespace(namespace_path)
-        to_load = list()
-        for ns in namespaces:
-            if ns['name'] in self.__namespaces:
-                if ns['version'] != self.__namespaces.get(ns['name'])['version']:
-                    # warn if the cached namespace differs from the already loaded namespace
-                    warn("Ignoring cached namespace '%s' version %s because version %s is already loaded."
-                         % (ns['name'], ns['version'], self.__namespaces.get(ns['name'])['version']))
-            else:
-                to_load.append(ns)
-        # now load specs into namespace
-        for ns in to_load:
-            ret[ns['name']] = self.__load_namespace(ns, reader, resolve=resolve)
-        self.__included_specs[ns_path_key] = ret
+            deps = dict()  # for each namespace, track all included namespaces (dependencies)
+            for ns, r in reader.items():
+                for spec_ns in r.read_namespace(namespace_path):
+                    deps[ns] = list()
+                    for s in spec_ns['schema']:
+                        dep = s.get('namespace')
+                        if dep is not None:
+                            deps[ns].append(dep)
+            order = self._order_deps(deps)
+            ordered_readers = [reader[ns] for ns in order]
+
+        # determine which namespaces to load and which to ignore
+        ignored_namespaces = list()
+        ret = dict()
+        for r in ordered_readers:
+            # continue to next reader if spec is already included
+            ns_path_key = os.path.join(r.source, os.path.basename(namespace_path))
+            included_specs = self.__included_specs.get(ns_path_key)
+            if included_specs is not None:
+                ret.update(included_specs)
+                continue  # continue to next reader if spec is already included
+
+            to_load = list()
+            namespaces = r.read_namespace(namespace_path)
+            for ns in namespaces:
+                if ns['name'] in self.__namespaces:
+                    if ns['version'] != self.__namespaces.get(ns['name'])['version']:
+                        cached_version = ns['version']
+                        loaded_version = self.__namespaces.get(ns['name'])['version']
+                        ignored_namespaces.append((ns['name'], cached_version, loaded_version))
+                else:
+                    to_load.append(ns)
+
+            # now load specs into namespace
+            for ns in to_load:
+                ret[ns['name']] = self.__load_namespace(ns, r, resolve=resolve)
+            self.__included_specs[ns_path_key] = ret
+
+        # warn if there are any ignored namespaces
+        if ignored_namespaces:
+            self.warn_for_ignored_namespaces(ignored_namespaces)
+
         return ret
+
+    def warn_for_ignored_namespaces(self, ignored_namespaces):
+        """Warning if namespaces were ignored where a different version was already loaded
+
+        Args:
+            ignored_namespaces (list): name, cached version, and loaded version of the namespace
+        """
+        core_warnings = list()
+        other_warnings = list()
+        warning_msg = list()
+        for name, cached_version, loaded_version in ignored_namespaces:
+            version_info = f"{name} - cached version: {cached_version}, loaded version: {loaded_version}"
+            if name in self.__core_namespaces and is_newer_version(cached_version, loaded_version):
+                core_warnings.append(version_info)  # for core namespaces, warn if the cached version is newer
+            elif name not in self.__core_namespaces:
+                other_warnings.append(version_info)  # for all other namespaces, issue a warning for compatibility
+
+        if core_warnings:
+            joined_warnings = "\n".join(core_warnings)
+            warning_msg.append(f'{joined_warnings}\nPlease update to the latest package versions.')
+        if other_warnings:
+            joined_warnings = "\n".join(other_warnings)
+            warning_msg.append(f'{joined_warnings}\nThe loaded extension(s) may not be compatible with the cached '
+                               'extension(s) in the file. Please check the extension documentation and ignore this '
+                               'warning if these versions are compatible.')
+        if warning_msg:
+            joined_warnings = "\n".join(warning_msg)
+            warn(f'Ignoring the following cached namespace(s) because another version is already loaded:\n'
+                 f'{joined_warnings}', category=UserWarning, stacklevel=2)
+
+    def _order_deps(self, deps):
+        """
+        Order namespaces according to dependency for loading into a NamespaceCatalog
+
+        Args:
+            deps (dict): a dictionary that maps a namespace name to a list of name of
+                         the namespaces on which the namespace is directly dependent
+                         Example: {'a': ['b', 'c'], 'b': ['d'], 'c': ['d'], 'd': []}
+                         Expected output: ['d', 'b', 'c', 'a']
+        """
+        order = list()
+        keys = list(deps.keys())
+        deps = dict(deps)
+        for k in keys:
+            if k in deps:
+                self.__order_deps_aux(order, deps, k)
+        return order
+
+    def __order_deps_aux(self, order, deps, key):
+        """
+        A recursive helper function for _order_deps
+        """
+        if key not in deps:
+            return
+        subdeps = deps.pop(key)
+        for subk in subdeps:
+            self.__order_deps_aux(order, deps, subk)
+        order.append(key)

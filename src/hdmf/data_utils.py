@@ -28,8 +28,16 @@ def append_data(data, arg):
     elif isinstance(data, np.ndarray):
         if len(data.dtype)>0: # data is a structured array
             return np.append(data, arg)
-        else: # arg is a scalar or row vector
-            return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
+        elif np.ndim(arg) < np.ndim(data):
+            # arg is a scalar or row vector
+            # This can be used for shape validation on append, but now the validated dim
+            # needs to match the expected logic here.
+            return np.append(data, np.expand_dims(arg, axis=0), axis=0)
+        else:
+            # arg already has the same dimension as data
+            # This allows users to use shape validation in the docval (for append) where the input
+            # dim matches the schema dim for the dataset.
+            return np.append(data, arg, axis=0)
     elif isinstance(data, h5py.Dataset):
         shape = list(data.shape)
         shape[0] += 1

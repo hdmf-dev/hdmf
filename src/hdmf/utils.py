@@ -1,5 +1,6 @@
 import collections
 import copy as _copy
+import re
 import types
 import warnings
 from abc import ABCMeta
@@ -810,6 +811,7 @@ def get_data_shape(data, strict_no_data_load=False):
     :return: Tuple of ints indicating the size of known dimensions. Dimensions for which the size is unknown
              will be set to None.
     """
+    from hdmf.container import Data
 
     def __get_shape_helper(local_data):
         shape = list()
@@ -817,7 +819,8 @@ def get_data_shape(data, strict_no_data_load=False):
             shape.append(len(local_data))
             if len(local_data):
                 el = next(iter(local_data))
-                if not isinstance(el, (str, bytes)):
+                # If local_data is a list/tuple of Data, do not iterate into the objects
+                if not isinstance(el, (str, bytes, Data)):
                     shape.extend(__get_shape_helper(el))
         return tuple(shape)
 
@@ -873,6 +876,22 @@ def is_ragged(data):
             return True  # ragged at this level
 
         return any(is_ragged(sub_data) for sub_data in data)  # check next level
+
+    return False
+
+def is_newer_version(version_a: str, version_b: str) -> bool:
+    # this method could be replaced by packaging.version if packaging is added as a dependency
+    version_a_match = re.match(r"(\d+\.\d+\.\d+)", version_a)[0]  # trim off any non-numeric symbols at end
+    version_a_list = [int(i) for i in version_a_match.split(".")]
+
+    version_b_match = re.match(r"(\d+\.\d+\.\d+)", version_b)[0]  # trim off any non-numeric symbols at end
+    version_b_list = [int(i) for i in version_b_match.split(".")]
+
+    for a, b in zip(version_a_list, version_b_list):
+        if a > b:
+            return True
+        elif a < b:
+            return False
 
     return False
 
