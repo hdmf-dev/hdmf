@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 4.0.1 (May 28, 2025)
+## HDMF 4.1.0 (May 28, 2025)
 
 ### Enhancements
 - Optimized `get` within `VectorIndex` to be more efficient when retrieving a dataset of references. @mavaylon1 [#1248](https://github.com/hdmf-dev/hdmf/pull/1248)
