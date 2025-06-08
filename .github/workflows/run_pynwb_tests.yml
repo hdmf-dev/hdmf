@@ -1,4 +1,4 @@
-name: Run PyNWB tests
+name: Run PyNWB Unit, Integaration, and Gallery Tests
 on:
   pull_request:
   schedule:
@@ -42,3 +42,9 @@ jobs:
         run: |
           cd pynwb
           python test.py -v
+
+      - name: Run PyNWB Gallery tests on PyNWB dev branch
+        run: |
+          cd pynwb
+          python test.py -e -v
+          
