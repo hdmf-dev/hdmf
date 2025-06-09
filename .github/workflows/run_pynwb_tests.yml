@@ -1,4 +1,4 @@
-name: Run PyNWB Unit, Integaration, and Gallery Tests
+name: Run PyNWB Unit, Integration, and Gallery Tests
 on:
   pull_request:
   schedule:
