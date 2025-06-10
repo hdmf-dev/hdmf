@@ -44,7 +44,7 @@ class TestBuildNoDtypeSpec(TestCase):
             dtype=[('volume', 'f4'), ('autorewarded', 'bool')]
         )
 
-        # Set up build manager with core NWB type map
+        # Set up build manager with core type map
         manager = BuildManager(get_type_map())
 
         # Expect ValueError due to compound dtype with no declared dtype in the spec
