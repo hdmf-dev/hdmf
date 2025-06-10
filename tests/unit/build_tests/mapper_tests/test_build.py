@@ -666,7 +666,7 @@ class TestBuildDatasetNotRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
         )
 
         # the object mapper automatically maps the spec of extended Bars to the 'BarMapper.bars' field
-        msg = "could not resolve dtype for BarData 'my_bar'"
+        msg = "could not resolve dtype for BarData 'my_bar': invalid literal for int() with base 10: 'a'"
         with self.assertRaisesWith(Exception, msg):
             self.manager.build(bar_data_holder_inst, source='test.h5')
 
