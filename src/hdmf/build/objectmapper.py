@@ -202,6 +202,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         if spec_dtype is None:
             spec_dtype = spec.dtype
+        # Disallow structured arrays (compound dtypes) if the spec has no dtype
+        if spec_dtype is None:
+            if isinstance(value, np.ndarray) and value.dtype.fields is not None:
+                """
+                value.dtype.fields is not None will check to see if the array
+                has a compound dtype. Using a compound data type
+                without defining an extension is currently not supported.
+                """
+                raise ValueError(
+                    f"Spec '{spec.name}' received a structured/compound dtype, "
+                    f"but no dtype was specified in the spec. "
+                    f"Structured dtypes must be explicitly defined in the schema or a extension."
+                )
         ret, ret_dtype = cls.__check_edgecases(spec, value, spec_dtype)
         if ret is not None or ret_dtype is not None:
             return ret, ret_dtype
@@ -815,8 +828,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                 data = container.data
                             bldr_data, dtype = self.convert_dtype(spec, data, spec_dtype=spec_dtype)
                         except Exception as ex:
-                            msg = 'could not resolve dtype for %s \'%s\'' % (type(container).__name__, container.name)
-                            raise Exception(msg) from ex
+                            msg = f"could not resolve dtype for {type(container).__name__} '{container.name}'"
+                            full_msg = f"{msg}: {str(ex)}"
+                            raise Exception(full_msg) from ex
+
                         builder = DatasetBuilder(
                             name,
                             data=bldr_data,
