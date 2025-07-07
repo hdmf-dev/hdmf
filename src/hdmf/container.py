@@ -43,7 +43,7 @@ class HERDManager:
         Method to attach an instance of HERD in order to auto-add terms/references to data.
         """
         self._herd = kwargs['herd']
-        
+
     @property
     def external_resources(self):
         return self._herd if hasattr(self, "_herd") else None
