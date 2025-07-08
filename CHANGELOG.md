@@ -1,5 +1,9 @@
 # HDMF Changelog
 
+## HDMF 4.1.1 (Upcoming)
+### Enhancements
+- Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
+
 ## HDMF 4.1.0 (May 28, 2025)
 
 ### Enhancements
