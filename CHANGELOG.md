@@ -1,8 +1,9 @@
 # HDMF Changelog
 
 ## HDMF 4.1.1 (Upcoming)
-### Enhancements
+### Enhancements and Minor Changes
 - Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
+- Changed HERDManager to support downstream API function overloading. @mavaylon1 [#1292](https://github.com/hdmf-dev/hdmf/pull/1292)
 
 ## HDMF 4.1.0 (May 28, 2025)
 
