@@ -30,7 +30,7 @@ class TestHERDManager(TestCase):
         er = HERD()
 
         em.link_resources(er)
-        er_get = em.get_linked_resources()
+        er_get = em.external_resources
         self.assertEqual(er, er_get)
 
 
