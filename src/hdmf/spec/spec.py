@@ -1045,28 +1045,24 @@ class GroupSpec(BaseStorageSpec):
             return self.is_inherited_type(spec_name)
         elif spec_name in self.__target_types:
             return self.is_inherited_target_type(spec_name)
+        elif super().is_inherited_spec(spec):  # attribute spec
+            return True
         else:
-            # attribute spec
-            if super().is_inherited_spec(spec):
-                return True
+            parent_name = spec.parent.name
+            if parent_name is None:
+                parent_name = spec.parent.data_type
+            if isinstance(spec.parent, DatasetSpec):
+                if (parent_name in self.__datasets and self.is_inherited_dataset(parent_name) and
+                    self.__datasets[parent_name].get_attribute(spec_name) is not None):
+                        return True
             else:
-                parent_name = spec.parent.name
-                if parent_name is None:
-                    parent_name = spec.parent.data_type
-                if isinstance(spec.parent, DatasetSpec):
-                    if parent_name in self.__datasets:
-                        if self.is_inherited_dataset(parent_name):
-                            if self.__datasets[parent_name].get_attribute(spec_name) is not None:
-                                return True
-                else:
-                    if parent_name in self.__groups:
-                        if self.is_inherited_group(parent_name):
-                            if self.__groups[parent_name].get_attribute(spec_name) is not None:
-                                return True
+                if (parent_name in self.__groups and self.is_inherited_group(parent_name) and
+                    self.__groups[parent_name].get_attribute(spec_name) is not None):
+                        return True
         return False
 
     @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
-    def is_overridden_spec(self, **kwargs):  # noqa: C901
+    def is_overridden_spec(self, **kwargs):
         ''' Returns 'True' if specification overrides a specification from the parent type '''
         spec = getargs('spec', kwargs)
         spec_name = spec.name
@@ -1090,23 +1086,20 @@ class GroupSpec(BaseStorageSpec):
             return self.is_overridden_dataset(spec_name)
         elif spec_name in self.__data_types:
             return self.is_overridden_type(spec_name)
+        elif super().is_overridden_spec(spec):  # attribute spec
+            return True
         else:
-            if super().is_overridden_spec(spec):  # check if overridden attribute
-                return True
+            parent_name = spec.parent.name
+            if parent_name is None:
+                parent_name = spec.parent.data_type
+            if isinstance(spec.parent, DatasetSpec):
+                if (parent_name in self.__datasets and self.is_overridden_dataset(parent_name) and
+                    self.__datasets[parent_name].is_overridden_spec(spec)):
+                        return True
             else:
-                parent_name = spec.parent.name
-                if parent_name is None:
-                   parent_name = spec.parent.data_type
-                if isinstance(spec.parent, DatasetSpec):
-                    if parent_name in self.__datasets:
-                        if self.is_overridden_dataset(parent_name):
-                            if self.__datasets[parent_name].is_overridden_spec(spec):
-                                return True
-                else:
-                    if parent_name in self.__groups:
-                        if self.is_overridden_group(parent_name):
-                            if self.__groups[parent_name].is_overridden_spec(spec):
-                                return True
+                if (parent_name in self.__groups and self.is_overridden_group(parent_name) and
+                    self.__groups[parent_name].is_overridden_spec(spec)):
+                        return True
         return False
 
     @docval({'name': 'spec', 'type': (BaseStorageSpec, str), 'doc': 'the specification to check'})

@@ -160,6 +160,11 @@ class VectorIndex(VectorData):
         """
         self.add_vector(arg, **kwargs)
 
+    def __get_slice(self, arg):
+        start = 0 if arg == 0 else self.data[arg - 1]
+        end = self.data[arg]
+        return slice(start, end)
+
     def __getitem_helper(self, arg, **kwargs):
         """
         Internal helper function used by __getitem__ to retrieve a data value from self.target
@@ -168,9 +173,8 @@ class VectorIndex(VectorData):
         :param kwargs: any additional arguments to *get* method of the self.target VectorData
         :return: Scalar or list of values retrieved
         """
-        start = 0 if arg == 0 else self.data[arg - 1]
-        end = self.data[arg]
-        return self.target.get(slice(start, end), **kwargs)
+        slices = self.__get_slice(arg)
+        return self.target.get(slices, **kwargs)
 
     def __getitem__(self, arg):
         """
@@ -199,8 +203,27 @@ class VectorIndex(VectorData):
                     arg = np.where(arg)[0]
                 indices = arg
             ret = list()
-            for i in indices:
-                ret.append(self.__getitem_helper(i, **kwargs))
+            if len(indices) > 0:
+                # Note: len(indices) == 0 for test_to_hierarchical_dataframe_empty_tables.
+                # This is an edge case test for to_hierarchical_dataframe() on empty tables.
+                # When len(indices) == 0, ret is expected to be an empty list, defined above.
+                try:
+                    data = self.target.get(slice(None),  **kwargs)
+                except IndexError:
+                    """
+                    Note: TODO: test_to_hierarchical_dataframe_indexed_dtr_on_last_level.
+                    This is the old way to get the data and not an untested feature.
+                    """
+                    for i in indices:
+                        ret.append(self.__getitem_helper(i, **kwargs))
+
+                    return ret
+
+                slices = [self.__get_slice(i) for i in indices]
+                if isinstance(data, pd.DataFrame):
+                    ret = [data.iloc[s] for s in slices]
+                else:
+                    ret = [data[s] for s in slices]
             return ret
 
 
@@ -304,7 +327,7 @@ class DynamicTable(Container):
                     except AttributeError:   # raises error when "__columns__" is not an attr of item
                         continue
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},  # noqa: C901
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this table'},
             {'name': 'description', 'type': str, 'doc': 'a description of what is in this table'},
             {'name': 'id', 'type': ('array_data', 'data', ElementIdentifiers), 'doc': 'the identifiers for this table',
              'default': None},
@@ -638,26 +661,9 @@ class DynamicTable(Container):
         """Number of rows in the table"""
         return len(self.id)
 
-    @docval({'name': 'data', 'type': dict, 'doc': 'the data to put in this row', 'default': None},
-            {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
-            {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
-             'default': False},
-            {'name': 'check_ragged', 'type': bool, 'default': True,
-             'doc': ('whether or not to check for ragged arrays when adding data to the table. '
-                     'Set to False to avoid checking every element if performance issues occur.')},
-            allow_extra=True)
-    def add_row(self, **kwargs):
-        """
-        Add a row to the table. If *id* is not provided, it will auto-increment.
-        """
-        data, row_id, enforce_unique_id, check_ragged = popargs('data', 'id', 'enforce_unique_id', 'check_ragged',
-                                                                kwargs)
-        data = data if data is not None else kwargs
-
+    def _validate_new_row(self, data: dict):
+        """Validate a row of new data to be added."""
         bad_data = []
-        extra_columns = set(list(data.keys())) - set(list(self.__colids.keys()))
-        missing_columns = set(list(self.__colids.keys())) - set(list(data.keys()))
-
         for colname, colnum in self.__colids.items():
             if colname not in data:
                 raise ValueError("column '%s' missing" % colname)
@@ -675,7 +681,12 @@ class DynamicTable(Container):
             msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
             raise ValueError(msg)
 
-        # check to see if any of the extra columns just need to be added
+    def _add_extra_predefined_columns(self, data: dict):
+        """Add columns that are predefined, have not been added, and are present in the new row data.
+        Also check to see if all extra row data keys have corresponding columns in the table.
+        """
+        extra_columns = set(list(data.keys())) - set(list(self.__colids.keys()))
+
         if extra_columns:
             for col in self.__columns__:
                 if col['name'] in extra_columns:
@@ -691,14 +702,34 @@ class DynamicTable(Container):
                                            if k not in DynamicTable.__reserved_colspec_keys})
                     extra_columns.remove(col['name'])
 
-        if extra_columns or missing_columns:
+        if extra_columns:
             raise ValueError(
                 '\n'.join([
                     'row data keys don\'t match available columns',
                     'you supplied {} extra keys: {}'.format(len(extra_columns), extra_columns),
-                    'and were missing {} keys: {}'.format(len(missing_columns), missing_columns)
                 ])
             )
+
+    @docval({'name': 'data', 'type': dict, 'doc': 'the data to put in this row', 'default': None},
+            {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
+            {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
+             'default': False},
+            {'name': 'check_ragged', 'type': bool, 'default': True,
+             'doc': ('whether or not to check for ragged arrays when adding data to the table. '
+                     'Set to False to avoid checking every element if performance issues occur.')},
+            allow_extra=True)
+    def add_row(self, **kwargs):
+        """
+        Add a row to the table. If *id* is not provided, it will auto-increment.
+        """
+        data, row_id, enforce_unique_id, check_ragged = popargs('data', 'id', 'enforce_unique_id', 'check_ragged',
+                                                                kwargs)
+        data = data if data is not None else kwargs
+
+        self._validate_new_row(data)
+        self._add_extra_predefined_columns(data)
+
+
         if row_id is None:
             row_id = data.pop('id', None)
         if row_id is None:
@@ -711,12 +742,12 @@ class DynamicTable(Container):
         for colname, colnum in self.__colids.items():
             if colname not in data:
                 raise ValueError("column '%s' missing" % colname)
-            c = self.__df_cols[colnum]
-            if isinstance(c, VectorIndex):
-                c.add_vector(data[colname])
+            col = self.__df_cols[colnum]
+            if isinstance(col, VectorIndex):
+                col.add_vector(data[colname])
             else:
-                c.add_row(data[colname])
-                if check_ragged and is_ragged(c.data):
+                col.add_row(data[colname])
+                if check_ragged and is_ragged(col.data):
                     warn(("Data has elements with different lengths and therefore cannot be coerced into an "
                           "N-dimensional array. Use the 'index' argument when creating a column to add rows "
                           "with different lengths."),
@@ -741,7 +772,7 @@ class DynamicTable(Container):
             return False
         return self.to_dataframe().equals(other.to_dataframe())
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},  # noqa: C901
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
@@ -1453,7 +1484,6 @@ class DynamicTableRegion(VectorData):
             return ret
         elif isinstance(arg, (list, slice, np.ndarray)):
             idx = arg
-
             # get the data at the specified indices
             if isinstance(self.data, (tuple, list)) and isinstance(idx, (list, np.ndarray)):
                 ret = [self.data[i] for i in idx]

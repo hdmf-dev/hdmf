@@ -10,7 +10,7 @@ from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from ..utils import docval, getargs, ExtenderMeta, get_docval, popargs, AllowPositional
 
 
-class ClassGenerator:
+class ClassGeneratorManager:
 
     def __init__(self):
         self.__custom_generators = []
@@ -21,7 +21,7 @@ class ClassGenerator:
 
     @docval({'name': 'generator', 'type': type, 'doc': 'the CustomClassGenerator class to register'})
     def register_generator(self, **kwargs):
-        """Add a custom class generator to this ClassGenerator.
+        """Add a custom class generator to this ClassGeneratorManager.
 
         Generators added later are run first. Duplicates are moved to the top of the list.
         """
@@ -33,9 +33,9 @@ class ClassGenerator:
         self.__custom_generators.insert(0, generator)
 
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data type to create a AbstractContainer class for'},
-            {'name': 'spec', 'type': BaseStorageSpec, 'doc': ''},
-            {'name': 'parent_cls', 'type': type, 'doc': ''},
-            {'name': 'attr_names', 'type': dict, 'doc': ''},
+            {'name': 'spec', 'type': BaseStorageSpec, 'doc': 'The spec for the class to be generated.'},
+            {'name': 'parent_cls', 'type': type, 'doc': 'Parent class used for docval ancestor args.'},
+            {'name': 'attr_names', 'type': dict, 'doc': 'The names of the attributes from the spec.'},
             {'name': 'post_init_method', 'type': Callable, 'default': None,
              'doc': 'The function used as a post_init method to validate the class generation.'},
             {'name': 'type_map', 'type': 'hdmf.build.manager.TypeMap', 'doc': ''},
@@ -52,6 +52,9 @@ class ClassGenerator:
 
         not_inherited_fields = dict()
         for k, field_spec in attr_names.items():
+            """
+            Collect new fields that are actually part of this spec, not its ancestors.
+            """
             if k == 'help':  # pragma: no cover
                 # (legacy) do not add field named 'help' to any part of class object
                 continue
@@ -67,6 +70,10 @@ class ClassGenerator:
                 for class_generator in self.__custom_generators:  # pragma: no branch
                     # each generator can update classdict and docval_args
                     if class_generator.apply_generator_to_field(field_spec, bases, type_map):
+                        # process_field_spec extracts field metadata (name, type, doc, shape, default, constraints)
+                        # from the schema spec and adds it to classdict under __fields__ for later use in
+                        # generating dynamic properties.
+                        # Also creates a corresponding docval argument for the class constructor.
                         class_generator.process_field_spec(classdict, docval_args, parent_cls, attr_name,
                                                            not_inherited_fields, type_map, spec)
                         break  # each field_spec should be processed by only one generator

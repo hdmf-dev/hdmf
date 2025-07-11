@@ -8,4 +8,4 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
       - name: Run ruff
-        uses: chartboost/ruff-action@v1
+        uses: astral-sh/ruff-action@v3

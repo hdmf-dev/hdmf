@@ -45,8 +45,9 @@ pyproject.toml_ contains a list of package dependencies and their version ranges
 running HDMF. As a library, upper bound version constraints create more harm than good in the long term (see this
 `blog post`_) so we avoid setting upper bounds on requirements.
 
-When setting lower bounds, make sure to specify the lower bounds in both pyproject.toml_ and
-requirements-min.txt_. The latter is used in automated testing to ensure that the package runs
+When setting lower bounds, make sure to specify the lower bounds in the ``[project] dependencies`` key and
+``[project.optional-dependencies] min-reqs`` key in pyproject.toml_.
+The latter is used in automated testing to ensure that the package runs
 correctly using the minimum versions of dependencies.
 
 Minimum requirements should be updated manually if a new feature or bug fix is added in a dependency that is required
@@ -56,7 +57,6 @@ minimum version to be as high as it is.
 
 .. _pyproject.toml: https://github.com/hdmf-dev/hdmf/blob/dev/pyproject.toml
 .. _blog post: https://iscinumpy.dev/post/bound-version-constraints/
-.. _requirements-min.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-min.txt
 
 --------------------
 Testing Requirements

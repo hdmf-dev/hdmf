@@ -2,7 +2,6 @@ from copy import copy, deepcopy
 import os
 import urllib.request
 import h5py
-import warnings
 
 from hdmf.backends.hdf5.h5tools import HDF5IO
 from hdmf.build import TypeMap, BuildManager
@@ -79,8 +78,6 @@ class TestRos3(TestCase):
         type_map.load_namespaces(ns_path)
 
         self.manager = BuildManager(type_map)
-
-        warnings.filterwarnings(action="ignore", message="Ignoring cached namespace .*")
 
     def tearDown(self):
         if os.path.exists(self.ns_filename):
