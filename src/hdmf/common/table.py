@@ -204,20 +204,6 @@ class VectorIndex(VectorData):
                 indices = arg
             ret = list()
             if len(indices) > 0:
-                # Note: len(indices) == 0 for test_to_hierarchical_dataframe_empty_tables.
-                # This is an edge case test for to_hierarchical_dataframe() on empty tables.
-                # When len(indices) == 0, ret is expected to be an empty list, defined above.
-                # try:
-                #     data = self.target.get(slice(None),  **kwargs)
-                # except IndexError:
-                #     """
-                #     Note: TODO: test_to_hierarchical_dataframe_indexed_dtr_on_last_level.
-                #     This is the old way to get the data and not an untested feature.
-                #     """
-                #     for i in indices:
-                #         ret.append(self.__getitem_helper(i, **kwargs))
-                #
-                #     return ret
                 if isinstance(self, VectorIndex):
                     # Note: VectorIndex gets messy as it is using the index for a DynamicTableRegion
                     # to then index a DynamicTable. The data in VectorIndex is being used as slice.
