@@ -207,18 +207,27 @@ class VectorIndex(VectorData):
                 # Note: len(indices) == 0 for test_to_hierarchical_dataframe_empty_tables.
                 # This is an edge case test for to_hierarchical_dataframe() on empty tables.
                 # When len(indices) == 0, ret is expected to be an empty list, defined above.
-                try:
-                    data = self.target.get(slice(None),  **kwargs)
-                except IndexError:
-                    """
-                    Note: TODO: test_to_hierarchical_dataframe_indexed_dtr_on_last_level.
-                    This is the old way to get the data and not an untested feature.
-                    """
-                    for i in indices:
-                        ret.append(self.__getitem_helper(i, **kwargs))
-
-                    return ret
-
+                # try:
+                #     data = self.target.get(slice(None),  **kwargs)
+                # except IndexError:
+                #     """
+                #     Note: TODO: test_to_hierarchical_dataframe_indexed_dtr_on_last_level.
+                #     This is the old way to get the data and not an untested feature.
+                #     """
+                #     for i in indices:
+                #         ret.append(self.__getitem_helper(i, **kwargs))
+                #
+                #     return ret
+                if isinstance(self, VectorIndex):
+                    # Note: VectorIndex gets messy as it is using the index for a DynamicTableRegion
+                    # to then index a DynamicTable. The data in VectorIndex is being used as slice.
+                    # This means when we create slice we want to keep the natural behavior of leaving
+                    # the last one out.
+                    # slice(None) is for when the data are not indices and you want everything.
+                    slicing = slice(0, self.data[-1])
+                else:
+                    slicing = slice(None)
+                data = self.target.get(slicing,  **kwargs)
                 slices = [self.__get_slice(i) for i in indices]
                 if isinstance(data, pd.DataFrame):
                     ret = [data.iloc[s] for s in slices]
@@ -1094,6 +1103,7 @@ class DynamicTable(Container):
         ret = OrderedDict()
         try:
             # index with a python slice or single int to select one or multiple rows
+            # breakpoint()
             ret['id'] = self.id[arg]
             for name in self.colnames:
                 if name in exclude:
