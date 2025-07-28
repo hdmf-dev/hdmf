@@ -5,7 +5,7 @@
 - Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
 
 ### Fixed
-- Fixed bug where compound datatypes were disregarding custom data I/O options with the zarr backend. @pauladkisson [#1296](https://github.com/hdmf-dev/hdmf/pull/1296)
+- Fixed bug where compound datatypes were disregarding custom data I/O options with the zarr backend. @pauladkisson [#1297](https://github.com/hdmf-dev/hdmf/pull/1297)
 
 ## HDMF 4.1.0 (May 28, 2025)
 
