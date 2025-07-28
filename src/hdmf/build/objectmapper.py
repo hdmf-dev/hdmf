@@ -5,7 +5,11 @@ from collections import OrderedDict
 from copy import copy
 
 import numpy as np
-from hdmf_zarr import ZarrDataIO
+try:
+    from hdmf_zarr import ZarrDataIO
+    HDMF_ZARR_INSTALLED = True
+except ImportError:
+    HDMF_ZARR_INSTALLED = False
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, BaseBuilder
 from .errors import (BuildError, OrphanContainerBuildError, ReferenceTargetNotBuiltError, ContainerConfigurationError,
@@ -975,9 +979,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if isinstance(container.data, H5DataIO):
                 # This is here to support appending a dataset of references.
                 bldr_data = H5DataIO(bldr_data, **container.data.get_io_params())
-            elif isinstance(container.data, ZarrDataIO):
+            elif HDMF_ZARR_INSTALLED and isinstance(container.data, ZarrDataIO):
                 # This is here to support appending a dataset of references.
-                bldr_data = ZarrDataIO(bldr_data, **container.data.io_settings)
+                bldr_data = ZarrDataIO(bldr_data, **container.data.get_io_params())
             builder.data = bldr_data
 
         return _filler
