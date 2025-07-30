@@ -1089,7 +1089,6 @@ class DynamicTable(Container):
         ret = OrderedDict()
         try:
             # index with a python slice or single int to select one or multiple rows
-            # breakpoint()
             ret['id'] = self.id[arg]
             for name in self.colnames:
                 if name in exclude:
