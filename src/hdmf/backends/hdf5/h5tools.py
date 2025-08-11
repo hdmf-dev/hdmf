@@ -222,10 +222,8 @@ class HDF5IO(HDMFIO):
 
     @classmethod
     def __load_namespaces(cls, namespace_catalog, namespaces, file_obj):
-        d = {}
-
         if not cls.__check_specloc(file_obj):
-            return d
+            return {}
 
         namespace_versions = cls.__get_namespaces(file_obj)
 
@@ -237,11 +235,9 @@ class HDF5IO(HDMFIO):
         for ns in namespaces:
             latest_version = namespace_versions[ns]
             ns_group = spec_group[ns][latest_version]
-            reader = H5SpecReader(ns_group)
-            readers[ns] = reader
+            readers[ns] = H5SpecReader(ns_group)
 
-        d.update(namespace_catalog.load_namespaces(cls.__ns_spec_path, reader=readers))
-
+        d = namespace_catalog.load_namespaces(cls.__ns_spec_path, reader=readers)
         return d
 
     @classmethod
