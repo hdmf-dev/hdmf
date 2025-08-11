@@ -213,9 +213,9 @@ class HDF5IO(HDMFIO):
 
             # Use the already open h5py.File object to load namespaces
             open_file_obj = io._file
-
-        open_file_obj = cls.__resolve_file_obj(path, file_obj, driver, aws_region=aws_region)
-        if file_obj is None:  # need to close the file object that we just opened
+        else:
+            open_file_obj = cls.__resolve_file_obj(path, file_obj, driver, aws_region=aws_region)
+        if path is not None:  # need to close the file object that we just opened
             with open_file_obj:
                 return cls.__load_namespaces(namespace_catalog, namespaces, open_file_obj)
         return cls.__load_namespaces(namespace_catalog, namespaces, open_file_obj)
