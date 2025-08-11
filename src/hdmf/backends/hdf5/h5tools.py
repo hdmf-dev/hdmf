@@ -159,26 +159,36 @@ class HDF5IO(HDMFIO):
         return file_obj
 
     @classmethod
-    @docval({'name': 'namespace_catalog', 'type': (NamespaceCatalog, TypeMap),
-             'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
-            {'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
-            {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
-            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
-            {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
-            {'name': 'aws_region', 'type': str, 'doc': 'If driver is ros3, then specify the aws region of the url.',
-             'default': None},
-            {'name': 'io',
-             'type': 'HDF5IO',
-             'doc': (
-                 "An already open HDF5IO object to use for loading namespaces from. "
-                 "Only one of `path`, 'file', or `io` should be provided. "
-                 "This avoids the need to open the file again if it is already open."
-             ),
-             'default': None
-            },
-            returns=("dict mapping the names of the loaded namespaces to a dict mapping included namespace names and "
-                     "the included data types"),
-            rtype=dict)
+    @docval(
+        {
+            'name': 'namespace_catalog',
+            'type': (NamespaceCatalog, TypeMap),
+            'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'
+        },
+        {'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
+        {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
+        {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
+        {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+        {
+            'name': 'aws_region',
+            'type': str,
+            'doc': 'If driver is ros3, then specify the aws region of the url.',
+            'default': None
+        },
+        {
+            'name': 'io',
+            'type': 'HDF5IO',
+            'doc': (
+                "An already open HDF5IO object to use for loading namespaces from. "
+                "Only one of `path`, 'file', or `io` should be provided. "
+                "This avoids the need to open the file again if it is already open."
+            ),
+            'default': None
+        },
+        returns=("dict mapping the names of the loaded namespaces to a dict mapping included namespace names and "
+                    "the included data types"),
+        rtype=dict
+    )
     def load_namespaces(cls, **kwargs):
         """Load cached namespaces from a file.
 
