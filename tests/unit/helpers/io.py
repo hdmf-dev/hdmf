@@ -19,5 +19,8 @@ class DoNothingIO(HDMFIO):
         pass
 
     @classmethod
-    def load_namespaces(cls, namespace_catalog, path, namespaces, io):
+    def load_namespaces(cls, namespace_catalog, path, namespaces):
+        pass
+
+    def load_namespaces_io(self, namespace_catalog, namespaces):
         pass
