@@ -225,6 +225,7 @@ class HDMFIO(metaclass=ABCMeta):
         :param namespaces: A list of namespace names to load. If None, all namespaces will be loaded.
         :return: A dictionary mapping namespace names to their dependencies.
         """
+        # NOTE: this function is separated from load_namespaces for developer clarity
         pass
 
     @staticmethod

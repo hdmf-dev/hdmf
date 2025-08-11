@@ -180,7 +180,7 @@ class HDF5IO(HDMFIO):
         rtype=dict
     )
     def load_namespaces(cls, **kwargs):
-        """Load cached namespaces from a file.
+        """Load cached namespaces from a file into the provided NamespaceCatalog or TypeMap.
 
         If `file` is not supplied, then an :py:class:`h5py.File` object will be opened for the given `path`, the
         namespaces will be read, and the File object will be closed. If `file` is supplied, then
@@ -206,7 +206,7 @@ class HDF5IO(HDMFIO):
         {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None}
     )
     def load_namespaces_io(self, **kwargs):
-        """Load cached namespaces from the HDF5IO object itself."""
+        """Load cached namespaces from this HDF5IO object into the provided NamespaceCatalog or TypeMap."""
         namespace_catalog, namespaces = getargs('namespace_catalog', 'namespaces', kwargs)
         if not self.__file:
             raise UnsupportedOperation("Cannot load namespaces from closed HDF5 file '%s'" % self.source)
