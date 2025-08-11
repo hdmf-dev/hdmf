@@ -112,6 +112,19 @@ class AbstractContainer(metaclass=ExtenderMeta):
         itself is only one file. When a user loads custom configs, the config is appended/modified.
         The modifications are not written to file, avoiding permanent modifications.
         """
+        # check for TermSet defined within schema
+        try:
+            spec = type_map.get_map(self).spec
+            check_spec = True
+        except ValueError:
+            # Class may not be mapped to a data type (test suite)
+            check_spec = False
+
+        if check_spec and 'termset' in spec:
+            termset_path = spec['termset']
+
+        # Check for Loaded configuration
+        # Note: A loaded configuration should override TermSet defined in the schema
         configurator = type_map.type_config
 
         if len(configurator.path)>0:
@@ -162,9 +175,10 @@ class AbstractContainer(metaclass=ExtenderMeta):
                     return val
 
                 termset_path = os.path.join(CUR_DIR, config_termset_path['termset'])
-                termset = TermSet(term_schema_path=termset_path)
-                val = TermSetWrapper(value=val, termset=termset)
-                return val
+
+        termset = TermSet(term_schema_path=termset_path)
+        val = TermSetWrapper(value=val, termset=termset)
+        return val
 
     @classmethod
     def _getter(cls, field):
