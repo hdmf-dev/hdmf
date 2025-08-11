@@ -167,6 +167,15 @@ class HDF5IO(HDMFIO):
             {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
             {'name': 'aws_region', 'type': str, 'doc': 'If driver is ros3, then specify the aws region of the url.',
              'default': None},
+            {'name': 'io',
+             'type': 'HDF5IO',
+             'doc': (
+                 "An already open HDF5IO object to use for loading namespaces from. "
+                 "Only one of `path`, 'file', or `io` should be provided. "
+                 "This avoids the need to open the file again if it is already open."
+             ),
+             'default': None
+            },
             returns=("dict mapping the names of the loaded namespaces to a dict mapping included namespace names and "
                      "the included data types"),
             rtype=dict)
@@ -177,10 +186,23 @@ class HDF5IO(HDMFIO):
         namespaces will be read, and the File object will be closed. If `file` is supplied, then
         the given File object will be read from and not closed.
 
-        :raises ValueError: if both `path` and `file` are supplied but `path` is not the same as the path of `file`.
+        :raises ValueError: if both `path` and `file` are supplied but `path` is not the same as the path of `file`, or
+            if both `io` and `file` or both `io` and `path` are supplied.
         """
-        namespace_catalog, path, namespaces, file_obj, driver, aws_region = popargs(
-            'namespace_catalog', 'path', 'namespaces', 'file', 'driver', 'aws_region', kwargs)
+        namespace_catalog, path, namespaces, file_obj, driver, aws_region, io = popargs(
+            'namespace_catalog', 'path', 'namespaces', 'file', 'driver', 'aws_region', 'io', kwargs)
+
+        if io is not None:
+            if file_obj is not None:
+                raise ValueError("Both 'file' and 'io' were specified. Please choose only one.")
+            if path is not None:
+                raise ValueError(
+                    "Both 'path' and 'io' were specified. Please choose only one. If you want to use an already "
+                    "open HDF5IO object, use the 'io' argument."
+                )
+
+            # Use the already open h5py.File object to load namespaces
+            open_file_obj = io._file
 
         open_file_obj = cls.__resolve_file_obj(path, file_obj, driver, aws_region=aws_region)
         if file_obj is None:  # need to close the file object that we just opened

@@ -1,11 +1,13 @@
 from abc import ABCMeta, abstractmethod
 import os
 from pathlib import Path
+from typing import Union, Optional
 
-from ..build import BuildManager, GroupBuilder
+from ..build import BuildManager, GroupBuilder, TypeMap
 from ..container import Container, HERDManager
 from .errors import UnsupportedOperation
 from ..utils import docval, getargs, popargs, get_basic_array_info, generate_array_html_repr
+from ..spec import  NamespaceCatalog
 from warnings import warn
 
 
@@ -186,6 +188,30 @@ class HDMFIO(metaclass=ABCMeta):
     @abstractmethod
     def close(self):
         ''' Close this HDMFIO object to further reading/writing'''
+        pass
+
+    @classmethod
+    @abstractmethod
+    def load_namespaces(cls,
+        namespace_catalog: Union[NamespaceCatalog, TypeMap],
+        path: Optional[Union[str, Path]] = None,
+        namespaces: Optional[list[str]] = None,
+        io: Optional['HDMFIO'] = None,
+        **kwargs
+    ) -> dict:
+        """Load the namespaces from the given path or HDMFIO object into the provided NamespaceCatalog or TypeMap.
+
+        This method should be implemented by subclasses to load the namespaces that are relevant for the backend.
+
+        :param namespace_catalog: The NamespaceCatalog (or TypeMap) to load the namespaces into.
+        :param path: The path to the file from which to load the namespaces.
+        :param namespaces: A list of namespace names to load. If None, all namespaces will be loaded.
+        :param io: An already open HDMFIO object of the same HDMFIO subclass as this HDMFIO subclass
+            to use for loading namespaces from. Only one of `path` or `io` should be provided. This avoids the
+            need to open the file again if it is already open.
+        :param kwargs: Additional keyword arguments that may be needed for the specific backend.
+        :return: A dictionary mapping namespace names to their dependencies.
+        """
         pass
 
     @staticmethod
