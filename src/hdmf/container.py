@@ -130,19 +130,16 @@ class AbstractContainer(metaclass=ExtenderMeta):
             warn(msg)
             return val
 
-        # check to see that the namespace for the container is in the config
+        # return the value if the namespace for the container is not in the config
         if self.namespace not in termset_config['namespaces']:
-            msg = "%s not found within loaded configuration." % self.namespace
-            warn(msg)
             return val
 
         # check to see that the container type is in the config under the namespace
         config_namespace = termset_config['namespaces'][self.namespace]
         data_type = self.data_type
 
+        # return the value if the data type for the container is not in the config
         if data_type not in config_namespace['data_types']:
-            msg = '%s not found within the configuration for %s' % (data_type, self.namespace)
-            warn(msg)
             return val
 
         # Get the ObjectMapper
