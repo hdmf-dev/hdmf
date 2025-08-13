@@ -431,7 +431,7 @@ class TypeMap:
         return self.__container_types
 
     def __copy__(self):
-        ret = TypeMap(copy(self.__ns_catalog), self.__default_mapper_cls, self.type_config)
+        ret = TypeMap(copy(self.__ns_catalog), self.__default_mapper_cls, TypeConfigurator(self.type_config.paths))
         ret.merge(self)
         return ret
 
@@ -464,6 +464,7 @@ class TypeMap:
         for custom_generators in reversed(type_map.__class_generator_manager.custom_generators):
             # iterate in reverse order because generators are stored internally as a stack
             self.register_generator(custom_generators)
+        # NOTE: the type config is not merged from the input type map to the new one. add if there is a clear use case
 
     @docval({"name": "generator", "type": type, "doc": "the CustomClassGenerator class to register"})
     def register_generator(self, **kwargs):

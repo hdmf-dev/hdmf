@@ -1,8 +1,13 @@
 # HDMF Changelog
 
-## HDMF 4.1.1 (Upcoming)
-### Enhancements
+## HDMF 4.1.1 (August 12, 2025)
+
+### Fixed
+- Fixed copying of `TypeMap` and `TypeConfigurator`. Previously, the same global `TypeConfigurator` instance was used in all copies of a `TypeMap`. @rly [#1302](https://github.com/hdmf-dev/hdmf/pull/1302)
+
+### Added
 - Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
+
 
 ## HDMF 4.1.0 (May 28, 2025)
 
@@ -24,6 +29,7 @@
 ### Fixed
 - Fixed `get_data_shape` returning the wrong shape for lists of Data objects. @rly [#1270](https://github.com/hdmf-dev/hdmf/pull/1270)
 - Added protection against complex numbers in arrays and other data types. @bendichter [#1279](https://github.com/hdmf-dev/hdmf/pull/1279)
+
 
 ## HDMF 4.0.0 (January 22, 2025)
 
@@ -47,6 +53,7 @@
 
 ### Fixed
 - Fixed issue with `DynamicTable.add_column` not allowing subclasses of `DynamicTableRegion` or `EnumData`. @rly [#1091](https://github.com/hdmf-dev/hdmf/pull/1091)
+
 
 ## HDMF 3.14.6 (December 20, 2024)
 
