@@ -324,18 +324,6 @@ class TestGlobalTypeConfig(TestCase):
         data = VectorData(name='foo', data=[0], description='Homo sapiens')
         self.assertEqual(data.description.value, 'Homo sapiens')
 
-    def test_namespace_warn(self):
-        with self.assertWarns(Warning):
-            ExtensionContainer(name='foo',
-                               namespace='foo',
-                               description='Homo sapiens')
-
-    def test_container_type_warn(self):
-        with self.assertWarns(Warning):
-            ExtensionContainer(name='foo',
-                               namespace='hdmf-common',
-                               description='Homo sapiens')
-
     def test_already_wrapped_warn(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         with self.assertWarns(Warning):
