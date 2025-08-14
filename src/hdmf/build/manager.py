@@ -86,13 +86,19 @@ class BuildManager:
     A class for managing builds of AbstractContainers
     """
 
-    def __init__(self, type_map):
+    def __init__(self, type_map, deduplicate_objects=True):
+        """
+        Args:
+            type_map (TypeMap): the TypeMap to use for mapping container classes to specifications
+            deduplicate_objects (bool): whether to deduplicate identical container objects by creating soft links
+        """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
         self.__builders = dict()
         self.__containers = dict()
         self.__active_builders = set()
         self.__type_map = type_map
         self.__ref_queue = deque()  # a queue of the ReferenceBuilders that need to be added
+        self.__deduplicate_objects = deduplicate_objects
 
     @property
     def namespace_catalog(self):
@@ -101,6 +107,11 @@ class BuildManager:
     @property
     def type_map(self):
         return self.__type_map
+
+    @property
+    def deduplicate_objects(self):
+        """Whether to deduplicate identical container objects by creating soft links."""
+        return self.__deduplicate_objects
 
     @docval({"name": "object", "type": (BaseBuilder, AbstractContainer),
              "doc": "the container or builder to get a proxy for"},
@@ -260,8 +271,13 @@ class BuildManager:
 
     @docval({"name": "container", "type": AbstractContainer, "doc": "the container to get the builder for"})
     def get_builder(self, **kwargs):
-        """Return the prebuilt builder for the given container or None if it does not exist."""
+        """Return the prebuilt builder for the given container or None if it does not exist.
+        
+        If deduplicate_objects is False, this will always return None to force creation of new builders.
+        """
         container = getargs('container', kwargs)
+        if not self.__deduplicate_objects:
+            return None
         container_id = self.__conthash__(container)
         result = self.__builders.get(container_id)
         return result

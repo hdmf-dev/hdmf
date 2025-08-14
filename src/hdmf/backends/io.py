@@ -22,9 +22,11 @@ class HDMFIO(metaclass=ABCMeta):
             {"name": "source", "type": (str, Path),
              "doc": "the source of container being built i.e. file path", 'default': None},
             {'name': 'herd_path', 'type': str,
-             'doc': 'The path to read/write the HERD file', 'default': None},)
+             'doc': 'The path to read/write the HERD file', 'default': None},
+            {'name': 'deduplicate_objects', 'type': bool,
+             'doc': 'whether to deduplicate identical container objects by creating soft links', 'default': True})
     def __init__(self, **kwargs):
-        manager, source, herd_path = getargs('manager', 'source', 'herd_path', kwargs)
+        manager, source, herd_path, deduplicate_objects = getargs('manager', 'source', 'herd_path', 'deduplicate_objects', kwargs)
         if isinstance(source, Path):
             source = source.resolve()
         elif (isinstance(source, str) and
@@ -38,6 +40,7 @@ class HDMFIO(metaclass=ABCMeta):
         self.__source = source
         self.herd_path = herd_path
         self.herd = None
+        self.__deduplicate_objects = deduplicate_objects
         self.open()
 
     @property

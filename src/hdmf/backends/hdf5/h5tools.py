@@ -69,14 +69,16 @@ class HDF5IO(HDMFIO):
                 'default': None
             },
             {'name': 'herd_path', 'type': str,
-             'doc': 'The path to read/write the HERD file', 'default': None},)
+             'doc': 'The path to read/write the HERD file', 'default': None},
+            {'name': 'deduplicate_objects', 'type': bool,
+             'doc': 'whether to deduplicate identical container objects by creating soft links', 'default': True})
     def __init__(self, **kwargs):
         """Open an HDF5 file for IO.
         """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
-        path, manager, mode, comm, file_obj, driver, aws_region, herd_path = popargs('path', 'manager', 'mode',
+        path, manager, mode, comm, file_obj, driver, aws_region, herd_path, deduplicate_objects = popargs('path', 'manager', 'mode',
                                                                                        'comm', 'file', 'driver',
-                                                                                       'aws_region', 'herd_path',
+                                                                                       'aws_region', 'herd_path', 'deduplicate_objects',
                                                                                        kwargs)
 
         self.__open_links = []  # keep track of other files opened from links in this file
@@ -93,9 +95,9 @@ class HDF5IO(HDMFIO):
             raise UnsupportedOperation(msg)
 
         if manager is None:
-            manager = BuildManager(TypeMap(NamespaceCatalog()))
+            manager = BuildManager(TypeMap(NamespaceCatalog()), deduplicate_objects=deduplicate_objects)
         elif isinstance(manager, TypeMap):
-            manager = BuildManager(manager)
+            manager = BuildManager(manager, deduplicate_objects=deduplicate_objects)
         self.__driver = driver
         self.__aws_region = aws_region
         self.__comm = comm
