@@ -281,8 +281,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
         """
         Check edge cases in converting data to a dtype
         """
-        # Check for complex numbers first
-        cls.__check_for_complex_numbers(value)
         if value is None:
             # Data is missing. Determine dtype from spec
             dt = spec_dtype
