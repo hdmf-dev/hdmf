@@ -35,6 +35,25 @@ class TestUnwrapTermSetWrapperBuild(TestCase):
 
         self.assertEqual(build.data, ['Homo sapiens'])
 
+
+class TestBuildNoDtypeSpec(TestCase):
+    def test_structured_array_without_dtype_raises(self):
+        # Create a structured (compound) array
+        compound_data = np.array(
+            [(1.0, True), (2.0, False)],
+            dtype=[('volume', 'f4'), ('autorewarded', 'bool')]
+        )
+
+        # Set up build manager with core type map
+        manager = BuildManager(get_type_map())
+
+        # Expect ValueError due to compound dtype with no declared dtype in the spec
+        with self.assertRaises(Exception):
+            manager.build(VectorData(
+                name='test_data',
+                description='description',
+                data=compound_data
+            ))
 # TODO: test build of extended group/dataset that modifies an attribute dtype (commented out below), shape, value, etc.
 # by restriction. also check that attributes cannot be deleted or scope expanded.
 # TODO: test build of extended dataset that modifies shape by restriction.
@@ -647,7 +666,7 @@ class TestBuildDatasetNotRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
         )
 
         # the object mapper automatically maps the spec of extended Bars to the 'BarMapper.bars' field
-        msg = "could not resolve dtype for BarData 'my_bar'"
+        msg = "could not resolve dtype for BarData 'my_bar': invalid literal for int() with base 10: 'a'"
         with self.assertRaisesWith(Exception, msg):
             self.manager.build(bar_data_holder_inst, source='test.h5')
 
