@@ -73,14 +73,14 @@ class TestBuildManagerDeduplication(TestCase):
     def test_get_builder_with_deduplication_enabled(self):
         """Test that get_builder returns cached builder when deduplication is enabled"""
         manager = BuildManager(self.type_map, deduplicate_objects=True)
-        
+
         # Create a simple Data container
         container = Data(name="test_data", data=[1, 2, 3])
-        
+
         # Create and cache a builder
         builder = DatasetBuilder(name="test_data", data=[1, 2, 3])
         manager.prebuilt(container, builder)
-        
+
         # get_builder should return the cached builder
         cached_builder = manager.get_builder(container)
         self.assertIs(cached_builder, builder)
@@ -88,14 +88,14 @@ class TestBuildManagerDeduplication(TestCase):
     def test_get_builder_with_deduplication_disabled(self):
         """Test that get_builder returns None when deduplication is disabled"""
         manager = BuildManager(self.type_map, deduplicate_objects=False)
-        
+
         # Create a simple Data container
         container = Data(name="test_data", data=[1, 2, 3])
-        
+
         # Create and cache a builder
         builder = DatasetBuilder(name="test_data", data=[1, 2, 3])
         manager.prebuilt(container, builder)
-        
+
         # get_builder should return None when deduplication is disabled
         cached_builder = manager.get_builder(container)
         self.assertIsNone(cached_builder)
@@ -103,25 +103,25 @@ class TestBuildManagerDeduplication(TestCase):
     def test_build_memoization_with_deduplication_enabled(self):
         """Test that repeated builds return same builder when deduplication is enabled"""
         manager = BuildManager(self.type_map, deduplicate_objects=True)
-        
+
         container_inst = Foo('my_foo', list(range(10)), 'value1', 10)
-        
+
         # Build twice - should get same builder
         builder1 = manager.build(container_inst)
         builder2 = manager.build(container_inst)
-        
+
         self.assertIs(builder1, builder2)
 
     def test_build_no_memoization_with_deduplication_disabled(self):
         """Test that repeated builds create new builders when deduplication is disabled"""
         manager = BuildManager(self.type_map, deduplicate_objects=False)
-        
+
         container_inst = Foo('my_foo', list(range(10)), 'value1', 10)
-        
+
         # Build twice - should get different builders
         builder1 = manager.build(container_inst)
         builder2 = manager.build(container_inst)
-        
+
         self.assertIsNot(builder1, builder2)
         # But they should have the same content
         self.assertDictEqual(builder1, builder2)
@@ -133,15 +133,15 @@ class TestBuildManagerDeduplication(TestCase):
         container = Data(name="test_data", data=[1, 2, 3])
         builder = DatasetBuilder(name="test_data", data=[1, 2, 3])
         manager_true.prebuilt(container, builder)
-        
+
         self.assertIs(manager_true.get_builder(container), builder)
         manager_true.clear_cache()
         self.assertIsNone(manager_true.get_builder(container))
-        
+
         # Test with deduplication disabled
         manager_false = BuildManager(self.type_map, deduplicate_objects=False)
         manager_false.prebuilt(container, builder)
-        
+
         # Should return None even before clearing cache
         self.assertIsNone(manager_false.get_builder(container))
         manager_false.clear_cache()

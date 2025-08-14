@@ -272,7 +272,7 @@ class BuildManager:
     @docval({"name": "container", "type": AbstractContainer, "doc": "the container to get the builder for"})
     def get_builder(self, **kwargs):
         """Return the prebuilt builder for the given container or None if it does not exist.
-        
+
         If deduplicate_objects is False, this will always return None to force creation of new builders.
         """
         container = getargs('container', kwargs)
