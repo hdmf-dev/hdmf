@@ -26,7 +26,9 @@ class HDMFIO(metaclass=ABCMeta):
             {'name': 'deduplicate_objects', 'type': bool,
              'doc': 'whether to deduplicate identical container objects by creating soft links', 'default': True})
     def __init__(self, **kwargs):
-        manager, source, herd_path, deduplicate_objects = getargs('manager', 'source', 'herd_path', 'deduplicate_objects', kwargs)
+        manager, source, herd_path, deduplicate_objects = getargs(
+            'manager', 'source', 'herd_path', 'deduplicate_objects', kwargs
+        )
         if isinstance(source, Path):
             source = source.resolve()
         elif (isinstance(source, str) and

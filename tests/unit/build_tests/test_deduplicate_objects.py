@@ -1,6 +1,6 @@
 """Tests for the deduplicate_objects functionality in BuildManager"""
 
-from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, ObjectMapper
+from hdmf.build import DatasetBuilder, BuildManager, TypeMap, ObjectMapper
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.testing import TestCase
 from hdmf.container import Data

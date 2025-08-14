@@ -76,10 +76,10 @@ class HDF5IO(HDMFIO):
         """Open an HDF5 file for IO.
         """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
-        path, manager, mode, comm, file_obj, driver, aws_region, herd_path, deduplicate_objects = popargs('path', 'manager', 'mode',
-                                                                                       'comm', 'file', 'driver',
-                                                                                       'aws_region', 'herd_path', 'deduplicate_objects',
-                                                                                       kwargs)
+        path, manager, mode, comm, file_obj, driver, aws_region, herd_path, deduplicate_objects = popargs(
+            'path', 'manager', 'mode', 'comm', 'file', 'driver', 'aws_region', 'herd_path',
+            'deduplicate_objects', kwargs
+        )
 
         self.__open_links = []  # keep track of other files opened from links in this file
         self.__file = None  # This will be set below, but set to None first in case an error occurs and we need to close
