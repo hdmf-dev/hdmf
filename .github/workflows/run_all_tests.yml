@@ -48,7 +48,7 @@ jobs:
           - { name: macos-python3.13-prerelease-optional   , test-tox-env: pytest-py313-prerelease-optional , python-ver: "3.13", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -106,7 +106,7 @@ jobs:
           - { name: macos-gallery-python3.12-prerelease-optional   , test-tox-env: gallery-py312-prerelease-optional , python-ver: "3.12", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -144,7 +144,7 @@ jobs:
           - { name: macos-python3.13-ros3   , python-ver: "3.13", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
