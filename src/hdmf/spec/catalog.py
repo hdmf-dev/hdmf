@@ -1,4 +1,5 @@
 import copy
+import warnings
 from collections import OrderedDict
 
 from .spec import BaseStorageSpec, GroupSpec
@@ -43,7 +44,12 @@ class SpecCatalog:
         type_name = ndt_def if ndt_def is not None else ndt
         if type_name in self.__specs:
             if self.__specs[type_name] != spec or self.__spec_source_files[type_name] != source_file:
-                raise ValueError("'%s' - cannot overwrite existing specification" % type_name)
+                warnings.warn(f"{source_file} defines a different specification for {type_name} than "
+                              f"the existing definition from {self.__spec_source_files[type_name]}. "
+                              f"Defaulting to the existing specification. Please update the extension "
+                              f"version if possible or contact the extension authors", UserWarning)
+                spec = self.__specs[type_name]
+                source_file = self.__spec_source_files[type_name]
         self.__specs[type_name] = spec
         self.__spec_source_files[type_name] = source_file
 
