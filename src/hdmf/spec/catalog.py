@@ -46,8 +46,9 @@ class SpecCatalog:
             if self.__specs[type_name] != spec or self.__spec_source_files[type_name] != source_file:
                 warnings.warn(f"{source_file} defines a different specification for {type_name} than "
                               f"the existing definition from {self.__spec_source_files[type_name]}. "
-                              f"Defaulting to the existing specification. Please update the extension "
-                              f"version if possible or contact the extension authors", UserWarning)
+                              f"Defaulting to the existing specification, but compatibility issues "
+                              f"may be present. Please update the extension version if possible or "
+                              f"install an older version of the core schema that is compatible", UserWarning)
                 spec = self.__specs[type_name]
                 source_file = self.__spec_source_files[type_name]
         self.__specs[type_name] = spec
