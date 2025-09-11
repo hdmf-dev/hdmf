@@ -474,16 +474,16 @@ class NamespaceCatalog:
                 included_types[s['namespace']] = tuple(sorted(registered_types))
             else:
                 raise ValueError("Spec '%s' schema must have either 'source' or 'namespace' key" % ns_name)
-    
+
+        # construct namespace
+        ns = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
+        self.__namespaces[ns_name] = ns
+
         # check for conflicts between core and extension namespaces
         if ns_name not in self.__core_namespaces:
             self._check_namespace_conflicts(extension_ns_name=ns_name, 
                                             extension_ns_source=s.get('source'),
                                             catalog=catalog) 
-
-        # construct namespace
-        ns = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
-        self.__namespaces[ns_name] = ns
         return included_types
 
     def __register_type(self, ndt, inc_ns, catalog, registered_types):
@@ -671,6 +671,7 @@ class NamespaceCatalog:
                 parent_type = extension_spec.data_type_inc
                 
                 # Look for the parent type in core namespaces
+                # TODO - update to go recursively through the parent types
                 for core_namespace_name in self.__core_namespaces:
                     core_namespace = self.__namespaces[core_namespace_name]
                     try:
@@ -686,7 +687,7 @@ class NamespaceCatalog:
         if len(warning_msg) > 0:
             warning_msg = "\n".join(warning_msg)
             warn(f"Schema conflict(s) detected in namespace '{extension_ns_name}': \n {warning_msg} \n"    
-                 f"This may cause compatibility issues. Please contact the extension authors to update the extension or  "
+                 f"This may cause compatibility issues. Please update the extension version if possible or "
                  f"install an older version of the core schema that is compatible.", 
                  category=UserWarning, stacklevel=2)
             
@@ -710,6 +711,22 @@ class NamespaceCatalog:
                 if core_link is not None:
                     warning_msg = (f"{extension_ns_name} defines {spec_name}.{attr_spec.name} as an attribute (dtype: {attr_spec.dtype}) "
                                    f"while the core schema defines it as a link to {core_link.target_type}. ")
+                    return warning_msg
+
+        # Check all links in extension spec against links in core spec for target_type conflicts
+        if hasattr(extension_spec, 'links') and hasattr(core_spec, 'links'):
+            for ext_link_spec in extension_spec.links:
+                core_link_spec = None
+                for link_spec in core_spec.links:
+                    if link_spec.name == ext_link_spec.name:
+                        core_link_spec = link_spec
+                        break
+                
+                if (core_link_spec is not None 
+                    and core_link_spec.target_type != ext_link_spec.target_type
+                    and not self.is_sub_data_type(extension_ns_name, ext_link_spec.target_type, core_link_spec.target_type)):
+                    warning_msg = (f"{extension_ns_name} defines {spec_name}.{ext_link_spec.name} as a link to {ext_link_spec.target_type} "
+                                   f"while the core schema defines it as a link to {core_link_spec.target_type}. ")
                     return warning_msg
 
         return None 
