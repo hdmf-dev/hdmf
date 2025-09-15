@@ -49,7 +49,7 @@ class SpecCatalog:
                               f"Defaulting to the existing specification from "
                               f"{self.__spec_source_files[type_name]}, but compatibility issues "
                               f"may be present. Please update the extension version if possible.",
-                            UserWarning)
+                            UserWarning, stacklevel=3)
                 spec = self.__specs[type_name]
                 source_file = self.__spec_source_files[type_name]
         self.__specs[type_name] = spec

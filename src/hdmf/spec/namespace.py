@@ -649,6 +649,25 @@ class NamespaceCatalog:
             self.__order_deps_aux(order, deps, subk)
         order.append(key)
 
+    def _get_namespace_for_type(self, type_name: str, catalog: SpecCatalog) -> str:
+        """
+        Get the namespace name that contains the given type by looking up its source file.
+        
+        Args:
+            type_name: The name of the type to find the namespace for
+            catalog: The catalog containing the type
+            
+        Returns:
+            The namespace name containing the type, or None if not found
+        """
+        # Get the source file for this type
+        source_file = catalog.get_spec_source_file(type_name)
+        for ns_name, sources in self.__included_sources.items():
+            if source_file in sources:
+                return ns_name
+                
+        return None
+
     def _check_namespace_conflicts(self, extension_ns_name: str, extension_ns_source: str, catalog: SpecCatalog):
         """
         Check for conflicts between extension namespaces and core namespace.
@@ -668,21 +687,27 @@ class NamespaceCatalog:
 
             # Check if this extension type inherits from a core type
             if hasattr(extension_spec, 'data_type_inc') and extension_spec.data_type_inc is not None:
-                parent_type = extension_spec.data_type_inc
+                parent_types = self.get_hierarchy(extension_ns_name, type_name)
+
+                # Look for the first parent type in the hierarchy that exists in core namespaces
+                core_parent_type = None
+                core_namespace_name = None
                 
-                # Look for the parent type in core namespaces
-                # TODO - update to go recursively through the parent types
-                for core_namespace_name in self.__core_namespaces:
+                # Skip the first element (the type itself) and check each parent in the hierarchy
+                for parent_type in parent_types[1:]:
+                    parent_ns = self._get_namespace_for_type(parent_type, catalog)
+                    if parent_ns in self.__core_namespaces:
+                        core_parent_type = parent_type
+                        core_namespace_name = parent_ns
+                        break
+                
+                # If we found a core parent type, check for conflicts
+                if core_parent_type:
                     core_namespace = self.__namespaces[core_namespace_name]
-                    try:
-                        core_spec = core_namespace.get_spec(parent_type)
-                        # Check for conflicts between extension and inherited core spec
-                        conflict_msg = self._check_cross_type_conflicts(extension_ns_name, type_name, extension_spec, core_spec)
-                        if conflict_msg is not None:
-                            warning_msg.append(conflict_msg)
-                    except ValueError:
-                        # Parent type not found in this core namespace, continue to next
-                        continue
+                    core_spec = core_namespace.get_spec(core_parent_type)
+                    conflict_msg = self._check_cross_type_conflicts(extension_ns_name, type_name, extension_spec, core_spec)
+                    if conflict_msg is not None:
+                        warning_msg.append(conflict_msg)
         
         if len(warning_msg) > 0:
             warning_msg = "\n".join(warning_msg)
@@ -726,9 +751,8 @@ class NamespaceCatalog:
                     and core_link_spec.target_type != ext_link_spec.target_type
                     and not self.is_sub_data_type(extension_ns_name, ext_link_spec.target_type, core_link_spec.target_type)):
                     warning_msg = (f"{extension_ns_name} defines {spec_name}.{ext_link_spec.name} as a link to {ext_link_spec.target_type} "
-                                   f"while the core schema defines it as a link to {core_link_spec.target_type}. ")
+                                   f"while the core schema defines it as a link to {core_link_spec.target_type}. {ext_link_spec.target_type} "
+                                   f"is not a subtype of {core_link_spec.target_type}. ")
                     return warning_msg
 
-        return None 
-
-
+        return None
