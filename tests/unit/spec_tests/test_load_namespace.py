@@ -5,7 +5,7 @@ from tempfile import gettempdir
 import warnings
 
 from hdmf.common import get_type_map
-from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecNamespace, NamespaceCatalog, NamespaceBuilder
+from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, SpecNamespace, NamespaceCatalog, NamespaceBuilder
 from hdmf.testing import TestCase, remove_test_file
 
 from tests.unit.helpers.utils import CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace
@@ -427,3 +427,124 @@ class TestCustomSpecClasses(TestCase):
         namespace_deps1 = self.ns_catalog.load_namespaces(namespace_path)
         namespace_deps2 = self.ns_catalog.load_namespaces(namespace_path)
         self.assertDictEqual(namespace_deps1, namespace_deps2)
+
+class TestCoreExtensionConflicts(TestCase):
+    """Test detection of conflicts between core and extension namespaces."""
+
+    def setUp(self):
+        self.tempdir = gettempdir()
+        self.core_source = 'core.yaml'
+        self.core_ns_path = 'core_namespace.yaml'
+        self.ext_source = 'extension.yaml'
+        self.ext_ns_path = 'extension_namespace.yaml'
+
+        # setup minimal core spec and namespace for testing
+        device_model_spec = GroupSpec('A device model', data_type_def='DeviceModel')
+        core_spec = GroupSpec(
+            'A core data type',
+            data_type_def='CoreType',
+            links=[
+                LinkSpec(name='device_model_link', doc='Link to device', target_type='DeviceModel')
+            ]
+        )        
+        core_ns_builder = NamespaceBuilder('Core namespace', 'core', version='1.0.0')
+        core_ns_builder.add_spec(self.core_source, device_model_spec)
+        core_ns_builder.add_spec(self.core_source, core_spec)
+        core_ns_builder.export(self.core_ns_path, outdir=self.tempdir)
+
+        # load core namespace
+        self.ns_catalog = NamespaceCatalog(core_namespaces=['core'])
+        self.ns_catalog.load_namespaces(os.path.join(self.tempdir, self.core_ns_path))
+
+    def tearDown(self):
+        for f in (self.core_source, self.core_ns_path, self.ext_source, self.ext_ns_path):
+            remove_test_file(os.path.join(self.tempdir, f))
+
+    def test_attribute_vs_link_conflict(self):
+        """Test detection of attribute vs link conflicts between extension and core."""
+        # Create extension that inherits from core but defines device_model_link as attribute
+        ext_spec = GroupSpec(
+            'An extension data type',
+            data_type_def='ExtensionType',
+            data_type_inc='CoreType',
+            attributes=[
+                AttributeSpec(name='device_model_link', doc='Device model as attribute', dtype='text')
+            ]
+        )
+
+        # Build and save extension namespace
+        ext_ns_builder = NamespaceBuilder('Extension namespace', 'extension', version='1.0.0')
+        ext_ns_builder.include_namespace('core')
+        ext_ns_builder.add_spec(self.ext_source, ext_spec)
+        ext_ns_builder.export(self.ext_ns_path, outdir=self.tempdir)
+
+        # Load the extension namespace and assert warning is raised
+        expected_msg = ("Schema conflict(s) detected in namespace 'extension': \n"
+                       " extension defines ExtensionType.device_model_link as an attribute (dtype: text) "
+                       "while the core schema defines it as a link to DeviceModel. \n"
+                       "This may cause compatibility issues. Please update the extension version if possible or "
+                       "install an older version of the core schema that is compatible.")
+        with self.assertWarnsWith(UserWarning, expected_msg):
+            self.ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ext_ns_path))
+
+    def test_link_target_type_conflict(self):
+        """Test detection of link target type conflicts between extension and core."""        
+        # Create extension that inherits from core but defines equipment_link with different target
+        device_spec = GroupSpec('A device', data_type_def='Device')
+        ext_spec = GroupSpec(
+            'An extension data type',
+            data_type_def='ExtensionType',
+            data_type_inc='CoreType',
+            links=[
+                LinkSpec(name='device_model_link', doc='Link to device', target_type='Device')
+            ]
+        )
+
+        # Build and save extension namespace
+        ext_ns_builder = NamespaceBuilder('Extension namespace', 'extension', version='1.0.0')
+        ext_ns_builder.include_namespace('core')
+        ext_ns_builder.add_spec(self.ext_source, device_spec)
+        ext_ns_builder.add_spec(self.ext_source, ext_spec)
+        ext_ns_builder.export(self.ext_ns_path, outdir=self.tempdir)
+
+        # Load extension namespace and expect warning
+        expected_msg = ("Schema conflict(s) detected in namespace 'extension': \n"
+                       " extension defines ExtensionType.device_model_link as a link to Device "
+                       "while the core schema defines it as a link to DeviceModel. "
+                       "Device is not a subtype of DeviceModel.  \n"
+                       "This may cause compatibility issues. Please update the extension version if possible or "
+                       "install an older version of the core schema that is compatible.")
+        with self.assertWarnsWith(UserWarning, expected_msg):
+            self.ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ext_ns_path))
+
+    def test_link_target_subtype_no_conflict(self):
+        """Test that link target type conflicts are not reported when extension uses subtype."""
+        # Create minimal ExtDevice spec for testing
+        ext_device_model_spec = GroupSpec('A test extension device', 
+                                          data_type_def='ExtDeviceModel',
+                                          data_type_inc='DeviceModel',)
+        
+        # Create extension that properly extends core without conflicts
+        ext_spec = GroupSpec(
+            'An extension data type',
+            data_type_def='ExtensionType',
+            data_type_inc='CoreType',
+            links=[
+                LinkSpec('Link to extension device model', 'ExtDeviceModel', name='ext_link')
+            ]
+        )
+
+        # Build and save extension namespace
+        ext_ns_builder = NamespaceBuilder('Extension namespace', 'extension', version='1.0.0')
+        ext_ns_builder.include_namespace('core')
+        ext_ns_builder.add_spec(self.ext_source, ext_device_model_spec)
+        ext_ns_builder.add_spec(self.ext_source, ext_spec)
+        ext_ns_builder.export(self.ext_ns_path, outdir=self.tempdir)
+
+        # Load extension namespace and check no warnings about conflicts
+        with warnings.catch_warnings(record=True) as ws:
+            self.ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ext_ns_path))
+        
+        for w in ws:
+            self.assertNotIn("Schema conflict(s) detected in namespace 'extension'",
+                             str(w.message))
