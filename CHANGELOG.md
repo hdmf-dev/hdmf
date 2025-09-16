@@ -7,6 +7,10 @@
 
 ### Added
 - Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
+- Added checks when loading a namespace for link specification conflicts between extension and core schemas. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309) 
+
+### Changed
+- Changed error for attempting to overwrite an existing specification into a warning that any specification redefinitions will be ignored. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309)  
 
 
 ## HDMF 4.1.0 (May 28, 2025)
