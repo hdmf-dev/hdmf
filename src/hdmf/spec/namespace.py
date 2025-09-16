@@ -705,9 +705,9 @@ class NamespaceCatalog:
                 if core_parent_type:
                     core_namespace = self.__namespaces[core_namespace_name]
                     core_spec = core_namespace.get_spec(core_parent_type)
-                    conflict_msg = self._check_cross_type_conflicts(extension_ns_name, 
-                                                                    type_name, 
-                                                                    extension_spec, 
+                    conflict_msg = self._check_cross_type_conflicts(extension_ns_name,
+                                                                    type_name,
+                                                                    extension_spec,
                                                                     core_spec)
                     if conflict_msg is not None:
                         warning_msg.append(conflict_msg)
@@ -753,8 +753,8 @@ class NamespaceCatalog:
 
                 if (core_link_spec is not None
                     and core_link_spec.target_type != ext_link_spec.target_type
-                    and not self.is_sub_data_type(extension_ns_name, 
-                                                  ext_link_spec.target_type, 
+                    and not self.is_sub_data_type(extension_ns_name,
+                                                  ext_link_spec.target_type,
                                                   core_link_spec.target_type)):
                     warning_msg = (f"{extension_ns_name} defines {spec_name}.{ext_link_spec.name} as a "
                                    f"link to {ext_link_spec.target_type} while the core schema defines it as "

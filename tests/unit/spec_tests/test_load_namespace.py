@@ -446,7 +446,7 @@ class TestCoreExtensionConflicts(TestCase):
             links=[
                 LinkSpec(name='device_model_link', doc='Link to device', target_type='DeviceModel')
             ]
-        )        
+        )
         core_ns_builder = NamespaceBuilder('Core namespace', 'core', version='1.0.0')
         core_ns_builder.add_spec(self.core_source, device_model_spec)
         core_ns_builder.add_spec(self.core_source, core_spec)
@@ -488,7 +488,7 @@ class TestCoreExtensionConflicts(TestCase):
             self.ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ext_ns_path))
 
     def test_link_target_type_conflict(self):
-        """Test detection of link target type conflicts between extension and core."""        
+        """Test detection of link target type conflicts between extension and core."""
         # Create extension that inherits from core but defines equipment_link with different target
         device_spec = GroupSpec('A device', data_type_def='Device')
         ext_spec = GroupSpec(
@@ -520,10 +520,10 @@ class TestCoreExtensionConflicts(TestCase):
     def test_link_target_subtype_no_conflict(self):
         """Test that link target type conflicts are not reported when extension uses subtype."""
         # Create minimal ExtDevice spec for testing
-        ext_device_model_spec = GroupSpec('A test extension device', 
+        ext_device_model_spec = GroupSpec('A test extension device',
                                           data_type_def='ExtDeviceModel',
                                           data_type_inc='DeviceModel',)
-        
+
         # Create extension that properly extends core without conflicts
         ext_spec = GroupSpec(
             'An extension data type',
@@ -544,7 +544,7 @@ class TestCoreExtensionConflicts(TestCase):
         # Load extension namespace and check no warnings about conflicts
         with warnings.catch_warnings(record=True) as ws:
             self.ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ext_ns_path))
-        
+
         for w in ws:
             self.assertNotIn("Schema conflict(s) detected in namespace 'extension'",
                              str(w.message))
