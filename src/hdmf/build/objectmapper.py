@@ -607,7 +607,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if isinstance(attr_val, TermSetWrapper):
                 attr_val = attr_val.value
             if attr_val is not None:
-                attr_val = self.__convert_string(attr_val, spec)
+                if not isinstance(attr_val, Data):
+                    # NOTE: Do not process Data objects here
+                    attr_val = self.__convert_string(attr_val, spec)
                 spec_dt = self.__get_data_type(spec)
                 if spec_dt is not None:
                     try:
@@ -640,6 +642,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             # NOTE: if a user passes a h5py.Dataset that is not wrapped with a hdmf.utils.StrDataset,
             # then this conversion may not be correct. Users should unpack their string h5py.Datasets
             # into a numpy array (or wrap them in StrDataset) before passing them to a container object.
+            # NOTE: this will convert datasets and arrays to lists of lists.
             if hasattr(value, '__iter__') and not isinstance(value, (str, bytes)):
                 return [__apply_string_type(item, string_type) for item in value]
             else:
@@ -653,8 +656,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 else:
                     ret = str(value)
         elif isinstance(spec, DatasetSpec):
-            # TODO: make sure we can handle specs with data_type_inc set
-            if spec.data_type_inc is None and spec.dtype is not None:
+            if spec.dtype is not None:
                 string_type = None
                 if 'text' in spec.dtype:
                     string_type = str
@@ -826,6 +828,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                 data = container.data.value
                             else:
                                 data = container.data
+                            data = self.__convert_string(data, spec)
                             bldr_data, dtype = self.convert_dtype(spec, data, spec_dtype=spec_dtype)
                         except Exception as ex:
                             msg = f"could not resolve dtype for {type(container).__name__} '{container.name}'"

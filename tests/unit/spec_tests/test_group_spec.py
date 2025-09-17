@@ -172,7 +172,8 @@ class GroupSpecTests(TestCase):
                         datasets=ext_datasets,
                         attributes=ext_attributes,
                         linkable=False,
-                        data_type_inc=spec,
+                        inc_spec=spec,
+                        data_type_inc='EphysData',
                         data_type_def='SpikeData')
         ext_dset1 = ext.get_dataset('dataset1')
         ext_dset1_attrs = ext_dset1.attributes
@@ -692,7 +693,8 @@ class GroupSpecWithLinksTest(TestCase):
         child_spec = GroupSpec(
             doc='A test group',
             name='child',
-            data_type_inc=parent_spec,
+            inc_spec=parent_spec,
+            data_type_inc='ParentType',
             data_type_def='ChildType'
         )
 
@@ -721,7 +723,8 @@ class GroupSpecWithLinksTest(TestCase):
             doc='A test group',
             name='child',
             links=overwritten_links,
-            data_type_inc=parent_spec,
+            inc_spec=parent_spec,
+            data_type_inc='ParentType',
             data_type_def='ChildType'
         )
 

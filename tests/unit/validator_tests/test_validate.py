@@ -1015,9 +1015,9 @@ class TestExtendedIncDataTypes(TestCase):
         attr_bar = AttributeSpec(name='bar', doc='an attribute', dtype='numeric')
         d1_spec = DatasetSpec(doc='type D1', data_type_def='D1', dtype='numeric',
                               attributes=[attr_foo])
-        d2_spec = DatasetSpec(doc='type D2', data_type_def='D2', data_type_inc=d1_spec)
+        d2_spec = DatasetSpec(doc='type D2', data_type_def='D2', data_type_inc="D1", inc_spec=d1_spec)
         g1_spec = GroupSpec(doc='type G1', data_type_def='G1',
-                            datasets=[DatasetSpec(doc='D1 extension', data_type_inc=d1_spec,
+                            datasets=[DatasetSpec(doc='D1 extension', data_type_inc="D1", inc_spec=d1_spec,
                                                   attributes=[attr_foo, attr_bar])])
         for spec in [d1_spec, d2_spec, g1_spec]:
             spec_catalog.register_spec(spec, 'test.yaml')
@@ -1107,9 +1107,9 @@ class TestReferenceDatasetsRoundTrip(ValidatorTestBase):
             doc='a base group for containing test datasets',
             data_type_def='Foo',
             datasets=[
-                DatasetSpec(doc='optional Bar', data_type_inc=bar_spec, quantity=ZERO_OR_ONE),
-                DatasetSpec(doc='optional Baz', data_type_inc=baz_spec, quantity=ZERO_OR_ONE),
-                DatasetSpec(doc='multiple qux', data_type_inc=qux_spec, quantity=ONE_OR_MANY)
+                DatasetSpec(doc='optional Bar', data_type_inc="Bar", inc_spec=bar_spec, quantity=ZERO_OR_ONE),
+                DatasetSpec(doc='optional Baz', data_type_inc="Baz", inc_spec=baz_spec, quantity=ZERO_OR_ONE),
+                DatasetSpec(doc='multiple qux', data_type_inc="Qux", inc_spec=qux_spec, quantity=ONE_OR_MANY),
             ]
         )
         return (foo_spec, bar_spec, baz_spec, qux_spec)
