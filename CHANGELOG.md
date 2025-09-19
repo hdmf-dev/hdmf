@@ -1,14 +1,35 @@
 # HDMF Changelog
 
-## HDMF 4.0.1
+## HDMF 4.1.1 (August 12, 2025)
+
+### Fixed
+- Fixed copying of `TypeMap` and `TypeConfigurator`. Previously, the same global `TypeConfigurator` instance was used in all copies of a `TypeMap`. @rly [#1302](https://github.com/hdmf-dev/hdmf/pull/1302)
+
+### Added
+- Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
+
+
+## HDMF 4.1.0 (May 28, 2025)
 
 ### Enhancements
 - Optimized `get` within `VectorIndex` to be more efficient when retrieving a dataset of references. @mavaylon1 [#1248](https://github.com/hdmf-dev/hdmf/pull/1248)
+- Enhanced warnings about ignoring cached namespaces. @stephprince [#1258](https://github.com/hdmf-dev/hdmf/pull/1258)
+- Added support in append for same dimensional args for numpy arrays. @mavaylon1 [#1261](https://github.com/hdmf-dev/hdmf/pull/1261)
+- Improved error messages when optional requirements are not installed. @rly [#1263](https://github.com/hdmf-dev/hdmf/pull/1263)
+- Updated Extension documentation. Renamed `ClassGenerator` to `ClassGeneratorManager`. @mavaylon1[#1268](https://github.com/hdmf-dev/hdmf/pull/1268)
 
 ### Changed
 - Removed `requirements-min.txt` in favor of the `min-reqs` optional dependency group in `pyproject.toml`. @rly [#1246](https://github.com/hdmf-dev/hdmf/pull/1246)
 - Updated GitHub actions and ruff configuration. @rly [#1246](https://github.com/hdmf-dev/hdmf/pull/1246)
 - `hdmf.monitor` is unused and undocumented. It has been deprecated and will be removed in HDMF 5.0. @rly [#1245](https://github.com/hdmf-dev/hdmf/pull/1245)
+- Restricted numcodecs dependency to <0.16 due to incompatibility with the latest zarr<3 version. @rly [#1257](https://github.com/hdmf-dev/hdmf/pull/1257)
+- Increased minimum requirement for optional schemasheets dependency to 0.4.0rc1 due to incompatibility with linkml-runtime. @rly [#1263](https://github.com/hdmf-dev/hdmf/pull/1263)
+- Refactored `YamlSpecWriter.sort_keys` to be a static method so that it can be cleanly used elsewhere. @rly [#1274](https://github.com/hdmf-dev/hdmf/pull/1274)
+
+### Fixed
+- Fixed `get_data_shape` returning the wrong shape for lists of Data objects. @rly [#1270](https://github.com/hdmf-dev/hdmf/pull/1270)
+- Added protection against complex numbers in arrays and other data types. @bendichter [#1279](https://github.com/hdmf-dev/hdmf/pull/1279)
+
 
 ## HDMF 4.0.0 (January 22, 2025)
 
@@ -32,6 +53,7 @@
 
 ### Fixed
 - Fixed issue with `DynamicTable.add_column` not allowing subclasses of `DynamicTableRegion` or `EnumData`. @rly [#1091](https://github.com/hdmf-dev/hdmf/pull/1091)
+
 
 ## HDMF 3.14.6 (December 20, 2024)
 

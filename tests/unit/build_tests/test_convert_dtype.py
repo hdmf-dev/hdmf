@@ -569,3 +569,29 @@ class TestConvertDtype(TestCase):
         self.assertEqual(ret, b'2020-11-10')
         self.assertIs(type(ret), bytes)
         self.assertEqual(ret_dtype, 'ascii')
+
+    def test_complex_number_rejection(self):
+        """Test that complex numbers are properly rejected."""
+        spec = DatasetSpec('an example dataset', 'float64', name='data')
+
+        # Test single complex number
+        with self.assertRaisesWith(ValueError, "Complex numbers are not supported"):
+            ObjectMapper.convert_dtype(spec, 1 + 2j)
+
+        # Test complex numpy array
+        with self.assertRaisesWith(ValueError, "Complex numbers are not supported"):
+            ObjectMapper.convert_dtype(spec, np.array([1 + 2j, 3 + 4j]))
+
+        # Test list containing complex numbers
+        with self.assertRaisesWith(ValueError, "Complex numbers are not supported"):
+            ObjectMapper.convert_dtype(spec, [1.0, 2 + 3j, 4.0])
+
+        # Test that real numbers still work
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, np.array([1.0, 2.0, 3.0]))
+        self.assertIsInstance(ret, np.ndarray)
+        self.assertEqual(ret_dtype, np.float64)
+
+        # Test that regular Python float still works
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, 3.14)
+        self.assertIsInstance(ret, np.float64)
+        self.assertEqual(ret_dtype, np.float64)

@@ -247,11 +247,17 @@ class TestCatchDupNS(TestCase):
         self.ext_source2 = 'extension2.yaml'
         self.ns_path2 = 'namespace2.yaml'
 
+        # get core namespace
+        hdmf_typemap = get_type_map()
+        self.ns_catalog = hdmf_typemap.namespace_catalog
+        self.core_ns = self.ns_catalog.core_namespaces[0]
+        self.core_ns_version = self.ns_catalog.get_namespace(self.core_ns)['version']
+
     def tearDown(self):
         for f in (self.ext_source1, self.ns_path1, self.ext_source2, self.ns_path2):
             remove_test_file(os.path.join(self.tempdir, f))
 
-    def test_catch_dup_name(self):
+    def test_catch_dup_name_extension_different(self):
         ns_builder1 = NamespaceBuilder('Extension doc', "test_ext", version='0.1.0')
         ns_builder1.add_spec(self.ext_source1, GroupSpec('doc', data_type_def='MyType'))
         ns_builder1.export(self.ns_path1, outdir=self.tempdir)
@@ -262,11 +268,15 @@ class TestCatchDupNS(TestCase):
         ns_catalog = NamespaceCatalog()
         ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
 
-        msg = "Ignoring cached namespace 'test_ext' version 0.2.0 because version 0.1.0 is already loaded."
-        with self.assertWarnsRegex(UserWarning, msg):
+        msg = ("Ignoring the following cached namespace(s) because another version is already loaded:\n"
+               "test_ext - cached version: 0.2.0, loaded version: 0.1.0\n"
+               "The loaded extension(s) may not be compatible with the cached extension(s) in the file. "
+               "Please check the extension documentation and ignore this warning if these versions are "
+               "compatible.")
+        with self.assertWarnsWith(UserWarning, msg):
             ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path2))
 
-    def test_catch_dup_name_same_version(self):
+    def test_catch_dup_name_extension_same_version(self):
         ns_builder1 = NamespaceBuilder('Extension doc', "test_ext", version='0.1.0')
         ns_builder1.add_spec(self.ext_source1, GroupSpec('doc', data_type_def='MyType'))
         ns_builder1.export(self.ns_path1, outdir=self.tempdir)
@@ -278,12 +288,72 @@ class TestCatchDupNS(TestCase):
         ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
 
         # no warning should be raised (but don't just check for 0 warnings -- warnings can come from other sources)
-        msg = "Ignoring cached namespace 'test_ext' version 0.1.0 because version 0.1.0 is already loaded."
+        msg = ("Ignoring the following cached namespace(s) because another version is already loaded:\n"
+               "test_ext - cached version: 0.1.0, loaded version: 0.1.0\n"
+               "The loaded extension(s) may not be compatible with the cached extension(s) in the file. "
+               "Please check the extension documentation and ignore this warning if these versions are "
+               "compatible.")
         with warnings.catch_warnings(record=True) as ws:
             ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path2))
         for w in ws:
-            self.assertTrue(str(w) != msg)
+            self.assertTrue(str(w.message) != msg)
+            warnings.warn(str(w.message), w.category)
 
+    def test_catch_dup_name_core_newer(self):
+        new_ns_version = '100.0.0'
+        ns_builder1 = NamespaceBuilder('Extension doc', self.core_ns, version=new_ns_version)
+        ns_builder1.add_spec(self.ext_source1, GroupSpec('doc', data_type_def='MyType'))
+        ns_builder1.export(self.ns_path1, outdir=self.tempdir)
+
+        # create new catalog and merge the loaded core namespace catalog
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.merge(self.ns_catalog)
+
+        # test loading newer namespace than one already loaded will warn
+        msg = (f'Ignoring the following cached namespace(s) because another version is already loaded:\n'
+               f'{self.core_ns} - cached version: {new_ns_version}, loaded version: {self.core_ns_version}\n'
+               f'Please update to the latest package versions.')
+        with self.assertWarnsWith(UserWarning, msg):
+            ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
+
+    def test_catch_dup_name_core_older(self):
+        new_ns_version = '0.0.0'
+        ns_builder1 = NamespaceBuilder('Extension doc', self.core_ns, version=new_ns_version)
+        ns_builder1.add_spec(self.ext_source1, GroupSpec('doc', data_type_def='MyType'))
+        ns_builder1.export(self.ns_path1, outdir=self.tempdir)
+
+        # create new catalog and merge the loaded core namespace catalog
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.merge(self.ns_catalog)
+
+        # test no warning if loading older namespace than one already loaded
+        msg = (f'Ignoring the following cached namespace(s) because another version is already loaded:\n'
+               f'{self.core_ns} - cached version: {new_ns_version}, loaded version: {self.core_ns_version}\n'
+               f'Please update to the latest package versions.')
+        with warnings.catch_warnings(record=True) as ws:
+            ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
+        for w in ws:
+            self.assertTrue(str(w.message) != msg)
+            warnings.warn(str(w.message), w.category)
+
+    def test_catch_dup_name_core_same(self):
+        new_ns_version = self.core_ns_version
+        ns_builder1 = NamespaceBuilder('Extension doc', self.core_ns, version=new_ns_version)
+        ns_builder1.add_spec(self.ext_source1, GroupSpec('doc', data_type_def='MyType'))
+        ns_builder1.export(self.ns_path1, outdir=self.tempdir)
+
+        # create new catalog and merge the loaded core namespace catalog
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.merge(self.ns_catalog)
+
+        msg = (f'Ignoring the following cached namespace(s) because another version is already loaded:\n'
+               f'{self.core_ns} - cached version: {new_ns_version}, loaded version: {self.core_ns_version}\n'
+               f'Please update to the latest package versions.')
+        with warnings.catch_warnings(record=True) as ws:
+            ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ns_path1))
+        for w in ws:
+            self.assertTrue(str(w.message) != msg)
+            warnings.warn(str(w.message), w.category)
 
 class TestCustomSpecClasses(TestCase):
 
