@@ -467,11 +467,12 @@ class BaseStorageSpec(Spec):
             self['linkable'] = False
 
         self._inc_spec = None
-        if data_type_inc is not None and data_type_def != data_type_inc:
-            # do not set data_type_inc when data_type_def == data_type_inc
-            # this happens in pynwb with pre-NWB-2.2.0 data due to a bug in pynwb that is fixed in version 3.2.0
-            # to preserve backward compatibility, we handle this special case here
-            self[self.inc_key()] = data_type_inc
+        if data_type_inc is not None:
+            if data_type_def == data_type_inc:
+                msg = f"data_type_inc and data_type_def cannot be the same: {data_type_inc}. Ignoring data_type_inc."
+                warn(msg)
+            else:
+                self[self.inc_key()] = data_type_inc
         if data_type_def is not None:
             self.pop('required', None)
             self[self.def_key()] = data_type_def
