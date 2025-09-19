@@ -94,7 +94,10 @@ def _is_sub_dtype(new: Union[str, "RefSpec"], orig: Union[str, "RefSpec"]):
     if isinstance(orig, RefSpec):
         if not isinstance(new, RefSpec):
             return False
-        return orig == new
+        # check ref target is a subtype of the original ref target
+        # TODO: implement subtype check for RefSpec. might need to resolve RefSpec target type to a spec first
+        # return orig == new
+        return True
     else:
         orig_name, orig_prec = _get_dtype_name_prec_level(orig)
         new_name, new_prec = _get_dtype_name_prec_level(new)
@@ -199,6 +202,10 @@ def _resolve_inc_spec_value(
         spec['default_value'] = inc_spec.default_value
     if spec.value is None and inc_spec.value is not None:
         spec['value'] = inc_spec.value
+
+    # cannot specify both value and default_value. use value if both are specified
+    if spec.value is not None and spec.default_value is not None:
+        spec['default_value'] = None
 
 
 class ConstructableDict(dict, metaclass=ABCMeta):
