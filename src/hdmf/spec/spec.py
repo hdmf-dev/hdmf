@@ -634,17 +634,6 @@ class BaseStorageSpec(Spec):
         return self.get(self.inc_key())
 
     @property
-    def inc_spec(self):
-        ''' The spec of the data type this specification inherits '''
-        return self._inc_spec
-
-    @inc_spec.setter
-    def inc_spec(self, spec):
-        ''' Set the inc_spec of this specification '''
-        assert self._inc_spec is None, "Cannot re-assign inc_spec"
-        self._inc_spec = spec
-
-    @property
     def data_type_def(self):
         ''' The data type this specification defines '''
         return self.get(self.def_key(), None)
