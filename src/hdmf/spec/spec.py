@@ -466,7 +466,6 @@ class BaseStorageSpec(Spec):
         if not linkable:
             self['linkable'] = False
 
-        self._inc_spec = None
         if data_type_inc is not None:
             if data_type_def == data_type_inc:
                 msg = f"data_type_inc and data_type_def cannot be the same: {data_type_inc}. Ignoring data_type_inc."

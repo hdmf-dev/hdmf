@@ -248,7 +248,7 @@ class NamespaceCatalog:
         self.__included_specs = dict()
         self.__included_sources = dict()
 
-        # NOTE: A namespace catalog may have only one spec per data_type_def name
+        # NOTE: Currently, a namespace catalog can have only one spec per data_type_def name
         self.__data_type2namespace = dict()  # map from data_type name to namespace
 
     def __copy__(self):
@@ -260,7 +260,7 @@ class NamespaceCatalog:
         ret.__loaded_specs = copy(self.__loaded_specs)
         ret.__included_specs = copy(self.__included_specs)
         ret.__included_sources = copy(self.__included_sources)
-        ret.__data_type2namespace = copy(self.__data_type2namespace)  # TODO should this be copied or just recreated?
+        ret.__data_type2namespace = copy(self.__data_type2namespace)
         return ret
 
     def merge(self, ns_catalog):
