@@ -128,7 +128,6 @@ class TestBuildDatasetDateTime(TestCase):
                     doc='an example dataset',
                     name='data',
                     dtype='isodatetime',
-                    inc_spec=column_spec
                 ),
             ],
         )

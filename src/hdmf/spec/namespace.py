@@ -8,7 +8,7 @@ from datetime import datetime
 from warnings import warn
 
 from .catalog import SpecCatalog
-from .spec import DatasetSpec, GroupSpec
+from .spec import DatasetSpec, GroupSpec, BaseStorageSpec
 from ..utils import docval, getargs, popargs, get_docval, is_newer_version
 
 _namespace_args = [
@@ -248,10 +248,8 @@ class NamespaceCatalog:
         self.__included_specs = dict()
         self.__included_sources = dict()
 
-        self._loaded_specs = self.__loaded_specs
-
         # NOTE: A namespace catalog may have only one spec per data_type_def name
-        self.__name2namespace = dict()  # map from data_type name to namespace name
+        self.__data_type2namespace = dict()  # map from data_type name to namespace
 
     def __copy__(self):
         ret = NamespaceCatalog(self.__group_spec_cls,
@@ -262,6 +260,7 @@ class NamespaceCatalog:
         ret.__loaded_specs = copy(self.__loaded_specs)
         ret.__included_specs = copy(self.__included_specs)
         ret.__included_sources = copy(self.__included_sources)
+        ret.__data_type2namespace = copy(self.__data_type2namespace)  # TODO should this be copied or just recreated?
         return ret
 
     def merge(self, ns_catalog):
@@ -305,8 +304,8 @@ class NamespaceCatalog:
             raise KeyError("namespace '%s' already exists" % name)
         self.__namespaces[name] = namespace
         for dt in namespace.catalog.get_registered_types():
-            if dt not in self.__name2namespace:
-                  self.__name2namespace[dt] = name
+            if dt not in self.__data_type2namespace:
+                self.__data_type2namespace[dt] = namespace
             source = namespace.catalog.get_spec_source_file(dt)
             # do not add types that have already been loaded
             # use dict with None values as ordered set because order of specs does matter
@@ -335,13 +334,13 @@ class NamespaceCatalog:
         return self.__namespaces[namespace].get_spec(data_type)
 
     def get_namespace_for_type(self, data_type):
-        return self.__name2namespace.get(data_type, None)
+        return self.__data_type2namespace.get(data_type, None)
 
     def get_spec_for_type(self, data_type):
         ns = self.get_namespace_for_type(data_type)
         if ns is None:
             raise KeyError(f"Namespace for data_type '{data_type}' not found")
-        return self.get_spec(namespace=ns, data_type=data_type)
+        return ns.get_spec(data_type)
 
     @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace'},
             {'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to get the spec for'},
@@ -410,8 +409,8 @@ class NamespaceCatalog:
                 raise ValueError(msg)
             if types_to_load and dt_def not in types_to_load:
                 return
-            if resolve:
-                self.__resolve_includes(spec_cls, spec_dict, catalog)
+            # if resolve:
+            #     self.__resolve_includes(spec_cls, spec_dict, catalog)
             spec_obj = spec_cls.build_spec(spec_dict)
             return catalog.auto_register(spec_obj, spec_source)
 
@@ -440,22 +439,69 @@ class NamespaceCatalog:
         if parent_cls.inc_key() in spec_dict:
             spec_dict[spec_cls.inc_key()] = spec_dict.pop(parent_cls.inc_key())
 
-    def __resolve_includes(self, spec_cls, spec_dict, catalog):
-        """Replace data type inc strings with the spec definition so the new spec is built with included fields.
-        """
-        dt_inc = spec_dict.get(spec_cls.inc_key())
-        if dt_inc is not None:
-            parent_spec = catalog.get_spec(dt_inc)
+    def resolve_all_specs(self):  # noqa: C901
+        '''
+        Resolve all specs in the catalog
+        '''
+
+        def __resolve_inc_spec(spec: BaseStorageSpec):
+            # get the spec for the included type regardless of namespace
+            parent_spec = self.get_spec_for_type(spec.data_type_inc)
             if parent_spec is None:
-                msg = "Cannot resolve include spec '%s' for spec '%s'" % (dt_inc, spec_dict)
+                msg = "Cannot resolve include spec '%s' for spec: %s" % (spec.data_type_inc, spec)
                 raise ValueError(msg)
-            # set the inc_spec arg to the inc spec so that the spec can be updated with all of the
-            # attributes, datasets, groups, and links of the inc spec when resolve_spec is called
-            spec_dict["inc_spec"] = parent_spec
-        for subspec_dict in spec_dict.get('groups', list()):
-            self.__resolve_includes(self.__group_spec_cls, subspec_dict, catalog)
-        for subspec_dict in spec_dict.get('datasets', list()):
-            self.__resolve_includes(self.__dataset_spec_cls, subspec_dict, catalog)
+            if isinstance(spec, DatasetSpec):  # TODO
+                # set the inc_spec arg to the inc spec so that the spec can be updated with all of the
+                # attributes, datasets, groups, and links of the inc spec when resolve_spec is called
+                spec.inc_spec = parent_spec
+                spec.resolve_spec(spec.inc_spec)  # TODO: refactor
+                spec.resolved = True
+            else:
+                if parent_spec.resolved and spec.inc_spec is None:
+                    spec.inc_spec = parent_spec
+                    spec.resolve_spec(spec.inc_spec)  # TODO: refactor
+
+        def __resolve_spec(spec: BaseStorageSpec):
+            if not spec.resolved:
+                if spec.data_type_inc is not None:
+                    # after resolution, inc_spec will be set to the actual spec object
+                    __resolve_inc_spec(spec)
+
+                all_subspecs_resolved = True
+                if isinstance(spec, GroupSpec):
+                    for subspec in spec.groups:
+                        __resolve_spec(subspec)
+                        if not subspec.resolved:
+                            all_subspecs_resolved = False
+                    for subspec in spec.datasets:
+                        __resolve_spec(subspec)
+                        if not subspec.resolved:
+                            all_subspecs_resolved = False
+
+                if (spec.data_type_inc is None or spec.inc_spec is not None) and all_subspecs_resolved:
+                    spec.resolved = True
+
+        num_passes = 0
+        max_passes = 10
+        all_resolved = False
+        while not all_resolved and num_passes < max_passes:
+            num_passes += 1
+            all_resolved = True
+            for namespace in self.__namespaces.values():
+                for type_name in namespace.catalog.get_registered_types():
+                    spec = namespace.catalog.get_spec(type_name)
+                    __resolve_spec(namespace.catalog.get_spec(type_name))
+                    if not spec.resolved:
+                        all_resolved = False
+        if not all_resolved:
+            unresolved = []
+            for namespace in self.__namespaces.values():
+                for type_name in namespace.catalog.get_registered_types():
+                    spec = namespace.catalog.get_spec(type_name)
+                    if not spec.resolved:
+                        unresolved.append(f"{type_name} (namespace: {namespace.name})")
+            raise RuntimeError("Could not resolve all specifications after %d passes. Unresolved specs: %s"
+                               % (max_passes, ", ".join(unresolved)))
 
     def __load_namespace(self, namespace, reader, resolve):
         ns_name = namespace['name']
@@ -487,13 +533,14 @@ class NamespaceCatalog:
                 included_types[s['namespace']] = tuple(sorted(registered_types))
             else:
                 raise ValueError("Spec '%s' schema must have either 'source' or 'namespace' key" % ns_name)
+
         # construct namespace
         ns = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
         self.__namespaces[ns_name] = ns
 
         for x in catalog.get_registered_types():
-            if x not in self.__name2namespace:
-                self.__name2namespace[x] = ns
+            if x not in self.__data_type2namespace:
+                self.__data_type2namespace[x] = ns
         return included_types
 
     def __register_type(self, ndt, inc_ns, catalog, registered_types):
@@ -594,6 +641,9 @@ class NamespaceCatalog:
             for ns in to_load:
                 ret[ns['name']] = self.__load_namespace(ns, r, resolve)
             self.__included_specs[ns_path_key] = ret
+
+        if resolve:
+            self.resolve_all_specs()
 
         # warn if there are any ignored namespaces
         if ignored_namespaces:

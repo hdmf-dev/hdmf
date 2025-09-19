@@ -172,9 +172,9 @@ class GroupSpecTests(TestCase):
                         datasets=ext_datasets,
                         attributes=ext_attributes,
                         linkable=False,
-                        inc_spec=spec,
                         data_type_inc='EphysData',
                         data_type_def='SpikeData')
+        ext.resolve_spec(spec)
         ext_dset1 = ext.get_dataset('dataset1')
         ext_dset1_attrs = ext_dset1.attributes
         self.assertDictEqual(ext_dset1_attrs[0], dset1_attributes_ext[0])
@@ -372,8 +372,6 @@ class TestResolveAttrs(TestCase):
                          AttributeSpec('attribute2', 'my second attribute', 'text', value='fixed'))
         self.assertEqual(self.inc_group_spec.get_attribute('attribute3'),
                          AttributeSpec('attribute3', 'my third attribute', 'text', value='fixed'))
-
-        self.assertTrue(self.inc_group_spec.resolved)
 
     def test_is_inherited_spec(self):
         self.assertFalse(self.def_group_spec.is_inherited_spec(self.def_group_spec.attributes[0]))
@@ -693,10 +691,10 @@ class GroupSpecWithLinksTest(TestCase):
         child_spec = GroupSpec(
             doc='A test group',
             name='child',
-            inc_spec=parent_spec,
             data_type_inc='ParentType',
             data_type_def='ChildType'
         )
+        child_spec.resolve_spec(parent_spec)
 
         for link in links:
             with self.subTest(link_target_type=link.target_type):
@@ -723,10 +721,10 @@ class GroupSpecWithLinksTest(TestCase):
             doc='A test group',
             name='child',
             links=overwritten_links,
-            inc_spec=parent_spec,
             data_type_inc='ParentType',
             data_type_def='ChildType'
         )
+        child_spec.resolve_spec(parent_spec)
 
         for link in overwritten_links:
             with self.subTest(link_target_type=link.target_type):

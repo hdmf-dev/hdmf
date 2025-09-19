@@ -294,8 +294,6 @@ _attrbl_args = [
     {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
     {'name': 'data_type_inc', 'type': str, 'doc': 'the data type this specification extends', 'default': None},
-    {'name': 'inc_spec', 'type': 'BaseStorageSpec',
-     'doc': 'the data type this specification extends as a spec', 'default': None},
 ]
 
 
@@ -309,9 +307,8 @@ class BaseStorageSpec(Spec):
 
     @docval(*_attrbl_args)
     def __init__(self, **kwargs):
-        name, doc, quantity, attributes, linkable, data_type_def, data_type_inc, inc_spec = \
-            getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc',
-                    'inc_spec', kwargs)
+        name, doc, quantity, attributes, linkable, data_type_def, data_type_inc = \
+            getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
         if name is not None and "/" in name:
             raise ValueError(f"Name '{name}' is invalid. Names of Groups and Datasets cannot contain '/'")
         if name is None and data_type_def is None and data_type_inc is None:
@@ -338,11 +335,12 @@ class BaseStorageSpec(Spec):
         if not linkable:
             self['linkable'] = False
 
-        resolve = False
-        if data_type_inc is not None:
-            self._inc_spec = inc_spec
+        self._inc_spec = None
+        if data_type_inc is not None and data_type_def != data_type_inc:
+            # do not set data_type_inc when data_type_def == data_type_inc
+            # this happens in pynwb with pre-NWB-2.2.0 data due to a bug in pynwb that is fixed in version 3.2.0
+            # to preserve backward compatibility, we handle this special case here
             self[self.inc_key()] = data_type_inc
-            resolve = True
         if data_type_def is not None:
             self.pop('required', None)
             self[self.def_key()] = data_type_def
@@ -358,8 +356,6 @@ class BaseStorageSpec(Spec):
         self.__new_attributes = set(self.__attributes.keys())
         self.__overridden_attributes = set()
         self.__resolved = False
-        if resolve and self._inc_spec is not None:
-            self.resolve_spec(self.inc_spec)
 
     @property
     def default_name(self):
@@ -369,6 +365,10 @@ class BaseStorageSpec(Spec):
     @property
     def resolved(self):
         return self.__resolved
+
+    @resolved.setter
+    def resolved(self, val):
+        self.__resolved = val
 
     @property
     def required(self):
@@ -386,7 +386,6 @@ class BaseStorageSpec(Spec):
                 self.__overridden_attributes.add(attribute.name)
             else:
                 self.set_attribute(attribute)
-        self.__resolved = True
 
     @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
     def is_inherited_spec(self, **kwargs):
@@ -501,6 +500,12 @@ class BaseStorageSpec(Spec):
     def inc_spec(self):
         ''' The spec of the data type this specification inherits '''
         return self._inc_spec
+
+    @inc_spec.setter
+    def inc_spec(self, spec):
+        ''' Set the inc_spec of this specification '''
+        assert self._inc_spec is None, "Cannot re-assign inc_spec"
+        self._inc_spec = spec
 
     @property
     def data_type_def(self):
@@ -656,8 +661,6 @@ _dataset_args = [
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
     {'name': 'data_type_inc', 'type': str,
      'doc': 'the data type this specification extends', 'default': None},
-    {'name': 'inc_spec', 'type': 'DatasetSpec',
-     'doc': 'the data type this specification extends as a spec', 'default': None},
 ]
 
 
@@ -673,9 +676,11 @@ class DatasetSpec(BaseStorageSpec):
         default_value, value = popargs('default_value', 'value', kwargs)
         if shape is not None:
             self['shape'] = shape
+            if dims is None:  # set dummy dims "dim_0", "dim_1", ... if shape is specified but dims is not
+                self['dims'] = tuple(['dim_%d' % i for i in range(len(shape))])
         if dims is not None:
             self['dims'] = dims
-            if 'shape' not in self:
+            if 'shape' not in self:  # set dummy shape (None, None, ...) if dims is specified but shape is not
                 self['shape'] = tuple([None] * len(dims))
         if self.shape is not None and self.dims is not None:
             if len(self['dims']) != len(self['shape']):
@@ -763,6 +768,9 @@ class DatasetSpec(BaseStorageSpec):
             # but for now, do nothing
         if inc_spec.dims is not None:
             if self.dims is None:
+                # new shape is not None
+                # new dims is None but old dims is not None
+
                 self['dims'] = inc_spec.dims
             # make sure the new dims is a subset of the included dims
             # but for now, do nothing
@@ -899,8 +907,6 @@ _group_args = [
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
     {'name': 'data_type_inc', 'type': str,
      'doc': 'the data type this specification data_type_inc', 'default': None},
-    {'name': 'inc_spec', 'type': 'GroupSpec',
-     'doc': 'the data type this specification extends as a spec', 'default': None},
 ]
 
 

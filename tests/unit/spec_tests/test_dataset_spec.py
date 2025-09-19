@@ -87,9 +87,9 @@ class DatasetSpecTests(TestCase):
                           name='dataset1',
                           attributes=attributes,
                           linkable=False,
-                          inc_spec=base,
                           data_type_inc='EphysData',
                           data_type_def='SpikeData')
+        ext.resolve_spec(base)
         self.assertDictEqual(ext['attributes'][0], attributes[0])
         self.assertDictEqual(ext['attributes'][1], self.attributes[0])
         self.assertDictEqual(ext['attributes'][2], self.attributes[1])
@@ -102,13 +102,13 @@ class DatasetSpecTests(TestCase):
         '''Test to make sure DatasetSpec catches when a GroupSpec used as data_type_inc'''
         base = GroupSpec('a fake grop',
                          data_type_def='EphysData')
-        with self.assertRaises(TypeError):
-            DatasetSpec('my first dataset extension',
+        ext = DatasetSpec('my first dataset extension',
                         'int',
                         name='dataset1',
-                        inc_spec=base,
                         data_type_inc='EphysData',
                         data_type_def='SpikeData')
+        with self.assertRaises(TypeError):
+            ext.resolve_spec(base)
 
     def test_constructor_table(self):
         dtype1 = DtypeSpec('column1', 'the first column', 'int')
@@ -179,9 +179,9 @@ class DatasetSpecTests(TestCase):
         dtype3 = DtypeSpec('column3', 'the third column', 'text')
         ext = DatasetSpec('my first table extension',
                           [dtype3],
-                          inc_spec=base,
                           data_type_inc='SimpleTable',
                           data_type_def='ExtendedTable')
+        ext.resolve_spec(base)
         self.assertEqual(ext['dtype'], [dtype1, dtype2, dtype3])
         self.assertEqual(ext['doc'], 'my first table extension')
 
@@ -197,9 +197,9 @@ class DatasetSpecTests(TestCase):
         dtype3 = DtypeSpec('column2', 'the second column, with greater precision', 'float64')
         ext = DatasetSpec('my first table extension',
                           [dtype3],
-                          inc_spec=base,
                           data_type_inc='SimpleTable',
                           data_type_def='ExtendedTable')
+        ext.resolve_spec(base)
         self.assertEqual(ext['dtype'], [dtype1, dtype3])
         self.assertEqual(ext['doc'], 'my first table extension')
 
@@ -213,12 +213,12 @@ class DatasetSpecTests(TestCase):
         self.assertEqual(base['dtype'], [dtype1, dtype2])
         self.assertEqual(base['doc'], 'my first table')
         dtype3 = DtypeSpec('column2', 'the second column, with greater precision', 'float32')
+        ext = DatasetSpec('my first table extension',
+                          [dtype3],
+                          data_type_inc='SimpleTable',
+                          data_type_def='ExtendedTable')
         with self.assertRaisesWith(ValueError, 'Cannot extend float64 to float32'):
-            DatasetSpec('my first table extension',
-                        [dtype3],
-                        inc_spec=base,
-                        data_type_inc='SimpleTable',
-                        data_type_def='ExtendedTable')
+            ext.resolve_spec(base)
 
     def test_datatype_table_extension_diff_format(self):
         dtype1 = DtypeSpec('column1', 'the first column', 'int')
@@ -230,12 +230,13 @@ class DatasetSpecTests(TestCase):
         self.assertEqual(base['dtype'], [dtype1, dtype2])
         self.assertEqual(base['doc'], 'my first table')
         dtype3 = DtypeSpec('column2', 'the second column, with greater precision', 'int32')
-        with self.assertRaisesWith(ValueError, 'Cannot extend float64 to int32'):
-            DatasetSpec('my first table extension',
+        ext = DatasetSpec('my first table extension',
                         [dtype3],
-                        inc_spec=base,
                         data_type_inc='SimpleTable',
                         data_type_def='ExtendedTable')
+        with self.assertRaisesWith(ValueError, 'Cannot extend float64 to int32'):
+            ext.resolve_spec(base)
+
 
     def test_data_type_property_value(self):
         """Test that the property data_type has the expected value"""

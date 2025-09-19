@@ -138,7 +138,7 @@ class TestPostInitGetClass(TestCase):
         multi_spec = GroupSpec(
             doc='A test extension that contains a multi',
             data_type_def='Multi',
-            groups=[GroupSpec(data_type_inc='Bar', inc_spec=bar_spec, doc='test multi', quantity='*')],
+            groups=[GroupSpec(data_type_inc='Bar', doc='test multi', quantity='*')],
             attributes=[AttributeSpec(name='attr1', doc='a float attribute', dtype='float')]
         )
 
@@ -154,6 +154,7 @@ class TestPostInitGetClass(TestCase):
         )
         namespace_catalog = NamespaceCatalog()
         namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        namespace_catalog.resolve_all_specs()
         type_map = TypeMap(namespace_catalog)
         Multi = type_map.get_dt_container_cls('Multi', CORE_NAMESPACE, self.post_init)
 
@@ -182,10 +183,11 @@ class TestDynamicContainer(TestCase):
 
     def test_dynamic_container_creation(self):
         baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc='Bar', inc_spec=self.bar_spec,
+                             data_type_def='Baz', data_type_inc='Bar',
                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                          AttributeSpec('attr4', 'another float attribute', 'float'),
                                          AttributeSpec('attr_array', 'an array attribute', 'text', shape=(None,)),])
+        baz_spec.resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
         expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'attr_array', 'skip_post_init'}
@@ -211,9 +213,10 @@ class TestDynamicContainer(TestCase):
 
     def test_dynamic_container_creation_defaults(self):
         baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc='Bar', inc_spec=self.bar_spec,
+                             data_type_def='Baz', data_type_inc='Bar',
                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
+        baz_spec.resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
         expected_args = {'name', 'data', 'attr1', 'attr2', 'attr3', 'attr4', 'attr_array', 'foo', 'skip_post_init'}
@@ -224,9 +227,10 @@ class TestDynamicContainer(TestCase):
 
     def test_dynamic_container_constructor(self):
         baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc='Bar', inc_spec=self.bar_spec,
+                             data_type_def='Baz', data_type_inc='Bar',
                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
+        baz_spec.resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
         # TODO: test that constructor works!
@@ -241,10 +245,11 @@ class TestDynamicContainer(TestCase):
     def test_dynamic_container_constructor_name(self):
         # name is specified in spec and cannot be changed
         baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc='Bar', inc_spec=self.bar_spec,
+                             data_type_def='Baz', data_type_inc='Bar',
                              name='A fixed name',
                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
+        baz_spec.resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
 
@@ -263,11 +268,12 @@ class TestDynamicContainer(TestCase):
         # if both name and default_name are specified, name should be used
         with self.assertWarns(Warning):
             baz_spec = GroupSpec('A test extension with no Container class',
-                                 data_type_def='Baz', data_type_inc='Bar', inc_spec=self.bar_spec,
+                                 data_type_def='Baz', data_type_inc='Bar',
                                  name='A fixed name',
                                  default_name='A default name',
                                  attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                              AttributeSpec('attr4', 'another float attribute', 'float')])
+            baz_spec.resolve_spec(self.bar_spec)
             self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
             cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
 
@@ -276,16 +282,17 @@ class TestDynamicContainer(TestCase):
 
     def test_dynamic_container_composition(self):
         baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
-                              data_type_inc='Bar', inc_spec=self.bar_spec,
+                              data_type_inc='Bar',
                               attributes=[
                                   AttributeSpec('attr3', 'a float attribute', 'float'),
                                   AttributeSpec('attr4', 'another float attribute', 'float')])
+        baz_spec2.resolve_spec(self.bar_spec)
 
         baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc='Bar',
-                              inc_spec=self.bar_spec,
                               attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                           AttributeSpec('attr4', 'another float attribute', 'float')],
                               groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
+        baz_spec1.resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
         Baz2 = self.type_map.get_dt_container_cls('Baz2', CORE_NAMESPACE)
@@ -302,16 +309,17 @@ class TestDynamicContainer(TestCase):
 
     def test_dynamic_container_composition_reverse_order(self):
         baz_spec2 = GroupSpec('A composition inside', data_type_def='Baz2',
-                              data_type_inc='Bar', inc_spec=self.bar_spec,
+                              data_type_inc='Bar',
                               attributes=[
                                   AttributeSpec('attr3', 'a float attribute', 'float'),
                                   AttributeSpec('attr4', 'another float attribute', 'float')])
+        baz_spec2.resolve_spec(self.bar_spec)
 
         baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc='Bar',
-                              inc_spec=self.bar_spec,
                               attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                           AttributeSpec('attr4', 'another float attribute', 'float')],
                               groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
+        baz_spec1.resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
         self.spec_catalog.register_spec(baz_spec2, 'extension.yaml')
         Baz1 = self.type_map.get_dt_container_cls('Baz1', CORE_NAMESPACE)
@@ -328,10 +336,10 @@ class TestDynamicContainer(TestCase):
 
     def test_dynamic_container_composition_missing_type(self):
         baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc='Bar',
-                              inc_spec=self.bar_spec,
                               attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                           AttributeSpec('attr4', 'another float attribute', 'float')],
                               groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
+        baz_spec1.resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
 
         msg = "No specification for 'Baz2' in namespace 'test_core'"
@@ -341,7 +349,8 @@ class TestDynamicContainer(TestCase):
     def test_dynamic_container_fixed_name(self):
         """Test that dynamic class generation for an extended type with a fixed name works."""
         baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc='Bar', inc_spec=self.bar_spec, name='Baz')
+                             data_type_def='Baz', data_type_inc='Bar', name='Baz')
+        baz_spec.resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         Baz = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
         obj = Baz(data=[1, 2, 3, 4], attr1='string attribute', attr2=1000)
@@ -364,9 +373,10 @@ class TestDynamicContainer(TestCase):
         self.type_map.register_container_type(CORE_NAMESPACE, "Bar", FixedAttrBar)
 
         baz_spec = GroupSpec('A test extension with no Container class',
-                             data_type_def='Baz', data_type_inc='Bar', inc_spec=self.bar_spec,
+                             data_type_def='Baz', data_type_inc='Bar',
                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
                                          AttributeSpec('attr4', 'another float attribute', 'float')])
+        baz_spec.resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(baz_spec, 'extension.yaml')
         cls = self.type_map.get_dt_container_cls('Baz', CORE_NAMESPACE)
         expected_args = {'name', 'data', 'attr2', 'attr3', 'attr4', 'skip_post_init'}
@@ -387,12 +397,13 @@ class TestDynamicContainer(TestCase):
             doc='A test extension that contains a multi',
             data_type_def='Multi',
             groups=[
-                GroupSpec(data_type_inc='Bar', inc_spec=self.bar_spec, doc='test multi', quantity='*')
+                GroupSpec(data_type_inc='Bar', doc='test multi', quantity='*')
             ],
             attributes=[
                 AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
             ]
         )
+        multi_spec.groups[0].resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
         Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
         Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
@@ -420,14 +431,15 @@ class TestDynamicContainer(TestCase):
             doc='A test extension that contains a multi',
             data_type_def='Multi',
             data_type_inc='Bar',
-            inc_spec=self.bar_spec,
             groups=[
-                GroupSpec(data_type_inc='Bar', inc_spec=self.bar_spec, doc='test multi', quantity='*')
+                GroupSpec(data_type_inc='Bar', doc='test multi', quantity='*')
             ],
             attributes=[
                 AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
             ]
         )
+        multi_spec.groups[0].resolve_spec(self.bar_spec)
+        multi_spec.resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
         Bar = self.type_map.get_dt_container_cls('Bar', CORE_NAMESPACE)
         Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
@@ -463,12 +475,13 @@ class TestDynamicContainer(TestCase):
             doc='A test extension that contains a multi',
             data_type_def='Multi',
             groups=[
-                GroupSpec(data_type_inc='Bar', inc_spec=self.bar_spec, doc='test multi', quantity='*')
+                GroupSpec(data_type_inc='Bar', doc='test multi', quantity='*')
             ],
             attributes=[
                 AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
             ]
         )
+        multi_spec.groups[0].resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
         Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
         multi = Multi(
@@ -482,12 +495,13 @@ class TestDynamicContainer(TestCase):
             doc='A test extension that contains a multi',
             data_type_def='Multi',
             groups=[
-                GroupSpec(data_type_inc='Bar', inc_spec=self.bar_spec, doc='test multi', quantity='+')
+                GroupSpec(data_type_inc='Bar', doc='test multi', quantity='+')
             ],
             attributes=[
                 AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
             ]
         )
+        multi_spec.groups[0].resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
         Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
         with self.assertRaisesWith(TypeError, "MCIClassGenerator.set_init.<locals>.__init__: missing argument 'bars'"):
@@ -501,12 +515,13 @@ class TestDynamicContainer(TestCase):
             doc='A test extension that contains a multi',
             data_type_def='Multi',
             groups=[
-                GroupSpec(data_type_inc='Bar', inc_spec=self.bar_spec, doc='test multi', quantity='+')
+                GroupSpec(data_type_inc='Bar', doc='test multi', quantity='+')
             ],
             attributes=[
                 AttributeSpec(name='attr3', doc='a float attribute', dtype='float')
             ]
         )
+        multi_spec.groups[0].resolve_spec(self.bar_spec)
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
         Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
         multi = Multi(

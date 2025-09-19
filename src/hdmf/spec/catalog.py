@@ -48,7 +48,7 @@ class SpecCatalog:
         self.__spec_source_files[type_name] = source_file
 
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the Spec for'},
-            returns="the specification for writing the given object type to HDF5 ", rtype='Spec')
+            returns="the specification for writing the given object type to HDF5 ", rtype=BaseStorageSpec)
     def get_spec(self, **kwargs):
         '''
         Get the Spec object for the given type
