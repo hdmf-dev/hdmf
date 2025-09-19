@@ -174,7 +174,7 @@ class GroupSpecTests(TestCase):
                         linkable=False,
                         data_type_inc='EphysData',
                         data_type_def='SpikeData')
-        ext.resolve_spec(spec)
+        ext.resolve_inc_spec(spec)
         ext_dset1 = ext.get_dataset('dataset1')
         ext_dset1_attrs = ext_dset1.attributes
         self.assertDictEqual(ext_dset1_attrs[0], dset1_attributes_ext[0])
@@ -357,7 +357,7 @@ class TestResolveAttrs(TestCase):
             attributes=[AttributeSpec('attribute2', 'my second attribute', 'text', value='fixed'),
                         AttributeSpec('attribute3', 'my third attribute', 'text', value='fixed')]
         )
-        self.inc_group_spec.resolve_spec(self.def_group_spec)
+        self.inc_group_spec.resolve_inc_spec(self.def_group_spec)
 
     def test_resolved(self):
         self.assertTupleEqual(self.inc_group_spec.attributes, (
@@ -430,7 +430,7 @@ class TestResolveAttrs(TestCase):
                            groups=[override_group])
 
         # Resolve the extension
-        ext_spec.resolve_spec(base_spec)
+        ext_spec.resolve_inc_spec(base_spec)
 
         # Test attribute in overridden dataset is marked as overridden
         dataset_attr = ext_spec.get_dataset('test_dataset').get_attribute('attr1')
@@ -466,7 +466,7 @@ class TestResolveAttrs(TestCase):
                            groups=[override_group])
 
         # Resolve the extension
-        ext_spec.resolve_spec(base_spec)
+        ext_spec.resolve_inc_spec(base_spec)
 
         # Test base spec has no overridden groups
         self.assertFalse(base_spec.is_overridden_group('test_group'))
@@ -495,7 +495,7 @@ class TestResolveAttrs(TestCase):
             self.inc_group_spec.is_overridden_attribute('attribute4')
 
     def test_resolve_group_inheritance(self):
-        """Test resolution of inherited groups in GroupSpec.resolve_spec."""
+        """Test resolution of inherited groups in GroupSpec.resolve_inc_spec."""
         # Create base group with named and unnamed groups
         unnamed_group = GroupSpec('An unnamed group',
                                 data_type_def='UnnamedType',
@@ -524,7 +524,7 @@ class TestResolveAttrs(TestCase):
                            groups=ext_groups)
 
         # Resolve the extension
-        ext_spec.resolve_spec(base_spec)
+        ext_spec.resolve_inc_spec(base_spec)
 
         # Test unnamed group is added to data_types
         self.assertEqual(ext_spec.get_data_type('UnnamedType'), unnamed_group)
@@ -564,8 +564,8 @@ class TestResolveAttrs(TestCase):
                            data_type_def='ExtType')
 
         # Resolve the extensions
-        mid_spec.resolve_spec(base_spec)
-        ext_spec.resolve_spec(mid_spec)
+        mid_spec.resolve_inc_spec(base_spec)
+        ext_spec.resolve_inc_spec(mid_spec)
 
         # Test group inheritance through multiple levels
         resolved_group = ext_spec.get_group('test_group')
@@ -602,7 +602,7 @@ class TestResolveGroupSameAttributeName(TestCase):
                 ),
             ]
         )
-        self.inc_group_spec.resolve_spec(self.def_group_spec)
+        self.inc_group_spec.resolve_inc_spec(self.def_group_spec)
 
         self.assertFalse(self.def_group_spec.is_inherited_spec(self.def_group_spec.datasets[0].attributes[0]))
 
@@ -638,7 +638,7 @@ class TestResolveGroupSameAttributeName(TestCase):
                 ),
             ]
         )
-        self.inc_group_spec.resolve_spec(self.def_group_spec)
+        self.inc_group_spec.resolve_inc_spec(self.def_group_spec)
 
         self.assertFalse(self.def_group_spec.is_inherited_spec(self.def_group_spec.datasets[0].attributes[0]))
 
@@ -652,7 +652,7 @@ class TestResolveGroupSameAttributeName(TestCase):
             data_type_def='SubSubGroup',
             data_type_inc='SubGroup',
         )
-        self.inc_group_spec2.resolve_spec(self.inc_group_spec)
+        self.inc_group_spec2.resolve_inc_spec(self.inc_group_spec)
 
         dset_spec_map = {dset.name: dset for dset in self.inc_group_spec2.datasets}
         self.assertTrue(self.inc_group_spec2.is_inherited_spec(dset_spec_map["dset1"].attributes[0]))
@@ -694,7 +694,7 @@ class GroupSpecWithLinksTest(TestCase):
             data_type_inc='ParentType',
             data_type_def='ChildType'
         )
-        child_spec.resolve_spec(parent_spec)
+        child_spec.resolve_inc_spec(parent_spec)
 
         for link in links:
             with self.subTest(link_target_type=link.target_type):
@@ -724,7 +724,7 @@ class GroupSpecWithLinksTest(TestCase):
             data_type_inc='ParentType',
             data_type_def='ChildType'
         )
-        child_spec.resolve_spec(parent_spec)
+        child_spec.resolve_inc_spec(parent_spec)
 
         for link in overwritten_links:
             with self.subTest(link_target_type=link.target_type):

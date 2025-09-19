@@ -1016,11 +1016,11 @@ class TestExtendedIncDataTypes(TestCase):
         d1_spec = DatasetSpec(doc='type D1', data_type_def='D1', dtype='numeric',
                               attributes=[attr_foo])
         d2_spec = DatasetSpec(doc='type D2', data_type_def='D2', data_type_inc="D1")
-        d2_spec.resolve_spec(d1_spec)
+        d2_spec.resolve_inc_spec(d1_spec)
         g1_spec = GroupSpec(doc='type G1', data_type_def='G1',
                             datasets=[DatasetSpec(doc='D1 extension', data_type_inc="D1",
                                                   attributes=[attr_foo, attr_bar])])
-        g1_spec.datasets[0].resolve_spec(d1_spec)
+        g1_spec.datasets[0].resolve_inc_spec(d1_spec)
         for spec in [d1_spec, d2_spec, g1_spec]:
             spec_catalog.register_spec(spec, 'test.yaml')
         self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
@@ -1114,9 +1114,9 @@ class TestReferenceDatasetsRoundTrip(ValidatorTestBase):
                 DatasetSpec(doc='multiple qux', data_type_inc="Qux", quantity=ONE_OR_MANY),
             ]
         )
-        foo_spec.datasets[0].resolve_spec(bar_spec)
-        foo_spec.datasets[1].resolve_spec(baz_spec)
-        foo_spec.datasets[2].resolve_spec(qux_spec)
+        foo_spec.datasets[0].resolve_inc_spec(bar_spec)
+        foo_spec.datasets[1].resolve_inc_spec(baz_spec)
+        foo_spec.datasets[2].resolve_inc_spec(qux_spec)
         return (foo_spec, bar_spec, baz_spec, qux_spec)
 
     def runBuilderRoundTrip(self, builder):

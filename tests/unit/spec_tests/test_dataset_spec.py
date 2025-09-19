@@ -89,7 +89,7 @@ class DatasetSpecTests(TestCase):
                           linkable=False,
                           data_type_inc='EphysData',
                           data_type_def='SpikeData')
-        ext.resolve_spec(base)
+        ext.resolve_inc_spec(base)
         self.assertDictEqual(ext['attributes'][0], attributes[0])
         self.assertDictEqual(ext['attributes'][1], self.attributes[0])
         self.assertDictEqual(ext['attributes'][2], self.attributes[1])
@@ -108,7 +108,7 @@ class DatasetSpecTests(TestCase):
                         data_type_inc='EphysData',
                         data_type_def='SpikeData')
         with self.assertRaises(TypeError):
-            ext.resolve_spec(base)
+            ext.resolve_inc_spec(base)
 
     def test_constructor_table(self):
         dtype1 = DtypeSpec('column1', 'the first column', 'int')
@@ -181,7 +181,7 @@ class DatasetSpecTests(TestCase):
                           [dtype3],
                           data_type_inc='SimpleTable',
                           data_type_def='ExtendedTable')
-        ext.resolve_spec(base)
+        ext.resolve_inc_spec(base)
         self.assertEqual(ext['dtype'], [dtype1, dtype2, dtype3])
         self.assertEqual(ext['doc'], 'my first table extension')
 
@@ -199,7 +199,7 @@ class DatasetSpecTests(TestCase):
                           [dtype3],
                           data_type_inc='SimpleTable',
                           data_type_def='ExtendedTable')
-        ext.resolve_spec(base)
+        ext.resolve_inc_spec(base)
         self.assertEqual(ext['dtype'], [dtype1, dtype3])
         self.assertEqual(ext['doc'], 'my first table extension')
 
@@ -218,7 +218,7 @@ class DatasetSpecTests(TestCase):
                           data_type_inc='SimpleTable',
                           data_type_def='ExtendedTable')
         with self.assertRaisesWith(ValueError, 'Cannot extend float64 to float32'):
-            ext.resolve_spec(base)
+            ext.resolve_inc_spec(base)
 
     def test_datatype_table_extension_diff_format(self):
         dtype1 = DtypeSpec('column1', 'the first column', 'int')
@@ -235,7 +235,7 @@ class DatasetSpecTests(TestCase):
                         data_type_inc='SimpleTable',
                         data_type_def='ExtendedTable')
         with self.assertRaisesWith(ValueError, 'Cannot extend float64 to int32'):
-            ext.resolve_spec(base)
+            ext.resolve_inc_spec(base)
 
 
     def test_data_type_property_value(self):

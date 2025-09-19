@@ -397,7 +397,7 @@ class NamespaceCatalog:
             ret = tuple()
         return ret
 
-    def __load_spec_file(self, reader, spec_source, catalog, types_to_load, resolve):
+    def __load_spec_file(self, reader, spec_source, catalog, types_to_load):
         ret = self.__loaded_specs.get(spec_source)
         if ret is not None:
             raise ValueError("spec source '%s' already loaded" % spec_source)
@@ -409,8 +409,6 @@ class NamespaceCatalog:
                 raise ValueError(msg)
             if types_to_load and dt_def not in types_to_load:
                 return
-            # if resolve:
-            #     self.__resolve_includes(spec_cls, spec_dict, catalog)
             spec_obj = spec_cls.build_spec(spec_dict)
             return catalog.auto_register(spec_obj, spec_source)
 
@@ -450,23 +448,24 @@ class NamespaceCatalog:
             if parent_spec is None:
                 msg = "Cannot resolve include spec '%s' for spec: %s" % (spec.data_type_inc, spec)
                 raise ValueError(msg)
-            if isinstance(spec, DatasetSpec):  # TODO
-                # set the inc_spec arg to the inc spec so that the spec can be updated with all of the
-                # attributes, datasets, groups, and links of the inc spec when resolve_spec is called
-                spec.inc_spec = parent_spec
-                spec.resolve_spec(spec.inc_spec)  # TODO: refactor
+            if isinstance(spec, DatasetSpec):
+                # dataset spec has no subspecs so just resolve it and mark as resolved
+                spec.resolve_inc_spec(parent_spec)
                 spec.resolved = True
             else:
-                if parent_spec.resolved and spec.inc_spec is None:
-                    spec.inc_spec = parent_spec
-                    spec.resolve_spec(spec.inc_spec)  # TODO: refactor
+                # resolve the included parent spec only after the parent spec is resolved
+                # and this spec has not yet resolved its included parent spec
+                if parent_spec.resolved and not spec.inc_spec_resolved:
+                    spec.resolve_inc_spec(parent_spec)
 
         def __resolve_spec(spec: BaseStorageSpec):
             if not spec.resolved:
+                # resolve the inc spec before the subspecs because the subspecs may refine fields from the inc spec
                 if spec.data_type_inc is not None:
                     # after resolution, inc_spec will be set to the actual spec object
                     __resolve_inc_spec(spec)
 
+                # try to resolve all subspecs and note if they are all resolved
                 all_subspecs_resolved = True
                 if isinstance(spec, GroupSpec):
                     for subspec in spec.groups:
@@ -478,7 +477,9 @@ class NamespaceCatalog:
                         if not subspec.resolved:
                             all_subspecs_resolved = False
 
-                if (spec.data_type_inc is None or spec.inc_spec is not None) and all_subspecs_resolved:
+                # a spec is resolved if it has no data_type_inc or it has been resolved with the inc spec
+                # and all subspecs are resolved
+                if (spec.data_type_inc is None or spec.inc_spec_resolved) and all_subspecs_resolved:
                     spec.resolved = True
 
         num_passes = 0
@@ -487,12 +488,15 @@ class NamespaceCatalog:
         while not all_resolved and num_passes < max_passes:
             num_passes += 1
             all_resolved = True
+            # iterate over all specs in all namespaces and try to resolve them
             for namespace in self.__namespaces.values():
                 for type_name in namespace.catalog.get_registered_types():
                     spec = namespace.catalog.get_spec(type_name)
                     __resolve_spec(namespace.catalog.get_spec(type_name))
                     if not spec.resolved:
                         all_resolved = False
+
+        # if we could not resolve all specs, raise an error
         if not all_resolved:
             unresolved = []
             for namespace in self.__namespaces.values():
@@ -503,7 +507,7 @@ class NamespaceCatalog:
             raise RuntimeError("Could not resolve all specifications after %d passes. Unresolved specs: %s"
                                % (max_passes, ", ".join(unresolved)))
 
-    def __load_namespace(self, namespace, reader, resolve):
+    def __load_namespace(self, namespace, reader):
         ns_name = namespace['name']
         if ns_name in self.__namespaces:  # pragma: no cover
             raise KeyError("namespace '%s' already exists" % ns_name)
@@ -517,7 +521,7 @@ class NamespaceCatalog:
                 types_to_load = set(types_to_load)
             if 'source' in s:
                 # read specs from file
-                self.__load_spec_file(reader, s['source'], catalog, types_to_load, resolve)
+                self.__load_spec_file(reader, s['source'], catalog, types_to_load)
                 self.__included_sources.setdefault(ns_name, list()).append(s['source'])
             elif 'namespace' in s:
                 # load specs from namespace
@@ -584,7 +588,9 @@ class NamespaceCatalog:
     @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},
             {'name': 'resolve',
              'type': bool,
-             'doc': 'whether or not to include objects from included/parent spec objects', 'default': True},
+             'doc': ('whether or not to include objects from included/parent spec objects. In practice, this is '
+                     'False when generating documentation where it is useful to show the unresolved specs'),
+             'default': True},
             {'name': 'reader',
              'type': (SpecReader, dict),
              'doc': 'the SpecReader or dict of SpecReader classes to use for reading specifications',
@@ -639,7 +645,7 @@ class NamespaceCatalog:
 
             # now load specs into namespace
             for ns in to_load:
-                ret[ns['name']] = self.__load_namespace(ns, r, resolve)
+                ret[ns['name']] = self.__load_namespace(ns, r)
             self.__included_specs[ns_path_key] = ret
 
         if resolve:

@@ -355,6 +355,7 @@ class BaseStorageSpec(Spec):
             self.set_attribute(attribute)
         self.__new_attributes = set(self.__attributes.keys())
         self.__overridden_attributes = set()
+        self.__inc_spec_resolved = False
         self.__resolved = False
 
     @property
@@ -363,11 +364,17 @@ class BaseStorageSpec(Spec):
         return self.get('default_name', None)
 
     @property
+    def inc_spec_resolved(self):
+        return self.__inc_spec_resolved
+
+    @property
     def resolved(self):
         return self.__resolved
 
     @resolved.setter
-    def resolved(self, val):
+    def resolved(self, val: bool):
+        if not isinstance(val, bool):
+            raise ValueError("resolved must be a boolean")
         self.__resolved = val
 
     @property
@@ -377,7 +384,7 @@ class BaseStorageSpec(Spec):
 
     @docval({'name': 'inc_spec', 'type': 'hdmf.spec.spec.BaseStorageSpec',
              'doc': 'the data type this specification represents'})
-    def resolve_spec(self, **kwargs):
+    def resolve_inc_spec(self, **kwargs):
         """Add attributes from the inc_spec to this spec and track which attributes are new and overridden."""
         inc_spec = getargs('inc_spec', kwargs)
         for attribute in inc_spec.attributes:
@@ -386,6 +393,7 @@ class BaseStorageSpec(Spec):
                 self.__overridden_attributes.add(attribute.name)
             else:
                 self.set_attribute(attribute)
+        self.__inc_spec_resolved = True
 
     @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
     def is_inherited_spec(self, **kwargs):
@@ -731,7 +739,7 @@ class DatasetSpec(BaseStorageSpec):
 
     @docval({'name': 'inc_spec', 'type': 'hdmf.spec.spec.DatasetSpec',
              'doc': 'the data type this specification represents'})
-    def resolve_spec(self, **kwargs):  # noqa: C901
+    def resolve_inc_spec(self, **kwargs):  # noqa: C901
         inc_spec = getargs('inc_spec', kwargs)
         if inc_spec.dtype is not None:
             if self.dtype is None:
@@ -781,7 +789,7 @@ class DatasetSpec(BaseStorageSpec):
             if self.value is None:
                 self['value'] = inc_spec.value
 
-        super().resolve_spec(inc_spec)
+        super().resolve_inc_spec(inc_spec)
 
     @property
     def dims(self):
@@ -939,7 +947,7 @@ class GroupSpec(BaseStorageSpec):
         super().__init__(doc, **kwargs)
 
     @docval({'name': 'inc_spec', 'type': 'GroupSpec', 'doc': 'the data type this specification represents'})
-    def resolve_spec(self, **kwargs):
+    def resolve_inc_spec(self, **kwargs):
         inc_spec = getargs('inc_spec', kwargs)
         data_types = list()
         target_types = list()
@@ -953,7 +961,7 @@ class GroupSpec(BaseStorageSpec):
                 # if the included dataset spec was added earlier during resolution, don't add it again
                 # but resolve the spec using the included dataset spec - the included spec may contain
                 # properties not specified in the version of this spec added earlier during resolution
-                self.__datasets[dataset.name].resolve_spec(dataset)
+                self.__datasets[dataset.name].resolve_inc_spec(dataset)
                 self.__overridden_datasets.add(dataset.name)
             else:
                 self.set_dataset(dataset)
@@ -964,7 +972,7 @@ class GroupSpec(BaseStorageSpec):
                 continue
             self.__new_groups.discard(group.name)
             if group.name in self.__groups:
-                self.__groups[group.name].resolve_spec(group)
+                self.__groups[group.name].resolve_inc_spec(group)
                 self.__overridden_groups.add(group.name)
             else:
                 self.set_group(group)
@@ -1001,7 +1009,7 @@ class GroupSpec(BaseStorageSpec):
                     (isinstance(existing_dt_spec, list) or existing_dt_spec.name is not None) and
                     link_spec.name is None):
                 self.set_link(link_spec)
-        super().resolve_spec(inc_spec)
+        super().resolve_inc_spec(inc_spec)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the dataset'},
             raises="ValueError, if 'name' is not part of this spec")
