@@ -437,75 +437,71 @@ class NamespaceCatalog:
         if parent_cls.inc_key() in spec_dict:
             spec_dict[spec_cls.inc_key()] = spec_dict.pop(parent_cls.inc_key())
 
-    def resolve_all_specs(self):  # noqa: C901
-        '''
-        Resolve all specs in the catalog
-        '''
+    def __resolve_inc_spec(self, spec: BaseStorageSpec) -> None:
+        """Resolve the included spec into the given spec."""
+        # get the spec for the included type regardless of namespace
+        included_spec = self.get_spec_for_type(spec.data_type_inc)
+        if included_spec is None:
+            msg = f"Cannot find spec for data_type_inc = '{spec.data_type_inc}' for spec: {spec}"
+            raise ValueError(msg)
+        # resolve the included spec only after the included spec has been resolved
+        if included_spec.resolved:
+            spec.resolve_inc_spec(included_spec)
 
-        def __resolve_inc_spec(spec: BaseStorageSpec):
-            # get the spec for the included type regardless of namespace
-            parent_spec = self.get_spec_for_type(spec.data_type_inc)
-            if parent_spec is None:
-                msg = "Cannot resolve include spec '%s' for spec: %s" % (spec.data_type_inc, spec)
-                raise ValueError(msg)
-            if isinstance(spec, DatasetSpec):
-                # dataset spec has no subspecs so just resolve it and mark as resolved
-                spec.resolve_inc_spec(parent_spec)
-                spec.resolved = True
-            else:
-                # resolve the included parent spec only after the parent spec is resolved
-                # and this spec has not yet resolved its included parent spec
-                if parent_spec.resolved and not spec.inc_spec_resolved:
-                    spec.resolve_inc_spec(parent_spec)
+    def __resolve_spec(self, spec: BaseStorageSpec) -> None:
+        """Resolve the given spec by resolving its included spec and all its subspecs."""
+        # NOTE: resolution needs to happen at the namespace catalog level because the included spec
+        # may be in a different namespace
+        if not spec.resolved:
+            # resolve the included spec before the subspecs because the subspecs may refine fields inherited from the
+            # included spec
+            if spec.data_type_inc is not None and not spec.inc_spec_resolved:
+                self.__resolve_inc_spec(spec)
 
-        def __resolve_spec(spec: BaseStorageSpec):
-            if not spec.resolved:
-                # resolve the inc spec before the subspecs because the subspecs may refine fields from the inc spec
-                if spec.data_type_inc is not None:
-                    # after resolution, inc_spec will be set to the actual spec object
-                    __resolve_inc_spec(spec)
+            if spec.data_type_inc is None or spec.inc_spec_resolved:
+                if isinstance(spec, DatasetSpec):
+                    # dataset spec has no subspecs so if it has been resolved with the included spec, it is done
+                    spec.resolved = True
+                    return
 
-                # try to resolve all subspecs and note if they are all resolved
+                # group spec - try to resolve all subspecs and note if they are all resolved
                 all_subspecs_resolved = True
-                if isinstance(spec, GroupSpec):
-                    for subspec in spec.groups:
-                        __resolve_spec(subspec)
-                        if not subspec.resolved:
-                            all_subspecs_resolved = False
-                    for subspec in spec.datasets:
-                        __resolve_spec(subspec)
-                        if not subspec.resolved:
-                            all_subspecs_resolved = False
+                for subspec in (spec.groups + spec.datasets):
+                    self.__resolve_spec(subspec)
+                    if not subspec.resolved:
+                        all_subspecs_resolved = False
 
-                # a spec is resolved if it has no data_type_inc or it has been resolved with the inc spec
-                # and all subspecs are resolved
-                if (spec.data_type_inc is None or spec.inc_spec_resolved) and all_subspecs_resolved:
+                if all_subspecs_resolved:
                     spec.resolved = True
 
+    def resolve_all_specs(self) -> None:
+        """Resolve all specs in the catalog."""
+        # get a set of all unresolved data type specs
+        unresolved_data_type_specs = set()
+        for namespace in self.__namespaces.values():
+            for type_name in namespace.catalog.get_registered_types():
+                spec = namespace.catalog.get_spec(type_name)
+                if not spec.resolved:
+                    unresolved_data_type_specs.add(spec)
+
+        # iteratively resolve specs until all are resolved or we reach max passes
         num_passes = 0
         max_passes = 10
-        all_resolved = False
-        while not all_resolved and num_passes < max_passes:
+        while unresolved_data_type_specs and num_passes < max_passes:
             num_passes += 1
-            all_resolved = True
-            # iterate over all specs in all namespaces and try to resolve them
-            for namespace in self.__namespaces.values():
-                for type_name in namespace.catalog.get_registered_types():
-                    spec = namespace.catalog.get_spec(type_name)
-                    __resolve_spec(namespace.catalog.get_spec(type_name))
-                    if not spec.resolved:
-                        all_resolved = False
+            specs_to_process = copy(unresolved_data_type_specs)
+            for spec in specs_to_process:
+                self.__resolve_spec(spec)
+                if spec.resolved:
+                    unresolved_data_type_specs.remove(spec)
 
         # if we could not resolve all specs, raise an error
-        if not all_resolved:
-            unresolved = []
-            for namespace in self.__namespaces.values():
-                for type_name in namespace.catalog.get_registered_types():
-                    spec = namespace.catalog.get_spec(type_name)
-                    if not spec.resolved:
-                        unresolved.append(f"{type_name} (namespace: {namespace.name})")
-            raise RuntimeError("Could not resolve all specifications after %d passes. Unresolved specs: %s"
-                               % (max_passes, ", ".join(unresolved)))
+        if unresolved_data_type_specs:
+            unresolved = [f"{spec.data_type_def} (namespace: {self.get_namespace_for_type(spec.data_type_def).name})"
+                          for spec in unresolved_data_type_specs]
+            msg = (f"Could not resolve all specifications after {max_passes} passes. Unresolved specs: "
+                   f"{', '.join(unresolved)}")
+            raise RuntimeError(msg)
 
     def __load_namespace(self, namespace, reader):
         ns_name = namespace['name']
