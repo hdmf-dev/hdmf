@@ -1,6 +1,7 @@
 import re
 from abc import ABCMeta
 from collections import OrderedDict
+from typing import Union
 from warnings import warn
 
 from ..utils import docval, getargs, popargs, get_docval
@@ -75,6 +76,129 @@ class DtypeHelper:
             raise ValueError("dtype '%s' is not a valid primary data type. Allowed dtypes: %s"
                              % (dtype, str(DtypeHelper.valid_primary_dtypes)))
         return dtype
+
+
+def _get_dtype_name_prec_level(dtype: str):
+    # TODO: this returns just the first letter of the dtype name, which is not ideal
+    # TODO: this does not handle the "numeric" dtype case. use hdmf.validate.validator.__allowable
+    # TODO: not all dtype names have numbers in them that indicate precision level
+    m = re.search('[0-9]+', dtype)
+    if m is not None:
+        prec = int(m.group())
+    else:
+        prec = 32
+    return dtype[0], prec
+
+
+def _is_sub_dtype(new: Union[str, "RefSpec"], orig: Union[str, "RefSpec"]):
+    if isinstance(orig, RefSpec):
+        if not isinstance(new, RefSpec):
+            return False
+        return orig == new
+    else:
+        orig_name, orig_prec = _get_dtype_name_prec_level(orig)
+        new_name, new_prec = _get_dtype_name_prec_level(new)
+        if orig_name != new_name:
+            # cannot extend int to float and vice-versa
+            return False
+        return new_prec >= orig_prec
+
+
+def _resolve_inc_spec_dtype(
+        spec: Union['AttributeSpec', 'DatasetSpec'],
+        inc_spec: Union['AttributeSpec', 'DatasetSpec']
+    ):
+    if inc_spec.dtype is None:
+        # nothing to include/check
+        return
+
+    if spec.dtype is None:
+        # no dtype defined, just use the included spec dtype
+        spec['dtype'] = inc_spec.dtype
+        return
+
+    # both inc_spec and spec have dtype defined
+    if not isinstance(spec.dtype, list):
+        # spec is a simple dtype. make sure it is a subtype of the included spec dtype
+        if isinstance(inc_spec.dtype, list):
+            msg = 'Cannot extend compound data type to simple data type'
+            raise ValueError(msg)
+        if not _is_sub_dtype(spec.dtype, inc_spec.dtype):
+            msg = f'Cannot extend {str(inc_spec.dtype)} to {str(spec.dtype)}'
+            raise ValueError(msg)
+        return
+
+    # spec is a compound dtype. make sure it is a subtype of the included spec dtype
+    if not isinstance(inc_spec.dtype, list):
+        msg = 'Cannot extend simple data type to compound data type'
+        raise ValueError(msg)
+    inc_spec_order = OrderedDict()
+    for dt in inc_spec.dtype:
+        inc_spec_order[dt['name']] = dt
+    for dt in spec.dtype:
+        name = dt['name']
+        if name in inc_spec_order:
+            # verify that the extension has supplied
+            # a valid subtyping of existing type
+            inc_sub_dtype = inc_spec_order[name].dtype
+            new_sub_dtype = dt.dtype
+            if not _is_sub_dtype(new_sub_dtype, inc_sub_dtype):
+                msg = f'Cannot extend {str(inc_sub_dtype)} to {str(new_sub_dtype)}'
+                raise ValueError(msg)
+        # TODO do we want to disallow adding columns? (if name not in inc_spec_order)
+        # add/replace the new spec
+        inc_spec_order[name] = dt
+    # keep the order of the included spec
+    spec['dtype'] = list(inc_spec_order.values())
+
+def _resolve_inc_spec_shape(
+        spec: Union['AttributeSpec', 'DatasetSpec'],
+        inc_spec: Union['AttributeSpec', 'DatasetSpec']
+    ):
+    if inc_spec.shape is None:
+        # nothing to include/check
+        return
+
+    if spec.shape is None:
+        # no shape defined, just use the included spec shape
+        spec['shape'] = inc_spec.shape
+        return
+
+    # both inc_spec and self have shape defined
+    if len(spec.shape) > len(inc_spec.shape):
+        msg = "Cannot extend shape %s to %s" % (str(inc_spec.shape), str(spec.shape))
+        raise ValueError(msg)
+    # TODO: make sure the new shape is a subset of the included shape
+
+def _resolve_inc_spec_dims(
+        spec: Union['AttributeSpec', 'DatasetSpec'],
+        inc_spec: Union['AttributeSpec', 'DatasetSpec']
+    ):
+    if inc_spec.dims is None:
+        # nothing to include/check
+        return
+
+    if spec.dims is None:
+        # no dims defined, just use the included spec dims
+        spec['dims'] = inc_spec.dims
+        return
+
+    # both inc_spec and spec have dims defined
+    if len(spec.dims) > len(inc_spec.dims):
+        msg = "Cannot extend dims %s to %s" % (str(inc_spec.dims), str(spec.dims))
+        raise ValueError(msg)
+    # TODO: make sure the new dims is a subset of the included dims
+
+
+def _resolve_inc_spec_value(
+        spec: Union['AttributeSpec', 'DatasetSpec'],
+        inc_spec: Union['AttributeSpec', 'DatasetSpec']
+    ):
+    # handle both default_value and value
+    if spec.default_value is None and inc_spec.default_value is not None:
+        spec['default_value'] = inc_spec.default_value
+    if spec.value is None and inc_spec.value is not None:
+        spec['value'] = inc_spec.value
 
 
 class ConstructableDict(dict, metaclass=ABCMeta):
@@ -387,12 +511,17 @@ class BaseStorageSpec(Spec):
     def resolve_inc_spec(self, **kwargs):
         """Add attributes from the inc_spec to this spec and track which attributes are new and overridden."""
         inc_spec = getargs('inc_spec', kwargs)
-        for attribute in inc_spec.attributes:
-            self.__new_attributes.discard(attribute.name)
-            if attribute.name in self.__attributes:
-                self.__overridden_attributes.add(attribute.name)
+        for inc_spec_attribute in inc_spec.attributes:
+            self.__new_attributes.discard(inc_spec_attribute.name)
+            if inc_spec_attribute.name in self.__attributes:
+                self.__overridden_attributes.add(inc_spec_attribute.name)
+                new_attribute = self.__attributes[inc_spec_attribute.name]
+                _resolve_inc_spec_dtype(new_attribute, inc_spec_attribute)
+                _resolve_inc_spec_shape(new_attribute, inc_spec_attribute)
+                _resolve_inc_spec_dims(new_attribute, inc_spec_attribute)
+                _resolve_inc_spec_value(new_attribute, inc_spec_attribute)
             else:
-                self.set_attribute(attribute)
+                self.set_attribute(inc_spec_attribute)
         self.__inc_spec_resolved = True
 
     @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
@@ -714,81 +843,15 @@ class DatasetSpec(BaseStorageSpec):
                 raise ValueError("quantity %s invalid for spec with fixed name. Valid values are: %s" %
                                  (self.quantity, str(valid_quant_vals)))
 
-    @classmethod
-    def __get_prec_level(cls, dtype):
-        m = re.search('[0-9]+', dtype)
-        if m is not None:
-            prec = int(m.group())
-        else:
-            prec = 32
-        return (dtype[0], prec)
-
-    @classmethod
-    def __is_sub_dtype(cls, orig, new):
-        if isinstance(orig, RefSpec):
-            if not isinstance(new, RefSpec):
-                return False
-            return orig == new
-        else:
-            orig_prec = cls.__get_prec_level(orig)
-            new_prec = cls.__get_prec_level(new)
-            if orig_prec[0] != new_prec[0]:
-                # cannot extend int to float and vice-versa
-                return False
-            return new_prec >= orig_prec
 
     @docval({'name': 'inc_spec', 'type': 'hdmf.spec.spec.DatasetSpec',
              'doc': 'the data type this specification represents'})
-    def resolve_inc_spec(self, **kwargs):  # noqa: C901
+    def resolve_inc_spec(self, **kwargs):
         inc_spec = getargs('inc_spec', kwargs)
-        if inc_spec.dtype is not None:
-            if self.dtype is None:
-                self['dtype'] = inc_spec.dtype
-            # TODO: make sure new dtype is a subdtype of the included dtype
-            # but for now, do nothing
-        if isinstance(self.dtype, list):
-            # merge the new types
-            inc_dtype = inc_spec.dtype
-            if isinstance(inc_dtype, str):
-                msg = 'Cannot extend simple data type to compound data type'
-                raise ValueError(msg)
-            order = OrderedDict()
-            if inc_dtype is not None:
-                for dt in inc_dtype:
-                    order[dt['name']] = dt
-            for dt in self.dtype:
-                name = dt['name']
-                if name in order:
-                    # verify that the extension has supplied
-                    # a valid subtyping of existing type
-                    orig = order[name].dtype
-                    new = dt.dtype
-                    if not self.__is_sub_dtype(orig, new):
-                        msg = 'Cannot extend %s to %s' % (str(orig), str(new))
-                        raise ValueError(msg)
-                order[name] = dt
-            self['dtype'] = list(order.values())
-        # TODO: merge shape and dims
-        if inc_spec.shape is not None:
-            if self.shape is None:
-                self['shape'] = inc_spec.shape
-            # make sure the new shape is a subset of the included shape
-            # but for now, do nothing
-        if inc_spec.dims is not None:
-            if self.dims is None:
-                # new shape is not None
-                # new dims is None but old dims is not None
-
-                self['dims'] = inc_spec.dims
-            # make sure the new dims is a subset of the included dims
-            # but for now, do nothing
-        if inc_spec.default_value is not None:
-            if self.default_value is None:
-                self['default_value'] = inc_spec.default_value
-        if inc_spec.value is not None:
-            if self.value is None:
-                self['value'] = inc_spec.value
-
+        _resolve_inc_spec_dtype(self, inc_spec)
+        _resolve_inc_spec_shape(self, inc_spec)
+        _resolve_inc_spec_dims(self, inc_spec)
+        _resolve_inc_spec_value(self, inc_spec)
         super().resolve_inc_spec(inc_spec)
 
     @property
