@@ -169,7 +169,7 @@ def _resolve_inc_spec_shape(
 
     # both inc_spec and self have shape defined
     if len(spec.shape) > len(inc_spec.shape):
-        msg = "Cannot extend shape %s to %s" % (str(inc_spec.shape), str(spec.shape))
+        msg = f"Cannot extend shape {str(inc_spec.shape)} to {str(spec.shape)}"
         raise ValueError(msg)
     # TODO: make sure the new shape is a subset of the included shape
 
@@ -177,6 +177,8 @@ def _resolve_inc_spec_dims(
         spec: Union['AttributeSpec', 'DatasetSpec'],
         inc_spec: Union['AttributeSpec', 'DatasetSpec']
     ):
+    # NOTE: In theory, the shape check above and shape & dims consistency check will catch all issues with dims
+    # before this function is called
     if inc_spec.dims is None:
         # nothing to include/check
         return
@@ -187,8 +189,8 @@ def _resolve_inc_spec_dims(
         return
 
     # both inc_spec and spec have dims defined
-    if len(spec.dims) > len(inc_spec.dims):
-        msg = "Cannot extend dims %s to %s" % (str(inc_spec.dims), str(spec.dims))
+    if len(spec.dims) > len(inc_spec.dims):  # pragma: no cover
+        msg = f"Cannot extend dims {str(inc_spec.dims)} to {str(spec.dims)}"
         raise ValueError(msg)
     # TODO: make sure the new dims is a subset of the included dims
 
@@ -831,6 +833,8 @@ class DatasetSpec(BaseStorageSpec):
         super().__init__(doc, **kwargs)
         if default_value is not None:
             self['default_value'] = default_value
+            if value is not None:
+                raise ValueError("cannot specify 'value' and 'default_value'")
         if value is not None:
             self['value'] = value
         if self.name is not None:

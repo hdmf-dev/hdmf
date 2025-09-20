@@ -339,7 +339,7 @@ class NamespaceCatalog:
     def get_spec_for_type(self, data_type):
         ns = self.get_namespace_for_type(data_type)
         if ns is None:
-            raise KeyError(f"Namespace for data_type '{data_type}' not found")
+            raise ValueError(f"Namespace for data_type '{data_type}' not found")
         return ns.get_spec(data_type)
 
     @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace'},

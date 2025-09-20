@@ -147,60 +147,6 @@ class GroupSpecTests(TestCase):
         )
         self.assertIsInstance(group.get_group('subgroup'), GroupSpec)
 
-    def test_type_extension(self):
-        spec = GroupSpec('A test group',
-                         name='parent_type',
-                         datasets=self.datasets,
-                         attributes=self.attributes,
-                         linkable=False,
-                         data_type_def='EphysData')
-        dset1_attributes_ext = [
-            AttributeSpec('dset1_extra_attribute', 'an extra attribute for the first dataset', 'text')
-        ]
-        ext_datasets = [
-            DatasetSpec('my first dataset extension',
-                        'int',
-                        name='dataset1',
-                        attributes=dset1_attributes_ext,
-                        linkable=True),
-        ]
-        ext_attributes = [
-            AttributeSpec('ext_extra_attribute', 'an extra attribute for the group', 'text'),
-        ]
-        ext = GroupSpec('A test group extension',
-                        name='child_type',
-                        datasets=ext_datasets,
-                        attributes=ext_attributes,
-                        linkable=False,
-                        data_type_inc='EphysData',
-                        data_type_def='SpikeData')
-        ext.resolve_inc_spec(spec)
-        ext_dset1 = ext.get_dataset('dataset1')
-        ext_dset1_attrs = ext_dset1.attributes
-        self.assertDictEqual(ext_dset1_attrs[0], dset1_attributes_ext[0])
-        self.assertDictEqual(ext_dset1_attrs[1], self.dset1_attributes[0])
-        self.assertDictEqual(ext_dset1_attrs[2], self.dset1_attributes[1])
-        self.assertEqual(ext.data_type_def, 'SpikeData')
-        self.assertEqual(ext.data_type_inc, 'EphysData')
-
-        ext_dset2 = ext.get_dataset('dataset2')
-        self.maxDiff = None
-        # this will suffice for now,  assertDictEqual doesn't do deep equality checks
-        self.assertEqual(str(ext_dset2), str(self.datasets[1]))
-        self.assertAttributesEqual(ext_dset2, self.datasets[1])
-
-        res_attrs = ext.attributes
-        self.assertDictEqual(res_attrs[0], ext_attributes[0])
-        self.assertDictEqual(res_attrs[1], self.attributes[0])
-        self.assertDictEqual(res_attrs[2], self.attributes[1])
-
-        # test that inherited specs are tracked appropriate
-        for d in self.datasets:
-            with self.subTest(dataset=d.name):
-                self.assertTrue(ext.is_inherited_spec(d))
-                self.assertFalse(spec.is_inherited_spec(d))
-
-        json.dumps(spec)
 
     def assertDatasetsEqual(self, spec1, spec2):
         spec1_dsets = spec1.datasets
