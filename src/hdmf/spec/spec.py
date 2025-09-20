@@ -91,9 +91,10 @@ def _get_dtype_name_prec_level(dtype: str):
 
 
 def _is_sub_dtype(new: Union[str, "RefSpec"], orig: Union[str, "RefSpec"]):
-    if isinstance(orig, RefSpec):
-        if not isinstance(new, RefSpec):
-            return False
+    if isinstance(orig, RefSpec) != isinstance(new, RefSpec):
+        return False
+
+    if isinstance(orig, RefSpec):  # both are RefSpec
         # check ref target is a subtype of the original ref target
         # TODO: implement subtype check for RefSpec. might need to resolve RefSpec target type to a spec first
         # return orig == new
@@ -530,6 +531,7 @@ class BaseStorageSpec(Spec):
                 _resolve_inc_spec_dims(new_attribute, inc_spec_attribute)
                 _resolve_inc_spec_value(new_attribute, inc_spec_attribute)
             else:
+                # TODO: would be nice to have inherited attributes come before new attributes in the attributes list
                 self.set_attribute(inc_spec_attribute)
         self.__inc_spec_resolved = True
 

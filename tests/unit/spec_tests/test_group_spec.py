@@ -606,8 +606,6 @@ class TestResolveGroupSameAttributeName(TestCase):
         self.assertTrue(self.inc_group_spec2.is_inherited_spec(self.inc_group_spec2.attributes[0]))
 
 
-
-
 class GroupSpecWithLinksTest(TestCase):
 
     def test_constructor(self):

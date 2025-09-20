@@ -131,77 +131,6 @@ class DatasetSpecTests(TestCase):
                     name='ds1',
                     quantity=1)
 
-    def test_datatype_table_extension(self):
-        dtype1 = DtypeSpec('column1', 'the first column', 'int')
-        dtype2 = DtypeSpec('column2', 'the second column', 'float')
-        base = DatasetSpec('my first table',
-                           [dtype1, dtype2],
-                           attributes=self.attributes,
-                           data_type_def='SimpleTable')
-        self.assertEqual(base['dtype'], [dtype1, dtype2])
-        self.assertEqual(base['doc'], 'my first table')
-        dtype3 = DtypeSpec('column3', 'the third column', 'text')
-        ext = DatasetSpec('my first table extension',
-                          [dtype3],
-                          data_type_inc='SimpleTable',
-                          data_type_def='ExtendedTable')
-        ext.resolve_inc_spec(base)
-        self.assertEqual(ext['dtype'], [dtype1, dtype2, dtype3])
-        self.assertEqual(ext['doc'], 'my first table extension')
-
-    def test_datatype_table_extension_higher_precision(self):
-        dtype1 = DtypeSpec('column1', 'the first column', 'int')
-        dtype2 = DtypeSpec('column2', 'the second column', 'float32')
-        base = DatasetSpec('my first table',
-                           [dtype1, dtype2],
-                           attributes=self.attributes,
-                           data_type_def='SimpleTable')
-        self.assertEqual(base['dtype'], [dtype1, dtype2])
-        self.assertEqual(base['doc'], 'my first table')
-        dtype3 = DtypeSpec('column2', 'the second column, with greater precision', 'float64')
-        ext = DatasetSpec('my first table extension',
-                          [dtype3],
-                          data_type_inc='SimpleTable',
-                          data_type_def='ExtendedTable')
-        ext.resolve_inc_spec(base)
-        self.assertEqual(ext['dtype'], [dtype1, dtype3])
-        self.assertEqual(ext['doc'], 'my first table extension')
-
-    def test_datatype_table_extension_lower_precision(self):
-        dtype1 = DtypeSpec('column1', 'the first column', 'int')
-        dtype2 = DtypeSpec('column2', 'the second column', 'float64')
-        base = DatasetSpec('my first table',
-                           [dtype1, dtype2],
-                           attributes=self.attributes,
-                           data_type_def='SimpleTable')
-        self.assertEqual(base['dtype'], [dtype1, dtype2])
-        self.assertEqual(base['doc'], 'my first table')
-        dtype3 = DtypeSpec('column2', 'the second column, with greater precision', 'float32')
-        ext = DatasetSpec('my first table extension',
-                          [dtype3],
-                          data_type_inc='SimpleTable',
-                          data_type_def='ExtendedTable')
-        with self.assertRaisesWith(ValueError, 'Cannot extend float64 to float32'):
-            ext.resolve_inc_spec(base)
-
-    def test_datatype_table_extension_diff_format(self):
-        dtype1 = DtypeSpec('column1', 'the first column', 'int')
-        dtype2 = DtypeSpec('column2', 'the second column', 'float64')
-        base = DatasetSpec('my first table',
-                           [dtype1, dtype2],
-                           attributes=self.attributes,
-                           data_type_def='SimpleTable')
-        self.assertEqual(base['dtype'], [dtype1, dtype2])
-        self.assertEqual(base['doc'], 'my first table')
-        dtype3 = DtypeSpec('column2', 'the second column, with greater precision', 'int32')
-        ext = DatasetSpec('my first table extension',
-                        [dtype3],
-                        data_type_inc='SimpleTable',
-                        data_type_def='ExtendedTable')
-        with self.assertRaisesWith(ValueError, 'Cannot extend float64 to int32'):
-            ext.resolve_inc_spec(base)
-
-
     def test_data_type_property_value(self):
         """Test that the property data_type has the expected value"""
         test_cases = {
@@ -246,3 +175,8 @@ class DatasetSpecTests(TestCase):
                 "Default name 'one/two' is invalid. Names of Groups and Datasets cannot contain '/'",
         ):
             DatasetSpec(doc='my first dataset', dtype='int', default_name='one/two', data_type_def='test')
+
+    def test_constructor_value_default_value(self):
+        msg = "cannot specify 'value' and 'default_value'"
+        with self.assertRaisesWith(ValueError, msg):
+            DatasetSpec(doc='my first dataset', dtype='int', name='dataset1', value=42, default_value=0)

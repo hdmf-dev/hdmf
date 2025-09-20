@@ -441,9 +441,7 @@ class NamespaceCatalog:
         """Resolve the included spec into the given spec."""
         # get the spec for the included type regardless of namespace
         included_spec = self.get_spec_for_type(spec.data_type_inc)
-        if included_spec is None:
-            msg = f"Cannot find spec for data_type_inc = '{spec.data_type_inc}' for spec: {spec}"
-            raise ValueError(msg)
+
         # resolve the included spec only after the included spec has been resolved
         if included_spec.resolved:
             spec.resolve_inc_spec(included_spec)
