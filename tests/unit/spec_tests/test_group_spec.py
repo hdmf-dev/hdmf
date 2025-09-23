@@ -278,17 +278,17 @@ class TestNotAllowedConfig(TestCase):
         msg = ("Cannot create Group or Dataset spec with no name without specifying 'data_type_def' "
                "and/or 'data_type_inc'.")
         with self.assertRaisesWith(ValueError, msg):
-            GroupSpec('A test group')
+            GroupSpec(doc='A test group')
 
     def test_name_with_multiple(self):
         msg = ("Cannot give specific name to something that can exist multiple times: name='MyGroup', quantity='*'")
         with self.assertRaisesWith(ValueError, msg):
-            GroupSpec('A test group', name='MyGroup', quantity='*')
+            GroupSpec(doc='A test group', name='MyGroup', quantity='*')
 
     def test_same_data_type_def_inc(self):
         msg = ("data_type_inc and data_type_def cannot be the same: MyType. Ignoring data_type_inc.")
         with self.assertWarnsWith(UserWarning, msg):
-            GroupSpec('A test group', data_type_def='MyType', data_type_inc='MyType')
+            GroupSpec(doc='A test group', data_type_def='MyType', data_type_inc='MyType')
 
 
 
