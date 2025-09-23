@@ -104,7 +104,7 @@ class DtypeHelper:
     @staticmethod
     def is_allowed_dtype(new: str, orig: str):
         if orig not in DtypeHelper.allowable:
-            return False
+            raise ValueError(f"Unknown dtype '{orig}'")
         return new in DtypeHelper.allowable[orig]
 
 

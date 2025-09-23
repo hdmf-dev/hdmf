@@ -63,6 +63,16 @@ class DatasetSpecTests(TestCase):
         )
         self.assertEqual(spec.shape, (None, ))
 
+    def test_colliding_shape_and_dims(self):
+        with self.assertRaises(ValueError):
+            DatasetSpec(
+                doc='my first dataset',
+                dtype='int',
+                name='dataset1',
+                dims=("test",),
+                shape=[None, 2],
+            )
+
     def test_constructor_invalidate_dtype(self):
         with self.assertRaises(ValueError):
             DatasetSpec(doc='my first dataset',
