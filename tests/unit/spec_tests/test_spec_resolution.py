@@ -16,6 +16,7 @@ from hdmf.spec import (
     DatasetSpec,
     DtypeSpec,
     GroupSpec,
+    LinkSpec,
     RefSpec,
     SpecNamespace,
     NamespaceCatalog,
@@ -26,6 +27,11 @@ from hdmf.testing import TestCase
 
 class TestSpecResolution(TestCase):
     """Test the spec resolution system."""
+
+    # NOTE: tests of _resolve_inc_spec_dtype, _resolve_inc_spec_shape, _resolve_inc_spec_dims, etc.
+    # are done for dataset specs below, so they are not repeated here for attributes
+    # NOTE: tests of resolving attributes are done for group specs below and not repeated for datasets
+    # because resolution of attributes is managed by BaseStorageSpec.resolve_inc_spec
 
     def setUp(self):
         """Set up test specs and namespaces."""
@@ -156,37 +162,395 @@ class TestSpecResolution(TestCase):
         self.assertTrue(ext_group.is_inherited_dataset("base_dataset"))
         self.assertFalse(ext_group.is_inherited_dataset("ext_dataset"))
 
-    def test_resolve_inc_spec_attribute_simple_override(self):
-        """Test that attribute overrides work correctly."""
-        # Create an extension that overrides an attribute with compatible type
-        # NOTE: tests of _resolve_inc_spec_dtype, _resolve_inc_spec_shape, _resolve_inc_spec_dims, etc.
-        # are done for dataset specs below, so they are not repeated here for attributes
-        override_attr = AttributeSpec(
-            name="base_attr",
-            dtype="text",
-            value="overridden",
-            doc="Overridden attribute",
-        )
-        ext_dataset = DatasetSpec(
-            data_type_inc="BaseDataset",
-            data_type_def="ExtDataset",
-            name="ext_dataset",
+    def test_resolve_inc_spec_dtype_inheritance(self):
+        """Test that dtype is inherited correctly."""
+        base_dataset = DatasetSpec(
+            data_type_def="BaseWithShape",
             dtype="int",
-            doc="Extended dataset with override",
-            attributes=[override_attr],
+            dims=("x", "y"),
+            shape=(None, 3),
+            doc="Base dataset with shape",
+        )
+
+        ext_dataset = DatasetSpec(
+            data_type_inc="BaseWithShape",
+            data_type_def="ExtWithShape",
+            doc="Extended dataset",
         )
 
         # Resolve the extension
-        ext_dataset.resolve_inc_spec(self.base_dataset)
+        ext_dataset.resolve_inc_spec(base_dataset)
 
-        # Check that the attribute was overridden
-        ext_attr = ext_dataset.get_attribute("base_attr")
-        self.assertEqual(ext_attr.dtype, "text")
-        self.assertEqual(ext_attr.value, "overridden")
-        self.assertEqual(ext_attr.doc, "Overridden attribute")
+        # Check that dtype is inherited
+        self.assertEqual(ext_dataset.dtype, "int")
 
-        # Check override tracking
-        self.assertTrue(ext_dataset.is_overridden_attribute("base_attr"))
+        # without data_type_def
+        ext_dataset2 = DatasetSpec(
+            data_type_inc="BaseWithShape",
+            doc="Extended dataset",
+        )
+
+        # Resolve the extension
+        ext_dataset2.resolve_inc_spec(base_dataset)
+
+        # Check that dtype is inherited
+        self.assertEqual(ext_dataset2.dtype, "int")
+
+    def test_resolve_inc_spec_attribute_simple_override(self):
+        """Test that attribute overrides work correctly."""
+        base_group = GroupSpec(
+            doc="A test group",
+            data_type_def="MyGroup",
+            attributes=[
+                AttributeSpec(name="attribute1", doc="my first attribute", dtype="text"),
+                AttributeSpec(name="attribute2", doc="my second attribute", dtype="text"),
+            ],
+        )
+        ext_group = GroupSpec(
+            doc="A test group",
+            name="root",
+            data_type_inc="MyGroup",
+            attributes=[
+                AttributeSpec(name="attribute2", doc="my second attribute", dtype="text", value="fixed"),
+                AttributeSpec(name="attribute3", doc="my third attribute", dtype="text", value="fixed"),
+            ],
+        )
+        ext_group.resolve_inc_spec(base_group)
+
+        self.assertTupleEqual(
+            ext_group.attributes,
+            (
+                AttributeSpec(name="attribute2", doc="my second attribute", dtype="text", value="fixed"),
+                AttributeSpec(name="attribute3", doc="my third attribute", dtype="text", value="fixed"),
+                AttributeSpec(name="attribute1", doc="my first attribute", dtype="text"),
+            ),
+        )
+
+        self.assertEqual(
+            ext_group.get_attribute("attribute1"),
+            AttributeSpec(name="attribute1", doc="my first attribute", dtype="text"),
+        )
+        self.assertEqual(
+            ext_group.get_attribute("attribute2"),
+            AttributeSpec(name="attribute2", doc="my second attribute", dtype="text", value="fixed"),
+        )
+        self.assertEqual(
+            ext_group.get_attribute("attribute3"),
+            AttributeSpec(name="attribute3", doc="my third attribute", dtype="text", value="fixed"),
+        )
+
+        # Check is_inherited_spec
+        self.assertFalse(base_group.is_inherited_spec(base_group.attributes[0]))
+        self.assertFalse(base_group.is_inherited_spec(base_group.attributes[1]))
+
+        attr_spec_map = {attr.name: attr for attr in ext_group.attributes}
+        self.assertTrue(ext_group.is_inherited_spec(attr_spec_map["attribute1"]))
+        self.assertTrue(ext_group.is_inherited_spec(attr_spec_map["attribute2"]))
+        self.assertFalse(ext_group.is_inherited_spec(attr_spec_map["attribute3"]))
+
+        # Check is_overridden_spec
+        self.assertFalse(base_group.is_overridden_spec(base_group.attributes[0]))
+        self.assertFalse(base_group.is_overridden_spec(base_group.attributes[1]))
+
+        attr_spec_map = {attr.name: attr for attr in ext_group.attributes}
+        self.assertFalse(ext_group.is_overridden_spec(attr_spec_map["attribute1"]))
+        self.assertTrue(ext_group.is_overridden_spec(attr_spec_map["attribute2"]))
+        self.assertFalse(ext_group.is_overridden_spec(attr_spec_map["attribute3"]))
+
+        # Check is_inherited_attribute
+        self.assertFalse(base_group.is_inherited_attribute("attribute1"))
+        self.assertFalse(base_group.is_inherited_attribute("attribute2"))
+        self.assertTrue(ext_group.is_inherited_attribute("attribute1"))
+        self.assertTrue(ext_group.is_inherited_attribute("attribute2"))
+        self.assertFalse(ext_group.is_inherited_attribute("attribute3"))
+        with self.assertRaisesWith(ValueError, "Attribute 'attribute4' not found"):
+            ext_group.is_inherited_attribute("attribute4")
+
+        # Check is_overridden_attribute
+        self.assertFalse(base_group.is_overridden_attribute("attribute1"))
+        self.assertFalse(base_group.is_overridden_attribute("attribute2"))
+        self.assertFalse(ext_group.is_overridden_attribute("attribute1"))
+        self.assertTrue(ext_group.is_overridden_attribute("attribute2"))
+        self.assertFalse(ext_group.is_overridden_attribute("attribute3"))
+        with self.assertRaisesWith(ValueError, "Attribute 'attribute4' not found"):
+            ext_group.is_overridden_attribute("attribute4")
+
+    def test_resolve_inc_spec_is_overridden_spec_nested(self):
+        """Test that is_overridden_spec correctly identifies overridden specs in nested structures."""
+        # Create base spec with a dataset containing an attribute
+        base_dataset = DatasetSpec(
+            doc="Base dataset",
+            dtype="int",
+            name="test_dataset",
+            attributes=[AttributeSpec(name="attr1", doc="Base attr", dtype="text")],
+        )
+        base_group = GroupSpec(
+            doc="Base group", name="test_group", attributes=[AttributeSpec(name="attr1", doc="Base attr", dtype="text")]
+        )
+        base_spec = GroupSpec(
+            doc="A base group", data_type_def="BaseType", datasets=[base_dataset], groups=[base_group]
+        )
+        # Create extending spec that overrides both dataset and group with new attribute values
+        override_dataset = DatasetSpec(
+            doc="Override dataset",
+            dtype="int",
+            name="test_dataset",
+            attributes=[AttributeSpec(name="attr1", doc="Override attr", dtype="text")],
+        )
+        override_group = GroupSpec(
+            doc="Override group",
+            name="test_group",
+            attributes=[AttributeSpec(name="attr1", doc="Override attr", dtype="text")],
+        )
+        ext_spec = GroupSpec(
+            "An extending group",
+            data_type_inc="BaseType",
+            data_type_def="ExtType",
+            datasets=[override_dataset],
+            groups=[override_group],
+        )
+
+        # Resolve the extension
+        ext_spec.resolve_inc_spec(base_spec)
+
+        # Test attribute in overridden dataset is marked as overridden
+        dataset_attr = ext_spec.get_dataset("test_dataset").get_attribute("attr1")
+        self.assertTrue(ext_spec.is_overridden_spec(dataset_attr))
+
+        # Test attribute in overridden group is marked as overridden
+        group_attr = ext_spec.get_group("test_group").get_attribute("attr1")
+        self.assertTrue(ext_spec.is_overridden_spec(group_attr))
+
+        # Test attributes in base spec are not marked as overridden
+        base_dataset_attr = base_spec.get_dataset("test_dataset").get_attribute("attr1")
+        base_group_attr = base_spec.get_group("test_group").get_attribute("attr1")
+        self.assertFalse(base_spec.is_overridden_spec(base_dataset_attr))
+        self.assertFalse(base_spec.is_overridden_spec(base_group_attr))
+
+    def test_resolve_inc_spec_group_spec_is_overridden_group(self):
+        """Test that is_overridden_group correctly identifies overridden groups."""
+        # Create base spec with a group
+        base_group = GroupSpec(doc="Base group", name="test_group")
+        base_spec = GroupSpec(doc="A base group", data_type_def="BaseType", groups=[base_group])
+
+        # Create extending spec that overrides the group
+        override_group = GroupSpec(doc="Override group", name="test_group")
+        ext_spec = GroupSpec(
+            doc="An extending group", data_type_inc="BaseType", data_type_def="ExtType", groups=[override_group]
+        )
+
+        # Resolve the extension
+        ext_spec.resolve_inc_spec(base_spec)
+
+        # Test base spec has no overridden groups
+        self.assertFalse(base_spec.is_overridden_group("test_group"))
+
+        # Test extending spec correctly identifies overridden group
+        self.assertTrue(ext_spec.is_overridden_group("test_group"))
+
+        # Test non-existent group raises error
+        with self.assertRaisesWith(ValueError, "Group 'nonexistent_group' not found in spec"):
+            ext_spec.is_overridden_group("nonexistent_group")
+
+        # Test new group in extending spec is not overridden
+        new_group = GroupSpec(doc="New group", name="new_group")
+        ext_spec.set_group(new_group)
+        self.assertFalse(ext_spec.is_overridden_group("new_group"))
+
+    def test_resolve_inc_spec_group_spec_inheritance(self):
+        """Test resolution of inherited groups in GroupSpec.resolve_inc_spec."""
+        # Create base group with named and unnamed groups
+        unnamed_group = GroupSpec(doc="An unnamed group", data_type_def="UnnamedType")
+        named_group = GroupSpec(doc="A named group", name="named_group")
+        base_groups = [unnamed_group, named_group]
+
+        base_spec = GroupSpec(doc="A test group", data_type_def="BaseType", groups=base_groups)
+
+        # Create extending group that overrides the named group and adds a new one
+        override_group = GroupSpec(doc="Override named group", name="named_group")
+        new_group = GroupSpec(doc="A new group", name="new_group")
+        ext_groups = [override_group, new_group]
+
+        ext_spec = GroupSpec(
+            doc="An extending group", data_type_inc="BaseType", data_type_def="ExtType", groups=ext_groups
+        )
+
+        # Resolve the extension
+        ext_spec.resolve_inc_spec(base_spec)
+
+        # Test unnamed group is added to data_types
+        self.assertEqual(ext_spec.get_data_type("UnnamedType"), unnamed_group)
+
+        # Test named group is overridden
+        resolved_group = ext_spec.get_group("named_group")
+        self.assertEqual(resolved_group.doc, "Override named group")
+        self.assertTrue(ext_spec.is_overridden_spec(resolved_group))
+
+        # Test new group is added
+        new_resolved = ext_spec.get_group("new_group")
+        self.assertEqual(new_resolved.doc, "A new group")
+        self.assertFalse(ext_spec.is_overridden_spec(new_resolved))
+
+    def test_resolve_inc_spec_group_spec_inheritance_multiple(self):
+        """Test resolution of multiple levels of group inheritance."""
+        # Base spec with a named group
+        base_group = GroupSpec(doc="Base group", name="test_group")
+        base_spec = GroupSpec(doc="A base group", data_type_def="BaseType", groups=[base_group])
+
+        # First extension overrides the group
+        mid_group = GroupSpec(doc="Mid group", name="test_group")
+        mid_spec = GroupSpec(
+            doc="A middle group", data_type_inc="BaseType", data_type_def="MidType", groups=[mid_group]
+        )
+
+        # Second extension inherits without override
+        ext_spec = GroupSpec(doc="An extending group", data_type_inc="MidType", data_type_def="ExtType")
+
+        # Resolve the extensions
+        mid_spec.resolve_inc_spec(base_spec)
+        ext_spec.resolve_inc_spec(mid_spec)
+
+        # Test group inheritance through multiple levels
+        resolved_group = ext_spec.get_group("test_group")
+        self.assertEqual(resolved_group.doc, "Mid group")
+        self.assertTrue(ext_spec.is_inherited_spec(resolved_group))
+
+    def test_resolve_inc_spec_group_spec_links_no_overwrite(self):
+        link0 = LinkSpec(doc="Link 0", target_type="TargetType0")  # test unnamed
+        link1 = LinkSpec(doc="Link 1", target_type="TargetType1", name="MyType1")  # test named
+        link2 = LinkSpec(doc="Link 2", target_type="TargetType2", quantity="*")  # test named, multiple
+        links = [link0, link1, link2]
+        parent_spec = GroupSpec(
+            data_type_def="ParentType",
+            doc="A test group",
+            links=links,
+        )
+        child_spec = GroupSpec(
+            data_type_def="ChildType",
+            data_type_inc="ParentType",
+            doc="A test group",
+        )
+        child_spec.resolve_inc_spec(parent_spec)
+
+        for link in links:
+            with self.subTest(link_target_type=link.target_type):
+                self.assertTrue(child_spec.is_inherited_spec(link))
+                self.assertFalse(child_spec.is_overridden_spec(link))
+
+    def test_resolve_inc_spec_group_spec_links_overwrite(self):
+        link0 = LinkSpec(doc="Link 0", target_type="TargetType0", name="MyType0")
+        link1 = LinkSpec(doc="Link 1", target_type="TargetType1", name="MyType1")
+        # NOTE overwriting unnamed LinkSpec is not allowed
+        # TODO test overwriting LinkSpec or DatasetSpec with mismatched quantity
+        links = [link0, link1]
+        parent_spec = GroupSpec(
+            data_type_def="ParentType",
+            doc="A test group",
+            links=links,
+        )
+
+        link0_overwrite = LinkSpec(doc="New link 0", target_type="TargetType0", name="MyType0")
+        link1_overwrite = LinkSpec(doc="New link 1", target_type="TargetType1Child", name="MyType1")
+        overwritten_links = [link0_overwrite, link1_overwrite]
+        child_spec = GroupSpec(
+            data_type_def="ChildType",
+            data_type_inc="ParentType",
+            doc="A test group",
+            links=overwritten_links,
+        )
+        child_spec.resolve_inc_spec(parent_spec)
+
+        for link in overwritten_links:
+            with self.subTest(link_target_type=link.target_type):
+                self.assertTrue(child_spec.is_inherited_spec(link))
+                self.assertTrue(child_spec.is_overridden_spec(link))
+
+    def test_resolve_inc_spec_is_inherited_two_different_datasets(self):
+        """Test is_inherited_spec with different attribute names in base and extension."""
+        # https://github.com/hdmf-dev/hdmf/issues/1121
+        base_group = GroupSpec(
+            doc="A test group",
+            data_type_def="MyGroup",
+            datasets=[
+                DatasetSpec(
+                    name="dset1",
+                    doc="dset1",
+                    dtype="int",
+                    attributes=[AttributeSpec("attr1", "MyGroup.dset1.attr1", "text")],
+                ),
+            ],
+        )
+        ext_group = GroupSpec(
+            doc="A test subgroup",
+            data_type_def="SubGroup",
+            data_type_inc="MyGroup",
+            datasets=[
+                DatasetSpec(
+                    name="dset2",
+                    doc="dset2",
+                    dtype="int",
+                    attributes=[AttributeSpec("attr1", "SubGroup.dset2.attr1", "text")],
+                ),
+            ],
+        )
+        ext_group.resolve_inc_spec(base_group)
+
+        self.assertFalse(base_group.is_inherited_spec(base_group.datasets[0].attributes[0]))
+
+        dset_spec_map = {dset.name: dset for dset in ext_group.datasets}
+        self.assertFalse(ext_group.is_inherited_spec(dset_spec_map["dset2"].attributes[0]))
+        self.assertTrue(ext_group.is_inherited_spec(dset_spec_map["dset1"].attributes[0]))
+
+    def test_resolve_inc_spec_is_inherited_same_name(self):
+        """Test is_inherited_spec with same attribute name in base and extension."""
+        # https://github.com/hdmf-dev/hdmf/issues/1121
+        base_group = GroupSpec(
+            doc="A test group",
+            data_type_def="MyGroup",
+            attributes=[AttributeSpec("attr1", "MyGroup.attr1", "text")],  # <-- added from above test
+            datasets=[
+                DatasetSpec(
+                    name="dset1",
+                    doc="dset1",
+                    dtype="int",
+                    attributes=[AttributeSpec("attr1", "MyGroup.dset1.attr1", "text")],
+                ),
+            ],
+        )
+        ext_group = GroupSpec(
+            doc="A test subgroup",
+            data_type_def="SubGroup",
+            data_type_inc="MyGroup",
+            attributes=[AttributeSpec("attr1", "SubGroup.attr1", "text")],  # <-- added from above test
+            datasets=[
+                DatasetSpec(
+                    name="dset2",
+                    doc="dset2",
+                    dtype="int",
+                    attributes=[AttributeSpec("attr1", "SubGroup.dset2.attr1", "text")],
+                ),
+            ],
+        )
+        ext_group.resolve_inc_spec(base_group)
+
+        self.assertFalse(base_group.is_inherited_spec(base_group.datasets[0].attributes[0]))
+
+        dset_spec_map = {dset.name: dset for dset in ext_group.datasets}
+        self.assertFalse(ext_group.is_inherited_spec(dset_spec_map["dset2"].attributes[0]))
+        self.assertTrue(ext_group.is_inherited_spec(dset_spec_map["dset1"].attributes[0]))
+        self.assertTrue(ext_group.is_inherited_spec(ext_group.attributes[0]))
+
+        ext_group2 = GroupSpec(
+            doc="A test subsubgroup",
+            data_type_def="SubSubGroup",
+            data_type_inc="SubGroup",
+        )
+        ext_group2.resolve_inc_spec(ext_group)
+
+        dset_spec_map = {dset.name: dset for dset in ext_group2.datasets}
+        self.assertTrue(ext_group2.is_inherited_spec(dset_spec_map["dset1"].attributes[0]))
+        self.assertTrue(ext_group2.is_inherited_spec(dset_spec_map["dset2"].attributes[0]))
+        self.assertTrue(ext_group2.is_inherited_spec(ext_group2.attributes[0]))
 
     def test_resolve_inc_spec_cpd_dtype_extension_new_col(self):
         """Test that adding a column to a compound dtype in an extension works correctly."""
@@ -260,7 +624,7 @@ class TestSpecResolution(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             ext_dataset.resolve_inc_spec(base_dataset)
 
-    def test_resolve_inc_spec_cpd_dtype_override_incompatible_dtype(self):
+    def test_resolve_inc_spec_cpd_dtype_override_incompatible_dtype_error(self):
         """Test that overriding to incompatible dtypes in compound dtypes raises an error."""
         base_dtype = [DtypeSpec(name="col1", dtype="float64", doc="First column")]
         base_dataset = DatasetSpec(data_type_def="BaseCompound", dtype=base_dtype, doc="Base compound dataset")
@@ -338,29 +702,7 @@ class TestSpecResolution(TestCase):
         # Check that dtype is inherited
         self.assertEqual(ext_dataset.dtype, RefSpec(target_type="OtherType", reftype="object"))
 
-    # TODO: also test when OtherType extends AType
-    # def test_resolve_inc_spec_ref_dtype_error(self):
-    #     """Test that resolving ref dtypes mismatches raises an error."""
-    #     base_dataset = DatasetSpec(
-    #         data_type_def="BaseWithRef",
-    #         dtype=RefSpec(target_type="AType", reftype="object"),
-    #         doc="Base dataset with ref dtype",
-    #     )
-
-    #     ext_dataset = DatasetSpec(
-    #         data_type_inc="BaseWithRef",
-    #         data_type_def="ExtWithRef",
-    #         dtype=RefSpec(target_type="OtherType", reftype="object"),
-    #         doc="Extended dataset with same ref dtype",
-    #     )
-
-    #     # Resolve the extension
-    #     msg = ("Cannot extend {'target_type': 'AType', 'reftype': 'object'} to "
-    #            "{'target_type': 'OtherType', 'reftype': 'object'}")
-    #     with self.assertRaisesWith(ValueError, msg):
-    #         ext_dataset.resolve_inc_spec(base_dataset)
-
-    def test_resolve_inc_spec_ref_dtype_to_simple(self):
+    def test_resolve_inc_spec_ref_dtype_to_simple_error(self):
         """Test that resolving ref dtypes mismatches raises an error."""
         base_dataset = DatasetSpec(
             data_type_def="BaseWithRef",
@@ -380,7 +722,7 @@ class TestSpecResolution(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             ext_dataset.resolve_inc_spec(base_dataset)
 
-    def test_resolve_inc_spec_simple_to_ref_dtype(self):
+    def test_resolve_inc_spec_simple_to_ref_dtype_error(self):
         """Test that resolving ref dtypes mismatches raises an error."""
         base_dataset = DatasetSpec(
             data_type_def="BaseWithRef",
@@ -399,7 +741,6 @@ class TestSpecResolution(TestCase):
         msg = "Cannot extend int to {'target_type': 'AType', 'reftype': 'object'}"
         with self.assertRaisesWith(ValueError, msg):
             ext_dataset.resolve_inc_spec(base_dataset)
-
 
     def test_resolve_inc_spec_override_higher_precision(self):
         """Test that overriding to higher precision dtypes works correctly."""
@@ -436,7 +777,7 @@ class TestSpecResolution(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             ext_dataset.resolve_inc_spec(base_dataset)
 
-    def test_resolve_inc_spec_override_incompatible_dtype(self):
+    def test_resolve_inc_spec_override_incompatible_dtype_error(self):
         """Test that overriding to an incompatible dtype raises an error."""
         base_dataset = DatasetSpec(data_type_def="BaseCompound", dtype="int64", doc="Base dataset")
 
@@ -453,10 +794,8 @@ class TestSpecResolution(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             ext_dataset.resolve_inc_spec(base_dataset)
 
-
-
-    def test_resolve_inc_spec_shape_inheritance(self):
-        """Test that shape is inherited correctly."""
+    def test_resolve_inc_spec_shape_dims_inheritance(self):
+        """Test that shape and dims are inherited correctly."""
         base_dataset = DatasetSpec(
             data_type_def="BaseWithShape",
             dtype="int",
@@ -468,7 +807,6 @@ class TestSpecResolution(TestCase):
         ext_dataset = DatasetSpec(
             data_type_inc="BaseWithShape",
             data_type_def="ExtWithShape",
-            dtype="int",
             doc="Extended dataset",
         )
 
@@ -478,6 +816,19 @@ class TestSpecResolution(TestCase):
         # Check that shape and dims are inherited
         self.assertEqual(ext_dataset.shape, (None, 3))
         self.assertEqual(ext_dataset.dims, ("x", "y"))
+
+        # test without data_type_def
+        ext_dataset2 = DatasetSpec(
+            data_type_inc="BaseWithShape",
+            doc="Extended dataset",
+        )
+
+        # Resolve the extension
+        ext_dataset2.resolve_inc_spec(base_dataset)
+
+        # Check that shape and dims are inherited
+        self.assertEqual(ext_dataset2.shape, (None, 3))
+        self.assertEqual(ext_dataset2.dims, ("x", "y"))
 
     def test_resolve_inc_spec_shape_extension_error(self):
         """Test error when trying to extend to incompatible shape."""
@@ -498,6 +849,7 @@ class TestSpecResolution(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             ext_dataset.resolve_inc_spec(base_dataset)
 
+    # TODO: re-enable when this is implemented
     # def test_resolve_inc_spec_shape_list_extension(self):
     #     """Test trying to restrict a list of allowed shapes."""
     #     # Base with two allowed shapes
@@ -520,6 +872,7 @@ class TestSpecResolution(TestCase):
     #     ext_dataset.resolve_inc_spec(base_dataset)
     #     self.assertEqual(ext_dataset.shape, (None, None, 3))
 
+    # TODO: re-enable when this is implemented
     # def test_resolve_inc_spec_shape_list_extension_error(self):
     #     """Test error when trying to extend a list of allowed shapes."""
     #     # Base with two allowed shapes
@@ -568,7 +921,6 @@ class TestSpecResolution(TestCase):
     #     msg = r"Cannot extend shape \(None, 3\), \(None, None, 3\) to \(None, 4\), \(None, None, 2\)"
     #     with self.assertRaisesWith(ValueError, msg):
     #         ext_dataset3.resolve_inc_spec(base_dataset)
-
 
     def test_resolve_inc_spec_default_value_inheritance(self):
         """Test that default_value is inherited correctly."""
@@ -909,18 +1261,16 @@ class TestNamespaceCatalogResolution(TestCase):
         )
         a1 = GroupSpec(
             data_type_def="A1",
-            name="A1",
             datasets=[DatasetSpec(name="col", data_type_inc="D1", doc="D1 col in A1")],
             doc="Group A1",
         )
         a2 = GroupSpec(
             data_type_def="A2",
             data_type_inc="A1",
-            name="A2",
             datasets=[
                 DatasetSpec(
                     name="col",
-                    data_type_inc="D1",  # TODO test whether this is necessary
+                    data_type_inc="D1",
                     shape=((None,), (None, None)),
                     dtype="int32",
                     attributes=[AttributeSpec(name="attr1", dtype="int", doc="Attribute 1")],
@@ -932,7 +1282,6 @@ class TestNamespaceCatalogResolution(TestCase):
         a3 = GroupSpec(
             data_type_def="A3",
             data_type_inc="A2",
-            name="A3",
             datasets=[
                 DatasetSpec(
                     name="col",
@@ -948,7 +1297,6 @@ class TestNamespaceCatalogResolution(TestCase):
         d2 = DatasetSpec(
             data_type_def="D2",
             data_type_inc="D1",
-            name="D2",
             shape=((None, None), (None, None, None)),
             dtype="float64",
             attributes=[AttributeSpec(name="attr3", dtype="float", doc="Attribute 3")],
@@ -957,7 +1305,6 @@ class TestNamespaceCatalogResolution(TestCase):
         a4 = GroupSpec(
             data_type_def="A4",
             data_type_inc="A1",
-            name="A4",
             datasets=[
                 DatasetSpec(
                     name="col",
@@ -975,8 +1322,7 @@ class TestNamespaceCatalogResolution(TestCase):
 
         a2_loaded = self.ns_catalog.get_spec_for_type("A2")
         self.assertEqual(
-            a2_loaded.datasets[0].attributes,
-            (AttributeSpec(name="attr1", dtype="int", doc="Attribute 1"),)
+            a2_loaded.datasets[0].attributes, (AttributeSpec(name="attr1", dtype="int", doc="Attribute 1"),)
         )
 
         a3_loaded = self.ns_catalog.get_spec_for_type("A3")
@@ -985,7 +1331,7 @@ class TestNamespaceCatalogResolution(TestCase):
             (
                 AttributeSpec(name="attr2", dtype="text", doc="Attribute 2"),
                 AttributeSpec(name="attr1", dtype="int", doc="Attribute 1"),
-            )
+            ),
         )
 
         a4_loaded = self.ns_catalog.get_spec_for_type("A4")
@@ -995,74 +1341,213 @@ class TestNamespaceCatalogResolution(TestCase):
             (
                 AttributeSpec(name="attr4", dtype="float", doc="Attribute 4"),
                 # AttributeSpec(name="attr3", dtype="float", doc="Attribute 3"),  # TODO this should exist
-            )
+            ),
         )
         # self.assertEqual(a4_loaded.datasets[0].dtype, "float64")  # TODO this should work
 
-    def test_resolve_all_specs_complex_error(self):
-        # DatasetSpec D1 has 1D, 2D, or 3D shape, any dtype, no attributes
-        # GroupSpec A1 contains a DatasetSpec D1 dataset named "col"
-        # GroupSpec A2 extends A1
-        # A2 specifies that the dataset "col" should have 1D or 2D shape, dtype int32, and an extra attribute attr1
-        # GroupSpec A5 extends A2
-        # A5 specifies that the dataset "col" should be of type D2. This will rarely happen. A2/col should be
-        # brought in first when resolving A5's inc spec. Then the refinement of "col" in A5 to say that it should be
-        # of type D2 should cause an error when it is found that D2's dtype is incompatible with A2/col's dtype.
+    # def test_resolve_all_specs_subspec_data_type_mismatch_error1(self):
+    #     # DatasetSpec D1 has 1D, 2D, or 3D shape, any dtype, no attributes
+    #     # GroupSpec A1 contains a DatasetSpec D1 dataset named "col"
+    #     # GroupSpec A2 extends A1
+    #     # A2 specifies that the dataset "col" does not have a data type - this should cause an error
+    #     # because A1/col is of type D1
+    #     d1 = DatasetSpec(
+    #         data_type_def="D1",
+    #         name="col",
+    #         dtype=None,
+    #         shape=((None,), (None, None), (None, None, None)),
+    #         doc="Dataset D1",
+    #     )
+    #     a1 = GroupSpec(
+    #         data_type_def="A1",
+    #         datasets=[DatasetSpec(name="col", data_type_inc="D1", doc="D1 col in A1")],
+    #         doc="Group A1",
+    #     )
+    #     a2 = GroupSpec(
+    #         data_type_def="A2",
+    #         data_type_inc="A1",
+    #         datasets=[
+    #             DatasetSpec(
+    #                 # no data_type_inc here should cause an error
+    #                 name="col",
+    #                 shape=((None,), (None, None), (None, None, None)),
+    #                 dtype="int32",
+    #                 doc="Column in A2 that conflicts with A1/col data type",
+    #             )
+    #         ],
+    #         doc="Group A2",
+    #     )
+    #     ns_path = self.create_test_namespace("test", [d1, a1, a2])
+    #     self.ns_catalog.load_namespaces(ns_path)
+
+    #     msg = "TODO"
+    #     with self.assertRaisesWith(ValueError, msg):
+    #         self.ns_catalog.resolve_all_specs()
+
+    # def test_resolve_all_specs_subspec_data_type_mismatch_error2(self):
+    #     # DatasetSpec D1 has 1D, 2D, or 3D shape, any dtype, no attributes
+    #     # GroupSpec A1 contains a DatasetSpec D1 dataset named "col"
+    #     # GroupSpec A2 extends A1
+    #     # A2 specifies that the dataset "col" has data type D2 that does not inherit from D1 - this should cause an
+    #     # error because A1/col is of type D1
+    #     d1 = DatasetSpec(
+    #         data_type_def="D1",
+    #         name="col",
+    #         dtype=None,
+    #         shape=(None,),
+    #         doc="Dataset D1",
+    #     )
+    #     d2 = DatasetSpec(
+    #         data_type_def="D2",
+    #         name="col",
+    #         dtype=None,
+    #         shape=(None,),
+    #         doc="Dataset D2",
+    #     )
+    #     a1 = GroupSpec(
+    #         data_type_def="A1",
+    #         datasets=[DatasetSpec(name="col", data_type_inc="D1", doc="D1 col in A1")],
+    #         doc="Group A1",
+    #     )
+    #     a2 = GroupSpec(
+    #         data_type_def="A2",
+    #         data_type_inc="A1",
+    #         datasets=[
+    #             DatasetSpec(
+    #                 # conflicting data_type_inc here should cause an error
+    #                 name="col",
+    #                 data_type_inc="D2",
+    #                 doc="Column in A2 that conflicts with A1/col data type",
+    #             )
+    #         ],
+    #         doc="Group A2",
+    #     )
+    #     ns_path = self.create_test_namespace("test", [d1, a1, a2])
+    #     self.ns_catalog.load_namespaces(ns_path)
+
+    #     msg = "TODO"
+    #     with self.assertRaisesWith(ValueError, msg):
+    #         self.ns_catalog.resolve_all_specs()
+
+    # def test_resolve_all_specs_complex_error(self):
+    #     # DatasetSpec D1 has 1D, 2D, or 3D shape, any dtype, no attributes
+    #     # GroupSpec A1 contains a DatasetSpec D1 dataset named "col"
+    #     # GroupSpec A2 extends A1
+    #     # A2 specifies that the dataset "col" should have 1D or 2D shape, dtype int32, and an extra attribute attr1
+    #     # GroupSpec A5 extends A2
+    #     # A5 specifies that the dataset "col" should be of type D2. This will rarely happen. A2/col should be
+    #     # brought in first when resolving A5's inc spec. Then the refinement of "col" in A5 to say that it should be
+    #     # of type D2 should cause an error when it is found that D2's dtype is incompatible with A2/col's dtype.
+    #     d1 = DatasetSpec(
+    #         data_type_def="D1",
+    #         name="col",
+    #         dtype=None,
+    #         shape=((None,), (None, None), (None, None, None)),
+    #         doc="Dataset D1",
+    #     )
+    #     a1 = GroupSpec(
+    #         data_type_def="A1",
+    #         name="A1",
+    #         datasets=[DatasetSpec(name="col", data_type_inc="D1", doc="D1 col in A1")],
+    #         doc="Group A1",
+    #     )
+    #     a2 = GroupSpec(
+    #         data_type_def="A2",
+    #         data_type_inc="A1",
+    #         name="A2",
+    #         datasets=[
+    #             DatasetSpec(
+    #                 name="col",
+    #                 data_type_inc="D1",  # TODO test whether this is necessary
+    #                 shape=((None,), (None, None)),
+    #                 dtype="int32",
+    #                 attributes=[AttributeSpec(name="attr1", dtype="int", doc="Attribute 1")],
+    #                 doc="Extended D1 col in A2 with restrictions and new attribute attr1",
+    #             )
+    #         ],
+    #         doc="Group A2",
+    #     )
+    #     d2 = DatasetSpec(
+    #         data_type_def="D2",
+    #         data_type_inc="D1",
+    #         shape=((None, None), (None, None, None)),
+    #         dtype="float64",
+    #         attributes=[AttributeSpec(name="attr3", dtype="float", doc="Attribute 3")],
+    #         doc="Dataset D2 extending D1 with restrictions and new attribute attr3",
+    #     )
+    #     a5 = GroupSpec(
+    #         data_type_def="A5",
+    #         data_type_inc="A2",
+    #         name="A5",
+    #         datasets=[
+    #             # A5 defines "col" to be of type D2 (dtype float64, shape (1D, 2D)), which is incompatible with A2/col
+    #             # (dtype int32, shape (2D, 3D)), and that should cause an error during resolution
+    #             DatasetSpec(
+    #                 name="col",
+    #                 data_type_inc="D2",
+    #                 doc="D2 col in A5",
+    #             )
+    #         ],
+    #         doc="Group A5",
+    #     )
+    #     ns_path = self.create_test_namespace("test", [d1, d2, a1, a2, a5])
+    #     self.ns_catalog.load_namespaces(ns_path)
+
+    #     msg = ("Could not resolve all specifications. The following specifications could not be resolved: "
+    #            "A5, col in A5")
+    #     with self.assertRaisesWith(RuntimeError, msg):
+    #         self.ns_catalog.resolve_all_specs()
+
+    def test_resolve_inc_spec_ref_dtype_subtype(self):
+        """Test that resolving a ref dtype subtype raises no error."""
+        g1 = GroupSpec(data_type_def="G1", doc="A group type")
+        g2 = GroupSpec(data_type_def="G2", data_type_inc="G1", doc="A group subtype")
+
         d1 = DatasetSpec(
             data_type_def="D1",
-            name="col",
-            dtype=None,
-            shape=((None,), (None, None), (None, None, None)),
-            doc="Dataset D1",
+            dtype=RefSpec(target_type="G1", reftype="object"),
+            doc="Base dataset with ref dtype",
         )
-        a1 = GroupSpec(
-            data_type_def="A1",
-            name="A1",
-            datasets=[DatasetSpec(name="col", data_type_inc="D1", doc="D1 col in A1")],
-            doc="Group A1",
-        )
-        a2 = GroupSpec(
-            data_type_def="A2",
-            data_type_inc="A1",
-            name="A2",
-            datasets=[
-                DatasetSpec(
-                    name="col",
-                    data_type_inc="D1",  # TODO test whether this is necessary
-                    shape=((None,), (None, None)),
-                    dtype="int32",
-                    attributes=[AttributeSpec(name="attr1", dtype="int", doc="Attribute 1")],
-                    doc="Extended D1 col in A2 with restrictions",
-                )
-            ],
-            doc="Group A2",
-        )
+
         d2 = DatasetSpec(
-            data_type_def="D2",
             data_type_inc="D1",
-            name="D2",
-            shape=((None, None), (None, None, None)),
-            dtype="float64",
-            attributes=[AttributeSpec(name="attr3", dtype="float", doc="Attribute 3")],
-            doc="Dataset D2 extending D1 with restrictions",
+            data_type_def="D2",
+            dtype=RefSpec(target_type="G2", reftype="object"),
+            doc="Extended dataset with ref dtype that is a subtype of D1's ref dtype",
         )
-        a5 = GroupSpec(
-            data_type_def="A5",
-            data_type_inc="A2",
-            name="A5",
-            datasets=[
-                DatasetSpec(
-                    name="col",
-                    data_type_inc="D2",
-                    doc="D2 col in A5",
-                )
-            ],
-            doc="Group A5",
-        )
-        ns_path = self.create_test_namespace("test", [d1, d2, a1, a2, a5])
+
+        ns_path = self.create_test_namespace("test", [g1, g2, d1, d2])
         self.ns_catalog.load_namespaces(ns_path)
-        # msg = ("Could not resolve all specifications. The following specifications could not be resolved: "
-        #        "A5, col in A5")
-        # TODO this should raise an error
-        # with self.assertRaisesWith(RuntimeError, msg):
-        #     self.ns_catalog.resolve_all_specs()
+
+        self.ns_catalog.resolve_all_specs()
+
+        self.assertEqual(d2.dtype, RefSpec(target_type="G2", reftype="object"))
+
+    # def test_resolve_inc_spec_ref_dtype_mismatch_error(self):
+    #     """Test that resolving ref dtypes mismatches raises an error."""
+    #     # Not sure if this should be tested through NamespaceCatalog.resolve_all_specs or on
+    #     # DatasetSpec.resolve_inc_spec directly
+    #     g1 = GroupSpec(data_type_def="G1", doc="A group type")
+    #     h1 = GroupSpec(data_type_def="H1", doc="An unrelated group type")
+
+    #     d1 = DatasetSpec(
+    #         data_type_def="D1",
+    #         dtype=RefSpec(target_type="G1", reftype="object"),
+    #         doc="Base dataset with ref dtype",
+    #     )
+
+    #     d2 = DatasetSpec(
+    #         data_type_inc="D1",
+    #         data_type_def="D2",
+    #         dtype=RefSpec(target_type="H1", reftype="object"),
+    #         doc="Extended dataset with ref dtype that is not a subtype of D1's ref dtype",
+    #     )
+
+    #     ns_path = self.create_test_namespace("test", [g1, h1, d1, d2])
+    #     self.ns_catalog.load_namespaces(ns_path)
+
+    #     msg = "TODO"
+    #     with self.assertRaisesWith(ValueError, msg):
+    #         self.ns_catalog.resolve_all_specs()
+
+    #     self.assertEqual(d2.dtype, RefSpec(target_type="H1", reftype="object"))
