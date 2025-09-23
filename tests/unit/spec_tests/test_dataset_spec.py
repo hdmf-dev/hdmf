@@ -44,13 +44,24 @@ class DatasetSpecTests(TestCase):
 
     def test_constructor_shape(self):
         shape = [None, 2]
-        spec = DatasetSpec('my first dataset',
-                           'int',
-                           name='dataset1',
-                           shape=shape,
-                           attributes=self.attributes)
+        spec = DatasetSpec(
+            doc='my first dataset',
+            dtype='int',
+            name='dataset1',
+            shape=shape,
+        )
         self.assertEqual(spec['shape'], shape)
         self.assertEqual(spec.shape, shape)
+        self.assertEqual(spec.dims, ('dim_0', 'dim_1'))
+
+    def test_dims_without_shape(self):
+        spec = DatasetSpec(
+            doc='my first dataset',
+            dtype='int',
+            name='dataset1',
+            dims=("test",),
+        )
+        self.assertEqual(spec.shape, (None, ))
 
     def test_constructor_invalidate_dtype(self):
         with self.assertRaises(ValueError):

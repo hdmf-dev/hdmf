@@ -369,9 +369,11 @@ class AttributeSpec(Spec):
             self['required'] = False
         if shape is not None:
             self['shape'] = shape
+            if dims is None:  # set dummy dims "dim_0", "dim_1", ... if shape is specified but dims is not
+                self['dims'] = tuple(['dim_%d' % i for i in range(len(shape))])
         if dims is not None:
             self['dims'] = dims
-            if 'shape' not in self:
+            if 'shape' not in self:  # set dummy shape (None, None, ...) if dims is specified but shape is not
                 self['shape'] = tuple([None] * len(dims))
         if self.shape is not None and self.dims is not None:
             if len(self['dims']) != len(self['shape']):
