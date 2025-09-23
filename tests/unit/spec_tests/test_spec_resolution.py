@@ -794,6 +794,20 @@ class TestSpecResolution(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             ext_dataset.resolve_inc_spec(base_dataset)
 
+    def test_resolve_inc_spec_override_numeric_dtype(self):
+        """Test that overriding a numeric dtype works correctly."""
+        base_dataset = DatasetSpec(data_type_def="BaseCompound", dtype="numeric", doc="Base dataset")
+
+        # Create an extension that overrides BaseCompound with a compatible dtype
+        ext_dataset = DatasetSpec(
+            data_type_inc="BaseCompound",
+            dtype="float32",
+            doc="Extended dataset",
+        )
+
+        ext_dataset.resolve_inc_spec(base_dataset)
+        self.assertEqual(ext_dataset.dtype, "float32")
+
     def test_resolve_inc_spec_shape_dims_inheritance(self):
         """Test that shape and dims are inherited correctly."""
         base_dataset = DatasetSpec(

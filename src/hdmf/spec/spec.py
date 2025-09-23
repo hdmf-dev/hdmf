@@ -1,6 +1,7 @@
-import re
 from abc import ABCMeta
 from collections import OrderedDict
+from copy import copy
+from itertools import chain
 from typing import Union
 from warnings import warn
 
@@ -77,17 +78,34 @@ class DtypeHelper:
                              % (dtype, str(DtypeHelper.valid_primary_dtypes)))
         return dtype
 
+    # all keys and values should be keys in primary_dtype_synonyms
+    additional_allowed = {
+        'float': ['double'],
+        'int8': ['short', 'int', 'long'],
+        'short': ['int', 'long'],
+        'int': ['long'],
+        'uint8': ['uint16', 'uint32', 'uint64'],
+        'uint16': ['uint32', 'uint64'],
+        'uint32': ['uint64'],
+        'utf': ['ascii']
+    }
 
-def _get_dtype_name_prec_level(dtype: str):
-    # TODO: this returns just the first letter of the dtype name, which is not ideal
-    # TODO: this does not handle the "numeric" dtype case. use hdmf.validate.validator.__allowable
-    # TODO: not all dtype names have numbers in them that indicate precision level
-    m = re.search('[0-9]+', dtype)
-    if m is not None:
-        prec = int(m.group())
-    else:
-        prec = 32
-    return dtype[0], prec
+    # if the spec dtype is a key in __allowable, then all types in __allowable[key] are valid
+    allowable = dict()
+    for dt, dt_syn in primary_dtype_synonyms.items():
+        allow = copy(dt_syn)
+        if dt in additional_allowed:
+            for addl in additional_allowed[dt]:
+                allow.extend(primary_dtype_synonyms[addl])
+        for syn in dt_syn:
+            allowable[syn] = allow
+    allowable['numeric'] = set(chain.from_iterable(v for k, v in allowable.items() if 'int' in k or 'float' in k))
+
+    @staticmethod
+    def is_allowed_dtype(new: str, orig: str):
+        if orig not in DtypeHelper.allowable:
+            return False
+        return new in DtypeHelper.allowable[orig]
 
 
 def _is_sub_dtype(new: Union[str, "RefSpec"], orig: Union[str, "RefSpec"]):
@@ -100,12 +118,7 @@ def _is_sub_dtype(new: Union[str, "RefSpec"], orig: Union[str, "RefSpec"]):
         # return orig == new
         return True
     else:
-        orig_name, orig_prec = _get_dtype_name_prec_level(orig)
-        new_name, new_prec = _get_dtype_name_prec_level(new)
-        if orig_name != new_name:
-            # cannot extend int to float and vice-versa
-            return False
-        return new_prec >= orig_prec
+        return DtypeHelper.is_allowed_dtype(new, orig)
 
 
 def _resolve_inc_spec_dtype(
