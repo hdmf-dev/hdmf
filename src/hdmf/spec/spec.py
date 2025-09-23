@@ -99,7 +99,7 @@ class DtypeHelper:
                 allow.extend(primary_dtype_synonyms[addl])
         for syn in dt_syn:
             allowable[syn] = allow
-    allowable['numeric'] = set(chain.from_iterable(v for k, v in allowable.items() if 'int' in k or 'float' in k))
+    allowable['numeric'].extend(set(chain.from_iterable(v for k, v in allowable.items() if 'int' in k or 'float' in k)))
 
     @staticmethod
     def is_allowed_dtype(new: str, orig: str):

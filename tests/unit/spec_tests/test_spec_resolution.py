@@ -794,8 +794,23 @@ class TestSpecResolution(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             ext_dataset.resolve_inc_spec(base_dataset)
 
-    def test_resolve_inc_spec_override_numeric_dtype(self):
-        """Test that overriding a numeric dtype works correctly."""
+    def test_resolve_inc_spec_override_numeric_to_numeric_dtype(self):
+        """Test that overriding a numeric dtype to numeric dtype works correctly."""
+        # numeric is a special case that needs to be handled specially
+        base_dataset = DatasetSpec(data_type_def="BaseCompound", dtype="numeric", doc="Base dataset")
+
+        # Create an extension that overrides BaseCompound with a compatible dtype
+        ext_dataset = DatasetSpec(
+            data_type_inc="BaseCompound",
+            dtype="numeric",
+            doc="Extended dataset",
+        )
+
+        ext_dataset.resolve_inc_spec(base_dataset)
+        self.assertEqual(ext_dataset.dtype, "numeric")
+
+    def test_resolve_inc_spec_override_numeric_to_float_dtype(self):
+        """Test that overriding a numeric dtype to float dtype works correctly."""
         base_dataset = DatasetSpec(data_type_def="BaseCompound", dtype="numeric", doc="Base dataset")
 
         # Create an extension that overrides BaseCompound with a compatible dtype
