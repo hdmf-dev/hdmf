@@ -722,6 +722,8 @@ class NamespaceCatalog:
     def _check_cross_type_conflicts(self, extension_ns_name, spec_name, extension_spec, core_spec):
         """
         Check for type conflicts between extension and core specs (e.g., attribute vs link).
+        
+        The extension spec data type should be a descendent of the core spec data type.
 
         Future type conflicts can be added here for other types within the core schema that are updated
         and/or added and are in conflict with published extensions.
