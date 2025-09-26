@@ -711,7 +711,6 @@ class NamespaceCatalog:
                     core_namespace = self.__namespaces[core_namespace_name]
                     core_spec = core_namespace.get_spec(core_parent_type)
                     conflict_msg = self._check_cross_type_conflicts(extension_ns_name,
-                                                                    type_name,
                                                                     extension_spec,
                                                                     core_spec)
                     if conflict_msg is not None:
@@ -724,7 +723,7 @@ class NamespaceCatalog:
                  f"install an older version of the core schema that is compatible.",
                  category=UserWarning, stacklevel=2)
 
-    def _check_cross_type_conflicts(self, extension_ns_name, spec_name, extension_spec, core_spec):
+    def _check_cross_type_conflicts(self, extension_ns_name, extension_spec, core_spec):
         """
         Check for type conflicts between extension and core specs (e.g., attribute vs link).
 
@@ -744,7 +743,7 @@ class NamespaceCatalog:
                         break
 
                 if core_link is not None:
-                    warning_msg = (f"{extension_ns_name} defines {spec_name}.{attr_spec.name} as an "
+                    warning_msg = (f"{extension_ns_name} defines {extension_spec.data_type_def}.{attr_spec.name} as an "
                                    f"attribute (dtype: {attr_spec.dtype}) while the core schema defines "
                                    f"it as a link to {core_link.target_type}.")
                     return warning_msg
@@ -763,7 +762,7 @@ class NamespaceCatalog:
                     and not self.is_sub_data_type(extension_ns_name,
                                                   ext_link_spec.target_type,
                                                   core_link_spec.target_type)):
-                    warning_msg = (f"{extension_ns_name} defines {spec_name}.{ext_link_spec.name} as a "
+                    warning_msg = (f"{extension_ns_name} defines {extension_spec.data_type_def}.{ext_link_spec.name} as a "
                                    f"link to {ext_link_spec.target_type} while the core schema defines it as "
                                    f"a link to {core_link_spec.target_type}. {ext_link_spec.target_type} "
                                    f"is not a subtype of {core_link_spec.target_type}. ")
