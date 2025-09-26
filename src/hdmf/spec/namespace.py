@@ -762,8 +762,8 @@ class NamespaceCatalog:
                     and not self.is_sub_data_type(extension_ns_name,
                                                   ext_link_spec.target_type,
                                                   core_link_spec.target_type)):
-                    warning_msg = (f"{extension_ns_name} defines {extension_spec.data_type_def}.{ext_link_spec.name} as a "
-                                   f"link to {ext_link_spec.target_type} while the core schema defines it as "
+                    warning_msg = (f"{extension_ns_name} defines {extension_spec.data_type_def}.{ext_link_spec.name} "
+                                   f"as a link to {ext_link_spec.target_type} while the core schema defines it as "
                                    f"a link to {core_link_spec.target_type}. {ext_link_spec.target_type} "
                                    f"is not a subtype of {core_link_spec.target_type}. ")
                     return warning_msg
