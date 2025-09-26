@@ -682,7 +682,7 @@ class NamespaceCatalog:
 
         # check all types in the extension namespace for conflicts with types in core namespaces
         # that the extension types extend. for example, `ExcitationSource` is a `DeviceInstance` that
-        # extends `Device` to have a "model" link. a later version of the core namespace defines 
+        # extends `Device` to have a "model" link. a later version of the core namespace defines
         # `Device` to have a "model" link that conflicts with `DeviceInstance.model` in its target type.
         # Therefore both `DeviceInstance` and `ExcitationSource` have conflicts and will raise warnings
         # in the code below.
@@ -727,7 +727,7 @@ class NamespaceCatalog:
     def _check_cross_type_conflicts(self, extension_ns_name, spec_name, extension_spec, core_spec):
         """
         Check for type conflicts between extension and core specs (e.g., attribute vs link).
-        
+
         The extension spec data type should be a descendent of the core spec data type.
 
         Future type conflicts can be added here for other types within the core schema that are updated
