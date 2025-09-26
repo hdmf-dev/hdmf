@@ -680,7 +680,12 @@ class NamespaceCatalog:
         extension_types = [reg_type for reg_type in catalog.get_registered_types() if
                            catalog.get_spec_source_file(reg_type) == extension_ns_source]
 
-        # check all types in the extension namespace for conflicts with core namespaces
+        # check all types in the extension namespace for conflicts with types in core namespaces
+        # that the extension types extend. for example, `ExcitationSource` is a `DeviceInstance` that
+        # extends `Device` to have a "model" link. a later version of the core namespace defines 
+        # `Device` to have a "model" link that conflicts with `DeviceInstance.model` in its target type.
+        # Therefore both `DeviceInstance` and `ExcitationSource` have conflicts and will raise warnings
+        # in the code below.
         warning_msg = []
         for type_name in extension_types:
             extension_spec = catalog.get_spec(type_name)
