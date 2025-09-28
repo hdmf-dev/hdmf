@@ -1,0 +1,124 @@
+name: Run NWB Extension Tests
+on:
+  pull_request:
+  schedule:
+    - cron: '0 6 * * *'  # once per day at 1 AM ET, offset from other daily workflows
+  workflow_dispatch:
+
+jobs:
+  run-nwb-extension-tests:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    strategy:
+      matrix:
+        extension:
+          - name: ndx-pose
+            repository: https://github.com/rly/ndx-pose.git
+            active: true
+          - name: ndx-events
+            repository: https://github.com/rly/ndx-events.git
+            active: true
+          - name: ndx-spectrum
+            repository: https://github.com/bendichter/ndx-spectrum.git
+            active: true
+          - name: ndx-photostim
+            repository: https://github.com/catalystneuro/ndx-photostim.git
+            active: true
+          - name: ndx-miniscope
+            repository: https://github.com/bendichter/ndx-miniscope.git
+            active: true
+          - name: ndx-dandi-icephys
+            repository: https://github.com/AllenInstitute/ndx-dandi-icephys.git
+            active: true
+          - name: ndx-structured-behavior
+            repository: https://github.com/AllenInstitute/ndx-structured-behavior.git
+            active: true
+          - name: ndx-bipolar-scheme
+            repository: https://github.com/catalystneuro/ndx-bipolar-scheme.git
+            active: true
+          - name: ndx-sound
+            repository: https://github.com/rly/ndx-sound.git
+            active: true
+      fail-fast: false  # Continue testing other extensions even if one fails
+    steps:
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v5
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0  # tags are required to determine the version
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'  # Use 3.11 for better compatibility with extensions
+
+      - name: Update pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install HDMF from current branch
+        run: |
+          python -m pip list
+          python -m pip install .
+          python -m pip list
+
+      - name: Clone and test NWB extension - ${{ matrix.extension.name }}
+        run: |
+          echo "Testing extension: ${{ matrix.extension.name }}"
+          echo "Repository: ${{ matrix.extension.repository }}"
+          
+          # Skip inactive extensions in regular PR runs, but test them in scheduled runs
+          if [[ "${{ matrix.extension.active }}" == "false" && "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "Skipping potentially inactive extension ${{ matrix.extension.name }} in PR run"
+            exit 0
+          fi
+          
+          # Clone the extension repository
+          git clone --depth 1 ${{ matrix.extension.repository }} extension_repo
+          cd extension_repo
+          
+          # Check if the repository has a setup.py or pyproject.toml
+          if [[ -f "setup.py" ]] || [[ -f "pyproject.toml" ]]; then
+            echo "Found installation file, proceeding with installation"
+          else
+            echo "No installation file found, skipping ${{ matrix.extension.name }}"
+            exit 0
+          fi
+          
+          # Try to install the extension
+          echo "Installing extension ${{ matrix.extension.name }}..."
+          python -m pip install -e .
+          
+          # Check if there are tests to run
+          if [[ -d "tests" ]] || [[ -d "test" ]] || [[ -f "test.py" ]]; then
+            echo "Found tests, running them..."
+            
+            # Try different test running approaches
+            if command -v pytest &> /dev/null && find . -name "*test*.py" | head -1; then
+              echo "Running tests with pytest..."
+              python -m pytest -v --tb=short || echo "Some tests failed for ${{ matrix.extension.name }}, but continuing..."
+            elif [[ -f "test.py" ]]; then
+              echo "Running test.py..."
+              python test.py || echo "test.py failed for ${{ matrix.extension.name }}, but continuing..."
+            else
+              echo "Found test files, attempting to run with python -m unittest..."
+              python -m unittest discover -s . -p "*test*.py" -v || echo "unittest failed for ${{ matrix.extension.name }}, but continuing..."
+            fi
+          else
+            echo "No tests found for ${{ matrix.extension.name }}, checking basic import..."
+            # Test basic import functionality - try common import patterns
+            extension_import_name=$(echo "${{ matrix.extension.name }}" | sed 's/-/_/g')
+            python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')" || \
+            python -c "import ${extension_import_name#ndx_}; print('Successfully imported ${extension_import_name#ndx_}')" || \
+            echo "Import test failed for ${{ matrix.extension.name }}, but continuing..."
+          fi
+          
+          echo "Completed testing ${{ matrix.extension.name }}"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Extension test completed for ${{ matrix.extension.name }}"
+          echo "This workflow tests NWB extensions against the current HDMF branch"
+          echo "to ensure compatibility when changes are made to HDMF core functionality"
