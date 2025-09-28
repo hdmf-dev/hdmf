@@ -1544,7 +1544,7 @@ class DynamicTableRegion(VectorData):
         return self.table.to_dataframe(**kwargs).iloc[self.data[:]]
 
     @property
-    def shape(self):
+    def region_shape(self):
         """
         Define the shape, i.e., (num_rows, num_columns) of the selected table region
         :return: Shape tuple with two integers indicating the number of rows and number of columns

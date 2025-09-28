@@ -1179,10 +1179,11 @@ class TestDynamicTableRegion(TestCase):
         for ii, item in enumerate(dynamic_table_region):
             self.assertTrue(table[ii].equals(item))
 
-    def test_dynamic_table_region_shape(self):
+    def test_dynamic_table_region_region_shape(self):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion(name='dtr', data=[0, 1, 2, 3, 4], description='desc', table=table)
-        self.assertTupleEqual(dynamic_table_region.shape, (5, 3))
+        self.assertTupleEqual(dynamic_table_region.region_shape, (5, 3))
+        self.assertTupleEqual(dynamic_table_region.shape, (5,))
 
     def test_dynamic_table_region_to_dataframe(self):
         table = self.with_columns_and_data()
