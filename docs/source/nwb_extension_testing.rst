@@ -17,7 +17,7 @@ This workflow runs tests for known NWB extensions against the current HDMF branc
 
 ## What it tests
 
-The workflow currently tests the following NWB extensions:
+The workflow dynamically fetches the list of NWB extensions from the official NWB extensions catalog and tests all available extensions. If the catalog is unavailable, it falls back to testing these well-known extensions:
 
 1. **ndx-pose** - NWB extension for storing pose estimation data
 2. **ndx-events** - NWB extension for storing timestamped event data  
@@ -29,9 +29,19 @@ The workflow currently tests the following NWB extensions:
 8. **ndx-bipolar-scheme** - Extension for bipolar referencing scheme
 9. **ndx-sound** - Extension for audio data
 
+The catalog is fetched from:
+- `https://raw.githubusercontent.com/nwb-extensions/nwb-extensions/main/index.yaml`
+- `https://raw.githubusercontent.com/NeurodataWithoutBorders/nwb-extensions/main/index.yaml`
+- GitHub API endpoints as fallbacks
+
 ## How it works
 
-For each extension, the workflow:
+The workflow consists of two jobs:
+
+1. **generate-extension-matrix**: Fetches the NWB extensions catalog and generates a dynamic matrix of extensions to test
+2. **run-nwb-extension-tests**: Tests each extension from the generated matrix
+
+For each extension, the testing job:
 
 1. Clones the extension repository
 2. Installs the current HDMF branch
@@ -42,29 +52,25 @@ For each extension, the workflow:
 
 ## Adding new extensions
 
-To add a new NWB extension to the test matrix:
+Extensions are automatically discovered from the NWB extensions catalog, so no manual addition is needed. The workflow will automatically test new extensions as they are added to the official catalog.
 
-1. Add an entry to the `matrix.extension` array in `.github/workflows/run_nwb_extension_tests.yml`
-2. Include the extension name, repository URL, and active status
-3. Use the helper script `scripts/manage_nwb_extensions.py` to validate repositories
-
-Example entry:
-```yaml
-- name: ndx-new-extension
-  repository: https://github.com/user/ndx-new-extension.git
-  active: true
-```
+If you need to add an extension that's not in the catalog, you can:
+1. Add it to the official NWB extensions catalog, OR
+2. Add it to the fallback list in the workflow file as a temporary measure
 
 ## Managing extensions
 
-Use the helper script to manage the extension list:
+Use the helper script to interact with the catalog integration:
 
 ```bash
+# Test fetching the NWB extensions catalog
+python scripts/manage_nwb_extensions.py test
+
 # Validate all extension repositories
 python scripts/manage_nwb_extensions.py validate
 
-# Print workflow YAML snippet
-python scripts/manage_nwb_extensions.py print
+# Show the workflow matrix that would be generated
+python scripts/manage_nwb_extensions.py matrix
 ```
 
 ## Extension compatibility notes
