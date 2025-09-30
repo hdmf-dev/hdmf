@@ -1,4 +1,5 @@
 import numpy as np
+from hdmf.container import Data
 from hdmf.data_utils import ShapeValidatorResult, DataChunkIterator, assertEqualShape
 from hdmf.testing import TestCase
 
@@ -164,6 +165,18 @@ class ShapeValidatorTests(TestCase):
         self.assertTupleEqual(res.shape2, (2, 5))
         self.assertTupleEqual(res.axes1, (0, 1))
         self.assertTupleEqual(res.axes2, (0, 1))
+
+    def test_custom_shape_definition(self):
+        class MyData(Data):
+            def __init__(self, name, data):
+                super().__init__(name, data)
+
+            @property
+            def shape(self):
+                return (3, 3)  # custom override of shape should be ignored by assertEqualShape / get_data_shape
+
+        data = MyData(name="my_data", data=np.arange(10).reshape(2, 5))
+        assertEqualShape(data, (2, 5))
 
 
 class ShapeValidatorResultTests(TestCase):
