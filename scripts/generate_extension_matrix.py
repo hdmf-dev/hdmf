@@ -21,6 +21,8 @@ DEFAULT_PER_PAGE = 100
 
 INACTIVE_EXTENSIONS = {
     "ndx-icephys-meta",  # Deprecated, use NWB core
+    "ndx-nirs",  # Requires Python <3.11,>=3.7
+    "ndx-extract",  # Cannot install from source on Linux due to https://github.com/catalystneuro/ndx-extract/issues/5
 }
 
 FALLBACK_EXTENSIONS = [

@@ -35,6 +35,7 @@ jobs:
   run-nwb-extension-tests:
     needs: generate-extension-matrix
     runs-on: ubuntu-latest
+    name: run-nwb-extension-tests - ${{ matrix.extension.repository }}
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.extension.name }}
       cancel-in-progress: true
@@ -67,7 +68,7 @@ jobs:
 
           # Try to install the extension
           echo "Installing extension ${{ matrix.extension.name }}..."
-          python -m pip install -e .
+          python -m pip install .
 
       - name: Run tests for NWB extension - ${{ matrix.extension.name }}
         run: |
@@ -76,16 +77,16 @@ jobs:
 
           # Test basic import functionality
           extension_import_name=$(echo "${{ matrix.extension.name }}" | sed 's/-/_/g')
-          python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')" || \
-          echo "Import test failed for ${{ matrix.extension.name }}, but continuing..."
+          python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')"
 
           # Try different test running approaches
           if command -v pytest &> /dev/null && find . -name "*test*.py" | head -1; then
             echo "Running tests with pytest..."
-            python -m pytest -v --tb=short || echo "Some tests failed for ${{ matrix.extension.name }}, but continuing..."
+            python -m pip install pytest
+            python -m pytest -v --tb=short
           else
             echo "Attempting to run with python -m unittest..."
-            python -m unittest discover -s . -p "*test*.py" -v || echo "unittest failed for ${{ matrix.extension.name }}, but continuing..."
+            python -m unittest discover -s . -p "*test*.py" -v
           fi
 
           echo "Completed testing ${{ matrix.extension.name }}"
