@@ -73,7 +73,7 @@ jobs:
           # Install the extension from PyPI if available
           if [ -n "${{ matrix.extension.pypi }}" ] && [ "${{ matrix.extension.pypi }}" != "null" ]; then
             echo "Installing extension ${{ matrix.extension.name }} from PyPI..."
-            python -m pip install ${{ matrix.extension.pypi }}
+            python -m pip install ${{ matrix.extension.name }}
           fi
 
       - name: Run tests for NWB extension - ${{ matrix.extension.name }}
