@@ -27,7 +27,7 @@ jobs:
       - name: Generate extension matrix from catalog
         id: generate-matrix
         run: |
-          python scripts/generate_extension_matrix.py --github-actions
+          python scripts/generate_extension_matrix.py --output-format=github-actions
 
   run-nwb-extension-tests:
     needs: generate-extension-matrix
