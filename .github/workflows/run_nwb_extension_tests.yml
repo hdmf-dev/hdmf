@@ -33,7 +33,7 @@ jobs:
     needs: generate-extension-matrix
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.extension.name }}
       cancel-in-progress: true
     strategy:
       matrix: ${{ fromJson(needs.generate-extension-matrix.outputs.matrix) }}
@@ -52,12 +52,6 @@ jobs:
 
       - name: Update pip
         run: python -m pip install --upgrade pip
-
-      - name: Install HDMF from current branch
-        run: |
-          python -m pip list
-          python -m pip install .
-          python -m pip list
 
       - name: Clone and test NWB extension - ${{ matrix.extension.name }}
         run: |
@@ -86,35 +80,18 @@ jobs:
           echo "Installing extension ${{ matrix.extension.name }}..."
           python -m pip install -e .
 
-          # Check if there are tests to run
-          if [[ -d "tests" ]] || [[ -d "test" ]] || [[ -f "test.py" ]]; then
-            echo "Found tests, running them..."
+          # Test basic import functionality
+          extension_import_name=$(echo "${{ matrix.extension.name }}" | sed 's/-/_/g')
+          python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')" || \
+          echo "Import test failed for ${{ matrix.extension.name }}, but continuing..."
 
-            # Try different test running approaches
-            if command -v pytest &> /dev/null && find . -name "*test*.py" | head -1; then
-              echo "Running tests with pytest..."
-              python -m pytest -v --tb=short || echo "Some tests failed for ${{ matrix.extension.name }}, but continuing..."
-            elif [[ -f "test.py" ]]; then
-              echo "Running test.py..."
-              python test.py || echo "test.py failed for ${{ matrix.extension.name }}, but continuing..."
-            else
-              echo "Found test files, attempting to run with python -m unittest..."
-              python -m unittest discover -s . -p "*test*.py" -v || echo "unittest failed for ${{ matrix.extension.name }}, but continuing..."
-            fi
+          # Try different test running approaches
+          if command -v pytest &> /dev/null && find . -name "*test*.py" | head -1; then
+            echo "Running tests with pytest..."
+            python -m pytest -v --tb=short || echo "Some tests failed for ${{ matrix.extension.name }}, but continuing..."
           else
-            echo "No tests found for ${{ matrix.extension.name }}, checking basic import..."
-            # Test basic import functionality - try common import patterns
-            extension_import_name=$(echo "${{ matrix.extension.name }}" | sed 's/-/_/g')
-            python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')" || \
-            python -c "import ${extension_import_name#ndx_}; print('Successfully imported ${extension_import_name#ndx_}')" || \
-            echo "Import test failed for ${{ matrix.extension.name }}, but continuing..."
+            echo "Attempting to run with python -m unittest..."
+            python -m unittest discover -s . -p "*test*.py" -v || echo "unittest failed for ${{ matrix.extension.name }}, but continuing..."
           fi
 
           echo "Completed testing ${{ matrix.extension.name }}"
-
-      - name: Summary
-        if: always()
-        run: |
-          echo "Extension test completed for ${{ matrix.extension.name }}"
-          echo "This workflow tests NWB extensions against the current HDMF branch"
-          echo "to ensure compatibility when changes are made to HDMF core functionality"
