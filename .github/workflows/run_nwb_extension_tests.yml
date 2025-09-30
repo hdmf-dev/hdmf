@@ -27,7 +27,7 @@ jobs:
       - name: Generate extension matrix from catalog
         id: generate-matrix
         run: |
-          python scripts/generate_extension_matrix.py --output-format=github-actions
+          python scripts/generate_extension_matrix.py
 
   run-nwb-extension-tests:
     needs: generate-extension-matrix
@@ -57,12 +57,6 @@ jobs:
         run: |
           echo "Testing extension: ${{ matrix.extension.name }}"
           echo "Repository: ${{ matrix.extension.repository }}"
-
-          # Skip inactive extensions in regular PR runs, but test them in scheduled runs
-          if [[ "${{ matrix.extension.active }}" == "false" && "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "Skipping potentially inactive extension ${{ matrix.extension.name }} in PR run"
-            exit 0
-          fi
 
           # Clone the extension repository
           git clone --depth 1 ${{ matrix.extension.repository }} extension_repo

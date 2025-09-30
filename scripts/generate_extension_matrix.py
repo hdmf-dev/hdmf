@@ -27,12 +27,10 @@ FALLBACK_EXTENSIONS = [
     {
         "name": "ndx-miniscope",
         "repository": "https://github.com/catalystneuro/ndx-miniscope.git",
-        "active": True,
     },
     {
         "name": "ndx-simulation-output",
         "repository": "https://github.com/catalystneuro/ndx-simulation-output.git",
-        "active": True,
     },
 ]
 
@@ -104,10 +102,13 @@ def fetch_extension_metadata(repo: Dict[str, Any], headers: Dict[str, str]) -> O
         meta = yaml.safe_load(response.text)
         extension_name = meta.get("name", repo_name)
 
+        if extension_name in INACTIVE_EXTENSIONS:
+            print(f"Skipping inactive extension '{extension_name}'", file=sys.stderr)
+            return None
+
         return {
             "name": extension_name,
             "repository": repo_url,
-            "active": extension_name not in INACTIVE_EXTENSIONS,
         }
 
     except requests.RequestException as e:
