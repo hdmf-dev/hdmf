@@ -1,5 +1,5 @@
 NWB Extension Testing Workflow
-=============================
+==============================
 
 This workflow runs tests for NWB extensions to ensure compatibility when changes are made to HDMF core functionality.
 
@@ -30,15 +30,13 @@ Extensions marked as inactive (like ``ndx-icephys-meta``) are skipped.
 
 ## Usage
 
-Generate extension matrix for testing:
+Generate extension matrix for testing::
 
-```bash
-# GitHub Actions format (default)
-python scripts/generate_extension_matrix.py
+    # GitHub Actions format (default)
+    python scripts/generate_extension_matrix.py
 
-# JSON format for inspection
-python scripts/generate_extension_matrix.py --output-format json
-```
+    # JSON format for inspection
+    python scripts/generate_extension_matrix.py --output-format json
 
 ## Adding new extensions
 
