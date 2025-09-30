@@ -71,9 +71,12 @@ jobs:
           # python -m pip install .
 
           # Install the extension from PyPI if available
-          if [ -n "${{ matrix.extension.pypi }}" ] && [ "${{ matrix.extension.pypi }}" != "null" ]; then
+          if [ -n "${{ matrix.extension.pypi }}" ]; then
             echo "Installing extension ${{ matrix.extension.name }} from PyPI..."
             python -m pip install ${{ matrix.extension.name }}
+          else
+            echo "No PyPI entry for ${{ matrix.extension.name }}, skipping installation."
+            exit 1
           fi
 
       - name: Run tests for NWB extension - ${{ matrix.extension.name }}
@@ -95,6 +98,7 @@ jobs:
             if command -v pytest &> /dev/null && find . -name "*test*.py" | head -1; then
               echo "Running tests with pytest..."
               python -m pip install pytest
+              python -m pip install matplotlib scikit-image  # Common test dependencies
               python -m pytest -v --tb=short
             else
               echo "Attempting to run with python -m unittest..."
