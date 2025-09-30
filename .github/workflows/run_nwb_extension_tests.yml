@@ -87,6 +87,8 @@ jobs:
 
           # Go to location of PyPI-installed package
           extension_location=$(python -m pip show ${{ matrix.extension.name }} | grep Location | awk '{print $2}')
+          # Append the package name to the location
+          extension_location="$extension_location/${{ matrix.extension.name }}"
           if [ -n "$extension_location" ]; then
             echo "Located extension at: $extension_location"
             cd "$extension_location"
