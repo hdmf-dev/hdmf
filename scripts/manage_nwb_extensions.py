@@ -38,20 +38,20 @@ def test_catalog_fetch():
     """Test fetching the NWB extensions catalog"""
     print("Testing NWB Extensions Catalog Integration")
     print("=" * 50)
-    
+
     # Try to fetch from catalog
     extensions = fetch_extensions_from_catalog()
-    
+
     if not extensions:
         print("Catalog fetch failed, showing fallback extensions:")
         extensions = get_fallback_extensions()
-    
+
     print(f"\nFound {len(extensions)} extensions:")
     for ext in extensions:
         print(f"- {ext['name']}: {ext['repository']}")
         if 'description' in ext:
             print(f"  {ext['description']}")
-    
+
     return extensions
 
 
@@ -59,7 +59,7 @@ def validate_extensions(extensions):
     """Validate all extensions in the list"""
     print("\nValidating extension repositories...")
     print("=" * 50)
-    
+
     valid_count = 0
     for ext in extensions:
         print(f"Checking {ext['name']}...")
@@ -68,7 +68,7 @@ def validate_extensions(extensions):
             valid_count += 1
         else:
             print(f"  ❌ {ext['repository']} - Not accessible")
-    
+
     print("=" * 50)
     print(f"Valid: {valid_count}/{len(extensions)} extensions")
     return valid_count == len(extensions)
@@ -79,7 +79,7 @@ def print_workflow_matrix(extensions):
     print("\n# Workflow matrix that would be generated:")
     print("matrix:")
     print("  extension:")
-    
+
     for ext in extensions:
         print(f"    - name: {ext['name']}")
         print(f"      repository: {ext['repository']}")
@@ -93,9 +93,9 @@ def main():
         print("  validate: Check if all extension repositories are accessible")
         print("  matrix:   Show the workflow matrix that would be generated")
         return 1
-    
+
     command = sys.argv[1]
-    
+
     if command == "test":
         extensions = test_catalog_fetch()
         return 0
@@ -103,7 +103,7 @@ def main():
         extensions = fetch_extensions_from_catalog()
         if not extensions:
             extensions = get_fallback_extensions()
-        
+
         if validate_extensions(extensions):
             print("All extensions are valid!")
             return 0

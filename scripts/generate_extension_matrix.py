@@ -43,60 +43,60 @@ def fetch_extensions_from_catalog():
     """Fetch extensions from the NWB extensions catalog"""
     catalog_urls = get_catalog_urls()
     extensions = []
-    
+
     for url in catalog_urls:
         try:
             print(f"Trying to fetch catalog from: {url}")
             with urllib.request.urlopen(url, timeout=10) as response:
                 content = response.read().decode('utf-8')
-            
+
             # Handle GitHub API response (base64 encoded)
             if 'api.github.com' in url:
                 data = json.loads(content)
                 content = base64.b64decode(data['content']).decode('utf-8')
-            
+
             # Parse the YAML content
             catalog = yaml.safe_load(content)
-            
+
             # Extract extensions from catalog
             catalog_extensions = catalog.get('extensions', []) if isinstance(catalog, dict) else []
-            
+
             for ext in catalog_extensions:
                 if isinstance(ext, dict):
                     name = ext.get('name', '')
                     repo = ext.get('repository', ext.get('homepage', ''))
-                    
+
                     # Convert homepage to git repository if needed
                     if repo and 'github.com' in repo and not repo.endswith('.git'):
                         repo = repo.replace('github.com', 'github.com').rstrip('/') + '.git'
-                    
+
                     if name and repo and name.startswith('ndx-'):
                         extensions.append({
                             "name": name,
                             "repository": repo,
                             "active": True
                         })
-            
+
             if extensions:
                 print(f"Successfully fetched {len(extensions)} extensions from catalog")
                 return extensions
-                
+
         except Exception as e:
             print(f"Failed to fetch from {url}: {e}")
             continue
-    
+
     return []
 
 
 def generate_workflow_matrix():
     """Generate the workflow matrix for GitHub Actions"""
     extensions = fetch_extensions_from_catalog()
-    
+
     # Use fallback if catalog fetch failed
     if not extensions:
         print("Could not fetch catalog, using fallback extension list")
         extensions = get_fallback_extensions()
-    
+
     # Generate the matrix
     matrix = {"extension": extensions}
     return matrix

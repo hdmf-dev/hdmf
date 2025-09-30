@@ -20,7 +20,7 @@ This workflow runs tests for known NWB extensions against the current HDMF branc
 The workflow dynamically fetches the list of NWB extensions from the official NWB extensions catalog and tests all available extensions. If the catalog is unavailable, it falls back to testing these well-known extensions:
 
 1. **ndx-pose** - NWB extension for storing pose estimation data
-2. **ndx-events** - NWB extension for storing timestamped event data  
+2. **ndx-events** - NWB extension for storing timestamped event data
 3. **ndx-spectrum** - NWB extension for spectral data
 4. **ndx-photostim** - NWB extension for photostimulation data
 5. **ndx-miniscope** - NWB extension for miniscope data

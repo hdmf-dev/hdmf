@@ -63,17 +63,17 @@ jobs:
         run: |
           echo "Testing extension: ${{ matrix.extension.name }}"
           echo "Repository: ${{ matrix.extension.repository }}"
-          
+
           # Skip inactive extensions in regular PR runs, but test them in scheduled runs
           if [[ "${{ matrix.extension.active }}" == "false" && "${{ github.event_name }}" == "pull_request" ]]; then
             echo "Skipping potentially inactive extension ${{ matrix.extension.name }} in PR run"
             exit 0
           fi
-          
+
           # Clone the extension repository
           git clone --depth 1 ${{ matrix.extension.repository }} extension_repo
           cd extension_repo
-          
+
           # Check if the repository has a setup.py or pyproject.toml
           if [[ -f "setup.py" ]] || [[ -f "pyproject.toml" ]]; then
             echo "Found installation file, proceeding with installation"
@@ -81,15 +81,15 @@ jobs:
             echo "No installation file found, skipping ${{ matrix.extension.name }}"
             exit 0
           fi
-          
+
           # Try to install the extension
           echo "Installing extension ${{ matrix.extension.name }}..."
           python -m pip install -e .
-          
+
           # Check if there are tests to run
           if [[ -d "tests" ]] || [[ -d "test" ]] || [[ -f "test.py" ]]; then
             echo "Found tests, running them..."
-            
+
             # Try different test running approaches
             if command -v pytest &> /dev/null && find . -name "*test*.py" | head -1; then
               echo "Running tests with pytest..."
@@ -109,7 +109,7 @@ jobs:
             python -c "import ${extension_import_name#ndx_}; print('Successfully imported ${extension_import_name#ndx_}')" || \
             echo "Import test failed for ${{ matrix.extension.name }}, but continuing..."
           fi
-          
+
           echo "Completed testing ${{ matrix.extension.name }}"
 
       - name: Summary
