@@ -1,5 +1,6 @@
 name: Run NWB Extension Tests
 on:
+  pull_request:
   schedule:
     - cron: '0 6 * * *'  # once per day at 1 AM ET, offset from other daily workflows
   workflow_dispatch:
@@ -25,8 +26,11 @@ jobs:
 
       - name: Generate extension matrix from catalog
         id: generate-matrix
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python scripts/generate_extension_matrix.py
+
 
   run-nwb-extension-tests:
     needs: generate-extension-matrix

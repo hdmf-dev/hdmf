@@ -101,6 +101,7 @@ def fetch_extension_metadata(repo: Dict[str, Any], headers: Dict[str, str]) -> O
 
         meta = yaml.safe_load(response.text)
         extension_name = meta.get("name", repo_name)
+        source_repo_url = meta.get("src", repo_url)
 
         if extension_name in INACTIVE_EXTENSIONS:
             print(f"Skipping inactive extension '{extension_name}'", file=sys.stderr)
@@ -108,7 +109,7 @@ def fetch_extension_metadata(repo: Dict[str, Any], headers: Dict[str, str]) -> O
 
         return {
             "name": extension_name,
-            "repository": repo_url,
+            "repository": source_repo_url,
         }
 
     except requests.RequestException as e:
@@ -179,7 +180,10 @@ def main() -> int:
         if args.output_format == "github-actions":
             matrix_json = json.dumps(matrix, separators=(',', ':'))
             print(f"Generated matrix with {len(matrix['extension'])} extensions")
-            print(f"::set-output name=matrix::{matrix_json}")
+            print(f"matrix={matrix_json}")
+            if 'GITHUB_OUTPUT' in os.environ:
+                with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                    f.write(f"matrix={matrix_json}\n")
         else:
             print(json.dumps(matrix, indent=2))
 
