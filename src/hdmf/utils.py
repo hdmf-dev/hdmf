@@ -824,6 +824,11 @@ def get_data_shape(data, strict_no_data_load=False):
                     shape.extend(__get_shape_helper(el))
         return tuple(shape)
 
+    # Get the shape of the underlying data if this is a Data object. Some Data subclasses may override the shape
+    # property to improve user-friendliness, but we want the actual shape of the data here.
+    if isinstance(data, Data):
+        data = data.data
+
     # NOTE: data.maxshape will fail on empty h5py.Dataset without shape or maxshape. this will be fixed in h5py 3.0
     if hasattr(data, 'maxshape'):
         return data.maxshape
