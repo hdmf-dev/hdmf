@@ -85,10 +85,8 @@ jobs:
           extension_import_name=$(echo "${{ matrix.extension.name }}" | sed 's/-/_/g')
           python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')"
 
-          # Go to location of PyPI-installed package
-          extension_location=$(python -m pip show ${{ matrix.extension.name }} | grep Location | awk '{print $2}')
-          # Append the package name to the location
-          extension_location="$extension_location/${{ matrix.extension.name }}"
+          # Get the location of the installed package and navigate there
+          extension_location=$(python -c "import os; import ${extension_import_name}; print(os.path.dirname(${extension_import_name}.__file__))")
           if [ -n "$extension_location" ]; then
             echo "Located extension at: $extension_location"
             cd "$extension_location"
