@@ -6,95 +6,188 @@ This script fetches the NWB extensions catalog and generates a JSON matrix
 that can be used by GitHub Actions workflows to dynamically test extensions.
 """
 
+import argparse
 import json
-import yaml
+import os
 import sys
-import urllib.request
-import urllib.error
-import base64
+from typing import Dict, List, Optional, Any
 
+import requests
+import yaml
 
+# Configuration constants
 CATALOG_API_URL = "https://api.github.com/orgs/nwb-extensions/repos"
+DEFAULT_PER_PAGE = 100
+
+INACTIVE_EXTENSIONS = {
+    "ndx-icephys-meta",  # Deprecated, use NWB core
+}
+
+FALLBACK_EXTENSIONS = [
+    {
+        "name": "ndx-miniscope",
+        "repository": "https://github.com/catalystneuro/ndx-miniscope.git",
+        "active": True,
+    },
+    {
+        "name": "ndx-simulation-output",
+        "repository": "https://github.com/catalystneuro/ndx-simulation-output.git",
+        "active": True,
+    },
+]
 
 
-def get_fallback_extensions():
-    """Get fallback extensions in case catalog is unavailable"""
-    return [
-        {"name": "ndx-miniscope", "repository": "https://github.com/catalystneuro/ndx-miniscope.git", "active": True},
-        {"name": "ndx-simulation-output", "repository": "https://github.com/catalystneuro/ndx-simulation-output.git", "active": True},
-    ]
+def get_github_headers() -> Dict[str, str]:
+    """Get headers for GitHub API requests with authentication if token is available."""
+    headers = {}
+    github_token = os.getenv('GITHUB_TOKEN')
+    if github_token:
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {github_token}",
+        }
+        print("Using GitHub token for authenticated requests", file=sys.stderr)
+    else:
+        print("No GitHub token found - using unauthenticated requests", file=sys.stderr)
+    return headers
 
-def get_all_extension_record_repos():
-    """Get all record repositories from the extensions organization using pagination."""
-    all_record_repos = []
+
+def get_extension_record_repos() -> List[Dict[str, Any]]:
+    """Get all extension record repositories using pagination."""
+    all_repos = []
     page = 1
-    per_page = 100  # Maximum allowed by GitHub API
+    headers = get_github_headers()
 
     while True:
-        params = {'per_page': per_page, 'page': page}
-        response = requests.get(CATALOG_API_URL, headers=headers, params=params)
+        params = {'per_page': DEFAULT_PER_PAGE, 'page': page}
 
-        success = response.status_code == 200
-        if success:
-            repos = response.json()
-        else:
-            raise ValueError(f'Error at {url}')
+        try:
+            response = requests.get(CATALOG_API_URL, headers=headers, params=params)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            print(f"Error: Failed to fetch repos from {CATALOG_API_URL}: {e}", file=sys.stderr)
+            raise
 
-        if not repos:  # Empty response means no more pages
+        repos = response.json()
+        if not repos:  # No more pages
             break
 
-        record_repos = [d for d in repos if d["name"].startswith("ndx-") and d["name"].endswith("-record")]
-        all_record_repos.extend(record_repos)
+        # Filter for extension record repositories
+        record_repos = [
+            repo for repo in repos
+            if repo["name"].startswith("ndx-") and repo["name"].endswith("-record")
+        ]
+        all_repos.extend(record_repos)
 
-        # If we got fewer repos than per_page, we've reached the last page
-        if len(repos) < per_page:
+        # Check if we've reached the last page
+        if len(repos) < DEFAULT_PER_PAGE:
             break
 
         page += 1
 
-    print(f'Found {len(all_record_repos)} NWB extension record repositories')
-    return all_record_repos
+    print(f"Found {len(all_repos)} NWB extension record repositories", file=sys.stderr)
+    return all_repos
 
 
-def fetch_extensions_from_catalog():
-    """Fetch extensions from the NWB extensions catalog"""
-    extensions = []
+def fetch_extension_metadata(repo: Dict[str, Any], headers: Dict[str, str]) -> Optional[Dict[str, Any]]:
+    """Fetch extension metadata from ndx-meta.yaml file."""
+    repo_name = repo["name"]
+    repo_url = repo["html_url"]
+    default_branch = repo.get("default_branch", "main")
 
-    headers = dict()
-    GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
-    if GITHUB_TOKEN is not None:
-        print('Token found, will save in headers')
-        headers = {
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {GITHUB_TOKEN}",
+    raw_url = f"https://raw.githubusercontent.com/nwb-extensions/{repo_name}/{default_branch}/ndx-meta.yaml"
+
+    try:
+        response = requests.get(raw_url, headers=headers)
+        response.raise_for_status()
+
+        meta = yaml.safe_load(response.text)
+        extension_name = meta.get("name", repo_name)
+
+        return {
+            "name": extension_name,
+            "repository": repo_url,
+            "active": extension_name not in INACTIVE_EXTENSIONS,
         }
 
-    # Use GitHub API to get the metadata for all NWB extension record repositories
-    record_repos = get_all_extension_record_repos()
+    except requests.RequestException as e:
+        print(f"Warning: Could not fetch metadata from {raw_url}: {e}", file=sys.stderr)
+        return None
 
-    # Use GitHub API to read the ndx-meta.yaml in each repo and extract the important metadata
-    # TODO
+    except yaml.YAMLError as e:
+        print(f"Warning: Could not parse YAML from {raw_url}: {e}", file=sys.stderr)
+        return None
 
-    print(f"Successfully fetched {len(extensions)} extensions from catalog")
+    except Exception as e:
+        print(f"Warning: Unexpected error processing {raw_url}: {e}", file=sys.stderr)
+        return None
+
+
+def fetch_extensions_from_catalog() -> List[Dict[str, Any]]:
+    """Fetch all extensions from the NWB extensions catalog."""
+    try:
+        repos = get_extension_record_repos()
+    except Exception as e:
+        print(f"Error: Failed to fetch repository list: {e}", file=sys.stderr)
+        return []
+
+    headers = get_github_headers()
+    extensions = []
+    for repo in repos:
+        extension_info = fetch_extension_metadata(repo, headers)
+        if extension_info:
+            extensions.append(extension_info)
+
+    print(f"Successfully fetched {len(extensions)} extensions from catalog", file=sys.stderr)
     return extensions
 
 
-def main():
-    # Generate matrix for GitHub Actions workflow
-    """Generate the workflow matrix for GitHub Actions"""
+def generate_matrix() -> Dict[str, List[Dict[str, Any]]]:
+    """Generate the complete extension matrix."""
     extensions = fetch_extensions_from_catalog()
 
     # Use fallback if catalog fetch failed
     if not extensions:
-        print("Could not fetch catalog, using fallback extension list")
-        extensions = get_fallback_extensions()
+        print("Warning: Could not fetch catalog, using fallback extension list", file=sys.stderr)
+        extensions = FALLBACK_EXTENSIONS.copy()
 
-    # Generate the matrix
-    matrix = {"extension": extensions}
-    matrix_json = json.dumps(matrix)
-    print(f"Generated matrix with {len(matrix['extension'])} extensions")
-    print(f"::set-output name=matrix::{matrix_json}")
+    return {"extension": extensions}
+
+
+def parse_arguments() -> argparse.Namespace:
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Generate workflow matrix for NWB extensions testing"
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=["github-actions", "json"],
+        default="github-actions",
+        help="Output format (default: github-actions)"
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    """Main entry point."""
+    args = parse_arguments()
+
+    try:
+        matrix = generate_matrix()
+
+        if args.output_format == "github-actions":
+            matrix_json = json.dumps(matrix, separators=(',', ':'))
+            print(f"Generated matrix with {len(matrix['extension'])} extensions")
+            print(f"::set-output name=matrix::{matrix_json}")
+        else:
+            print(json.dumps(matrix, indent=2))
+
+        return 0
+
+    except Exception as e:
+        print(f"Error: Failed to generate extension matrix: {e}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
