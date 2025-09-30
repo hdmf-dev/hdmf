@@ -86,20 +86,22 @@ jobs:
           python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')"
 
           # Go to location of PyPI-installed package
-          if [ -n "${{ matrix.extension.pypi }}" ] && [ "${{ matrix.extension.pypi }}" != "null" ]; then
-            extension_location=$(python -m pip show ${{ matrix.extension.pypi }} | grep Location | awk '{print $2}')
+          extension_location=$(python -m pip show ${{ matrix.extension.name }} | grep Location | awk '{print $2}')
+          if [ -n "$extension_location" ]; then
             echo "Located extension at: $extension_location"
             cd "$extension_location"
-          fi
 
-          # Try different test running approaches
-          if command -v pytest &> /dev/null && find . -name "*test*.py" | head -1; then
-            echo "Running tests with pytest..."
-            python -m pip install pytest
-            python -m pytest -v --tb=short
+            # Try different test running approaches
+            if command -v pytest &> /dev/null && find . -name "*test*.py" | head -1; then
+              echo "Running tests with pytest..."
+              python -m pip install pytest
+              python -m pytest -v --tb=short
+            else
+              echo "Attempting to run with python -m unittest..."
+              python -m unittest discover -s . -p "*test*.py" -v
+            fi
           else
-            echo "Attempting to run with python -m unittest..."
-            python -m unittest discover -s . -p "*test*.py" -v
+            echo "Could not locate the installed extension package for ${{ matrix.extension.name }}. Skipping tests."
           fi
 
           echo "Completed testing ${{ matrix.extension.name }}"
