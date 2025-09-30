@@ -104,7 +104,7 @@ def fetch_extension_metadata(repo: Dict[str, Any], headers: Dict[str, str]) -> O
         meta = yaml.safe_load(response.text)
         extension_name = meta["name"]
         source_repo_url = meta["src"]
-        pypi_url = meta["pypi"]
+        pypi_url = meta["pip"]
 
         if extension_name in INACTIVE_EXTENSIONS:
             print(f"Skipping inactive extension '{extension_name}'", file=sys.stderr)
