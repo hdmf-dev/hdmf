@@ -1,6 +1,5 @@
 name: Run NWB Extension Tests
 on:
-  pull_request:
   schedule:
     - cron: '0 6 * * *'  # once per day at 1 AM ET, offset from other daily workflows
   workflow_dispatch:
@@ -53,7 +52,7 @@ jobs:
       - name: Update pip
         run: python -m pip install --upgrade pip
 
-      - name: Clone and test NWB extension - ${{ matrix.extension.name }}
+      - name: Clone and install NWB extension - ${{ matrix.extension.name }}
         run: |
           echo "Testing extension: ${{ matrix.extension.name }}"
           echo "Repository: ${{ matrix.extension.repository }}"
@@ -62,17 +61,14 @@ jobs:
           git clone --depth 1 ${{ matrix.extension.repository }} extension_repo
           cd extension_repo
 
-          # Check if the repository has a setup.py or pyproject.toml
-          if [[ -f "setup.py" ]] || [[ -f "pyproject.toml" ]]; then
-            echo "Found installation file, proceeding with installation"
-          else
-            echo "No installation file found, skipping ${{ matrix.extension.name }}"
-            exit 0
-          fi
-
           # Try to install the extension
           echo "Installing extension ${{ matrix.extension.name }}..."
           python -m pip install -e .
+
+      - name: Run tests for NWB extension - ${{ matrix.extension.name }}
+        run: |
+          echo "Running tests for extension: ${{ matrix.extension.name }}"
+          cd extension_repo
 
           # Test basic import functionality
           extension_import_name=$(echo "${{ matrix.extension.name }}" | sed 's/-/_/g')
