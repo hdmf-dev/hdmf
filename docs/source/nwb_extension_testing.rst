@@ -38,7 +38,7 @@ The catalog is fetched from:
 
 The workflow consists of two jobs:
 
-1. **generate-extension-matrix**: Fetches the NWB extensions catalog and generates a dynamic matrix of extensions to test
+1. **generate-extension-matrix**: Uses `scripts/generate_extension_matrix.py` to fetch the NWB extensions catalog and generate a dynamic matrix of extensions to test
 2. **run-nwb-extension-tests**: Tests each extension from the generated matrix
 
 For each extension, the testing job:
@@ -56,11 +56,11 @@ Extensions are automatically discovered from the NWB extensions catalog, so no m
 
 If you need to add an extension that's not in the catalog, you can:
 1. Add it to the official NWB extensions catalog, OR
-2. Add it to the fallback list in the workflow file as a temporary measure
+2. Add it to the fallback list in `scripts/generate_extension_matrix.py` as a temporary measure
 
 ## Managing extensions
 
-Use the helper script to interact with the catalog integration:
+Use the helper scripts to interact with the catalog integration:
 
 ```bash
 # Test fetching the NWB extensions catalog
@@ -71,6 +71,12 @@ python scripts/manage_nwb_extensions.py validate
 
 # Show the workflow matrix that would be generated
 python scripts/manage_nwb_extensions.py matrix
+
+# Generate matrix for GitHub Actions (used by workflow)
+python scripts/generate_extension_matrix.py --github-actions
+
+# Test matrix generation interactively
+python scripts/generate_extension_matrix.py
 ```
 
 ## Extension compatibility notes
