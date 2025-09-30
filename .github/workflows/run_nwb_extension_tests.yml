@@ -35,7 +35,7 @@ jobs:
   run-nwb-extension-tests:
     needs: generate-extension-matrix
     runs-on: ubuntu-latest
-    name: run-nwb-extension-tests - ${{ matrix.extension.repository }}
+    name: run-nwb-extension-tests - ${{ matrix.extension.name }}
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.extension.name }}
       cancel-in-progress: true
@@ -60,24 +60,37 @@ jobs:
       - name: Clone and install NWB extension - ${{ matrix.extension.name }}
         run: |
           echo "Testing extension: ${{ matrix.extension.name }}"
-          echo "Repository: ${{ matrix.extension.repository }}"
+          # echo "Repository: ${{ matrix.extension.repository }}"
 
           # Clone the extension repository
-          git clone --depth 1 ${{ matrix.extension.repository }} extension_repo
-          cd extension_repo
+          # git clone --depth 1 ${{ matrix.extension.repository }} extension_repo
+          # cd extension_repo
 
           # Try to install the extension
-          echo "Installing extension ${{ matrix.extension.name }}..."
-          python -m pip install .
+          # echo "Installing extension ${{ matrix.extension.name }}..."
+          # python -m pip install .
+
+          # Install the extension from PyPI if available
+          if [ -n "${{ matrix.extension.pypi }}" ] && [ "${{ matrix.extension.pypi }}" != "null" ]; then
+            echo "Installing extension ${{ matrix.extension.name }} from PyPI..."
+            python -m pip install ${{ matrix.extension.pypi }}
+          fi
 
       - name: Run tests for NWB extension - ${{ matrix.extension.name }}
         run: |
           echo "Running tests for extension: ${{ matrix.extension.name }}"
-          cd extension_repo
+          # cd extension_repo
 
           # Test basic import functionality
           extension_import_name=$(echo "${{ matrix.extension.name }}" | sed 's/-/_/g')
           python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')"
+
+          # Go to location of PyPI-installed package
+          if [ -n "${{ matrix.extension.pypi }}" ] && [ "${{ matrix.extension.pypi }}" != "null" ]; then
+            extension_location=$(python -m pip show ${{ matrix.extension.pypi }} | grep Location | awk '{print $2}')
+            echo "Located extension at: $extension_location"
+            cd "$extension_location"
+          fi
 
           # Try different test running approaches
           if command -v pytest &> /dev/null && find . -name "*test*.py" | head -1; then
