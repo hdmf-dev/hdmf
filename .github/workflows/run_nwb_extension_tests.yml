@@ -57,18 +57,10 @@ jobs:
       - name: Update pip
         run: python -m pip install --upgrade pip
 
-      - name: Clone and install NWB extension - ${{ matrix.extension.name }}
+      - name: Install NWB extension from PyPI - ${{ matrix.extension.name }}
         run: |
-          echo "Testing extension: ${{ matrix.extension.name }}"
-          # echo "Repository: ${{ matrix.extension.repository }}"
-
-          # Clone the extension repository
-          # git clone --depth 1 ${{ matrix.extension.repository }} extension_repo
-          # cd extension_repo
-
-          # Try to install the extension
-          # echo "Installing extension ${{ matrix.extension.name }}..."
-          # python -m pip install .
+          # NOTE: Installing from source is often broken because the latest default branch may not be stable
+          # and other various issues, so we prioritize PyPI installation
 
           # Install the extension from PyPI if available
           if [ -n "${{ matrix.extension.pypi }}" ]; then
@@ -82,7 +74,6 @@ jobs:
       - name: Run tests for NWB extension - ${{ matrix.extension.name }}
         run: |
           echo "Running tests for extension: ${{ matrix.extension.name }}"
-          # cd extension_repo
 
           # Test basic import functionality
           extension_import_name=$(echo "${{ matrix.extension.name }}" | sed 's/-/_/g')
