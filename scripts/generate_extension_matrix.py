@@ -29,6 +29,7 @@ INACTIVE_EXTENSIONS = {
     "ndx-microscopy",  # Not yet resolved ValueError: 'DeviceModel' - cannot overwrite existing specification
     "ndx-multichannel-volume",  # Possibly broken tests: ModuleNotFoundError: No module named 'MultiChannelVol'
     "ndx-photostim",  # One test fails due to AssertionError: ValueError not raised. The test is inconsistent with the extension code
+    "ndx-ecog",  # Requires Python <3.9 because of ImportError: cannot import name 'Iterable' from 'collections'
 }
 
 FALLBACK_EXTENSIONS = [
