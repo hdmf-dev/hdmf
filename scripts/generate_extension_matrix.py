@@ -20,26 +20,26 @@ CATALOG_API_URL = "https://api.github.com/orgs/nwb-extensions/repos"
 DEFAULT_PER_PAGE = 100
 
 INACTIVE_EXTENSIONS = {
+    "ndx-miniscope",  # Tests cannot run from pypi installation due to ImportError: attempted relative import beyond top-level package
+    "ndx-simulation-output",  # Tests cannot run from pypi installation due to ImportError: cannot import name 'call_docval_func' from 'hdmf.utils'
+    "ndx-ecog",  # Requires Python <3.9 because of ImportError: cannot import name 'Iterable' from 'collections'
     "ndx-icephys-meta",  # Deprecated, use NWB core
     "ndx-nirs",  # Requires Python <3.11,>=3.7
     "ndx-extract",  # Cannot install from source on Linux due to https://github.com/catalystneuro/ndx-extract/issues/5
-    "ndx-miniscope",  # Tests cannot run from pypi installation due to ImportError: attempted relative import beyond top-level package
-    "ndx-simulation-output",  # Tests cannot run from pypi installation due to ImportError: cannot import name 'call_docval_func' from 'hdmf.utils'
+    "ndx-photostim",  # One test fails due to AssertionError: ValueError not raised. The test is inconsistent with the extension code
+    "ndx-multichannel-volume",  # Possibly broken tests: ModuleNotFoundError: No module named 'MultiChannelVol'
     "ndx-ophys-devices",  # Missing `pip` key in record metadata
     "ndx-microscopy",  # Not yet resolved ValueError: 'DeviceModel' - cannot overwrite existing specification
-    "ndx-multichannel-volume",  # Possibly broken tests: ModuleNotFoundError: No module named 'MultiChannelVol'
-    "ndx-photostim",  # One test fails due to AssertionError: ValueError not raised. The test is inconsistent with the extension code
-    "ndx-ecog",  # Requires Python <3.9 because of ImportError: cannot import name 'Iterable' from 'collections'
 }
 
 FALLBACK_EXTENSIONS = [
     {
-        "name": "ndx-miniscope",
-        "repository": "https://github.com/catalystneuro/ndx-miniscope.git",
+        "name": "ndx-fret",
+        "repository": "https://github.com/catalystneuro/ndx-fret",
     },
     {
-        "name": "ndx-simulation-output",
-        "repository": "https://github.com/catalystneuro/ndx-simulation-output.git",
+        "name": "ndx-events",
+        "repository": "https://github.com/rly/ndx-events",
     },
 ]
 
