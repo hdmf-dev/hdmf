@@ -55,7 +55,6 @@ If you use HDMF in your research, please use the following citation:
    contributing
    make_roundtrip_test
    software_process
-   nwb_extension_testing
 
 .. toctree::
    :hidden:
