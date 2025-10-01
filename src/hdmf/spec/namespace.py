@@ -536,9 +536,16 @@ class NamespaceCatalog:
         ns = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
         self.__namespaces[ns_name] = ns
 
+        # check for conflicts between core and extension namespaces
+        if ns_name not in self.__core_namespaces:
+            self._check_namespace_conflicts(extension_ns_name=ns_name,
+                                            extension_ns_source=s.get('source'),
+                                            catalog=catalog)
+
         for x in catalog.get_registered_types():
             if x not in self.__data_type2namespace:
                 self.__data_type2namespace[x] = ns
+
         return included_types
 
     def __register_type(self, ndt, inc_ns, catalog, registered_types):
@@ -708,3 +715,124 @@ class NamespaceCatalog:
         for subk in subdeps:
             self.__order_deps_aux(order, deps, subk)
         order.append(key)
+
+    def _get_namespace_for_type(self, type_name: str, catalog: SpecCatalog) -> str:
+        """
+        Get the namespace name that contains the given type by looking up its source file.
+
+        Args:
+            type_name: The name of the type to find the namespace for
+            catalog: The catalog containing the type
+
+        Returns:
+            The namespace name containing the type, or None if not found
+        """
+        # Get the source file for this type
+        source_file = catalog.get_spec_source_file(type_name)
+        for ns_name, sources in self.__included_sources.items():
+            if source_file in sources:
+                return ns_name
+
+        return None
+
+    def _check_namespace_conflicts(self, extension_ns_name: str, extension_ns_source: str, catalog: SpecCatalog):
+        """
+        Check for conflicts between extension namespaces and core namespace.
+
+        Note that detection of conflicts in which the same type_name is defined in both the extension and core
+        are detected by the SpecCatalog when registering the spec.
+        """
+
+        # get all the types in the catalog that are from the extension namespace
+        extension_types = [reg_type for reg_type in catalog.get_registered_types() if
+                           catalog.get_spec_source_file(reg_type) == extension_ns_source]
+
+        # check all types in the extension namespace for conflicts with types in core namespaces
+        # that the extension types extend. for example, `ExcitationSource` is a `DeviceInstance` that
+        # extends `Device` to have a "model" link. a later version of the core namespace defines
+        # `Device` to have a "model" link that conflicts with `DeviceInstance.model` in its target type.
+        # Therefore both `DeviceInstance` and `ExcitationSource` have conflicts and will raise warnings
+        # in the code below.
+        warning_msg = []
+        for type_name in extension_types:
+            extension_spec = catalog.get_spec(type_name)
+
+            # Check if this extension type inherits from a core type
+            if hasattr(extension_spec, 'data_type_inc') and extension_spec.data_type_inc is not None:
+                parent_types = self.get_hierarchy(extension_ns_name, type_name)
+
+                # Look for the first parent type in the hierarchy that exists in core namespaces
+                core_parent_type = None
+                core_namespace_name = None
+
+                # Skip the first element (the type itself) and check each parent in the hierarchy
+                for parent_type in parent_types[1:]:
+                    parent_ns = self._get_namespace_for_type(parent_type, catalog)
+                    if parent_ns in self.__core_namespaces:
+                        core_parent_type = parent_type
+                        core_namespace_name = parent_ns
+                        break
+
+                # If we found a core parent type, check for conflicts
+                if core_parent_type:
+                    core_namespace = self.__namespaces[core_namespace_name]
+                    core_spec = core_namespace.get_spec(core_parent_type)
+                    conflict_msg = self._check_cross_type_conflicts(extension_ns_name,
+                                                                    extension_spec,
+                                                                    core_spec)
+                    if conflict_msg is not None:
+                        warning_msg.append(conflict_msg)
+
+        if len(warning_msg) > 0:
+            warning_msg = "\n".join(warning_msg)
+            warn(f"Schema conflict(s) detected in namespace '{extension_ns_name}': \n {warning_msg} \n"
+                 f"This may cause compatibility issues. Please update the extension version if possible or "
+                 f"install an older version of the core schema that is compatible.",
+                 category=UserWarning, stacklevel=2)
+
+    def _check_cross_type_conflicts(self, extension_ns_name, extension_spec, core_spec):
+        """
+        Check for type conflicts between extension and core specs (e.g., attribute vs link).
+
+        The extension spec data type should be a descendent of the core spec data type.
+
+        Future type conflicts can be added here for other types within the core schema that are updated
+        and/or added and are in conflict with published extensions.
+        """
+
+        # Check all attributes in extension spec against links in core spec
+        if hasattr(extension_spec, 'attributes') and hasattr(core_spec, 'links'):
+            for attr_spec in extension_spec.attributes:
+                core_link = None
+                for link_spec in core_spec.links:
+                    if link_spec.name == attr_spec.name:
+                        core_link = link_spec
+                        break
+
+                if core_link is not None:
+                    warning_msg = (f"{extension_ns_name} defines {extension_spec.data_type_def}.{attr_spec.name} as an "
+                                   f"attribute (dtype: {attr_spec.dtype}) while the core schema defines "
+                                   f"it as a link to {core_link.target_type}.")
+                    return warning_msg
+
+        # Check all links in extension spec against links in core spec for target_type conflicts
+        if hasattr(extension_spec, 'links') and hasattr(core_spec, 'links'):
+            for ext_link_spec in extension_spec.links:
+                core_link_spec = None
+                for link_spec in core_spec.links:
+                    if link_spec.name == ext_link_spec.name:
+                        core_link_spec = link_spec
+                        break
+
+                if (core_link_spec is not None
+                    and core_link_spec.target_type != ext_link_spec.target_type
+                    and not self.is_sub_data_type(extension_ns_name,
+                                                  ext_link_spec.target_type,
+                                                  core_link_spec.target_type)):
+                    warning_msg = (f"{extension_ns_name} defines {extension_spec.data_type_def}.{ext_link_spec.name} "
+                                   f"as a link to {ext_link_spec.target_type} while the core schema defines it as "
+                                   f"a link to {core_link_spec.target_type}. {ext_link_spec.target_type} "
+                                   f"is not a subtype of {core_link_spec.target_type}. ")
+                    return warning_msg
+
+        return None
