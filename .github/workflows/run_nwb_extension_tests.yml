@@ -116,6 +116,8 @@ jobs:
 
           # Try to install the extension
           echo "Installing extension ${{ matrix.extension.name }}..."
+          python -m pip install -r requirements-dev.txt || true  # Continue even if this fails
+          python -m pip install -r requirements.txt || true  # Continue even if this fails
           python -m pip install ".[test]"
 
           # Install the current branch of hdmf to ensure compatibility
@@ -133,9 +135,8 @@ jobs:
           extension_import_name=$(echo "${{ matrix.extension.name }}" | sed 's/-/_/g')
           python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')"
 
-          # Install test dependencies
-          python -m pip install pytest
-          python -m pip install matplotlib scikit-image  # Common test dependencies
+          # Install test dependencies in case they were not already installed
+          python -m pip install pytest pytest-cov
 
           # Try different test running approaches
           test_files=$(find . -name "*test*.py")
