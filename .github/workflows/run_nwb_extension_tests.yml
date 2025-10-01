@@ -44,6 +44,7 @@
 
 name: Run NWB Extension Tests
 on:
+  pull_request:
   schedule:
     - cron: '0 6 * * *'  # once per day at 1 AM ET, offset from other daily workflows
   workflow_dispatch:
@@ -121,8 +122,9 @@ jobs:
           # Install the latest pynwb and current branch of hdmf to ensure compatibility
           cd ..
           python -m pip uninstall -y hdmf pynwb  # uninstall the other version of hdmf and pynwb
+          python -m pip install pynwb  # install latest pynwb which will install hdmf from PyPI
+          python -m pip uninstall -y hdmf  # uninstall the PyPI version of hdmf
           python -m pip install .  # reinstall current branch of hdmf
-          python -m pip install pynwb  # install latest pynwb (should be compatible with current hdmf)
           python -m pip list
           python -m pip check
 
