@@ -19,7 +19,7 @@ inconsistencies.
 There are badges in the README_ file which shows the current condition of the dev branch.
 
 Additionally, HDMF runs tests against known NWB extensions to ensure that changes to core HDMF functionality
-don't break existing extensions. See :doc:`nwb_extension_testing` for more details.
+don't break existing extensions.
 
 .. _GitHub Actions: https://github.com/hdmf-dev/hdmf/actions
 .. _README: https://github.com/hdmf-dev/hdmf/blob/dev/README.rst

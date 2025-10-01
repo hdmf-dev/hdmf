@@ -1,3 +1,48 @@
+# NWB Extension Testing Workflow
+# ==============================
+#
+# This workflow runs tests for NWB extensions to ensure compatibility when changes are made to HDMF core functionality.
+#
+# When it runs
+# ------------
+#
+# - Daily at 6 AM UTC (1 AM ET) via scheduled cron job
+# - Manual trigger via workflow_dispatch
+#
+# How it works
+# ------------
+#
+# The workflow automatically discovers and tests all NWB extensions from the official catalog at https://nwb-extensions.github.io
+# using the script at https://raw.githubusercontent.com/nwb-extensions/extensions-dashboard/refs/heads/main/scripts/generate_extensions_matrix.py
+#
+# If the catalog is unavailable, it falls back to testing a predefined list of commonly used extensions.
+#
+# Extensions marked as inactive or problematic (like ndx-icephys-meta) are not added to the test matrix. This list
+# can be updated in the remote script if needed.
+#
+# It then tests each extension in parallel using a matrix strategy. Each test includes:
+# 1. Cloning the extension repository
+# 2. Installing the extension
+# 3. Testing basic import functionality
+# 4. Running the extension's tests
+#
+# Note that some extension repositories may not be in a state that allows successful installation or testing.
+#
+# Testing
+# -------
+#
+# To generate the extensions matrix for local testing:
+#
+#   # Download the script
+#   curl -o generate_extensions_matrix.py https://raw.githubusercontent.com/nwb-extensions/extensions-dashboard/refs/heads/main/scripts/generate_extensions_matrix.py
+#
+#   # GitHub Actions format (default)
+#   python generate_extensions_matrix.py
+#
+#   # JSON format for inspection
+#   python generate_extensions_matrix.py --output-format json
+#
+
 name: Run NWB Extension Tests
 on:
   pull_request:
