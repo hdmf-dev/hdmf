@@ -44,7 +44,6 @@
 
 name: Run NWB Extension Tests
 on:
-  pull_request:
   schedule:
     - cron: '0 6 * * *'  # once per day at 1 AM ET, offset from other daily workflows
   workflow_dispatch:
