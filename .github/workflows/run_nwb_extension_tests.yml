@@ -62,42 +62,53 @@ jobs:
           # NOTE: Installing from source is often broken because the latest default branch may not be stable
           # and other various issues, so we prioritize PyPI installation
 
+          echo "Repository: ${{ matrix.extension.repository }}"
+
+          # Clone the extension repository
+          git clone --depth 1 ${{ matrix.extension.repository }} extension_repo
+          cd extension_repo
+
+          # Try to install the extension
+          echo "Installing extension ${{ matrix.extension.name }}..."
+          python -m pip install .
+
           # Install the extension from PyPI if available
-          if [ -n "${{ matrix.extension.pypi }}" ]; then
-            echo "Installing extension ${{ matrix.extension.name }} from PyPI..."
-            python -m pip install ${{ matrix.extension.name }}
-          else
-            echo "No PyPI entry for ${{ matrix.extension.name }}, skipping installation."
-            exit 1
-          fi
+          # if [ -n "${{ matrix.extension.pypi }}" ]; then
+          #   echo "Installing extension ${{ matrix.extension.name }} from PyPI..."
+          #   python -m pip install ${{ matrix.extension.name }}
+          # else
+          #   echo "No PyPI entry for ${{ matrix.extension.name }}, skipping installation."
+          #   exit 1
+          # fi
 
       - name: Run tests for NWB extension - ${{ matrix.extension.name }}
         run: |
           echo "Running tests for extension: ${{ matrix.extension.name }}"
+          cd extension_repo
 
           # Test basic import functionality
           extension_import_name=$(echo "${{ matrix.extension.name }}" | sed 's/-/_/g')
           python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')"
 
           # Get the location of the installed package and navigate there
-          extension_location=$(python -c "import os; import ${extension_import_name}; print(os.path.dirname(${extension_import_name}.__file__))")
-          if [ -n "$extension_location" ]; then
-            echo "Located extension at: $extension_location"
-            cd "$extension_location"
+          # extension_location=$(python -c "import os; import ${extension_import_name}; print(os.path.dirname(${extension_import_name}.__file__))")
+          # if [ -n "$extension_location" ]; then
+          #   echo "Located extension at: $extension_location"
+          #   cd "$extension_location"
 
-            # Try different test running approaches
-            test_files=$(find . -name "*test*.py")
-            if command -v pytest &> /dev/null && [ -n "$test_files" ]; then
-              echo "Running tests with pytest..."
-              python -m pip install pytest
-              python -m pip install matplotlib scikit-image  # Common test dependencies
-              python -m pytest -v --tb=short
-            else
-              echo "Attempting to run with python -m unittest..."
-              python -m unittest discover -s . -p "*test*.py" -v
-            fi
+          # Try different test running approaches
+          test_files=$(find . -name "*test*.py")
+          if command -v pytest &> /dev/null && [ -n "$test_files" ]; then
+            echo "Running tests with pytest..."
+            python -m pip install pytest
+            python -m pip install matplotlib scikit-image  # Common test dependencies
+            python -m pytest -v --tb=short
           else
-            echo "Could not locate the installed extension package for ${{ matrix.extension.name }}. Skipping tests."
+            echo "Attempting to run with python -m unittest..."
+            python -m unittest discover -s . -p "*test*.py" -v
           fi
+          # else
+          #   echo "Could not locate the installed extension package for ${{ matrix.extension.name }}. Skipping tests."
+          # fi
 
           echo "Completed testing ${{ matrix.extension.name }}"
