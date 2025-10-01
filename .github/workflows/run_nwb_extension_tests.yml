@@ -41,11 +41,9 @@
 #
 #   # JSON format for inspection
 #   python generate_extensions_matrix.py --output-format json
-#
 
 name: Run NWB Extension Tests
 on:
-  pull_request:
   schedule:
     - cron: '0 6 * * *'  # once per day at 1 AM ET, offset from other daily workflows
   workflow_dispatch:
@@ -106,7 +104,7 @@ jobs:
       - name: Update pip
         run: python -m pip install --upgrade pip
 
-      - name: Install NWB extension from PyPI - ${{ matrix.extension.name }}
+      - name: Install NWB extension from PyPI with current branch of HDMF - ${{ matrix.extension.name }}
         run: |
           echo "Repository: ${{ matrix.extension.repository }}"
 
