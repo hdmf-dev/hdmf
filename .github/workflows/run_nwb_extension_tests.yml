@@ -86,7 +86,8 @@ jobs:
             cd "$extension_location"
 
             # Try different test running approaches
-            if command -v pytest &> /dev/null && find . -name "*test*.py" | head -1; then
+            test_files=$(find . -name "*test*.py")
+            if command -v pytest &> /dev/null && [ -n "$test_files" ]; then
               echo "Running tests with pytest..."
               python -m pip install pytest
               python -m pip install matplotlib scikit-image  # Common test dependencies
