@@ -450,6 +450,31 @@ class NamespaceCatalog:
                     edges.add((spec.data_type_def, subspec.data_type_inc))
         return edges
 
+    def __resolve_local(self, namespace: SpecNamespace, spec: BaseStorageSpec) -> None:
+        if spec.data_type_inc is not None and not spec.inc_spec_resolved:
+            # NOTE: The included spec may have already been resolved into the current spec if the current spec
+            # was copied (included) from another spec. For example, if A has a subspec B that includes C, and
+            # D includes A, then when resolving D, first, already resolved subspec B is copied from A to D, and
+            # then resolve_local may be called on B again
+            included_spec = self.get_spec(namespace.name, spec.data_type_inc)
+
+            # NOTE: In most cases, because we are resolving specs in topological order, the included spec
+            # should have already been resolved. However, in the case of the "cycle" described above where
+            # A contains B, and B includes A, then the included spec will not have been resolved yet.
+
+            # Resolve the included spec into this spec
+            spec.resolve_inc_spec(included_spec)
+
+        if isinstance(spec, GroupSpec):
+            # Recursively resolve all subspecs
+            nested_subspecs = self.__collect_nested_subspecs(spec)
+            for subspec in nested_subspecs:
+                self.__resolve_local(namespace, subspec)
+
+        # Mark this spec as resolved if the included spec has been resolved and all subspecs have been resolved.
+        # This is not necessary / not used anywhere, but may be useful for debugging.
+        spec.resolved = True
+
     def resolve_all_specs(self) -> None:
         """Resolve all specs in all namespaces in the catalog."""
         for namespace in self.__namespaces.values():
@@ -484,35 +509,10 @@ class NamespaceCatalog:
             if s not in static_order:
                 static_order.insert(0, s)
 
-        def __resolve_local(spec: BaseStorageSpec) -> None:
-            if spec.data_type_inc is not None and not spec.inc_spec_resolved:
-                # NOTE: The included spec may have already been resolved into the current spec if the current spec
-                # was copied (included) from another spec. For example, if A has a subspec B that includes C, and
-                # D includes A, then when resolving D, first, already resolved subspec B is copied from A to D, and
-                # then resolve_local may be called on B again
-                included_spec = self.get_spec(namespace.name, spec.data_type_inc)
-
-                # NOTE: In most cases, because we are resolving specs in topological order, the included spec
-                # should have already been resolved. However, in the case of the "cycle" described above where
-                # A contains B, and B includes A, then the included spec will not have been resolved yet.
-
-                # Resolve the included spec into this spec
-                spec.resolve_inc_spec(included_spec)
-
-            if isinstance(spec, GroupSpec):
-                # Recursively resolve all subspecs
-                nested_subspecs = self.__collect_nested_subspecs(spec)
-                for subspec in nested_subspecs:
-                    __resolve_local(subspec)
-
-            # Mark this spec as resolved if the included spec has been resolved and all subspecs have been resolved.
-            # This is not necessary / not used anywhere, but may be useful for debugging.
-            spec.resolved = True
-
         # Resolve specs in topological order
         for type_name in static_order:
             spec = self.get_spec(namespace.name, type_name)
-            __resolve_local(spec)
+            self.__resolve_local(namespace, spec)
 
 
     def __load_namespace(self, namespace, reader):
