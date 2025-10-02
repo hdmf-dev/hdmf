@@ -423,11 +423,12 @@ class NamespaceCatalog:
         if parent_cls.inc_key() in spec_dict:
             spec_dict[spec_cls.inc_key()] = spec_dict.pop(parent_cls.inc_key())
 
-    def __collect_nested_subspecs(self, spec: GroupSpec, nested_subspecs: list[BaseStorageSpec]):
-        """Collect all nested subspecs of the given group spec into nested_subspecs."""
-        nested_subspecs.extend(spec.groups + spec.datasets)
+    def __collect_nested_subspecs(self, spec: GroupSpec) -> list[BaseStorageSpec]:
+        """Collect all nested subspecs of the given group spec."""
+        nested_subspecs = list(spec.groups + spec.datasets)
         for subgroup_spec in spec.groups:
-            self.__collect_nested_subspecs(subgroup_spec, nested_subspecs)
+            nested_subspecs.extend(self.__collect_nested_subspecs(subgroup_spec))
+        return nested_subspecs
 
     def __get_spec_dependencies(self, spec: BaseStorageSpec) -> set[tuple[str, str]]:
         """Get the set of edges representing the dependencies of the given spec."""
@@ -438,8 +439,7 @@ class NamespaceCatalog:
         if isinstance(spec, GroupSpec):
             # For each nested subspec, the included specs of that nested subspec should be resolved before
             # this spec
-            nested_subspecs = []
-            self.__collect_nested_subspecs(spec, nested_subspecs)
+            nested_subspecs = self.__collect_nested_subspecs(spec)
             for subspec in nested_subspecs:
                 if subspec.data_type_inc is not None:
                     # TODO: cycles are not yet supported
@@ -501,8 +501,7 @@ class NamespaceCatalog:
 
             if isinstance(spec, GroupSpec):
                 # Recursively resolve all subspecs
-                nested_subspecs = []
-                self.__collect_nested_subspecs(spec, nested_subspecs)
+                nested_subspecs = self.__collect_nested_subspecs(spec)
                 for subspec in nested_subspecs:
                     __resolve_local(subspec)
 
