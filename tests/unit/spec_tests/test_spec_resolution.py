@@ -5,9 +5,11 @@ This module tests the resolution functionality that allows specs to be resolved 
 cross-namespace resolution capabilities.
 """
 
+import os
 from pathlib import Path
 import tempfile
 import json
+from typing import Union
 import ruamel.yaml as yaml
 import shutil
 
@@ -211,8 +213,18 @@ class TestSpecResolution(TestCase):
             name="root",
             data_type_inc="MyGroup",
             attributes=[
-                AttributeSpec(name="attribute2", doc="my second attribute", dtype="text", value="fixed"),
-                AttributeSpec(name="attribute3", doc="my third attribute", dtype="text", value="fixed"),
+                AttributeSpec(
+                    name="attribute2",
+                    doc="my second attribute",
+                    dtype="text",
+                    value="fixed",
+                ),
+                AttributeSpec(
+                    name="attribute3",
+                    doc="my third attribute",
+                    dtype="text",
+                    value="fixed",
+                ),
             ],
         )
         ext_group.resolve_inc_spec(base_group)
@@ -220,8 +232,18 @@ class TestSpecResolution(TestCase):
         self.assertTupleEqual(
             ext_group.attributes,
             (
-                AttributeSpec(name="attribute2", doc="my second attribute", dtype="text", value="fixed"),
-                AttributeSpec(name="attribute3", doc="my third attribute", dtype="text", value="fixed"),
+                AttributeSpec(
+                    name="attribute2",
+                    doc="my second attribute",
+                    dtype="text",
+                    value="fixed",
+                ),
+                AttributeSpec(
+                    name="attribute3",
+                    doc="my third attribute",
+                    dtype="text",
+                    value="fixed",
+                ),
                 AttributeSpec(name="attribute1", doc="my first attribute", dtype="text"),
             ),
         )
@@ -232,7 +254,12 @@ class TestSpecResolution(TestCase):
         )
         self.assertEqual(
             ext_group.get_attribute("attribute2"),
-            AttributeSpec(name="attribute2", doc="my second attribute", dtype="text", value="fixed"),
+            AttributeSpec(
+                name="attribute2",
+                doc="my second attribute",
+                dtype="text",
+                value="fixed",
+            ),
         )
         self.assertEqual(
             ext_group.get_attribute("attribute3"),
@@ -285,10 +312,15 @@ class TestSpecResolution(TestCase):
             attributes=[AttributeSpec(name="attr1", doc="Base attr", dtype="text")],
         )
         base_group = GroupSpec(
-            doc="Base group", name="test_group", attributes=[AttributeSpec(name="attr1", doc="Base attr", dtype="text")]
+            doc="Base group",
+            name="test_group",
+            attributes=[AttributeSpec(name="attr1", doc="Base attr", dtype="text")],
         )
         base_spec = GroupSpec(
-            doc="A base group", data_type_def="BaseType", datasets=[base_dataset], groups=[base_group]
+            doc="A base group",
+            data_type_def="BaseType",
+            datasets=[base_dataset],
+            groups=[base_group],
         )
         # Create extending spec that overrides both dataset and group with new attribute values
         override_dataset = DatasetSpec(
@@ -336,7 +368,10 @@ class TestSpecResolution(TestCase):
         # Create extending spec that overrides the group
         override_group = GroupSpec(doc="Override group", name="test_group")
         ext_spec = GroupSpec(
-            doc="An extending group", data_type_inc="BaseType", data_type_def="ExtType", groups=[override_group]
+            doc="An extending group",
+            data_type_inc="BaseType",
+            data_type_def="ExtType",
+            groups=[override_group],
         )
 
         # Resolve the extension
@@ -372,7 +407,10 @@ class TestSpecResolution(TestCase):
         ext_groups = [override_group, new_group]
 
         ext_spec = GroupSpec(
-            doc="An extending group", data_type_inc="BaseType", data_type_def="ExtType", groups=ext_groups
+            doc="An extending group",
+            data_type_inc="BaseType",
+            data_type_def="ExtType",
+            groups=ext_groups,
         )
 
         # Resolve the extension
@@ -400,7 +438,10 @@ class TestSpecResolution(TestCase):
         # First extension overrides the group
         mid_group = GroupSpec(doc="Mid group", name="test_group")
         mid_spec = GroupSpec(
-            doc="A middle group", data_type_inc="BaseType", data_type_def="MidType", groups=[mid_group]
+            doc="A middle group",
+            data_type_inc="BaseType",
+            data_type_def="MidType",
+            groups=[mid_group],
         )
 
         # Second extension inherits without override
@@ -1055,9 +1096,15 @@ class TestNamespaceCatalogResolution(TestCase):
 
     def tearDown(self):
         """Clean up temporary files."""
-        shutil.rmtree(self.tempdir)
+        if os.path.exists(self.tempdir):
+            shutil.rmtree(self.tempdir)
 
-    def create_test_namespace(self, name: str, specs: list[BaseStorageSpec], dependencies: list[str] = None) -> str:
+    def create_test_namespace(
+        self,
+        name: str,
+        specs: list[BaseStorageSpec],
+        dependencies: Union[list[str], None] = None,
+    ) -> str:
         """Helper to create a test namespace with given specs."""
         # Create specs file
         specs_filename = f"{name}.specs.yaml"
@@ -1219,7 +1266,6 @@ class TestNamespaceCatalogResolution(TestCase):
         # self.assertEqual(spec.attributes[0].shape, [None,])
         # self.assertEqual(spec.groups[0].attributes[0].shape, [None,])
 
-
     def test_resolve_all_specs_with_subspecs(self):
         """Test resolve_all_specs with specs that have subspecs."""
         # Create base dataset
@@ -1249,7 +1295,11 @@ class TestNamespaceCatalogResolution(TestCase):
     def test_resolve_all_specs_invalid_inc_spec_error(self):
         """Test error when a spec extends a non-existent type."""
         # Create a spec that extends a non-existent type
-        invalid_spec = GroupSpec(data_type_inc="NonExistentType", data_type_def="InvalidType", doc="Invalid group")
+        invalid_spec = GroupSpec(
+            data_type_inc="NonExistentType",
+            data_type_def="InvalidType",
+            doc="Invalid group",
+        )
 
         ns_path = self.create_test_namespace("test", [invalid_spec])
 
@@ -1343,7 +1393,8 @@ class TestNamespaceCatalogResolution(TestCase):
 
         a2_loaded = self.ns_catalog.get_spec("test", "A2")
         self.assertEqual(
-            a2_loaded.datasets[0].attributes, (AttributeSpec(name="attr1", dtype="int", doc="Attribute 1"),)
+            a2_loaded.datasets[0].attributes,
+            (AttributeSpec(name="attr1", dtype="int", doc="Attribute 1"),),
         )
 
         a3_loaded = self.ns_catalog.get_spec("test", "A3")
