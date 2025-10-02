@@ -1256,7 +1256,7 @@ class GroupSpec(BaseStorageSpec):
         ''' Returns True if `spec` represents a target type that overrides a specification from a parent type '''
         return self.is_inherited_target_type(**kwargs)
 
-    def __add_data_type_inc(self, spec):  # TODO: investigate this
+    def __add_data_type_inc(self, spec):
         # update the __data_types dict with the given groupspec/datasetspec so that:
         # - if there is only one spec for a given data type, then it is stored in __data_types regardless of
         #   whether it is named
