@@ -249,9 +249,6 @@ class NamespaceCatalog:
         self.__included_specs = dict()
         self.__included_sources = dict()
 
-        # NOTE: Currently, a namespace catalog can have only one spec per data_type_def name
-        self.__data_type2namespace = dict()  # map from data_type name to namespace
-
     def __copy__(self):
         ret = NamespaceCatalog(self.__group_spec_cls,
                                self.__dataset_spec_cls,
@@ -261,7 +258,6 @@ class NamespaceCatalog:
         ret.__loaded_specs = copy(self.__loaded_specs)
         ret.__included_specs = copy(self.__included_specs)
         ret.__included_sources = copy(self.__included_sources)
-        ret.__data_type2namespace = copy(self.__data_type2namespace)
         return ret
 
     def merge(self, ns_catalog):
@@ -305,8 +301,6 @@ class NamespaceCatalog:
             raise KeyError("namespace '%s' already exists" % name)
         self.__namespaces[name] = namespace
         for dt in namespace.catalog.get_registered_types():
-            if dt not in self.__data_type2namespace:
-                self.__data_type2namespace[dt] = namespace
             source = namespace.catalog.get_spec_source_file(dt)
             # do not add types that have already been loaded
             # use dict with None values as ordered set because order of specs does matter
@@ -333,15 +327,6 @@ class NamespaceCatalog:
         if namespace not in self.__namespaces:
             raise KeyError("'%s' not a namespace" % namespace)
         return self.__namespaces[namespace].get_spec(data_type)
-
-    def get_namespace_for_type(self, data_type):
-        return self.__data_type2namespace.get(data_type, None)
-
-    def get_spec_for_type(self, data_type):
-        ns = self.get_namespace_for_type(data_type)
-        if ns is None:
-            raise ValueError(f"Namespace for data_type '{data_type}' not found")
-        return ns.get_spec(data_type)
 
     @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace'},
             {'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to get the spec for'},
@@ -438,41 +423,6 @@ class NamespaceCatalog:
         if parent_cls.inc_key() in spec_dict:
             spec_dict[spec_cls.inc_key()] = spec_dict.pop(parent_cls.inc_key())
 
-    def __resolve_inc_spec(self, spec: BaseStorageSpec) -> None:
-        """Resolve the included spec into the given spec."""
-        # get the spec for the included type regardless of namespace
-        included_spec = self.get_spec_for_type(spec.data_type_inc)
-
-        # resolve the included spec only after the included spec has been resolved
-        if included_spec.resolved:
-            spec.resolve_inc_spec(included_spec)
-
-    def __resolve_spec(self, spec: BaseStorageSpec) -> None:
-        """Resolve the given spec by resolving its included spec and all its subspecs."""
-        # NOTE: resolution needs to happen at the namespace catalog level because the included spec
-        # may be in a different namespace
-        if not spec.resolved:
-            # resolve the included spec before the subspecs because the subspecs may refine fields inherited from the
-            # included spec
-            if spec.data_type_inc is not None and not spec.inc_spec_resolved:
-                self.__resolve_inc_spec(spec)
-
-            if spec.data_type_inc is None or spec.inc_spec_resolved:
-                if isinstance(spec, DatasetSpec):
-                    # dataset spec has no subspecs so if it has been resolved with the included spec, it is done
-                    spec.resolved = True
-                    return
-
-                # group spec - try to resolve all subspecs and note if they are all resolved
-                all_subspecs_resolved = True
-                for subspec in (spec.groups + spec.datasets):
-                    self.__resolve_spec(subspec)
-                    if not subspec.resolved:
-                        all_subspecs_resolved = False
-
-                if all_subspecs_resolved:
-                    spec.resolved = True
-
     def __collect_nested_subspecs(self, spec: GroupSpec, nested_subspecs: list[BaseStorageSpec]):
         """Collect all nested subspecs of the given group spec into nested_subspecs."""
         nested_subspecs.extend(spec.groups + spec.datasets)
@@ -492,34 +442,40 @@ class NamespaceCatalog:
             self.__collect_nested_subspecs(spec, nested_subspecs)
             for subspec in nested_subspecs:
                 if subspec.data_type_inc is not None:
-                    if spec.data_type_def == subspec.data_type_inc:
-                        # Allow the simple case of a "cycle" where A contains B, and B includes A
-                        # but do not add this edge to the graph because it makes a cycle.
-                        continue
+                    # TODO: cycles are not yet supported
+                    # if spec.data_type_def == subspec.data_type_inc:
+                    #     # Allow the simple case of a "cycle" where A contains B, and B includes A
+                    #     # but do not add this edge to the graph because it makes a cycle.
+                    #     continue
                     edges.add((spec.data_type_def, subspec.data_type_inc))
         return edges
 
     def resolve_all_specs(self) -> None:
+        """Resolve all specs in all namespaces in the catalog."""
+        for namespace in self.__namespaces.values():
+            self.__resolve_namespace_specs(namespace)
+
+    def __resolve_namespace_specs(self, namespace: SpecNamespace) -> None:
         """Resolve all specs in the catalog."""
         # Build a graph of all type dependencies
         # For example, if A includes B, A has subspec that includes C, and B includes D, then A -> B, A -> C, B -> D
         ts = graphlib.TopologicalSorter()
         specs_without_deps = set()  # track specs that have no dependencies
-        for namespace in self.__namespaces.values():
-            for type_name in namespace.catalog.get_registered_types():
-                spec = namespace.catalog.get_spec(type_name)
-                edges = self.__get_spec_dependencies(spec)
-                if not edges:
-                    specs_without_deps.add(type_name)
-                else:
-                    for e in edges:
-                        ts.add(*e)
+        for type_name in namespace.catalog.get_registered_types():
+            spec = namespace.catalog.get_spec(type_name)
+            edges = self.__get_spec_dependencies(spec)
+            if not edges:
+                specs_without_deps.add(type_name)
+            else:
+                for e in edges:
+                    ts.add(*e)
 
         # Check for cycles and get static topological order
         # For example, in the ABCD example above, the static order is D, B, C, A
         try:
             static_order = list(ts.static_order())
-        except graphlib.CycleError:
+        except graphlib.CycleError:  # pragma: no cover
+            # This should not happen because cycles will cause an error during spec object creation
             raise ValueError("Cycle detected in specification dependencies. Cannot resolve specifications.")
 
         # In rare cases, a namespace may have specs that have no dependencies and are not included by any other
@@ -534,7 +490,7 @@ class NamespaceCatalog:
                 # was copied (included) from another spec. For example, if A has a subspec B that includes C, and
                 # D includes A, then when resolving D, first, already resolved subspec B is copied from A to D, and
                 # then resolve_local may be called on B again
-                included_spec = self.get_spec_for_type(spec.data_type_inc)
+                included_spec = self.get_spec(namespace.name, spec.data_type_inc)
 
                 # NOTE: In most cases, because we are resolving specs in topological order, the included spec
                 # should have already been resolved. However, in the case of the "cycle" described above where
@@ -556,7 +512,7 @@ class NamespaceCatalog:
 
         # Resolve specs in topological order
         for type_name in static_order:
-            spec = self.get_spec_for_type(type_name)
+            spec = self.get_spec(namespace.name, type_name)
             __resolve_local(spec)
 
 
@@ -600,10 +556,6 @@ class NamespaceCatalog:
             self._check_namespace_conflicts(extension_ns_name=ns_name,
                                             extension_ns_source=s.get('source'),
                                             catalog=catalog)
-
-        for x in catalog.get_registered_types():
-            if x not in self.__data_type2namespace:
-                self.__data_type2namespace[x] = ns
 
         return included_types
 

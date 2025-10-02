@@ -1100,43 +1100,6 @@ class TestNamespaceCatalogResolution(TestCase):
 
         return str(ns_path)
 
-    def test_get_namespace_for_type(self):
-        """Test NamespaceCatalog.get_namespace_for_type method."""
-        # Create a simple namespace
-        base_spec = GroupSpec(data_type_def="BaseType", doc="Base group")
-        ns_path = self.create_test_namespace("test", [base_spec])
-
-        # Load namespace
-        self.ns_catalog.load_namespaces(ns_path)
-
-        # Test getting namespace for type
-        namespace = self.ns_catalog.get_namespace_for_type("BaseType")
-        self.assertIsNotNone(namespace)
-        self.assertEqual(namespace.name, "test")
-
-        # Test non-existent type
-        namespace = self.ns_catalog.get_namespace_for_type("NonExistentType")
-        self.assertIsNone(namespace)
-
-    def test_get_spec_for_type(self):
-        """Test NamespaceCatalog.get_spec_for_type method."""
-        # Create a simple namespace
-        base_spec = GroupSpec(data_type_def="BaseType", doc="Base group")
-        ns_path = self.create_test_namespace("test", [base_spec])
-
-        # Load namespace
-        self.ns_catalog.load_namespaces(ns_path)
-
-        # Test getting spec for type
-        spec = self.ns_catalog.get_spec_for_type("BaseType")
-        self.assertIsNotNone(spec)
-        self.assertEqual(spec.data_type_def, "BaseType")
-
-        # Test non-existent type
-        msg = "Namespace for data_type 'NonExistentType' not found"
-        with self.assertRaisesWith(ValueError, msg):
-            self.ns_catalog.get_spec_for_type("NonExistentType")
-
     def test_resolve_all_specs_simple(self):
         """Test NamespaceCatalog.resolve_all_specs with simple inheritance."""
         # Create base and extension specs
@@ -1149,7 +1112,7 @@ class TestNamespaceCatalogResolution(TestCase):
         self.ns_catalog.load_namespaces(ns_path, resolve=False)
 
         # Check that specs are not resolved
-        ext_loaded = self.ns_catalog.get_spec_for_type("ExtType")
+        ext_loaded = self.ns_catalog.get_spec("test", "ExtType")
         self.assertFalse(ext_loaded.resolved)
         self.assertFalse(ext_loaded.inc_spec_resolved)
 
@@ -1157,7 +1120,7 @@ class TestNamespaceCatalogResolution(TestCase):
         self.ns_catalog.resolve_all_specs()
 
         # Check that specs are now resolved
-        ext_loaded = self.ns_catalog.get_spec_for_type("ExtType")
+        ext_loaded = self.ns_catalog.get_spec("test", "ExtType")
         self.assertTrue(ext_loaded.resolved)
         self.assertTrue(ext_loaded.inc_spec_resolved)
 
@@ -1176,14 +1139,14 @@ class TestNamespaceCatalogResolution(TestCase):
         self.ns_catalog.load_namespaces(ext_ns_path, resolve=False)
 
         # Check that extension spec is not resolved
-        ext_loaded = self.ns_catalog.get_spec_for_type("ExtType")
+        ext_loaded = self.ns_catalog.get_spec("ext", "ExtType")
         self.assertFalse(ext_loaded.resolved)
 
         # Resolve all specs
         self.ns_catalog.resolve_all_specs()
 
         # Check that extension spec is now resolved
-        ext_loaded = self.ns_catalog.get_spec_for_type("ExtType")
+        ext_loaded = self.ns_catalog.get_spec("ext", "ExtType")
         self.assertTrue(ext_loaded.resolved)
         self.assertTrue(ext_loaded.inc_spec_resolved)
 
@@ -1204,7 +1167,7 @@ class TestNamespaceCatalogResolution(TestCase):
 
         # Check that all specs are resolved
         for type_name in ["BaseType", "MidType", "ExtType"]:
-            spec = self.ns_catalog.get_spec_for_type(type_name)
+            spec = self.ns_catalog.get_spec("test", type_name)
             self.assertTrue(spec.resolved)
             if spec.data_type_inc:
                 self.assertTrue(spec.inc_spec_resolved)
@@ -1248,7 +1211,7 @@ class TestNamespaceCatalogResolution(TestCase):
         # self.ns_catalog.load_namespaces(ns_path)  # should resolve without error
 
         # # Check that spec is resolved
-        # spec = self.ns_catalog.get_spec_for_type("TypeA")
+        # spec = self.ns_catalog.get_spec("test", "TypeA")
         # self.assertTrue(spec.resolved)
         # self.assertTrue(spec.inc_spec_resolved)
         # self.assertEqual(spec.attributes[0].dtype, "numeric")
@@ -1275,7 +1238,7 @@ class TestNamespaceCatalogResolution(TestCase):
         self.ns_catalog.load_namespaces(ns_path)
 
         # Check that group and its subspecs are resolved
-        group_spec = self.ns_catalog.get_spec_for_type("GroupWithDataset")
+        group_spec = self.ns_catalog.get_spec("test", "GroupWithDataset")
         self.assertTrue(group_spec.resolved)
 
         # Check that the dataset subspec is also resolved
@@ -1294,7 +1257,7 @@ class TestNamespaceCatalogResolution(TestCase):
         self.ns_catalog.load_namespaces(ns_path, resolve=False)
 
         # Attempting to resolve should raise an error
-        msg = "Namespace for data_type 'NonExistentType' not found"
+        msg = "No specification for 'NonExistentType' in namespace 'test'"
         with self.assertRaisesWith(ValueError, msg):
             self.ns_catalog.resolve_all_specs()
 
@@ -1378,12 +1341,12 @@ class TestNamespaceCatalogResolution(TestCase):
         ns_path = self.create_test_namespace("test", [d1, d2, a1, a2, a3, a4])
         self.ns_catalog.load_namespaces(ns_path)  # check no errors
 
-        a2_loaded = self.ns_catalog.get_spec_for_type("A2")
+        a2_loaded = self.ns_catalog.get_spec("test", "A2")
         self.assertEqual(
             a2_loaded.datasets[0].attributes, (AttributeSpec(name="attr1", dtype="int", doc="Attribute 1"),)
         )
 
-        a3_loaded = self.ns_catalog.get_spec_for_type("A3")
+        a3_loaded = self.ns_catalog.get_spec("test", "A3")
         self.assertEqual(
             a3_loaded.datasets[0].attributes,
             (
@@ -1392,7 +1355,7 @@ class TestNamespaceCatalogResolution(TestCase):
             ),
         )
 
-        a4_loaded = self.ns_catalog.get_spec_for_type("A4")
+        a4_loaded = self.ns_catalog.get_spec("test", "A4")
         self.assertTrue(a4_loaded.datasets[0].resolved)
         self.assertEqual(
             a4_loaded.datasets[0].attributes,
