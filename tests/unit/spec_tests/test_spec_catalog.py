@@ -161,6 +161,18 @@ class SpecCatalogTest(TestCase):
                              }
         self.assertDictEqual(full_hierarchy, expected_hierarchy)
 
+    def test_circular_hierarchy(self):
+        """Test that circular dependencies are detected and raise an error."""
+        # Create circular dependency: A -> B -> A
+        spec_a = GroupSpec(data_type_inc="TypeB", data_type_def="TypeA", doc="Group A")
+        spec_b = GroupSpec(data_type_inc="TypeA", data_type_def="TypeB", doc="Group B")
+        self.catalog.register_spec(spec_a, 'test.yaml')
+        self.catalog.register_spec(spec_b, 'test.yaml')
+
+        msg = "Circular reference detected in type hierarchy for TypeA"
+        with self.assertRaisesWith(ValueError, msg):
+            self.catalog.get_hierarchy('TypeA')
+
     def test_copy_spec_catalog(self):
         # Register the spec first
         self.catalog.register_spec(self.spec, 'test.yaml')

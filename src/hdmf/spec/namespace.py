@@ -6,6 +6,7 @@ from collections import OrderedDict
 from copy import copy
 from datetime import datetime
 from warnings import warn
+import graphlib
 
 from .catalog import SpecCatalog
 from .spec import DatasetSpec, GroupSpec, BaseStorageSpec
@@ -472,34 +473,92 @@ class NamespaceCatalog:
                 if all_subspecs_resolved:
                     spec.resolved = True
 
+    def __collect_nested_subspecs(self, spec: GroupSpec, nested_subspecs: list[BaseStorageSpec]):
+        """Collect all nested subspecs of the given group spec into nested_subspecs."""
+        nested_subspecs.extend(spec.groups + spec.datasets)
+        for subgroup_spec in spec.groups:
+            self.__collect_nested_subspecs(subgroup_spec, nested_subspecs)
+
+    def __get_spec_dependencies(self, spec: BaseStorageSpec) -> set[tuple[str, str]]:
+        """Get the set of edges representing the dependencies of the given spec."""
+        edges = set()
+        if spec.data_type_inc is not None:
+            # The included spec should be resolved before this spec
+            edges.add((spec.data_type_def, spec.data_type_inc))
+        if isinstance(spec, GroupSpec):
+            # For each nested subspec, the included specs of that nested subspec should be resolved before
+            # this spec
+            nested_subspecs = []
+            self.__collect_nested_subspecs(spec, nested_subspecs)
+            for subspec in nested_subspecs:
+                if subspec.data_type_inc is not None:
+                    if spec.data_type_def == subspec.data_type_inc:
+                        # Allow the simple case of a "cycle" where A contains B, and B includes A
+                        # but do not add this edge to the graph because it makes a cycle.
+                        continue
+                    edges.add((spec.data_type_def, subspec.data_type_inc))
+        return edges
+
     def resolve_all_specs(self) -> None:
         """Resolve all specs in the catalog."""
-        # get a set of all unresolved data type specs
-        unresolved_data_type_specs = set()
+        # Build a graph of all type dependencies
+        # For example, if A includes B, A has subspec that includes C, and B includes D, then A -> B, A -> C, B -> D
+        ts = graphlib.TopologicalSorter()
+        specs_without_deps = set()  # track specs that have no dependencies
         for namespace in self.__namespaces.values():
             for type_name in namespace.catalog.get_registered_types():
                 spec = namespace.catalog.get_spec(type_name)
-                if not spec.resolved:
-                    unresolved_data_type_specs.add(spec)
+                edges = self.__get_spec_dependencies(spec)
+                if not edges:
+                    specs_without_deps.add(type_name)
+                else:
+                    for e in edges:
+                        ts.add(*e)
 
-        # iteratively resolve specs until all are resolved or we reach max passes
-        num_passes = 0
-        max_passes = 10
-        while unresolved_data_type_specs and num_passes < max_passes:
-            num_passes += 1
-            specs_to_process = copy(unresolved_data_type_specs)
-            for spec in specs_to_process:
-                self.__resolve_spec(spec)
-                if spec.resolved:
-                    unresolved_data_type_specs.remove(spec)
+        # Check for cycles and get static topological order
+        # For example, in the ABCD example above, the static order is D, B, C, A
+        try:
+            static_order = list(ts.static_order())
+        except graphlib.CycleError:
+            raise ValueError("Cycle detected in specification dependencies. Cannot resolve specifications.")
 
-        # if we could not resolve all specs, raise an error
-        if unresolved_data_type_specs:
-            unresolved = [f"{spec.data_type_def} (namespace: {self.get_namespace_for_type(spec.data_type_def).name})"
-                          for spec in unresolved_data_type_specs]
-            msg = (f"Could not resolve all specifications after {max_passes} passes. Unresolved specs: "
-                   f"{', '.join(unresolved)}")
-            raise RuntimeError(msg)
+        # In rare cases, a namespace may have specs that have no dependencies and are not included by any other
+        # spec, so they will not be in the topological sort. Add them to the front of the order.
+        for s in specs_without_deps:
+            if s not in static_order:
+                static_order.insert(0, s)
+
+        def __resolve_local(spec: BaseStorageSpec) -> None:
+            if spec.data_type_inc is not None and not spec.inc_spec_resolved:
+                # NOTE: The included spec may have already been resolved into the current spec if the current spec
+                # was copied (included) from another spec. For example, if A has a subspec B that includes C, and
+                # D includes A, then when resolving D, first, already resolved subspec B is copied from A to D, and
+                # then resolve_local may be called on B again
+                included_spec = self.get_spec_for_type(spec.data_type_inc)
+
+                # NOTE: In most cases, because we are resolving specs in topological order, the included spec
+                # should have already been resolved. However, in the case of the "cycle" described above where
+                # A contains B, and B includes A, then the included spec will not have been resolved yet.
+
+                # Resolve the included spec into this spec
+                spec.resolve_inc_spec(included_spec)
+
+            if isinstance(spec, GroupSpec):
+                # Recursively resolve all subspecs
+                nested_subspecs = []
+                self.__collect_nested_subspecs(spec, nested_subspecs)
+                for subspec in nested_subspecs:
+                    __resolve_local(subspec)
+
+            # Mark this spec as resolved if the included spec has been resolved and all subspecs have been resolved.
+            # This is not necessary / not used anywhere, but may be useful for debugging.
+            spec.resolved = True
+
+        # Resolve specs in topological order
+        for type_name in static_order:
+            spec = self.get_spec_for_type(type_name)
+            __resolve_local(spec)
+
 
     def __load_namespace(self, namespace, reader):
         ns_name = namespace['name']

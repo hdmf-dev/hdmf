@@ -1209,23 +1209,53 @@ class TestNamespaceCatalogResolution(TestCase):
             if spec.data_type_inc:
                 self.assertTrue(spec.inc_spec_resolved)
 
-    def test_resolve_all_specs_circular_dependency_error(self):
-        """Test that circular dependencies are detected and raise an error."""
+    def test_circular_hierarchy(self):
+        """Test that circular dependencies are detected during load_namespaces and raises an error."""
         # Create circular dependency: A -> B -> A
         spec_a = GroupSpec(data_type_inc="TypeB", data_type_def="TypeA", doc="Group A")
         spec_b = GroupSpec(data_type_inc="TypeA", data_type_def="TypeB", doc="Group B")
-
         ns_path = self.create_test_namespace("test", [spec_a, spec_b])
 
         # Load namespace without resolution
-        self.ns_catalog.load_namespaces(ns_path, resolve=False)
+        msg = "Circular reference detected in type hierarchy for TypeA"
+        with self.assertRaisesWith(ValueError, msg):
+            self.ns_catalog.load_namespaces(ns_path, resolve=False)
 
-        # Attempting to resolve should raise an error
-        with self.assertRaises(RuntimeError) as cm:
-            self.ns_catalog.resolve_all_specs()
-        self.assertIn("Could not resolve all specifications", str(cm.exception))
-        self.assertIn("TypeA", str(cm.exception))
-        self.assertIn("TypeB", str(cm.exception))
+    def test_resolve_all_specs_named_group_contains_itself(self):
+        """Test that a group containing itself as a subspec is detected and allowed."""
+        # Create circular dependency: Spec A contains named subspec B, B includes A
+        # Also create the very odd case where the root A has attr1 defined as 1D numeric but all nested A's
+        # have attr1 defined as int (and the 1D shape should propagate down)
+        # TODO: This is a rare case that is not yet supported due to infinite recursion between GroupSpec.build_spec and
+        # GroupSpec.build_const_args
+        # spec_a = GroupSpec(
+        #     data_type_def="TypeA",
+        #     doc="Group A",
+        #     groups=[
+        #         GroupSpec(
+        #             data_type_inc="TypeA",
+        #             name="subgroup",
+        #             doc="Subgroup",
+        #             attributes=[AttributeSpec(name="attr1", dtype="int", doc="Attribute 1")],
+        #         ),
+        #     ],
+        #     attributes=[AttributeSpec(name="attr1", dtype="numeric", doc="Attribute 1", shape=[None,])],
+        # )
+
+        # ns_path = self.create_test_namespace("test", [spec_a])
+
+        # # Load namespace without resolution
+        # self.ns_catalog.load_namespaces(ns_path)  # should resolve without error
+
+        # # Check that spec is resolved
+        # spec = self.ns_catalog.get_spec_for_type("TypeA")
+        # self.assertTrue(spec.resolved)
+        # self.assertTrue(spec.inc_spec_resolved)
+        # self.assertEqual(spec.attributes[0].dtype, "numeric")
+        # self.assertEqual(spec.groups[0].attributes[0].dtype, "int")
+        # self.assertEqual(spec.attributes[0].shape, [None,])
+        # self.assertEqual(spec.groups[0].attributes[0].shape, [None,])
+
 
     def test_resolve_all_specs_with_subspecs(self):
         """Test resolve_all_specs with specs that have subspecs."""
@@ -1346,8 +1376,7 @@ class TestNamespaceCatalogResolution(TestCase):
             doc="Group A4",
         )
         ns_path = self.create_test_namespace("test", [d1, d2, a1, a2, a3, a4])
-        self.ns_catalog.load_namespaces(ns_path)
-        self.ns_catalog.resolve_all_specs()  # check no errors
+        self.ns_catalog.load_namespaces(ns_path)  # check no errors
 
         a2_loaded = self.ns_catalog.get_spec_for_type("A2")
         self.assertEqual(
@@ -1407,7 +1436,7 @@ class TestNamespaceCatalogResolution(TestCase):
     #         doc="Group A2",
     #     )
     #     ns_path = self.create_test_namespace("test", [d1, a1, a2])
-    #     self.ns_catalog.load_namespaces(ns_path)
+    #     self.ns_catalog.load_namespaces(ns_path, resolve=False)
 
     #     msg = "TODO"
     #     with self.assertRaisesWith(ValueError, msg):
@@ -1452,7 +1481,7 @@ class TestNamespaceCatalogResolution(TestCase):
     #         doc="Group A2",
     #     )
     #     ns_path = self.create_test_namespace("test", [d1, a1, a2])
-    #     self.ns_catalog.load_namespaces(ns_path)
+    #     self.ns_catalog.load_namespaces(ns_path, resolve=False)
 
     #     msg = "TODO"
     #     with self.assertRaisesWith(ValueError, msg):
@@ -1520,7 +1549,7 @@ class TestNamespaceCatalogResolution(TestCase):
     #         doc="Group A5",
     #     )
     #     ns_path = self.create_test_namespace("test", [d1, d2, a1, a2, a5])
-    #     self.ns_catalog.load_namespaces(ns_path)
+    #     self.ns_catalog.load_namespaces(ns_path, resolve=False)
 
     #     msg = ("Could not resolve all specifications. The following specifications could not be resolved: "
     #            "A5, col in A5")
@@ -1546,9 +1575,7 @@ class TestNamespaceCatalogResolution(TestCase):
         )
 
         ns_path = self.create_test_namespace("test", [g1, g2, d1, d2])
-        self.ns_catalog.load_namespaces(ns_path)
-
-        self.ns_catalog.resolve_all_specs()
+        self.ns_catalog.load_namespaces(ns_path)  # check no errors
 
         self.assertEqual(d2.dtype, RefSpec(target_type="G2", reftype="object"))
 
@@ -1573,7 +1600,7 @@ class TestNamespaceCatalogResolution(TestCase):
     #     )
 
     #     ns_path = self.create_test_namespace("test", [g1, h1, d1, d2])
-    #     self.ns_catalog.load_namespaces(ns_path)
+    #     self.ns_catalog.load_namespaces(ns_path, resolve=False)
 
     #     msg = "TODO"
     #     with self.assertRaisesWith(ValueError, msg):
