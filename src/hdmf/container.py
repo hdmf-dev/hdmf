@@ -16,6 +16,7 @@ from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, p
 
 from .term_set import TermSet, TermSetWrapper
 
+
 def _set_exp(cls):
     """Set a class as being experimental"""
     cls._experimental = True
@@ -33,7 +34,7 @@ def _exp_warn_msg(cls):
 
 class HERDManager:
     """
-    This class manages whether to set/attach an instance of HERD to the subclass.
+    When this class is used as a mixin for a Container, it enables setting and getting an instance of HERD.
     """
 
     @docval({'name': 'herd', 'type': 'HERD',
@@ -42,11 +43,30 @@ class HERDManager:
         """
         Method to attach an instance of HERD in order to auto-add terms/references to data.
         """
-        self._herd = kwargs['herd']
+        msg = (
+            "link_resources is deprecated and will be removed in HDMF 5.0. "
+            "Use the external_resources property instead."
+        )
+        warn(msg, DeprecationWarning, stacklevel=2)
+        self.external_resources = kwargs['herd']
+
+    def get_linked_resources(self):
+        msg = (
+            "get_linked_resources is deprecated and will be removed in HDMF 5.0. "
+            "Use the external_resources property instead."
+        )
+        warn(msg, DeprecationWarning, stacklevel=2)
+        return self.external_resources
 
     @property
     def external_resources(self):
         return self._herd if hasattr(self, "_herd") else None
+
+    @external_resources.setter
+    def external_resources(self, herd):
+        if hasattr(self, "_herd"):
+            warn("Reassigning external_resources may lead to unexpected behavior.")
+        self._herd = herd
 
 
 class AbstractContainer(metaclass=ExtenderMeta):

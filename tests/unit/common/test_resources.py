@@ -309,7 +309,7 @@ class TestHERD(TestCase):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
-        em.link_resources(er)
+        em.external_resources = er
 
         # create children and add parent
         col1 = VectorData(
@@ -332,7 +332,7 @@ class TestHERD(TestCase):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
-        em.link_resources(er)
+        em.external_resources = er
 
         # create children and add parent
         col1 = VectorData(

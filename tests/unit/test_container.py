@@ -25,11 +25,13 @@ class ContainerWithChild(Container):
 
 
 class TestHERDManager(TestCase):
-    def test_link_and_get_resources(self):
+    def test_get_and_set_resources(self):
         em = HERDManager()
         er = HERD()
 
-        em.link_resources(er)
+        em.external_resources = er
+        self.assertEqual(em.external_resources, er)
+
         er_get = em.external_resources
         self.assertEqual(er, er_get)
 
