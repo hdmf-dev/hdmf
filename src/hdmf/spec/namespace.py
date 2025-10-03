@@ -463,7 +463,7 @@ class NamespaceCatalog:
             # A contains B, and B includes A, then the included spec will not have been resolved yet.
 
             # Resolve the included spec into this spec
-            spec.resolve_inc_spec(included_spec)
+            spec.resolve_inc_spec(included_spec, namespace)
 
         if isinstance(spec, GroupSpec):
             # Recursively resolve all subspecs

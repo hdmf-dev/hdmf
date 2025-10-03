@@ -25,6 +25,9 @@ class ValidatorTestBase(TestCase, metaclass=ABCMeta):
             spec_catalog.register_spec(spec, 'test.yaml')
         self.namespace = SpecNamespace(
             'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.ns_catalog = NamespaceCatalog()
+        self.ns_catalog.add_namespace(self.namespace.name, self.namespace)
+        self.ns_catalog.resolve_all_specs()  # some tests require spec resolution
         self.vmap = ValidatorMap(self.namespace)
 
     @abstractmethod
@@ -261,8 +264,10 @@ class TestNestedTypes(ValidatorTestBase):
                                    groups=[bar_builder])
 
         results = self.vmap.validate(foo_builder)
-        self.assertEqual(len(results), 1)
+        self.assertEqual(len(results), 2)
         self.assertValidationError(results[0], MissingDataType, name='Bar',
+                                   reason='missing data type Baz')
+        self.assertValidationError(results[1], MissingDataType, name='Foo/my_bar',
                                    reason='missing data type Baz')
 
     def test_valid(self):
@@ -1016,15 +1021,16 @@ class TestExtendedIncDataTypes(TestCase):
         d1_spec = DatasetSpec(doc='type D1', data_type_def='D1', dtype='numeric',
                               attributes=[attr_foo])
         d2_spec = DatasetSpec(doc='type D2', data_type_def='D2', data_type_inc="D1")
-        d2_spec.resolve_inc_spec(d1_spec)
         g1_spec = GroupSpec(doc='type G1', data_type_def='G1',
                             datasets=[DatasetSpec(doc='D1 extension', data_type_inc="D1",
                                                   attributes=[attr_foo, attr_bar])])
-        g1_spec.datasets[0].resolve_inc_spec(d1_spec)
         for spec in [d1_spec, d2_spec, g1_spec]:
             spec_catalog.register_spec(spec, 'test.yaml')
         self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
                                        [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.add_namespace(self.namespace.name, self.namespace)
+        ns_catalog.resolve_all_specs()
         self.vmap = ValidatorMap(self.namespace)
 
     def test_missing_additional_attribute_on_anonymous_data_type_extension(self):
@@ -1114,9 +1120,6 @@ class TestReferenceDatasetsRoundTrip(ValidatorTestBase):
                 DatasetSpec(doc='multiple qux', data_type_inc="Qux", quantity=ONE_OR_MANY),
             ]
         )
-        foo_spec.datasets[0].resolve_inc_spec(bar_spec)
-        foo_spec.datasets[1].resolve_inc_spec(baz_spec)
-        foo_spec.datasets[2].resolve_inc_spec(qux_spec)
         return (foo_spec, bar_spec, baz_spec, qux_spec)
 
     def runBuilderRoundTrip(self, builder):

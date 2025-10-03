@@ -104,8 +104,8 @@ class TestSpecResolution(TestCase):
         # Note: resolved property is managed by the overarching NamespaceCatalog on subspecs being resolved
         self.assertFalse(ext_dataset.inc_spec_resolved)
 
-        # Resolve the extension
-        ext_dataset.resolve_inc_spec(self.base_dataset)
+        # Resolve the extension (no namespace needed for this test)
+        ext_dataset.resolve_inc_spec(self.base_dataset, None)
 
         # Check that resolution flags are set
         self.assertTrue(ext_dataset.inc_spec_resolved)
@@ -148,8 +148,8 @@ class TestSpecResolution(TestCase):
         self.assertFalse(ext_group.resolved)
         self.assertFalse(ext_group.inc_spec_resolved)
 
-        # Resolve the extension
-        ext_group.resolve_inc_spec(self.base_group)
+        # Resolve the extension (no namespace needed for this test)
+        ext_group.resolve_inc_spec(self.base_group, None)
 
         # Check that resolution flags are set
         self.assertTrue(ext_group.inc_spec_resolved)
@@ -180,8 +180,8 @@ class TestSpecResolution(TestCase):
             doc="Extended dataset",
         )
 
-        # Resolve the extension
-        ext_dataset.resolve_inc_spec(base_dataset)
+        # Resolve the extension (no namespace needed for this test)
+        ext_dataset.resolve_inc_spec(base_dataset, None)
 
         # Check that dtype is inherited
         self.assertEqual(ext_dataset.dtype, "int")
@@ -192,8 +192,8 @@ class TestSpecResolution(TestCase):
             doc="Extended dataset",
         )
 
-        # Resolve the extension
-        ext_dataset2.resolve_inc_spec(base_dataset)
+        # Resolve the extension (no namespace needed for this test)
+        ext_dataset2.resolve_inc_spec(base_dataset, None)
 
         # Check that dtype is inherited
         self.assertEqual(ext_dataset2.dtype, "int")
@@ -227,7 +227,8 @@ class TestSpecResolution(TestCase):
                 ),
             ],
         )
-        ext_group.resolve_inc_spec(base_group)
+        # Resolve the extension (no namespace needed for this test)
+        ext_group.resolve_inc_spec(base_group, None)
 
         self.assertTupleEqual(
             ext_group.attributes,
@@ -342,8 +343,8 @@ class TestSpecResolution(TestCase):
             groups=[override_group],
         )
 
-        # Resolve the extension
-        ext_spec.resolve_inc_spec(base_spec)
+        # Resolve the extension (no namespace needed for this test)
+        ext_spec.resolve_inc_spec(base_spec, None)
 
         # Test attribute in overridden dataset is marked as overridden
         dataset_attr = ext_spec.get_dataset("test_dataset").get_attribute("attr1")
@@ -374,8 +375,8 @@ class TestSpecResolution(TestCase):
             groups=[override_group],
         )
 
-        # Resolve the extension
-        ext_spec.resolve_inc_spec(base_spec)
+        # Resolve the extension (no namespace needed for this test)
+        ext_spec.resolve_inc_spec(base_spec, None)
 
         # Test base spec has no overridden groups
         self.assertFalse(base_spec.is_overridden_group("test_group"))
@@ -413,8 +414,8 @@ class TestSpecResolution(TestCase):
             groups=ext_groups,
         )
 
-        # Resolve the extension
-        ext_spec.resolve_inc_spec(base_spec)
+        # Resolve the extension (no namespace needed for this test)
+        ext_spec.resolve_inc_spec(base_spec, None)
 
         # Test unnamed group is added to data_types
         self.assertEqual(ext_spec.get_data_type("UnnamedType"), unnamed_group)
@@ -447,9 +448,9 @@ class TestSpecResolution(TestCase):
         # Second extension inherits without override
         ext_spec = GroupSpec(doc="An extending group", data_type_inc="MidType", data_type_def="ExtType")
 
-        # Resolve the extensions
-        mid_spec.resolve_inc_spec(base_spec)
-        ext_spec.resolve_inc_spec(mid_spec)
+        # Resolve the extensions (no namespace needed for this test)
+        mid_spec.resolve_inc_spec(base_spec, None)
+        ext_spec.resolve_inc_spec(mid_spec, None)
 
         # Test group inheritance through multiple levels
         resolved_group = ext_spec.get_group("test_group")
@@ -471,7 +472,8 @@ class TestSpecResolution(TestCase):
             data_type_inc="ParentType",
             doc="A test group",
         )
-        child_spec.resolve_inc_spec(parent_spec)
+        # Resolve the extension (no namespace needed for this test)
+        child_spec.resolve_inc_spec(parent_spec, None)
 
         for link in links:
             with self.subTest(link_target_type=link.target_type):
@@ -499,7 +501,8 @@ class TestSpecResolution(TestCase):
             doc="A test group",
             links=overwritten_links,
         )
-        child_spec.resolve_inc_spec(parent_spec)
+        # Resolve the extension (no namespace needed for this test)
+        child_spec.resolve_inc_spec(parent_spec, None)
 
         for link in overwritten_links:
             with self.subTest(link_target_type=link.target_type):
@@ -534,7 +537,8 @@ class TestSpecResolution(TestCase):
                 ),
             ],
         )
-        ext_group.resolve_inc_spec(base_group)
+        # Resolve the extension (no namespace needed for this test)
+        ext_group.resolve_inc_spec(base_group, None)
 
         self.assertFalse(base_group.is_inherited_spec(base_group.datasets[0].attributes[0]))
 
@@ -572,7 +576,8 @@ class TestSpecResolution(TestCase):
                 ),
             ],
         )
-        ext_group.resolve_inc_spec(base_group)
+        # Resolve the extension (no namespace needed for this test)
+        ext_group.resolve_inc_spec(base_group, None)
 
         self.assertFalse(base_group.is_inherited_spec(base_group.datasets[0].attributes[0]))
 
@@ -586,7 +591,8 @@ class TestSpecResolution(TestCase):
             data_type_def="SubSubGroup",
             data_type_inc="SubGroup",
         )
-        ext_group2.resolve_inc_spec(ext_group)
+        # Resolve the extension (no namespace needed for this test)
+        ext_group2.resolve_inc_spec(ext_group, None)
 
         dset_spec_map = {dset.name: dset for dset in ext_group2.datasets}
         self.assertTrue(ext_group2.is_inherited_spec(dset_spec_map["dset1"].attributes[0]))
@@ -611,8 +617,8 @@ class TestSpecResolution(TestCase):
             doc="Extended compound dataset",
         )
 
-        # Resolve the extension
-        ext_dataset.resolve_inc_spec(base_dataset)
+        # Resolve the extension (no namespace needed for this test)
+        ext_dataset.resolve_inc_spec(base_dataset, None)
 
         # Check that all columns are present
         self.assertEqual(len(ext_dataset.dtype), 3)
@@ -638,8 +644,8 @@ class TestSpecResolution(TestCase):
             doc="Extended compound dataset",
         )
 
-        # Resolve the extension
-        ext_dataset.resolve_inc_spec(base_dataset)
+        # Resolve the extension (no namespace needed for this test)
+        ext_dataset.resolve_inc_spec(base_dataset, None)
 
         # Check that col2 was overridden with higher precision
         col2 = next(col for col in ext_dataset.dtype if col.name == "col2")
@@ -663,7 +669,7 @@ class TestSpecResolution(TestCase):
         # This should raise an error
         msg = "Cannot extend float64 to float32"
         with self.assertRaisesWith(ValueError, msg):
-            ext_dataset.resolve_inc_spec(base_dataset)
+            ext_dataset.resolve_inc_spec(base_dataset, None)
 
     def test_resolve_inc_spec_cpd_dtype_override_incompatible_dtype_error(self):
         """Test that overriding to incompatible dtypes in compound dtypes raises an error."""
@@ -682,7 +688,7 @@ class TestSpecResolution(TestCase):
         # This should raise an error
         msg = "Cannot extend float64 to text"
         with self.assertRaisesWith(ValueError, msg):
-            ext_dataset.resolve_inc_spec(base_dataset)
+            ext_dataset.resolve_inc_spec(base_dataset, None)
 
     def test_resolve_inc_spec_compound_to_simple_dtype_error(self):
         """Test error when trying to extend compound dtype to simple dtype."""
@@ -701,7 +707,7 @@ class TestSpecResolution(TestCase):
         # This should raise an error
         msg = "Cannot extend compound data type to simple data type"
         with self.assertRaisesWith(ValueError, msg):
-            ext_dataset.resolve_inc_spec(base_dataset)
+            ext_dataset.resolve_inc_spec(base_dataset, None)
 
     def test_resolve_inc_spec_simple_to_compound_dtype_error(self):
         """Test error when trying to extend simple dtype to compound dtype."""
@@ -720,7 +726,7 @@ class TestSpecResolution(TestCase):
         # This should raise an error
         msg = "Cannot extend simple data type to compound data type"
         with self.assertRaisesWith(ValueError, msg):
-            ext_dataset.resolve_inc_spec(base_dataset)
+            ext_dataset.resolve_inc_spec(base_dataset, None)
 
     def test_resolve_inc_spec_ref_dtype_same(self):
         """Test that ref dtypes are resolved correctly."""
@@ -737,8 +743,8 @@ class TestSpecResolution(TestCase):
             doc="Extended dataset with same ref dtype",
         )
 
-        # Resolve the extension
-        ext_dataset.resolve_inc_spec(base_dataset)
+        # Resolve the extension (no namespace needed for this test)
+        ext_dataset.resolve_inc_spec(base_dataset, None)
 
         # Check that dtype is inherited
         self.assertEqual(ext_dataset.dtype, RefSpec(target_type="OtherType", reftype="object"))
@@ -761,7 +767,7 @@ class TestSpecResolution(TestCase):
         # Resolve the extension
         msg = "Cannot extend {'target_type': 'AType', 'reftype': 'object'} to int"
         with self.assertRaisesWith(ValueError, msg):
-            ext_dataset.resolve_inc_spec(base_dataset)
+            ext_dataset.resolve_inc_spec(base_dataset, None)
 
     def test_resolve_inc_spec_simple_to_ref_dtype_error(self):
         """Test that resolving ref dtypes mismatches raises an error."""
@@ -781,7 +787,7 @@ class TestSpecResolution(TestCase):
         # Resolve the extension
         msg = "Cannot extend int to {'target_type': 'AType', 'reftype': 'object'}"
         with self.assertRaisesWith(ValueError, msg):
-            ext_dataset.resolve_inc_spec(base_dataset)
+            ext_dataset.resolve_inc_spec(base_dataset, None)
 
     def test_resolve_inc_spec_override_higher_precision(self):
         """Test that overriding to higher precision dtypes works correctly."""
@@ -795,8 +801,8 @@ class TestSpecResolution(TestCase):
             doc="Extended dataset",
         )
 
-        # Resolve the extension
-        ext_dataset.resolve_inc_spec(base_dataset)
+        # Resolve the extension (no namespace needed for this test)
+        ext_dataset.resolve_inc_spec(base_dataset, None)
 
         # Check that the dtype was overridden with higher precision
         self.assertEqual(ext_dataset.dtype, "int64")
@@ -816,7 +822,7 @@ class TestSpecResolution(TestCase):
         # This should raise an error
         msg = "Cannot extend int64 to int32"
         with self.assertRaisesWith(ValueError, msg):
-            ext_dataset.resolve_inc_spec(base_dataset)
+            ext_dataset.resolve_inc_spec(base_dataset, None)
 
     def test_resolve_inc_spec_override_incompatible_dtype_error(self):
         """Test that overriding to an incompatible dtype raises an error."""
@@ -833,7 +839,7 @@ class TestSpecResolution(TestCase):
         # This should raise an error
         msg = "Cannot extend int64 to text"
         with self.assertRaisesWith(ValueError, msg):
-            ext_dataset.resolve_inc_spec(base_dataset)
+            ext_dataset.resolve_inc_spec(base_dataset, None)
 
     def test_resolve_inc_spec_override_numeric_to_numeric_dtype(self):
         """Test that overriding a numeric dtype to numeric dtype works correctly."""
@@ -847,7 +853,7 @@ class TestSpecResolution(TestCase):
             doc="Extended dataset",
         )
 
-        ext_dataset.resolve_inc_spec(base_dataset)
+        ext_dataset.resolve_inc_spec(base_dataset, None)
         self.assertEqual(ext_dataset.dtype, "numeric")
 
     def test_resolve_inc_spec_override_numeric_to_float_dtype(self):
@@ -861,7 +867,7 @@ class TestSpecResolution(TestCase):
             doc="Extended dataset",
         )
 
-        ext_dataset.resolve_inc_spec(base_dataset)
+        ext_dataset.resolve_inc_spec(base_dataset, None)
         self.assertEqual(ext_dataset.dtype, "float32")
 
     def test_resolve_inc_spec_shape_dims_inheritance(self):
@@ -880,8 +886,8 @@ class TestSpecResolution(TestCase):
             doc="Extended dataset",
         )
 
-        # Resolve the extension
-        ext_dataset.resolve_inc_spec(base_dataset)
+        # Resolve the extension (no namespace needed for this test)
+        ext_dataset.resolve_inc_spec(base_dataset, None)
 
         # Check that shape and dims are inherited
         self.assertEqual(ext_dataset.shape, (None, 3))
@@ -893,8 +899,8 @@ class TestSpecResolution(TestCase):
             doc="Extended dataset",
         )
 
-        # Resolve the extension
-        ext_dataset2.resolve_inc_spec(base_dataset)
+        # Resolve the extension (no namespace needed for this test)
+        ext_dataset2.resolve_inc_spec(base_dataset, None)
 
         # Check that shape and dims are inherited
         self.assertEqual(ext_dataset2.shape, (None, 3))
@@ -917,7 +923,7 @@ class TestSpecResolution(TestCase):
         # This should raise an error
         msg = "Cannot extend shape (None, 3) to (None, 3, 4)"
         with self.assertRaisesWith(ValueError, msg):
-            ext_dataset.resolve_inc_spec(base_dataset)
+            ext_dataset.resolve_inc_spec(base_dataset, None)
 
     # TODO: re-enable when this is implemented
     # def test_resolve_inc_spec_shape_list_extension(self):
@@ -939,7 +945,7 @@ class TestSpecResolution(TestCase):
     #         doc="Extended dataset",
     #     )
 
-    #     ext_dataset.resolve_inc_spec(base_dataset)
+    #     ext_dataset.resolve_inc_spec(base_dataset, None)
     #     self.assertEqual(ext_dataset.shape, (None, None, 3))
 
     # TODO: re-enable when this is implemented
@@ -964,7 +970,7 @@ class TestSpecResolution(TestCase):
 
     #     msg = r"Cannot extend shape \(None, 3\), \(None, None, 3\) to \(None,\)"
     #     with self.assertRaisesWith(ValueError, msg):
-    #         ext_dataset1.resolve_inc_spec(base_dataset)
+    #         ext_dataset1.resolve_inc_spec(base_dataset, None)
 
     #     # Extension with not one of the allowed shapes
     #     ext_dataset2 = DatasetSpec(
@@ -977,7 +983,7 @@ class TestSpecResolution(TestCase):
 
     #     msg = r"Cannot extend shape \(None, 3\), \(None, None, 3\) to \(None, 2\)"
     #     with self.assertRaisesWith(ValueError, msg):
-    #         ext_dataset2.resolve_inc_spec(base_dataset)
+    #         ext_dataset2.resolve_inc_spec(base_dataset, None)
 
     #     # Extension with not one of the allowed shapes
     #     ext_dataset3 = DatasetSpec(
@@ -990,7 +996,7 @@ class TestSpecResolution(TestCase):
 
     #     msg = r"Cannot extend shape \(None, 3\), \(None, None, 3\) to \(None, 4\), \(None, None, 2\)"
     #     with self.assertRaisesWith(ValueError, msg):
-    #         ext_dataset3.resolve_inc_spec(base_dataset)
+    #         ext_dataset3.resolve_inc_spec(base_dataset, None)
 
     def test_resolve_inc_spec_default_value_inheritance(self):
         """Test that default_value is inherited correctly."""
@@ -1008,8 +1014,8 @@ class TestSpecResolution(TestCase):
             doc="Extended dataset",
         )
 
-        # Resolve the extension
-        ext_dataset.resolve_inc_spec(base_dataset)
+        # Resolve the extension (no namespace needed for this test)
+        ext_dataset.resolve_inc_spec(base_dataset, None)
 
         # Check that default_value is inherited
         self.assertEqual(ext_dataset.default_value, 42)
@@ -1030,8 +1036,8 @@ class TestSpecResolution(TestCase):
             doc="Extended dataset",
         )
 
-        # Resolve the extension
-        ext_dataset.resolve_inc_spec(base_dataset)
+        # Resolve the extension (no namespace needed for this test)
+        ext_dataset.resolve_inc_spec(base_dataset, None)
 
         # Check that value is inherited
         self.assertEqual(ext_dataset.value, 42)
@@ -1053,8 +1059,8 @@ class TestSpecResolution(TestCase):
             doc="Extended dataset",
         )
 
-        # Resolve the extension
-        ext_dataset.resolve_inc_spec(base_dataset)
+        # Resolve the extension (no namespace needed for this test)
+        ext_dataset.resolve_inc_spec(base_dataset, None)
 
         # Check that default_value is nullified by the fixed value
         self.assertEqual(ext_dataset.value, 100)
@@ -1072,7 +1078,7 @@ class TestSpecResolution(TestCase):
 
         # This should raise an error from docval type checking
         with self.assertRaises(TypeError):
-            ext_dataset.resolve_inc_spec(base_group)
+            ext_dataset.resolve_inc_spec(base_group, None)
 
         base_dataset = DatasetSpec(data_type_def="BaseDataset", doc="Base dataset", dtype="int")
         ext_group = GroupSpec(
@@ -1083,7 +1089,7 @@ class TestSpecResolution(TestCase):
 
         # This should raise an error from docval type checking
         with self.assertRaises(TypeError):
-            ext_group.resolve_inc_spec(base_dataset)
+            ext_group.resolve_inc_spec(base_dataset, None)
 
 
 class TestNamespaceCatalogResolution(TestCase):
@@ -1357,7 +1363,7 @@ class TestNamespaceCatalogResolution(TestCase):
             datasets=[
                 DatasetSpec(
                     name="col",
-                    data_type_inc="D1",  # TODO test whether this is necessary
+                    data_type_inc="D1",
                     shape=(None,),
                     dtype="int64",
                     attributes=[AttributeSpec(name="attr2", dtype="text", doc="Attribute 2")],
@@ -1380,7 +1386,7 @@ class TestNamespaceCatalogResolution(TestCase):
             datasets=[
                 DatasetSpec(
                     name="col",
-                    data_type_inc="D2",
+                    data_type_inc="D2",  # D2 extends D1 so this is valid
                     shape=(None, None),
                     attributes=[AttributeSpec(name="attr4", dtype="float", doc="Attribute 4")],
                     doc="D2 col in A4 with restrictions",
@@ -1417,90 +1423,193 @@ class TestNamespaceCatalogResolution(TestCase):
         )
         # self.assertEqual(a4_loaded.datasets[0].dtype, "float64")  # TODO this should work
 
-    # def test_resolve_all_specs_subspec_data_type_mismatch_error1(self):
-    #     # DatasetSpec D1 has 1D, 2D, or 3D shape, any dtype, no attributes
-    #     # GroupSpec A1 contains a DatasetSpec D1 dataset named "col"
-    #     # GroupSpec A2 extends A1
-    #     # A2 specifies that the dataset "col" does not have a data type - this should cause an error
-    #     # because A1/col is of type D1
-    #     d1 = DatasetSpec(
-    #         data_type_def="D1",
-    #         name="col",
-    #         dtype=None,
-    #         shape=((None,), (None, None), (None, None, None)),
-    #         doc="Dataset D1",
-    #     )
-    #     a1 = GroupSpec(
-    #         data_type_def="A1",
-    #         datasets=[DatasetSpec(name="col", data_type_inc="D1", doc="D1 col in A1")],
-    #         doc="Group A1",
-    #     )
-    #     a2 = GroupSpec(
-    #         data_type_def="A2",
-    #         data_type_inc="A1",
-    #         datasets=[
-    #             DatasetSpec(
-    #                 # no data_type_inc here should cause an error
-    #                 name="col",
-    #                 shape=((None,), (None, None), (None, None, None)),
-    #                 dtype="int32",
-    #                 doc="Column in A2 that conflicts with A1/col data type",
-    #             )
-    #         ],
-    #         doc="Group A2",
-    #     )
-    #     ns_path = self.create_test_namespace("test", [d1, a1, a2])
-    #     self.ns_catalog.load_namespaces(ns_path, resolve=False)
+    def test_resolve_all_specs_subspec_dataset_data_type_mismatch_error1(self):
+        # DatasetSpec D1 has 1D, 2D, or 3D shape, any dtype, no attributes
+        # GroupSpec A1 contains a DatasetSpec D1 dataset named "col"
+        # GroupSpec A2 extends A1
+        # A2 specifies that the dataset "col" does not have a data type - this should cause an error
+        # because A1/col is of type D1
+        d1 = DatasetSpec(
+            data_type_def="D1",
+            name="col",
+            dtype=None,
+            shape=((None,), (None, None), (None, None, None)),
+            doc="Dataset D1",
+        )
+        a1 = GroupSpec(
+            data_type_def="A1",
+            datasets=[DatasetSpec(name="col", data_type_inc="D1", doc="D1 col in A1")],
+            doc="Group A1",
+        )
+        a2 = GroupSpec(
+            data_type_def="A2",
+            data_type_inc="A1",
+            datasets=[
+                DatasetSpec(
+                    # no data_type_inc here should cause an error
+                    name="col",
+                    shape=((None,), (None, None), (None, None, None)),
+                    dtype="int32",
+                    doc="Column in A2 that conflicts with A1/col data type",
+                )
+            ],
+            doc="Group A2",
+        )
+        ns_path = self.create_test_namespace("test", [d1, a1, a2])
+        self.ns_catalog.load_namespaces(ns_path, resolve=False)
 
-    #     msg = "TODO"
-    #     with self.assertRaisesWith(ValueError, msg):
-    #         self.ns_catalog.resolve_all_specs()
+        msg = (
+            "Cannot resolve included dataset spec 'col' with data_type_inc 'D1' because a dataset spec with the "
+            "same name already exists with data_type_inc 'None', and data type 'None' is not a child type of data "
+            "type 'D1'."
+        )
+        with self.assertRaisesWith(ValueError, msg):
+            self.ns_catalog.resolve_all_specs()
 
-    # def test_resolve_all_specs_subspec_data_type_mismatch_error2(self):
-    #     # DatasetSpec D1 has 1D, 2D, or 3D shape, any dtype, no attributes
-    #     # GroupSpec A1 contains a DatasetSpec D1 dataset named "col"
-    #     # GroupSpec A2 extends A1
-    #     # A2 specifies that the dataset "col" has data type D2 that does not inherit from D1 - this should cause an
-    #     # error because A1/col is of type D1
-    #     d1 = DatasetSpec(
-    #         data_type_def="D1",
-    #         name="col",
-    #         dtype=None,
-    #         shape=(None,),
-    #         doc="Dataset D1",
-    #     )
-    #     d2 = DatasetSpec(
-    #         data_type_def="D2",
-    #         name="col",
-    #         dtype=None,
-    #         shape=(None,),
-    #         doc="Dataset D2",
-    #     )
-    #     a1 = GroupSpec(
-    #         data_type_def="A1",
-    #         datasets=[DatasetSpec(name="col", data_type_inc="D1", doc="D1 col in A1")],
-    #         doc="Group A1",
-    #     )
-    #     a2 = GroupSpec(
-    #         data_type_def="A2",
-    #         data_type_inc="A1",
-    #         datasets=[
-    #             DatasetSpec(
-    #                 # conflicting data_type_inc here should cause an error
-    #                 name="col",
-    #                 data_type_inc="D2",
-    #                 doc="Column in A2 that conflicts with A1/col data type",
-    #             )
-    #         ],
-    #         doc="Group A2",
-    #     )
-    #     ns_path = self.create_test_namespace("test", [d1, a1, a2])
-    #     self.ns_catalog.load_namespaces(ns_path, resolve=False)
+    def test_resolve_all_specs_subspec_dataset_data_type_mismatch_error2(self):
+        # DatasetSpecs D1 and D2 are not related
+        # GroupSpec A1 contains a DatasetSpec D1 dataset named "col"
+        # GroupSpec A2 extends A1
+        # A2 specifies that the dataset "col" has data type D2 that does not inherit from D1 - this should cause an
+        # error because A1/col is of type D1
+        d1 = DatasetSpec(
+            data_type_def="D1",
+            name="col",
+            dtype=None,
+            shape=(None,),
+            doc="Dataset D1",
+        )
+        d2 = DatasetSpec(
+            data_type_def="D2",
+            name="col",
+            dtype=None,
+            shape=(None,),
+            doc="Dataset D2",
+        )
+        a1 = GroupSpec(
+            data_type_def="A1",
+            datasets=[
+                DatasetSpec(
+                    name="col",
+                    data_type_inc="D1",
+                    doc="D1 col in A1",
+                )
+            ],
+            doc="Group A1",
+        )
+        a2 = GroupSpec(
+            data_type_def="A2",
+            data_type_inc="A1",
+            datasets=[
+                DatasetSpec(
+                    name="col",
+                    data_type_inc="D2",  # conflicting data type inc
+                    doc="Column in A2 that conflicts with A1/col data type",
+                )
+            ],
+            doc="Group A2",
+        )
+        ns_path = self.create_test_namespace("test", [d1, d2, a1, a2])
+        self.ns_catalog.load_namespaces(ns_path, resolve=False)
 
-    #     msg = "TODO"
-    #     with self.assertRaisesWith(ValueError, msg):
-    #         self.ns_catalog.resolve_all_specs()
+        msg = (
+            "Cannot resolve included dataset spec 'col' with data_type_inc 'D1' because a dataset spec with the "
+            "same name already exists with data_type_inc 'D2', and data type 'D2' is not a child type of data "
+            "type 'D1'."
+        )
+        with self.assertRaisesWith(ValueError, msg):
+            self.ns_catalog.resolve_all_specs()
 
+    def test_resolve_all_specs_subspec_group_data_type_mismatch_error1(self):
+        # GroupSpec D1
+        # GroupSpec A1 contains a GroupSpec D1 group named "col"
+        # GroupSpec A2 extends A1
+        # A2 specifies that the group "col" does not have a data type - this should cause an error
+        # because A1/col is of type D1
+        d1 = GroupSpec(
+            data_type_def="D1",
+            name="col",
+            doc="Group D1",
+        )
+        a1 = GroupSpec(
+            data_type_def="A1",
+            groups=[GroupSpec(name="col", data_type_inc="D1", doc="D1 col in A1")],
+            doc="Group A1",
+        )
+        a2 = GroupSpec(
+            data_type_def="A2",
+            data_type_inc="A1",
+            groups=[
+                GroupSpec(
+                    # no data_type_inc here should cause an error
+                    name="col",
+                    doc="Column in A2 that conflicts with A1/col data type",
+                )
+            ],
+            doc="Group A2",
+        )
+        ns_path = self.create_test_namespace("test", [d1, a1, a2])
+        self.ns_catalog.load_namespaces(ns_path, resolve=False)
+
+        msg = (
+            "Cannot resolve included group spec 'col' with data_type_inc 'D1' because a group spec with the "
+            "same name already exists with data_type_inc 'None', and data type 'None' is not a child type of data "
+            "type 'D1'."
+        )
+        with self.assertRaisesWith(ValueError, msg):
+            self.ns_catalog.resolve_all_specs()
+
+    def test_resolve_all_specs_subspec_group_data_type_mismatch_error2(self):
+        # GroupSpecs D1 and D2 are not related
+        # GroupSpec A1 contains a GroupSpec D1 group named "col"
+        # GroupSpec A2 extends A1
+        # A2 specifies that the group "col" has data type D2 that does not inherit from D1 - this should cause an
+        # error because A1/col is of type D1
+        d1 = GroupSpec(
+            data_type_def="D1",
+            name="col",
+            doc="Group D1",
+        )
+        d2 = GroupSpec(
+            data_type_def="D2",
+            name="col",
+            doc="Group D2",
+        )
+        a1 = GroupSpec(
+            data_type_def="A1",
+            groups=[
+                GroupSpec(
+                    name="col",
+                    data_type_inc="D1",
+                    doc="D1 col in A1",
+                )
+            ],
+            doc="Group A1",
+        )
+        a2 = GroupSpec(
+            data_type_def="A2",
+            data_type_inc="A1",
+            groups=[
+                GroupSpec(
+                    name="col",
+                    data_type_inc="D2",  # conflicting data type inc
+                    doc="Column in A2 that conflicts with A1/col data type",
+                )
+            ],
+            doc="Group A2",
+        )
+        ns_path = self.create_test_namespace("test", [d1, d2, a1, a2])
+        self.ns_catalog.load_namespaces(ns_path, resolve=False)
+
+        msg = (
+            "Cannot resolve included group spec 'col' with data_type_inc 'D1' because a group spec with the "
+            "same name already exists with data_type_inc 'D2', and data type 'D2' is not a child type of data "
+            "type 'D1'."
+        )
+        with self.assertRaisesWith(ValueError, msg):
+            self.ns_catalog.resolve_all_specs()
+
+    # TODO: this is a complex case that has not been observed in practice and is not yet supported
     # def test_resolve_all_specs_complex_error(self):
     #     # DatasetSpec D1 has 1D, 2D, or 3D shape, any dtype, no attributes
     #     # GroupSpec A1 contains a DatasetSpec D1 dataset named "col"
@@ -1593,6 +1702,7 @@ class TestNamespaceCatalogResolution(TestCase):
 
         self.assertEqual(d2.dtype, RefSpec(target_type="G2", reftype="object"))
 
+    # TODO: this is not yet implemented
     # def test_resolve_inc_spec_ref_dtype_mismatch_error(self):
     #     """Test that resolving ref dtypes mismatches raises an error."""
     #     # Not sure if this should be tested through NamespaceCatalog.resolve_all_specs or on
