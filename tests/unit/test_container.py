@@ -47,7 +47,7 @@ class TestHERDManager(TestCase):
         er = HERD()
         em.external_resources = er
         with self.assertWarns(DeprecationWarning):
-            herd = em.get_linked_resources
+            herd = em.get_linked_resources()
         self.assertEqual(herd, er)
 
 
