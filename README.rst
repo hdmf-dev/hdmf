@@ -17,6 +17,8 @@ Latest Release
 .. image:: https://anaconda.org/conda-forge/hdmf/badges/version.svg
      :target: https://anaconda.org/conda-forge/hdmf
 
+.. image:: https://zenodo.org/badge/167271700.svg
+  :target: https://doi.org/10.5281/zenodo.8034516
 
 Overall Health
 ==============
@@ -41,6 +43,9 @@ Overall Health
 
 .. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_hdmf_zarr_tests.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_hdmf_zarr_tests.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_nwb_extension_tests.yml/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_nwb_extension_tests.yml
 
 .. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_all_tests.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_all_tests.yml
