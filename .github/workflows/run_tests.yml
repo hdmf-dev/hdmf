@@ -32,7 +32,7 @@ jobs:
           - { name: macos-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -92,7 +92,7 @@ jobs:
           - { name: windows-gallery-python3.12-upgraded-optional , test-tox-env: gallery-py312-upgraded-optional , python-ver: "3.12", os: windows-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -122,7 +122,7 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -133,7 +133,7 @@ jobs:
           python-version: '3.13'
 
       - name: Download wheel and source distributions from artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: distributions
           path: dist
@@ -166,7 +166,7 @@ jobs:
           - { name: linux-python3.13-ros3  , python-ver: "3.13", os: ubuntu-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
