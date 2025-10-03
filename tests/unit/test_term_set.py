@@ -1,7 +1,10 @@
 import os
 import numpy as np
 
+import pytest
+
 from hdmf import Container
+from hdmf.build import TypeMap
 from hdmf.term_set import TermSet, TermSetWrapper, TypeConfigurator
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common import (VectorData, unload_type_config,
@@ -234,37 +237,37 @@ class TestTypeConfig(TestCase):
 
     def test_config_path(self):
         path = 'tests/unit/hdmf_config.yaml'
-        tc = TypeConfigurator(path=path)
-        self.assertEqual(tc.path, [path])
+        tc = TypeConfigurator([path])
+        self.assertEqual(tc.paths, [path])
 
     def test_get_config(self):
         path = 'tests/unit/hdmf_config.yaml'
-        tc = TypeConfigurator(path=path)
+        tc = TypeConfigurator([path])
         self.assertEqual(tc.get_config('VectorData', 'hdmf-common'),
                                       {'description': {'termset': 'example_test_term_set.yaml'}})
 
     def test_get_config_namespace_error(self):
         path = 'tests/unit/hdmf_config.yaml'
-        tc = TypeConfigurator(path=path)
+        tc = TypeConfigurator([path])
         with self.assertRaises(ValueError):
             tc.get_config('VectorData', 'hdmf-common11')
 
     def test_get_config_container_error(self):
         path = 'tests/unit/hdmf_config.yaml'
-        tc = TypeConfigurator(path=path)
+        tc = TypeConfigurator([path])
         with self.assertRaises(ValueError):
             tc.get_config('VectorData11', 'hdmf-common')
 
     def test_already_loaded_path_error(self):
         path = 'tests/unit/hdmf_config.yaml'
-        tc = TypeConfigurator(path=path)
+        tc = TypeConfigurator([path])
         with self.assertRaises(ValueError):
             tc.load_type_config(config_path=path)
 
     def test_load_two_unique_configs(self):
         path = 'tests/unit/hdmf_config.yaml'
         path2 = 'tests/unit/hdmf_config2.yaml'
-        tc = TypeConfigurator(path=path)
+        tc = TypeConfigurator([path])
         tc.load_type_config(config_path=path2)
         config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
                   'data_types': {'VectorData': {'name': None},
@@ -276,7 +279,7 @@ class TestTypeConfig(TestCase):
                   'namespace2': {'version': 0, 'data_types':
                   {'MythicData': {'description':
                   {'termset': 'example_test_term_set.yaml'}}}}}}
-        self.assertEqual(tc.path, [path, path2])
+        self.assertEqual(tc.paths, [path, path2])
         self.assertEqual(tc.config, config)
 
 
@@ -321,18 +324,6 @@ class TestGlobalTypeConfig(TestCase):
         data = VectorData(name='foo', data=[0], description='Homo sapiens')
         self.assertEqual(data.description.value, 'Homo sapiens')
 
-    def test_namespace_warn(self):
-        with self.assertWarns(Warning):
-            ExtensionContainer(name='foo',
-                               namespace='foo',
-                               description='Homo sapiens')
-
-    def test_container_type_warn(self):
-        with self.assertWarns(Warning):
-            ExtensionContainer(name='foo',
-                               namespace='hdmf-common',
-                               description='Homo sapiens')
-
     def test_already_wrapped_warn(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         with self.assertWarns(Warning):
@@ -351,3 +342,42 @@ class TestGlobalTypeConfig(TestCase):
             ExtensionContainer(name='foo',
                                namespace='foo_namespace',
                                description='Homo sapiens')
+
+
+@pytest.mark.skipif(not REQUIREMENTS_INSTALLED, reason="optional LinkML module is not installed")
+class TestNonGlobalTypeConfig(TestCase):
+    def test_two_type_maps(self):
+        type_map1 = TypeMap()
+        load_type_config(config_path='tests/unit/hdmf_config.yaml', type_map=type_map1)
+
+        type_map2 = TypeMap()
+        load_type_config(config_path='tests/unit/hdmf_config2.yaml', type_map=type_map2)
+
+        assert type_map1.type_config is not type_map2.type_config
+        assert type_map1.type_config.paths == ['tests/unit/hdmf_config.yaml']
+        assert type_map2.type_config.paths == ['tests/unit/hdmf_config2.yaml']
+
+        unload_type_config(type_map1)
+        unload_type_config(type_map2)
+
+        assert type_map1.type_config.paths == []
+        assert type_map2.type_config.paths == []
+
+
+class TestOptionalDepsNotInstalled(TestCase):
+
+    def setUp(self):
+        if REQUIREMENTS_INSTALLED:
+            self.skipTest("optional modules are installed")
+
+    def test_schemasheets_not_installed(self):
+        with self.assertRaises(ImportError):
+            TermSet(schemasheets_folder="tests/unit/test_term_set_input/schemasheets")
+
+    def test_linkml_runtime_not_installed(self):
+        with self.assertRaises(ImportError):
+            TermSet(term_schema_path="tests/unit/example_test_term_set.yaml")
+
+    def test_oaklib_not_installed(self):
+        with self.assertRaises(ImportError):
+            TermSet(term_schema_path="tests/unit/example_dynamic_term_set.yaml", dynamic=True)

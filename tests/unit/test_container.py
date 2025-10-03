@@ -8,6 +8,7 @@ from hdmf.testing import TestCase
 from hdmf.utils import docval
 from hdmf.common import DynamicTable, VectorData, DynamicTableRegion
 from hdmf.backends.hdf5.h5tools import HDF5IO
+from hdmf.backends.io import HDMFIO
 
 
 class Subcontainer(Container):
@@ -24,13 +25,30 @@ class ContainerWithChild(Container):
 
 
 class TestHERDManager(TestCase):
-    def test_link_and_get_resources(self):
+    def test_get_and_set_resources(self):
         em = HERDManager()
         er = HERD()
 
-        em.link_resources(er)
-        er_get = em.get_linked_resources()
+        em.external_resources = er
+        self.assertEqual(em.external_resources, er)
+
+        er_get = em.external_resources
         self.assertEqual(er, er_get)
+
+    def test_link_resources_deprecated(self):
+        em = HERDManager()
+        er = HERD()
+        with self.assertWarns(DeprecationWarning):
+            em.link_resources(herd=er)
+        self.assertEqual(em.external_resources, er)
+
+    def test_get_linked_resources_deprecated(self):
+        em = HERDManager()
+        er = HERD()
+        em.external_resources = er
+        with self.assertWarns(DeprecationWarning):
+            herd = em.get_linked_resources()
+        self.assertEqual(herd, er)
 
 
 class TestContainer(TestCase):
@@ -179,6 +197,17 @@ class TestContainer(TestCase):
     def test_slash_restriction(self):
         self.assertRaises(ValueError, Container, 'bad/name')
 
+        # check no error raised in construct mode
+        child_obj = Container.__new__(Container, in_construct_mode=True)
+        child_obj.__init__('bad/name')
+
+    def test_colon_restriction(self):
+        self.assertRaises(ValueError, Container, 'bad:name')
+
+        # check no error raised in construct mode
+        child_obj = Container.__new__(Container, in_construct_mode=True)
+        child_obj.__init__('bad:name')
+
     def test_set_modified_parent(self):
         """Test that set modified properly sets parent modified
         """
@@ -200,18 +229,6 @@ class TestContainer(TestCase):
         species = DynamicTable(name='species', description='My species', columns=[col1])
         obj = species.all_objects
         self.assertEqual(sorted(list(obj.keys())), sorted([species.object_id, species.id.object_id, col1.object_id]))
-
-    def test_add_child(self):
-        """Test that add child creates deprecation warning and also properly sets child's parent and modified
-        """
-        parent_obj = Container('obj1')
-        child_obj = Container('obj2')
-        parent_obj.set_modified(False)
-        with self.assertWarnsWith(DeprecationWarning, 'add_child is deprecated. Set the parent attribute instead.'):
-            parent_obj.add_child(child_obj)
-        self.assertIs(child_obj.parent, parent_obj)
-        self.assertTrue(parent_obj.modified)
-        self.assertIs(parent_obj.children[0], child_obj)
 
     def test_parent_set_link_warning(self):
         col1 = VectorData(
@@ -423,6 +440,23 @@ class TestHTMLRepr(TestCase):
             self.data = kwargs['data']
             self.str = kwargs['str']
 
+    class ContainerWithData(Container):
+
+        __fields__ = (
+            "data",
+            "str"
+        )
+
+        @docval(
+            {'name': "data", "doc": 'data', 'type': 'array_data', "default": None},
+            {'name': "str", "doc": 'str', 'type': str, "default": None},
+
+        )
+        def __init__(self, **kwargs):
+            super().__init__('test name')
+            self.data = kwargs['data']
+            self.str = kwargs['str']
+
     def test_repr_html_(self):
         child_obj1 = Container('test child 1')
         obj1 = self.ContainerWithChildAndData(child=child_obj1, data=[1, 2, 3], str="hello")
@@ -455,6 +489,82 @@ class TestHTMLRepr(TestCase):
             'class="field-value">hello</span></div></div>'
         )
 
+    def test_repr_html_array(self):
+        obj = self.ContainerWithData(data=np.array([1, 2, 3, 4], dtype=np.int64), str="hello")
+        expected_html_table = (
+            'class="container-fields">NumPy array<br><table class="data-info"><tbody><tr><th style="text-align: '
+            'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Shape'
+            '</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">Array size</th><td '
+            'style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]'
+        )
+        self.assertIn(expected_html_table, obj._repr_html_())
+
+    def test_repr_html_array_large_arrays_not_displayed(self):
+        obj = self.ContainerWithData(data=np.arange(200, dtype=np.int64), str="hello")
+        expected_html_table = (
+            'class="container-fields">NumPy array<br><table class="data-info"><tbody><tr><th style="text-align: '
+            'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Shape'
+            '</th><td style="text-align: left">(200,)</td></tr><tr><th style="text-align: left">Array size</th><td '
+            'style="text-align: left">1.56 KiB</td></tr></tbody></table></div></details>'
+        )
+        self.assertIn(expected_html_table, obj._repr_html_())
+
+    def test_repr_html_hdf5_dataset(self):
+        with HDF5IO('array_data.h5', mode='w') as io:
+            dataset = io._file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+            obj = self.ContainerWithData(data=dataset, str="hello")
+            obj.read_io = io
+
+            expected_html_table = (
+                'class="container-fields">HDF5 dataset<br><table class="data-info"><tbody><tr><th style="text-align: '
+                'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">'
+                'Shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">Array size'
+                '</th><td style="text-align: left">32.00 bytes</td></tr><tr><th style="text-align: left">Chunk shape'
+                '</th><td style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression</th><td '
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression opts</th><td '
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression ratio</th><td '
+                'style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4]'
+            )
+
+            self.assertIn(expected_html_table, obj._repr_html_())
+
+        os.remove('array_data.h5')
+
+    def test_repr_html_hdmf_io(self):
+        with HDF5IO('array_data.h5', mode='w') as io:
+            dataset = io._file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+            obj = self.ContainerWithData(data=dataset, str="hello")
+
+            class OtherIO(HDMFIO):
+
+                @staticmethod
+                def can_read(path):
+                    pass
+
+                def read_builder(self):
+                    pass
+
+                def write_builder(self, **kwargs):
+                    pass
+
+                def open(self):
+                    pass
+
+                def close(self):
+                    pass
+
+            obj.read_io = OtherIO()
+
+            expected_html_table = (
+                'class="container-fields"><table class="data-info"><tbody><tr><th style="text-align: '
+                'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">'
+                'Shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">Array size'
+                '</th><td style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]'
+            )
+
+            self.assertIn(expected_html_table, obj._repr_html_())
+
+        os.remove('array_data.h5')
 
 class TestData(TestCase):
 

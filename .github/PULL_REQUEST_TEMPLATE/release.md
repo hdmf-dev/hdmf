@@ -2,11 +2,7 @@ Prepare for release of HDMF [version]
 
 ### Before merging:
 - [ ] Make sure all PRs to be included in this release have been merged to `dev`.
-- [ ] Major and minor releases: Update package versions in `requirements.txt`, `requirements-dev.txt`,
-  `requirements-doc.txt`, `requirements-opt.txt`, and `environment-ros3.yml` to the latest versions,
-  and update dependency ranges in `pyproject.toml` and minimums in `requirements-min.txt` as needed.
-  Run `pip install pur && pur -r requirements-dev.txt -r requirements.txt -r requirements-opt.txt`
-  and manually update `environment-ros3.yml`.
+- [ ] Major and minor releases: Update dependency ranges in `pyproject.toml` as needed.
 - [ ] Check legal file dates and information in `Legal.txt`, `license.txt`, `README.rst`, `docs/source/conf.py`,
   and any other locations as needed
 - [ ] Update `pyproject.toml` as needed
@@ -34,5 +30,5 @@ Prepare for release of HDMF [version]
 4. Either monitor [conda-forge/hdmf-feedstock](https://github.com/conda-forge/hdmf-feedstock) for the
    regro-cf-autotick-bot bot to create a PR updating the version of HDMF to the latest PyPI release, usually within
    24 hours of release, or manually create a PR updating `recipe/meta.yaml` with the latest version number
-   and SHA256 retrieved from PyPI > HDMF > Download Files > View hashes for the `.tar.gz` file. Re-render and update
-   dependencies as needed.
+   and SHA256 retrieved from PyPI > HDMF > Download Files > View hashes for the `.tar.gz` file. Re-render and
+   update the dependencies as needed.

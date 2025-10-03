@@ -62,7 +62,6 @@ If you use HDMF in your research, please use the following citation:
    :caption: For Maintainers
 
    make_a_release
-   update_requirements
 
 .. toctree::
    :hidden:

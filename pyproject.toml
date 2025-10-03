@@ -13,15 +13,15 @@ authors = [
 ]
 description = "A hierarchical data modeling framework for modern science data standards"
 readme = "README.rst"
-requires-python = ">=3.8"
-license = {text = "BSD-3-Clause"}
+requires-python = ">=3.9"
+license = "BSD-3-Clause"
 classifiers = [
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: BSD License",
     "Development Status :: 5 - Production/Stable",
     "Operating System :: OS Independent",
@@ -29,23 +29,65 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
+# make sure to update min-reqs dependencies below when these lower bounds change
 dependencies = [
-    "h5py>=2.10",
-    "jsonschema>=2.6.0",
-    'numpy>=1.18',
-    "pandas>=1.0.5",
+    "h5py>=3.1.0",
+    "jsonschema>=3.2.0",
+    'numpy>=1.19.3',
+    "pandas>=1.2.0",
     "ruamel.yaml>=0.16",
-    "scipy>=1.4",
-    "importlib-resources; python_version < '3.9'",  # TODO: remove when minimum python version is 3.9
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
+# make sure to update min-reqs dependencies below when these lower bounds change
 tqdm = ["tqdm>=4.41.0"]
-termset = ["linkml-runtime>=1.5.5; python_version >= '3.9'",
-           "schemasheets>=0.1.23; python_version >= '3.9'",
-           "oaklib>=0.5.12; python_version >= '3.9'",
-           "pyyaml>=6.0.1; python_version >= '3.9'"]
+zarr = [
+    "zarr>=2.12.0,<3",
+    "numcodecs<0.16.0",  # numcodecs 0.16.0 is not compatible with zarr<3
+]
+sparse = ["scipy>=1.7"]
+termset = [
+    "linkml-runtime>=1.5.5",
+    "schemasheets>=0.4.0rc1",
+    "oaklib>=0.5.12",
+    "pyyaml>=6.0.1",
+]
+
+# development dependencies
+test = [
+    "codespell",
+    "pre-commit",
+    "pytest",
+    "pytest-cov",
+    "python-dateutil",
+    "ruff",
+    "tox",
+]
+
+# documentation dependencies
+docs = [
+    "matplotlib",
+    "sphinx>=4",  # improved support for docutils>=0.17
+    "sphinx_rtd_theme>=1",  # <1 does not work with docutils>=0.17
+    "sphinx-gallery",
+    "sphinx-copybutton",
+]
+
+# all possible dependencies
+all = ["hdmf[tqdm,zarr,sparse,termset,test,docs]"]
+
+# minimum requirements of project dependencies for testing (see .github/workflows/run_all_tests.yml)
+min-reqs = [
+    "h5py==3.1.0",
+    "jsonschema==3.2.0",
+    "numpy==1.19.3",
+    "pandas==1.2.0",
+    "ruamel.yaml==0.16.0",
+    "scipy==1.7.0",
+    "tqdm==4.41.0",
+    "zarr==2.12.0",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/hdmf-dev/hdmf"
@@ -116,25 +158,20 @@ omit = [
 # force-exclude = "src/hdmf/common/hdmf-common-schema|docs/gallery"
 
 [tool.ruff]
-lint.select = ["E", "F", "T100", "T201", "T203"]
+lint.select = ["E", "F", "T100", "T201", "T203", "C901"]
 exclude = [
-  ".git",
-  ".tox",
-  "__pycache__",
-  "build/",
-  "dist/",
   "src/hdmf/common/hdmf-common-schema",
   "docs/source/conf.py",
   "src/hdmf/_due.py",
   "docs/source/tutorials/",
   "docs/_build/",
+  "scripts/"
 ]
 line-length = 120
 
 [tool.ruff.lint.per-file-ignores]
 "docs/gallery/*" = ["E402", "T201"]
 "src/*/__init__.py" = ["F401"]
-"setup.py" = ["T201"]
 "test_gallery.py" = ["T201"]
 
 [tool.ruff.lint.mccabe]
