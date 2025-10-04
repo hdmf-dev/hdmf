@@ -204,16 +204,8 @@ class VectorIndex(VectorData):
                 indices = arg
             ret = list()
             if len(indices) > 0:
-                if isinstance(self, VectorIndex):
-                    # Note: VectorIndex gets messy as it is using the index for a DynamicTableRegion
-                    # to then index a DynamicTable. The data in VectorIndex is being used as slice.
-                    # This means when we create slice we want to keep the natural behavior of leaving
-                    # the last one out.
-                    # slice(None) is for when the data are not indices and you want everything.
-                    slicing = slice(0, self.data[-1])
-                else:
-                    slicing = slice(None)
-                data = self.target.get(slicing,  **kwargs)
+                # Load the entire target table at once to avoid multiple I/O calls
+                data = self.target.get(slice(None),  **kwargs)
                 slices = [self.__get_slice(i) for i in indices]
                 if isinstance(data, pd.DataFrame):
                     ret = [data.iloc[s] for s in slices]
