@@ -1416,14 +1416,15 @@ class DynamicTableRegion(VectorData):
              'doc': 'whether to validate the data is in bounds of the linked table', 'default': True},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
-        t, validate_data = popargs('table', 'validate_data', kwargs)
+        table, validate_data = popargs('table', 'validate_data', kwargs)
         data = getargs('data', kwargs)
-        if validate_data:
-            self._validate_index_in_range(data, t)
+        self._validate_data = validate_data
+        if self._validate_data:
+            self._validate_index_in_range(data, table)
 
         super().__init__(**kwargs)
-        if t is not None:  # set the table attribute using fields to avoid another validation in the setter
-            self.fields['table'] = t
+        if table is not None:  # set the table attribute using fields to avoid another validation in the setter
+            self.fields['table'] = table
 
     def _validate_index_in_range(self, data, table):
         """If the length of data is small, and if data contains an index that is out of bounds, then raise an error.
@@ -1431,10 +1432,17 @@ class DynamicTableRegion(VectorData):
         read.
         """
         if table and len(data) <= self.MAX_ROWS_TO_VALIDATE_INIT:
-            for val in data:
-                if val >= len(table) or val < 0:
-                    error_msg = f"DynamicTableRegion index {val} is out of bounds for {type(table)} '{table.name}'."
-                    self._error_on_new_warn_on_construct(error_msg, error_cls=IndexError)
+            if isinstance(data, (list, tuple)):
+                data_arr = np.array(data)
+            else:
+                data_arr = data[:]
+            violators = np.where((data_arr >= len(table)) | (data_arr < 0))[0]
+            if violators.size > 0:
+                error_msg = (
+                    f"DynamicTableRegion values {data_arr[violators]} are out of bounds for "
+                    f"{type(table)} '{table.name}'."
+                )
+                self._error_on_new_warn_on_construct(error_msg, error_cls=IndexError)
 
     @property
     def table(self):
@@ -1446,7 +1454,8 @@ class DynamicTableRegion(VectorData):
         """
         Set the table this DynamicTableRegion should be pointing to.
 
-        This will validate all data elements in this DynamicTableRegion to ensure they are within bounds.
+        If the length of the data is small, this will validate all data elements in this DynamicTableRegion to
+        ensure they are within bounds.
 
         :param table: The DynamicTable this DynamicTableRegion should be pointing to
 
@@ -1460,8 +1469,8 @@ class DynamicTableRegion(VectorData):
             raise AttributeError(msg)
 
         self.fields['table'] = table
-        for val in self.data:
-            self._validate_new_data_element(val)
+        if self._validate_data:
+            self._validate_index_in_range(self.data, table)
 
     def __getitem__(self, arg):
         return self.get(arg)
