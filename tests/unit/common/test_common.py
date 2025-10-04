@@ -5,6 +5,9 @@ from hdmf.testing import TestCase
 
 class TestCommonTypeMap(TestCase):
 
+    def tearDown(self):
+        unload_type_config()
+
     def test_base_types(self):
         tm = get_type_map()
         cls = tm.get_dt_container_cls('Container', 'hdmf-common')
@@ -24,5 +27,4 @@ class TestCommonTypeMap(TestCase):
                  {'ExtensionContainer': {'description': None}}}}}
 
         self.assertEqual(tm.type_config.config, config)
-        self.assertEqual(tm.type_config.path, [path])
-        unload_type_config()
+        self.assertEqual(tm.type_config.paths, [path])
