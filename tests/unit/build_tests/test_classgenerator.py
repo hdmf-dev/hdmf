@@ -1,5 +1,4 @@
 import numpy as np
-import os
 import shutil
 import tempfile
 from warnings import warn
@@ -659,9 +658,6 @@ class TestGetClassSeparateNamespace(TestCase):
 
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
-        if os.path.exists(self.test_dir):  # start clean
-            self.tearDown()
-        os.mkdir(self.test_dir)
 
         self.bar_spec = GroupSpec(
             doc='A test group specification with a data type',
@@ -843,9 +839,6 @@ class TestGetClassObjectReferences(TestCase):
 
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
-        if os.path.exists(self.test_dir):  # start clean
-            self.tearDown()
-        os.mkdir(self.test_dir)
         self.type_map = TypeMap()
 
     def tearDown(self):
