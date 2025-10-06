@@ -37,27 +37,6 @@ class HERDManager:
     When this class is used as a mixin for a Container, it enables setting and getting an instance of HERD.
     """
 
-    @docval({'name': 'herd', 'type': 'HERD',
-             'doc': 'The external resources to be used for the container.'},)
-    def link_resources(self, **kwargs):
-        """
-        Method to attach an instance of HERD in order to auto-add terms/references to data.
-        """
-        msg = (
-            "link_resources is deprecated and will be removed in HDMF 5.0. "
-            "Use the external_resources property instead."
-        )
-        warn(msg, DeprecationWarning, stacklevel=2)
-        self.external_resources = kwargs['herd']
-
-    def get_linked_resources(self):
-        msg = (
-            "get_linked_resources is deprecated and will be removed in HDMF 5.0. "
-            "Use the external_resources property instead."
-        )
-        warn(msg, DeprecationWarning, stacklevel=2)
-        return self.external_resources
-
     @property
     def external_resources(self):
         return self._herd if hasattr(self, "_herd") else None
