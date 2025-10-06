@@ -39,7 +39,7 @@ class TestCommonInit(TestCase):
     def test_extensions_type_map(self):
         # TODO - update to error when updating to HDMF 5.0
         existing_type_map = get_type_map()
-        with self.assertWarnsWith(DeprecationWarning, 
+        with self.assertWarnsWith(DeprecationWarning,
                              "The 'extensions' argument is deprecated and will be removed in HDMF 5.0"):
             get_type_map(extensions=existing_type_map)
 

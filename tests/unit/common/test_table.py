@@ -896,19 +896,19 @@ class TestDynamicTable(TestCase):
     def test_build_columns_with_nested_index_error(self):
         """Test that building columns with nested index > 1 raises an error"""
         df = pd.DataFrame({'col1': [1, 2, 3, 4, 5],})
-        
+
         msg = ('Creating nested index columns using this method is not yet supported. '
                'Use add_column or define the columns using __columns__ instead.')
         with self.assertRaisesWith(ValueError, msg):
-             DynamicTable.from_dataframe(df, 'test', 
+             DynamicTable.from_dataframe(df, 'test',
                                          columns=([{'name': 'col1', 'description': 'optional column', 'index': 2},]))
 
     def test_build_columns_with_enum(self):
         """Test that building columns with enum as true creates an Enum column"""
         # TODO - diffiult to trigger empty enum data, add test if possible
         df = pd.DataFrame({'col1': [1, 2, 3, 4, 5],})
-        table = DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1', 
-                                                                   'description': 'optional enum column', 
+        table = DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1',
+                                                                   'description': 'optional enum column',
                                                                    'enum': True},]))
         self.assertIsInstance(table['col1'], EnumData)
 
@@ -1353,7 +1353,7 @@ class TestDynamicTableRegion(TestCase):
         table = self.with_columns_and_data()
         region = table.create_region(name='region', region=slice(0, 2), description='test region')
         self.assertEqual(region.data, [0, 1])
-        
+
     def test_create_region_with_none_slice(self):
         table = self.with_columns_and_data()
         region = table.create_region(name='region2', region=slice(0, None), description='test region')
@@ -1361,7 +1361,7 @@ class TestDynamicTableRegion(TestCase):
 
     def test_create_region_with_negative_index(self):
         table = self.with_columns_and_data()
-        
+
         msg = 'The index -1 is out of range for this DynamicTable of length 5'
         with self.assertRaisesWith(IndexError, msg):
             table.create_region(name='region', region=[-1, 0], description='test region')
@@ -2556,13 +2556,13 @@ class TestVectorIndex(TestCase):
         result = index.get([True, False, True])
 
         self.assertEqual(result, [['a', 'b',], ['d', 'e']])
-        self.assertEqual(len(result), 2)  
+        self.assertEqual(len(result), 2)
 
     def test_get_with_boolean_array(self):
         """Test VectorIndex.get with boolean np.array argument"""
         data = VectorData(name='data', description='desc', data=['a', 'b', 'c', 'd', 'e'])
         index = VectorIndex(name='index', data=[2, 3, 5], target=data)
-        result = index.get(np.array([True, False, True])) 
+        result = index.get(np.array([True, False, True]))
 
         self.assertEqual(result, [['a', 'b',], ['d', 'e']])
         self.assertEqual(len(result), 2)
@@ -2716,11 +2716,11 @@ class TestDynamicTableAddEnum(TestCase):
     def test_add_column_table_and_enum_error(self):
         """Test that adding a column with both table and enum raises an error."""
         table = DynamicTable(name='table0', description='an example table')
-        
+
         msg = "column 'col1' cannot be both a table region and come from an enumerable set of elements"
         with self.assertRaisesWith(ValueError, msg):
             table.add_column(name='col1', description='test', table=True, enum=True)
-            
+
 
 class TestDynamicTableInitIndexRoundTrip(H5RoundTripMixin, TestCase):
 
