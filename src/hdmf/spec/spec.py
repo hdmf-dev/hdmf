@@ -1,9 +1,14 @@
-import re
 from abc import ABCMeta
 from collections import OrderedDict
+from copy import copy
+from itertools import chain
+from typing import Union, TYPE_CHECKING
 from warnings import warn
 
 from ..utils import docval, getargs, popargs, get_docval
+
+if TYPE_CHECKING:
+    from .namespace import SpecNamespace  # noqa: F401
 
 NAME_WILDCARD = None  # this is no longer used, but kept for backward compatibility
 ZERO_OR_ONE = '?'
@@ -75,6 +80,151 @@ class DtypeHelper:
             raise ValueError("dtype '%s' is not a valid primary data type. Allowed dtypes: %s"
                              % (dtype, str(DtypeHelper.valid_primary_dtypes)))
         return dtype
+
+    # all keys and values should be keys in primary_dtype_synonyms
+    additional_allowed = {
+        'float': ['double'],
+        'int8': ['short', 'int', 'long'],
+        'short': ['int', 'long'],
+        'int': ['long'],
+        'uint8': ['uint16', 'uint32', 'uint64'],
+        'uint16': ['uint32', 'uint64'],
+        'uint32': ['uint64'],
+        'utf': ['ascii']
+    }
+
+    # if the spec dtype is a key in __allowable, then all types in __allowable[key] are valid
+    allowable = dict()
+    for dt, dt_syn in primary_dtype_synonyms.items():
+        allow = copy(dt_syn)
+        if dt in additional_allowed:
+            for addl in additional_allowed[dt]:
+                allow.extend(primary_dtype_synonyms[addl])
+        for syn in dt_syn:
+            allowable[syn] = allow
+    allowable['numeric'].extend(set(chain.from_iterable(v for k, v in allowable.items() if 'int' in k or 'float' in k)))
+
+    @staticmethod
+    def is_allowed_dtype(new: str, orig: str):
+        if orig not in DtypeHelper.allowable:
+            raise ValueError(f"Unknown dtype '{orig}'")
+        return new in DtypeHelper.allowable[orig]
+
+
+def _is_sub_dtype(new: Union[str, "RefSpec"], orig: Union[str, "RefSpec"]):
+    if isinstance(orig, RefSpec) != isinstance(new, RefSpec):
+        return False
+
+    if isinstance(orig, RefSpec):  # both are RefSpec
+        # check ref target is a subtype of the original ref target
+        # TODO: implement subtype check for RefSpec. might need to resolve RefSpec target type to a spec first
+        # return orig == new
+        return True
+    else:
+        return DtypeHelper.is_allowed_dtype(new, orig)
+
+
+def _resolve_inc_spec_dtype(
+        spec: Union['AttributeSpec', 'DatasetSpec'],
+        inc_spec: Union['AttributeSpec', 'DatasetSpec']
+    ):
+    if inc_spec.dtype is None:
+        # nothing to include/check
+        return
+
+    if spec.dtype is None:
+        # no dtype defined, just use the included spec dtype
+        spec['dtype'] = inc_spec.dtype
+        return
+
+    # both inc_spec and spec have dtype defined
+    if not isinstance(spec.dtype, list):
+        # spec is a simple dtype. make sure it is a subtype of the included spec dtype
+        if isinstance(inc_spec.dtype, list):
+            msg = 'Cannot extend compound data type to simple data type'
+            raise ValueError(msg)
+        if not _is_sub_dtype(spec.dtype, inc_spec.dtype):
+            msg = f'Cannot extend {str(inc_spec.dtype)} to {str(spec.dtype)}'
+            raise ValueError(msg)
+        return
+
+    # spec is a compound dtype. make sure it is a subtype of the included spec dtype
+    if not isinstance(inc_spec.dtype, list):
+        msg = 'Cannot extend simple data type to compound data type'
+        raise ValueError(msg)
+    inc_spec_order = OrderedDict()
+    for dt in inc_spec.dtype:
+        inc_spec_order[dt['name']] = dt
+    for dt in spec.dtype:
+        name = dt['name']
+        if name in inc_spec_order:
+            # verify that the extension has supplied
+            # a valid subtyping of existing type
+            inc_sub_dtype = inc_spec_order[name].dtype
+            new_sub_dtype = dt.dtype
+            if not _is_sub_dtype(new_sub_dtype, inc_sub_dtype):
+                msg = f'Cannot extend {str(inc_sub_dtype)} to {str(new_sub_dtype)}'
+                raise ValueError(msg)
+        # TODO do we want to disallow adding columns? (if name not in inc_spec_order)
+        # add/replace the new spec
+        inc_spec_order[name] = dt
+    # keep the order of the included spec
+    spec['dtype'] = list(inc_spec_order.values())
+
+def _resolve_inc_spec_shape(
+        spec: Union['AttributeSpec', 'DatasetSpec'],
+        inc_spec: Union['AttributeSpec', 'DatasetSpec']
+    ):
+    if inc_spec.shape is None:
+        # nothing to include/check
+        return
+
+    if spec.shape is None:
+        # no shape defined, just use the included spec shape
+        spec['shape'] = inc_spec.shape
+        return
+
+    # both inc_spec and self have shape defined
+    if len(spec.shape) > len(inc_spec.shape):
+        msg = f"Cannot extend shape {str(inc_spec.shape)} to {str(spec.shape)}"
+        raise ValueError(msg)
+    # TODO: make sure the new shape is a subset of the included shape
+
+def _resolve_inc_spec_dims(
+        spec: Union['AttributeSpec', 'DatasetSpec'],
+        inc_spec: Union['AttributeSpec', 'DatasetSpec']
+    ):
+    # NOTE: In theory, the shape check above and shape & dims consistency check will catch all issues with dims
+    # before this function is called
+    if inc_spec.dims is None:
+        # nothing to include/check
+        return
+
+    if spec.dims is None:
+        # no dims defined, just use the included spec dims
+        spec['dims'] = inc_spec.dims
+        return
+
+    # both inc_spec and spec have dims defined
+    if len(spec.dims) > len(inc_spec.dims):  # pragma: no cover
+        msg = f"Cannot extend dims {str(inc_spec.dims)} to {str(spec.dims)}"
+        raise ValueError(msg)
+    # TODO: make sure the new dims is a subset of the included dims
+
+
+def _resolve_inc_spec_value(
+        spec: Union['AttributeSpec', 'DatasetSpec'],
+        inc_spec: Union['AttributeSpec', 'DatasetSpec']
+    ):
+    # handle both default_value and value
+    if spec.default_value is None and inc_spec.default_value is not None:
+        spec['default_value'] = inc_spec.default_value
+    if spec.value is None and inc_spec.value is not None:
+        spec['value'] = inc_spec.value
+
+    # cannot specify both value and default_value. use value if both are specified
+    if spec.value is not None and spec.default_value is not None:
+        spec['default_value'] = None
 
 
 class ConstructableDict(dict, metaclass=ABCMeta):
@@ -235,9 +385,11 @@ class AttributeSpec(Spec):
             self['required'] = False
         if shape is not None:
             self['shape'] = shape
+            if dims is None:  # set dummy dims "dim_0", "dim_1", ... if shape is specified but dims is not
+                self['dims'] = tuple(['dim_%d' % i for i in range(len(shape))])
         if dims is not None:
             self['dims'] = dims
-            if 'shape' not in self:
+            if 'shape' not in self:  # set dummy shape (None, None, ...) if dims is specified but shape is not
                 self['shape'] = tuple([None] * len(dims))
         if self.shape is not None and self.dims is not None:
             if len(self['dims']) != len(self['shape']):
@@ -293,8 +445,7 @@ _attrbl_args = [
     {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
     {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-    {'name': 'data_type_inc', 'type': (str, 'BaseStorageSpec'),
-     'doc': 'the data type this specification extends', 'default': None},
+    {'name': 'data_type_inc', 'type': str, 'doc': 'the data type this specification extends', 'default': None},
 ]
 
 
@@ -335,19 +486,16 @@ class BaseStorageSpec(Spec):
             self['quantity'] = quantity
         if not linkable:
             self['linkable'] = False
-        resolve = False
+
         if data_type_inc is not None:
-            if isinstance(data_type_inc, BaseStorageSpec):
-                self[self.inc_key()] = data_type_inc.data_type_def
+            if data_type_def == data_type_inc:
+                msg = f"data_type_inc and data_type_def cannot be the same: {data_type_inc}. Ignoring data_type_inc."
+                warn(msg)
             else:
                 self[self.inc_key()] = data_type_inc
         if data_type_def is not None:
             self.pop('required', None)
             self[self.def_key()] = data_type_def
-            # resolve inherited and overridden fields only if data_type_inc is a spec
-            # NOTE: this does not happen when loading specs from a file
-            if data_type_inc is not None and isinstance(data_type_inc, BaseStorageSpec):
-                resolve = True
 
         # self.attributes / self['attributes']: tuple/list of attributes
         # self.__attributes: dict of all attributes, including attributes from parent (data_type_inc) types
@@ -359,9 +507,8 @@ class BaseStorageSpec(Spec):
             self.set_attribute(attribute)
         self.__new_attributes = set(self.__attributes.keys())
         self.__overridden_attributes = set()
+        self.__inc_spec_resolved = False
         self.__resolved = False
-        if resolve:
-            self.resolve_spec(data_type_inc)
 
     @property
     def default_name(self):
@@ -369,26 +516,47 @@ class BaseStorageSpec(Spec):
         return self.get('default_name', None)
 
     @property
+    def inc_spec_resolved(self):
+        return self.__inc_spec_resolved
+
+    @property
     def resolved(self):
         return self.__resolved
+
+    @resolved.setter
+    def resolved(self, val: bool):
+        if not isinstance(val, bool):
+            raise ValueError("resolved must be a boolean")
+        self.__resolved = val
 
     @property
     def required(self):
         ''' Whether or not the this spec represents a required field '''
         return self.quantity not in (ZERO_OR_ONE, ZERO_OR_MANY)
 
-    @docval({'name': 'inc_spec', 'type': 'hdmf.spec.spec.BaseStorageSpec',
-             'doc': 'the data type this specification represents'})
-    def resolve_spec(self, **kwargs):
-        """Add attributes from the inc_spec to this spec and track which attributes are new and overridden."""
-        inc_spec = getargs('inc_spec', kwargs)
-        for attribute in inc_spec.attributes:
-            self.__new_attributes.discard(attribute.name)
-            if attribute.name in self.__attributes:
-                self.__overridden_attributes.add(attribute.name)
+    def resolve_inc_spec(self, inc_spec: 'BaseStorageSpec', namespace: 'SpecNamespace'):
+        """Add attributes from the inc_spec to this spec and track which attributes are new and overridden.
+
+        Parameters
+        ----------
+        inc_spec : BaseStorageSpec
+            The BaseStorageSpec to inherit from
+        namespace : SpecNamespace
+            The namespace containing the specs - this is unused here
+        """
+        for inc_spec_attribute in inc_spec.attributes:
+            self.__new_attributes.discard(inc_spec_attribute.name)
+            if inc_spec_attribute.name in self.__attributes:
+                self.__overridden_attributes.add(inc_spec_attribute.name)
+                new_attribute = self.__attributes[inc_spec_attribute.name]
+                _resolve_inc_spec_dtype(new_attribute, inc_spec_attribute)
+                _resolve_inc_spec_shape(new_attribute, inc_spec_attribute)
+                _resolve_inc_spec_dims(new_attribute, inc_spec_attribute)
+                _resolve_inc_spec_value(new_attribute, inc_spec_attribute)
             else:
-                self.set_attribute(attribute)
-        self.__resolved = True
+                # TODO: would be nice to have inherited attributes come before new attributes in the attributes list
+                self.set_attribute(inc_spec_attribute)
+        self.__inc_spec_resolved = True
 
     @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
     def is_inherited_spec(self, **kwargs):
@@ -651,7 +819,7 @@ _dataset_args = [
     {'name': 'default_value', 'type': None, 'doc': 'a default value for this dataset', 'default': None},
     {'name': 'value', 'type': None, 'doc': 'a fixed value for this dataset', 'default': None},
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-    {'name': 'data_type_inc', 'type': (str, 'DatasetSpec'),
+    {'name': 'data_type_inc', 'type': str,
      'doc': 'the data type this specification extends', 'default': None},
 ]
 
@@ -668,9 +836,11 @@ class DatasetSpec(BaseStorageSpec):
         default_value, value = popargs('default_value', 'value', kwargs)
         if shape is not None:
             self['shape'] = shape
+            if dims is None:  # set dummy dims "dim_0", "dim_1", ... if shape is specified but dims is not
+                self['dims'] = tuple(['dim_%d' % i for i in range(len(shape))])
         if dims is not None:
             self['dims'] = dims
-            if 'shape' not in self:
+            if 'shape' not in self:  # set dummy shape (None, None, ...) if dims is specified but shape is not
                 self['shape'] = tuple([None] * len(dims))
         if self.shape is not None and self.dims is not None:
             if len(self['dims']) != len(self['shape']):
@@ -688,6 +858,8 @@ class DatasetSpec(BaseStorageSpec):
         super().__init__(doc, **kwargs)
         if default_value is not None:
             self['default_value'] = default_value
+            if value is not None:
+                raise ValueError("cannot specify 'value' and 'default_value'")
         if value is not None:
             self['value'] = value
         if self.name is not None:
@@ -696,56 +868,24 @@ class DatasetSpec(BaseStorageSpec):
                 raise ValueError("quantity %s invalid for spec with fixed name. Valid values are: %s" %
                                  (self.quantity, str(valid_quant_vals)))
 
-    @classmethod
-    def __get_prec_level(cls, dtype):
-        m = re.search('[0-9]+', dtype)
-        if m is not None:
-            prec = int(m.group())
-        else:
-            prec = 32
-        return (dtype[0], prec)
 
-    @classmethod
-    def __is_sub_dtype(cls, orig, new):
-        if isinstance(orig, RefSpec):
-            if not isinstance(new, RefSpec):
-                return False
-            return orig == new
-        else:
-            orig_prec = cls.__get_prec_level(orig)
-            new_prec = cls.__get_prec_level(new)
-            if orig_prec[0] != new_prec[0]:
-                # cannot extend int to float and vice-versa
-                return False
-            return new_prec >= orig_prec
+    def resolve_inc_spec(self, inc_spec: 'DatasetSpec', namespace: 'SpecNamespace'):
+        """Add fields and attributes from the inc_spec to this spec.
 
-    @docval({'name': 'inc_spec', 'type': 'hdmf.spec.spec.DatasetSpec',
-             'doc': 'the data type this specification represents'})
-    def resolve_spec(self, **kwargs):
-        inc_spec = getargs('inc_spec', kwargs)
-        if isinstance(self.dtype, list):
-            # merge the new types
-            inc_dtype = inc_spec.dtype
-            if isinstance(inc_dtype, str):
-                msg = 'Cannot extend simple data type to compound data type'
-                raise ValueError(msg)
-            order = OrderedDict()
-            if inc_dtype is not None:
-                for dt in inc_dtype:
-                    order[dt['name']] = dt
-            for dt in self.dtype:
-                name = dt['name']
-                if name in order:
-                    # verify that the extension has supplied
-                    # a valid subtyping of existing type
-                    orig = order[name].dtype
-                    new = dt.dtype
-                    if not self.__is_sub_dtype(orig, new):
-                        msg = 'Cannot extend %s to %s' % (str(orig), str(new))
-                        raise ValueError(msg)
-                order[name] = dt
-            self['dtype'] = list(order.values())
-        super().resolve_spec(inc_spec)
+        Parameters
+        ----------
+        inc_spec : DatasetSpec
+            The DatasetSpec to inherit from
+        namespace : SpecNamespace
+            The namespace containing the specs - this is unused here
+        """
+        if not isinstance(inc_spec, DatasetSpec):  # TODO: replace with Pydantic type checking
+            raise TypeError("Cannot resolve included spec: expected DatasetSpec, got %s" % type(inc_spec))
+        _resolve_inc_spec_dtype(self, inc_spec)
+        _resolve_inc_spec_shape(self, inc_spec)
+        _resolve_inc_spec_dims(self, inc_spec)
+        _resolve_inc_spec_value(self, inc_spec)
+        super().resolve_inc_spec(inc_spec, namespace)
 
     @property
     def dims(self):
@@ -869,7 +1009,7 @@ _group_args = [
         'default': 1,
     },
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-    {'name': 'data_type_inc', 'type': (str, 'GroupSpec'),
+    {'name': 'data_type_inc', 'type': str,
      'doc': 'the data type this specification data_type_inc', 'default': None},
 ]
 
@@ -902,9 +1042,22 @@ class GroupSpec(BaseStorageSpec):
         self.__overridden_groups = set()
         super().__init__(doc, **kwargs)
 
-    @docval({'name': 'inc_spec', 'type': 'GroupSpec', 'doc': 'the data type this specification represents'})
-    def resolve_spec(self, **kwargs):
-        inc_spec = getargs('inc_spec', kwargs)
+    def resolve_inc_spec(self, inc_spec: 'GroupSpec', namespace: 'SpecNamespace'):  # noqa: C901
+        """Add groups, datasets, links, and attributes from the inc_spec to this spec and track which ones are new and
+        overridden.
+
+        Note that data_types and target_types are not added to this spec, but are used to determine if any datasets or
+        links need to be added to this spec.
+
+        Parameters
+        ----------
+        inc_spec : GroupSpec
+            The GroupSpec to inherit from
+        namespace : SpecNamespace
+            The namespace containing the specs
+        """
+        if not isinstance(inc_spec, GroupSpec):  # TODO: replace with Pydantic type checking
+            raise TypeError("Cannot resolve included spec: expected GroupSpec, got %s" % type(inc_spec))
         data_types = list()
         target_types = list()
         # resolve inherited datasets
@@ -914,10 +1067,24 @@ class GroupSpec(BaseStorageSpec):
                 continue
             self.__new_datasets.discard(dataset.name)
             if dataset.name in self.__datasets:
+                # check compatibility between data_type_inc of the existing dataset spec and the included dataset spec
+                if (
+                    dataset.data_type_inc != self.__datasets[dataset.name].data_type_inc and
+                    (dataset.data_type_inc is None or self.__datasets[dataset.name].data_type_inc is None or
+                     dataset.data_type_inc not in namespace.get_hierarchy(self.__datasets[dataset.name].data_type_inc)
+                    )
+                ):
+                    msg = ("Cannot resolve included dataset spec '%s' with data_type_inc '%s' because a dataset "
+                           "spec with the same name already exists with data_type_inc '%s', and data type '%s' "
+                           "is not a child type of data type '%s'."
+                           % (dataset.name, dataset.data_type_inc, self.__datasets[dataset.name].data_type_inc,
+                              self.__datasets[dataset.name].data_type_inc, dataset.data_type_inc))
+                    raise ValueError(msg)
+
                 # if the included dataset spec was added earlier during resolution, don't add it again
                 # but resolve the spec using the included dataset spec - the included spec may contain
                 # properties not specified in the version of this spec added earlier during resolution
-                self.__datasets[dataset.name].resolve_spec(dataset)
+                self.__datasets[dataset.name].resolve_inc_spec(dataset, namespace)
                 self.__overridden_datasets.add(dataset.name)
             else:
                 self.set_dataset(dataset)
@@ -928,7 +1095,24 @@ class GroupSpec(BaseStorageSpec):
                 continue
             self.__new_groups.discard(group.name)
             if group.name in self.__groups:
-                self.__groups[group.name].resolve_spec(group)
+                # check compatibility between data_type_inc of the existing group spec and the included group spec
+                if (
+                    group.data_type_inc != self.__groups[group.name].data_type_inc and
+                    (group.data_type_inc is None or self.__groups[group.name].data_type_inc is None or
+                     group.data_type_inc not in namespace.get_hierarchy(self.__groups[group.name].data_type_inc)
+                    )
+                ):
+                    msg = ("Cannot resolve included group spec '%s' with data_type_inc '%s' because a group "
+                           "spec with the same name already exists with data_type_inc '%s', and data type '%s' "
+                           "is not a child type of data type '%s'."
+                           % (group.name, group.data_type_inc, self.__groups[group.name].data_type_inc,
+                              self.__groups[group.name].data_type_inc, group.data_type_inc))
+                    raise ValueError(msg)
+
+                # if the included group spec was added earlier during resolution, don't add it again
+                # but resolve the spec using the included group spec - the included spec may contain
+                # properties not specified in the version of this spec added earlier during resolution
+                self.__groups[group.name].resolve_inc_spec(group, namespace)
                 self.__overridden_groups.add(group.name)
             else:
                 self.set_group(group)
@@ -939,6 +1123,7 @@ class GroupSpec(BaseStorageSpec):
                 continue
             self.__new_links.discard(link.name)
             if link.name in self.__links:
+                # TODO: check compatibility between target_type of the existing link spec and the included link spec
                 self.__overridden_links.add(link.name)
             else:
                 self.set_link(link)
@@ -965,7 +1150,7 @@ class GroupSpec(BaseStorageSpec):
                     (isinstance(existing_dt_spec, list) or existing_dt_spec.name is not None) and
                     link_spec.name is None):
                 self.set_link(link_spec)
-        super().resolve_spec(inc_spec)
+        super().resolve_inc_spec(inc_spec, namespace)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the dataset'},
             raises="ValueError, if 'name' is not part of this spec")
