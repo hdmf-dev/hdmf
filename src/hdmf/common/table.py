@@ -199,7 +199,7 @@ class VectorIndex(VectorData):
             if isinstance(arg, slice):
                 indices = list(range(*arg.indices(len(self.data))))
             else:
-                if isinstance(arg[0], bool):
+                if isinstance(arg[0], (bool, np.bool_)):
                     arg = np.where(arg)[0]
                 indices = arg
             ret = list()
@@ -741,6 +741,7 @@ class DynamicTable(Container):
 
         for colname, colnum in self.__colids.items():
             if colname not in data:
+                # NOTE: I think this cannot be triggered since it is checked in _validate_new_row, could be removed
                 raise ValueError("column '%s' missing" % colname)
             col = self.__df_cols[colnum]
             if isinstance(col, VectorIndex):
