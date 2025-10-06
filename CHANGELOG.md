@@ -12,7 +12,6 @@
 
 ### Added
 - Warning when `data_type_def` and `data_type_inc` are the same in a spec. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
-- New methods `NamespaceCatalog.get_namespace_for_type()` and `NamespaceCatalog.get_spec_for_type()` to retrieve the namespace or spec for a given data type. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
 
 
 ## HDMF 4.1.1 (Upcoming)
