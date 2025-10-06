@@ -873,6 +873,47 @@ class TestDynamicTable(TestCase):
         self.assertEqual(table['description'].name, 'description')
         self.assertEqual(table['parent'].name, 'parent')
 
+    def test_from_dataframe_with_index(self):
+        df = pd.DataFrame({
+            'foo': [1, 2, 3, 4, 5],
+            'bar': [10.0, 20.0, 30.0, 40.0, 50.0],
+            'baz': ['cat', 'dog', 'bird', 'fish', 'lizard'],
+            'index': [0, 1, 2, 3, 4]
+        })
+
+        obtained_table = DynamicTable.from_dataframe(df, 'test', index_column='index')
+        self.check_table(obtained_table)
+
+    def test_from_dataframe_missing_required_columns(self):
+        df = pd.DataFrame({
+            'col1': [1, 2, 3, 4, 5],
+            'col3': [1, 2, 3, 4, 5],})
+
+        msg = "DataFrame is missing required columns: {'col5', 'col7'}"
+        with self.assertRaises(ValueError, msg=msg):
+            SubTable.from_dataframe(df, 'test')
+
+    def test_build_columns_with_nested_index_error(self):
+        """Test that building columns with nested index > 1 raises an error"""
+        df = pd.DataFrame({'col1': [1, 2, 3, 4, 5],})
+        
+        msg = ('Creating nested index columns using this method is not yet supported. '
+               'Use add_column or define the columns using __columns__ instead.')
+        with self.assertRaisesWith(ValueError, msg):
+             DynamicTable.from_dataframe(df, 'test', 
+                                         columns=([{'name': 'col1', 'description': 'optional column', 'index': 2},]))
+
+    def test_from_dataframe_columns_specified_not_provided(self):
+        df = pd.DataFrame({
+            'col1': [1, 2, 3, 4, 5],
+            'col3': [1, 2, 3, 4, 5],})
+
+        msg = "cols specified but not provided: {'col2'}"
+        with self.assertRaises(ValueError, msg=msg):
+            DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1', 'description': 'optional column'},
+                                                              {'name': 'col2', 'description': 'optional column'},
+                                                              {'name': 'col3', 'description': 'optional column'},]))
+
     def test_missing_columns(self):
         table = self.with_spec()
         with self.assertRaises(ValueError):
@@ -1113,6 +1154,14 @@ Fields:
         container = Container('test_container')
         table = self.with_columns_and_data()
         self.assertFalse(table == container)
+
+    def test_copy(self):
+        table = self.with_columns_and_data()
+        table2 = table.copy()
+        self.assertTrue(table == table2)
+        self.assertIsNot(table, table2)
+        for colname in table.colnames:
+            self.assertTrue(getattr(table, colname) == getattr(table2, colname))
 
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
