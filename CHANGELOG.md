@@ -14,7 +14,7 @@
 - Warning when `data_type_def` and `data_type_inc` are the same in a spec. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
 
 ### Removed
-
+- Removed unused and undocumented `hdmf.monitor` module. @rly [#1327](https://github.com/hdmf-dev/hdmf/pull/1327)
 - Removed deprecated `Data.set_data_io` usage and `HERDManager` methods. @rly [#1328](https://github.com/hdmf-dev/hdmf/pull/1328)
 
 ## HDMF 4.1.1 (Upcoming)
