@@ -3925,17 +3925,6 @@ class TestContainerSetDataIO(TestCase):
         with self.assertRaisesWith(ValueError, "data2 is None and cannot be wrapped in a DataIO class"):
             self.obj.set_data_io("data2", H5DataIO, data_io_kwargs=dict(chunks=True))
 
-    def test_set_data_io_old_api(self):
-        """Test that using the kwargs still works but throws a warning."""
-        msg = (
-            "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a dictionary to"
-            " the `data_io_kwargs` parameter instead."
-        )
-        with self.assertWarnsWith(DeprecationWarning, msg):
-            self.obj.set_data_io("data1", H5DataIO, chunks=True)
-        self.assertIsInstance(self.obj.data1, H5DataIO)
-        self.assertTrue(self.obj.data1.io_settings["chunks"])
-
     def test_set_data_io_h5py_dataset(self):
         file = File(self.file_path, 'w')
         data = file.create_dataset('data', data=[1, 2, 3, 4, 5], chunks=(3,))

@@ -844,9 +844,9 @@ class Container(AbstractContainer):
         self,
         dataset_name: str,
         data_io_class: Type[DataIO],
-        data_io_kwargs: dict = None,
+        data_io_kwargs: dict,
         data_chunk_iterator_class: Optional[Type[AbstractDataChunkIterator]] = None,
-        data_chunk_iterator_kwargs: dict = None, **kwargs
+        data_chunk_iterator_kwargs: Optional[dict] = None,
     ):
         """
         Apply DataIO object to a dataset field of the Container.
@@ -863,23 +863,12 @@ class Container(AbstractContainer):
             Class to use for DataChunkIterator. If None, no DataChunkIterator is used.
         data_chunk_iterator_kwargs: dict
             keyword arguments passed to the constructor of the DataChunkIterator class.
-        **kwargs:
-            DEPRECATED. Use data_io_kwargs instead.
-            kwargs are passed to the constructor of the DataIO class.
 
         Notes
         -----
         If data_chunk_iterator_class is not None, the data is wrapped in the DataChunkIterator before being wrapped in
         the DataIO. This allows for rewriting the backend configuration of hdf5 datasets.
         """
-        if kwargs or (data_io_kwargs is None):
-            warn(
-                "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a "
-                "dictionary to the `data_io_kwargs` parameter instead.",
-                DeprecationWarning,
-                stacklevel=2
-            )
-            data_io_kwargs = kwargs
         data = self.fields.get(dataset_name)
         data_chunk_iterator_kwargs = data_chunk_iterator_kwargs or dict()
         if data is None:
