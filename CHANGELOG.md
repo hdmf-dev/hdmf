@@ -27,6 +27,7 @@
 
 ### Changed
 - Changed error for attempting to overwrite an existing specification into a warning that any specification redefinitions will be ignored. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309)
+- Deprecated the experimental `HERDManager.link_resources` and `HERDManager.link_external_resources` and added the property `HERDManager.external_resources` to support downstream API function overloading. @mavaylon1, @rly [#1292](https://github.com/hdmf-dev/hdmf/pull/1292)
 
 
 ## HDMF 4.1.0 (May 28, 2025)

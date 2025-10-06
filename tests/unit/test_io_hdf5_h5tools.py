@@ -1081,7 +1081,7 @@ class TestHERDIO(TestCase):
         with HDF5IO(self.path, manager=self.manager, mode='r', herd_path='./HERD.zip') as io:
             container = io.read()
             self.assertIsInstance(io.herd, HERD)
-            self.assertIsInstance(container.get_linked_resources(), HERD)
+            self.assertIsInstance(container.external_resources, HERD)
         self.remove_er_files()
 
     def test_io_read_herd_file_warn(self):
