@@ -57,6 +57,7 @@ class AttributeSpecTests(TestCase):
                              shape=shape)
         self.assertEqual(spec['shape'], shape)
         self.assertEqual(spec.shape, shape)
+        self.assertEqual(spec.dims, ('dim_0', 'dim_1'))
 
     def test_dims_without_shape(self):
         spec = AttributeSpec('attribute1',

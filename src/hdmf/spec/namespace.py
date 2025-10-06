@@ -6,9 +6,10 @@ from collections import OrderedDict
 from copy import copy
 from datetime import datetime
 from warnings import warn
+import graphlib
 
 from .catalog import SpecCatalog
-from .spec import DatasetSpec, GroupSpec
+from .spec import DatasetSpec, GroupSpec, BaseStorageSpec
 from ..utils import docval, getargs, popargs, get_docval, is_newer_version
 
 _namespace_args = [
@@ -248,8 +249,6 @@ class NamespaceCatalog:
         self.__included_specs = dict()
         self.__included_sources = dict()
 
-        self._loaded_specs = self.__loaded_specs
-
     def __copy__(self):
         ret = NamespaceCatalog(self.__group_spec_cls,
                                self.__dataset_spec_cls,
@@ -384,7 +383,7 @@ class NamespaceCatalog:
             ret = tuple()
         return ret
 
-    def __load_spec_file(self, reader, spec_source, catalog, types_to_load=None, resolve=True):
+    def __load_spec_file(self, reader, spec_source, catalog, types_to_load):
         ret = self.__loaded_specs.get(spec_source)
         if ret is not None:
             raise ValueError("spec source '%s' already loaded" % spec_source)
@@ -396,8 +395,6 @@ class NamespaceCatalog:
                 raise ValueError(msg)
             if types_to_load and dt_def not in types_to_load:
                 return
-            if resolve:
-                self.__resolve_includes(spec_cls, spec_dict, catalog)
             spec_obj = spec_cls.build_spec(spec_dict)
             return catalog.auto_register(spec_obj, spec_source)
 
@@ -426,25 +423,99 @@ class NamespaceCatalog:
         if parent_cls.inc_key() in spec_dict:
             spec_dict[spec_cls.inc_key()] = spec_dict.pop(parent_cls.inc_key())
 
-    def __resolve_includes(self, spec_cls, spec_dict, catalog):
-        """Replace data type inc strings with the spec definition so the new spec is built with included fields.
-        """
-        dt_def = spec_dict.get(spec_cls.def_key())
-        dt_inc = spec_dict.get(spec_cls.inc_key())
-        if dt_inc is not None and dt_def is not None:
-            parent_spec = catalog.get_spec(dt_inc)
-            if parent_spec is None:
-                msg = "Cannot resolve include spec '%s' for type '%s'" % (dt_inc, dt_def)
-                raise ValueError(msg)
-            # replace the inc key value from string to the inc spec so that the spec can be updated with all of the
-            # attributes, datasets, groups, and links of the inc spec when spec_cls.build_spec(spec_dict) is called
-            spec_dict[spec_cls.inc_key()] = parent_spec
-        for subspec_dict in spec_dict.get('groups', list()):
-            self.__resolve_includes(self.__group_spec_cls, subspec_dict, catalog)
-        for subspec_dict in spec_dict.get('datasets', list()):
-            self.__resolve_includes(self.__dataset_spec_cls, subspec_dict, catalog)
+    def __collect_nested_subspecs(self, spec: GroupSpec) -> list[BaseStorageSpec]:
+        """Collect all nested subspecs of the given group spec."""
+        nested_subspecs = list(spec.groups + spec.datasets)
+        for subgroup_spec in spec.groups:
+            nested_subspecs.extend(self.__collect_nested_subspecs(subgroup_spec))
+        return nested_subspecs
 
-    def __load_namespace(self, namespace, reader, resolve=True):
+    def __get_spec_dependencies(self, spec: BaseStorageSpec) -> set[tuple[str, str]]:
+        """Get the set of edges representing the dependencies of the given spec."""
+        edges = set()
+        if spec.data_type_inc is not None:
+            # The included spec should be resolved before this spec
+            edges.add((spec.data_type_def, spec.data_type_inc))
+        if isinstance(spec, GroupSpec):
+            # For each nested subspec, the included specs of that nested subspec should be resolved before
+            # this spec
+            nested_subspecs = self.__collect_nested_subspecs(spec)
+            for subspec in nested_subspecs:
+                if subspec.data_type_inc is not None:
+                    # TODO: cycles are not yet supported
+                    # if spec.data_type_def == subspec.data_type_inc:
+                    #     # Allow the simple case of a "cycle" where A contains B, and B includes A
+                    #     # but do not add this edge to the graph because it makes a cycle.
+                    #     continue
+                    edges.add((spec.data_type_def, subspec.data_type_inc))
+        return edges
+
+    def __resolve_local(self, namespace: SpecNamespace, spec: BaseStorageSpec) -> None:
+        if spec.data_type_inc is not None and not spec.inc_spec_resolved:
+            # NOTE: The included spec may have already been resolved into the current spec if the current spec
+            # was copied (included) from another spec. For example, if A has a subspec B that includes C, and
+            # D includes A, then when resolving D, first, already resolved subspec B is copied from A to D, and
+            # then resolve_local may be called on B again
+            included_spec = self.get_spec(namespace.name, spec.data_type_inc)
+
+            # NOTE: In most cases, because we are resolving specs in topological order, the included spec
+            # should have already been resolved. However, in the case of the "cycle" described above where
+            # A contains B, and B includes A, then the included spec will not have been resolved yet.
+
+            # Resolve the included spec into this spec
+            spec.resolve_inc_spec(included_spec, namespace)
+
+        if isinstance(spec, GroupSpec):
+            # Recursively resolve all subspecs
+            nested_subspecs = self.__collect_nested_subspecs(spec)
+            for subspec in nested_subspecs:
+                self.__resolve_local(namespace, subspec)
+
+        # Mark this spec as resolved if the included spec has been resolved and all subspecs have been resolved.
+        # This is not necessary / not used anywhere, but may be useful for debugging.
+        spec.resolved = True
+
+    def resolve_all_specs(self) -> None:
+        """Resolve all specs in all namespaces in the catalog."""
+        for namespace in self.__namespaces.values():
+            self.__resolve_namespace_specs(namespace)
+
+    def __resolve_namespace_specs(self, namespace: SpecNamespace) -> None:
+        """Resolve all specs in the catalog."""
+        # Build a graph of all type dependencies
+        # For example, if A includes B, A has subspec that includes C, and B includes D, then A -> B, A -> C, B -> D
+        ts = graphlib.TopologicalSorter()
+        specs_without_deps = set()  # track specs that have no dependencies
+        for type_name in namespace.catalog.get_registered_types():
+            spec = namespace.catalog.get_spec(type_name)
+            edges = self.__get_spec_dependencies(spec)
+            if not edges:
+                specs_without_deps.add(type_name)
+            else:
+                for e in edges:
+                    ts.add(*e)
+
+        # Check for cycles and get static topological order
+        # For example, in the ABCD example above, the static order is D, B, C, A
+        try:
+            static_order = list(ts.static_order())
+        except graphlib.CycleError:  # pragma: no cover
+            # This should not happen because cycles will cause an error during spec object creation
+            raise ValueError("Cycle detected in specification dependencies. Cannot resolve specifications.")
+
+        # In rare cases, a namespace may have specs that have no dependencies and are not included by any other
+        # spec, so they will not be in the topological sort. Add them to the front of the order.
+        for s in specs_without_deps:
+            if s not in static_order:
+                static_order.insert(0, s)
+
+        # Resolve specs in topological order
+        for type_name in static_order:
+            spec = self.get_spec(namespace.name, type_name)
+            self.__resolve_local(namespace, spec)
+
+
+    def __load_namespace(self, namespace, reader):
         ns_name = namespace['name']
         if ns_name in self.__namespaces:  # pragma: no cover
             raise KeyError("namespace '%s' already exists" % ns_name)
@@ -458,7 +529,7 @@ class NamespaceCatalog:
                 types_to_load = set(types_to_load)
             if 'source' in s:
                 # read specs from file
-                self.__load_spec_file(reader, s['source'], catalog, types_to_load=types_to_load, resolve=resolve)
+                self.__load_spec_file(reader, s['source'], catalog, types_to_load)
                 self.__included_sources.setdefault(ns_name, list()).append(s['source'])
             elif 'namespace' in s:
                 # load specs from namespace
@@ -484,6 +555,7 @@ class NamespaceCatalog:
             self._check_namespace_conflicts(extension_ns_name=ns_name,
                                             extension_ns_source=s.get('source'),
                                             catalog=catalog)
+
         return included_types
 
     def __register_type(self, ndt, inc_ns, catalog, registered_types):
@@ -527,7 +599,9 @@ class NamespaceCatalog:
     @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},
             {'name': 'resolve',
              'type': bool,
-             'doc': 'whether or not to include objects from included/parent spec objects', 'default': True},
+             'doc': ('whether or not to include objects from included/parent spec objects. In practice, this is '
+                     'False when generating documentation where it is useful to show the unresolved specs'),
+             'default': True},
             {'name': 'reader',
              'type': (SpecReader, dict),
              'doc': 'the SpecReader or dict of SpecReader classes to use for reading specifications',
@@ -582,8 +656,11 @@ class NamespaceCatalog:
 
             # now load specs into namespace
             for ns in to_load:
-                ret[ns['name']] = self.__load_namespace(ns, r, resolve=resolve)
+                ret[ns['name']] = self.__load_namespace(ns, r)
             self.__included_specs[ns_path_key] = ret
+
+        if resolve:
+            self.resolve_all_specs()
 
         # warn if there are any ignored namespaces
         if ignored_namespaces:

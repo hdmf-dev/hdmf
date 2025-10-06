@@ -41,6 +41,21 @@ class DtypeSpecHelper(TestCase):
         refspec = RefSpec(target_type='target', reftype='object')
         self.assertIs(refspec, DtypeHelper.check_dtype(refspec))
 
+    def test_is_allowed(self):
+        self.assertTrue(DtypeHelper.is_allowed_dtype('int32', 'int'))
+        self.assertTrue(DtypeHelper.is_allowed_dtype('float64', 'float'))
+        self.assertFalse(DtypeHelper.is_allowed_dtype('int32', 'float'))
+        self.assertFalse(DtypeHelper.is_allowed_dtype('string', 'int'))
+        self.assertTrue(DtypeHelper.is_allowed_dtype('object', 'object'))
+        self.assertTrue(DtypeHelper.is_allowed_dtype('int64', 'numeric'))
+        self.assertTrue(DtypeHelper.is_allowed_dtype('float32', 'numeric'))
+        self.assertFalse(DtypeHelper.is_allowed_dtype('string', 'numeric'))
+        self.assertTrue(DtypeHelper.is_allowed_dtype('numeric', 'numeric'))
+
+        msg = "Unknown dtype 'bad dtype'"
+        with self.assertRaisesRegex(ValueError, msg):
+            DtypeHelper.is_allowed_dtype('int32', 'bad dtype')
+
 
 class DtypeSpecTests(TestCase):
     def setUp(self):
