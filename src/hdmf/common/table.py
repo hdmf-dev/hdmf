@@ -741,7 +741,6 @@ class DynamicTable(Container):
 
         for colname, colnum in self.__colids.items():
             if colname not in data:
-                # NOTE: I think this cannot be triggered since it is checked in _validate_new_row, could be removed
                 raise ValueError("column '%s' missing" % colname)
             col = self.__df_cols[colnum]
             if isinstance(col, VectorIndex):
