@@ -7,8 +7,7 @@ from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBu
 from .classgenerator import ClassGeneratorManager, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
 from ..term_set import TypeConfigurator
-from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, RefSpec
-from ..spec.spec import BaseStorageSpec
+from ..spec import BaseStorageSpec, DatasetSpec, GroupSpec, NamespaceCatalog, RefSpec
 from ..utils import docval, getargs, ExtenderMeta, get_docval
 
 

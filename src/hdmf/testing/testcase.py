@@ -7,11 +7,10 @@ from abc import ABCMeta, abstractmethod
 from .utils import remove_test_file
 from ..backends.hdf5 import HDF5IO
 from ..build import Builder
-from ..common import validate as common_validate, get_manager
 from ..container import AbstractContainer, Container, Data
 from ..utils import get_docval_macro
 from ..data_utils import AbstractDataChunkIterator
-
+# NOTE: we do not import ..common here to avoid loading any namespaces unnecessarily
 
 class TestCase(unittest.TestCase):
     """
@@ -271,6 +270,7 @@ class H5RoundTripMixin(metaclass=ABCMeta):
     """
 
     def setUp(self):
+        from ..common import get_manager
         self.__manager = get_manager()
         self.container = self.setUpContainer()
         self.container_type = self.container.__class__.__name__
@@ -322,6 +322,7 @@ class H5RoundTripMixin(metaclass=ABCMeta):
 
     def roundtripContainer(self, cache_spec=False):
         """Write the container to an HDF5 file, read the container from the file, and return it."""
+        from ..common import get_manager
         with HDF5IO(self.filename, manager=get_manager(), mode='w') as write_io:
             write_io.write(self.container, cache_spec=cache_spec)
 
@@ -330,6 +331,7 @@ class H5RoundTripMixin(metaclass=ABCMeta):
 
     def roundtripExportContainer(self, cache_spec=False):
         """Write the container to an HDF5 file, read it, export it to a new file, read that file, and return it."""
+        from ..common import get_manager
         self.roundtripContainer(cache_spec=cache_spec)
 
         HDF5IO.export_io(
@@ -343,6 +345,7 @@ class H5RoundTripMixin(metaclass=ABCMeta):
 
     def validate(self, experimental=False):
         """Validate the written and exported files, if they exist."""
+        from ..common import get_manager, validate as common_validate
         if os.path.exists(self.filename):
             with HDF5IO(self.filename, manager=get_manager(), mode='r') as io:
                 errors = common_validate(io, experimental=experimental)

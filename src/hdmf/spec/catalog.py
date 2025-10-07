@@ -2,7 +2,7 @@ import copy
 import warnings
 from collections import OrderedDict
 
-from .spec import BaseStorageSpec, GroupSpec
+from .spec2 import BaseStorageSpec, GroupSpec
 from ..utils import docval, getargs
 
 

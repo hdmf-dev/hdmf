@@ -24,7 +24,7 @@ from hdmf import Data, docval
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError, append_data
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
-from hdmf.spec.spec import GroupSpec, DtypeSpec
+from hdmf.spec import GroupSpec, DtypeSpec
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common.resources import HERD
 from hdmf.term_set import TermSet, TermSetWrapper

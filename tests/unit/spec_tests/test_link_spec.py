@@ -1,6 +1,6 @@
-import json
+from pydantic import ValidationError
 
-from hdmf.spec import GroupSpec, LinkSpec
+from hdmf.spec import LinkSpec, QuantityEnum
 from hdmf.testing import TestCase
 
 
@@ -8,50 +8,37 @@ class LinkSpecTests(TestCase):
 
     def test_constructor(self):
         spec = LinkSpec(
-            doc='A test link',
-            target_type='Group1',
-            quantity='+',
             name='Link1',
+            target_type='Group1',
+            doc='A test link',
+            quantity='?',
         )
+        self.assertEqual(spec.name, 'Link1')
         self.assertEqual(spec.doc, 'A test link')
         self.assertEqual(spec.target_type, 'Group1')
-        self.assertEqual(spec.data_type_inc, 'Group1')
-        self.assertEqual(spec.quantity, '+')
-        self.assertEqual(spec.name, 'Link1')
-        json.dumps(spec)
-
-    def test_constructor_target_spec_def(self):
-        group_spec_def = GroupSpec(
-            data_type_def='Group1',
-            doc='A test group',
-        )
-        spec = LinkSpec(
-            doc='A test link',
-            target_type=group_spec_def,
-        )
-        self.assertEqual(spec.target_type, 'Group1')
-        json.dumps(spec)
-
-    def test_constructor_target_spec_inc(self):
-        group_spec_inc = GroupSpec(
-            data_type_inc='Group1',
-            doc='A test group',
-        )
-        msg = "'target_type' must be a string or a GroupSpec or DatasetSpec with a 'data_type_def' key."
-        with self.assertRaisesWith(ValueError, msg):
-            LinkSpec(
-                doc='A test link',
-                target_type=group_spec_inc,
-            )
+        self.assertEqual(spec.quantity, QuantityEnum.ZERO_OR_ONE)
+        spec_dict = spec.model_dump(exclude_unset=True)
+        expected = {
+            'name': 'Link1',
+            'doc': 'A test link',
+            'target_type': 'Group1',
+            'quantity': '?',
+        }
+        self.assertDictEqual(spec_dict, expected)
 
     def test_constructor_defaults(self):
         spec = LinkSpec(
-            doc='A test link',
             target_type='Group1',
+            doc='A test link',
         )
         self.assertEqual(spec.quantity, 1)
         self.assertIsNone(spec.name)
-        json.dumps(spec)
+        model_dict = spec.model_dump(exclude_unset=True)
+        expected = {
+            "doc": "A test link",
+            "target_type": "Group1",
+        }
+        self.assertDictEqual(model_dict, expected)
 
     def test_required_is_many(self):
         quantity_opts = ['?', 1, '*', '+']
@@ -60,12 +47,11 @@ class LinkSpecTests(TestCase):
         for (quantity, req, many) in zip(quantity_opts, is_required, is_many):
             with self.subTest(quantity=quantity):
                 spec = LinkSpec(
-                    doc='A test link',
                     target_type='Group1',
+                    doc='A test link',
                     quantity=quantity,
-                    name='Link1',
                 )
-                self.assertEqual(spec.required, req)
+                self.assertEqual(spec.required, req)  # TODO
                 self.assertEqual(spec.is_many(), many)
 
     def test_build_warn_extra_args(self):
@@ -75,7 +61,6 @@ class LinkSpecTests(TestCase):
             'target_type': 'TestType',
             'required': True,
         }
-        msg = ("Unexpected keys ['required'] in spec {'name': 'link1', 'doc': 'test link', "
-               "'target_type': 'TestType', 'required': True}")
-        with self.assertWarnsWith(UserWarning, msg):
-            LinkSpec.build_spec(spec_dict)
+        # TODO
+        with self.assertRaisesRegex(ValidationError, r"required\s*Extra inputs are not permitted"):
+            LinkSpec(**spec_dict)

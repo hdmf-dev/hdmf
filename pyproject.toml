@@ -36,6 +36,7 @@ dependencies = [
     'numpy>=1.19.3',
     "pandas>=1.2.0",
     "ruamel.yaml>=0.16",
+    "pydantic>=2.0.0",
 ]
 dynamic = ["version"]
 
@@ -84,6 +85,7 @@ min-reqs = [
     "numpy==1.19.3",
     "pandas==1.2.0",
     "ruamel.yaml==0.16.0",
+    "pydantic==2.0.0",
     "scipy==1.7.0",
     "tqdm==4.41.0",
     "zarr==2.12.0",
@@ -151,11 +153,11 @@ omit = [
     "*/hdmf/testing/*",
 ]
 
-# [tool.black]
-# line-length = 120
-# preview = true
-# exclude = ".git|.mypy_cache|.tox|.venv|venv|.ipynb_checkpoints|_build/|dist/|__pypackages__|.ipynb"
-# force-exclude = "src/hdmf/common/hdmf-common-schema|docs/gallery"
+[tool.black]
+line-length = 120
+preview = true
+exclude = ".git|.mypy_cache|.tox|.venv|venv|.ipynb_checkpoints|_build/|dist/|__pypackages__|.ipynb"
+force-exclude = "src/hdmf/common/hdmf-common-schema|docs/gallery"
 
 [tool.ruff]
 lint.select = ["E", "F", "T100", "T201", "T203", "C901"]

@@ -1,6 +1,6 @@
 from numpy import dtype
 
-from ..spec.spec import DtypeHelper
+from ..spec import DtypeHelper
 from ..utils import docval, getargs
 
 __all__ = [
