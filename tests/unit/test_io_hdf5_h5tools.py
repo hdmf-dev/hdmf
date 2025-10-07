@@ -1332,46 +1332,6 @@ class HDF5IOMultiFileTest(TestCase):
             except OSError:
                 pass
 
-    def test_copy_file_with_external_links(self):
-        # Create the first file
-        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        bucket1 = FooBucket('bucket1', [foo1])
-        foofile1 = FooFile(buckets=[bucket1])
-
-        # Write the first file
-        self.io[0].write(foofile1)
-
-        # Create the second file
-        read_foofile1 = self.io[0].read()
-        foo2 = Foo('foo2', read_foofile1.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 34, 6.28)
-        bucket2 = FooBucket('bucket2', [foo2])
-        foofile2 = FooFile(buckets=[bucket2])
-        # Write the second file
-        self.io[1].write(foofile2)
-        self.io[1].close()
-        self.io[0].close()  # Don't forget to close the first file too
-
-        # Copy the file
-        self.io[2].close()
-
-        with self.assertWarns(DeprecationWarning):
-            HDF5IO.copy_file(source_filename=self.paths[1],
-                             dest_filename=self.paths[2],
-                             expand_external=True,
-                             expand_soft=False,
-                             expand_refs=False)
-
-        # Test that everything is working as expected
-        # Confirm that our original data file is correct
-        f1 = File(self.paths[0], 'r')
-        self.assertIsInstance(f1.get('/buckets/bucket1/foo_holder/foo1/my_data', getlink=True), HardLink)
-        # Confirm that we successfully created and External Link in our second file
-        f2 = File(self.paths[1], 'r')
-        self.assertIsInstance(f2.get('/buckets/bucket2/foo_holder/foo2/my_data', getlink=True), ExternalLink)
-        # Confirm that we successfully resolved the External Link when we copied our second file
-        f3 = File(self.paths[2], 'r')
-        self.assertIsInstance(f3.get('/buckets/bucket2/foo_holder/foo2/my_data', getlink=True), HardLink)
-
 
 class TestCloseLinks(TestCase):
 
