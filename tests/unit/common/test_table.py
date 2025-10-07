@@ -901,14 +901,18 @@ class TestDynamicTable(TestCase):
                'Use add_column or define the columns using __columns__ instead.')
         with self.assertRaisesWith(ValueError, msg):
              DynamicTable.from_dataframe(df, 'test',
-                                         columns=([{'name': 'col1', 'description': 'optional column', 'index': 2},]))
+                                         columns=([{'name': 'col1', 
+                                                    'description': 'optional column', 
+                                                    'index': 2},]))
 
     def test_build_columns_with_index(self):
         """Test that building columns with index=True creates a VectorIndex column"""
         ragged_list = [[1, 2], [3], [4, 5]]
         df = pd.DataFrame({'col1': ragged_list,})
 
-        table = DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1', 'description': 'optional column', 'index': True},]))
+        table = DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1', 
+                                                                   'description': 'optional column', 
+                                                                   'index': True},]))
         self.assertIsInstance(table['col1'], VectorData)
         self.assertIsInstance(table['col1_index'], VectorIndex)
         self.assertEqual(table['col1_index'][:], ragged_list)
@@ -917,7 +921,11 @@ class TestDynamicTable(TestCase):
         """Test that building columns with index=True creates a VectorIndex column"""
         df = pd.DataFrame({'col1': list()},)
 
-        table = DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1', 'description': 'required region', 'required': True, 'table': True}]))
+        table = DynamicTable.from_dataframe(df, 'test', 
+                                            columns=([{'name': 'col1', 
+                                                       'description': 'required region', 
+                                                       'required': True, 
+                                                       'table': True}]))
         self.assertIsInstance(table['col1'], DynamicTableRegion)
 
     def test_build_columns_with_enum(self):
