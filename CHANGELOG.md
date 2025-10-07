@@ -1,8 +1,37 @@
 # HDMF Changelog
 
+## HDMF 5.0.0 (Upcoming)
+
+### Changed
+- New spec resolution system: Instead of resolving includes during spec loading, resolution now happens after all specs are loaded via `NamespaceCatalog.resolve_all_specs()`. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
+  - New methods: `BaseStorageSpec.resolve_inc_spec()` replaces the old `BaseStorageSpec.resolve_spec()` method
+  - Resolution tracking: New properties `BaseStorageSpec.resolved` and `BaseStorageSpec.inc_spec_resolved` track resolution state
+  - Cross-namespace resolution: The system can now resolve specs that include types from different namespaces
+  - `dtype`, `shape`, `dims`, `value`, and `default_value` in `DatasetSpec` and `AttributeSpec` are now inherited and validated from the parent data type spec
+- If `dims` are not provided in a `DatasetSpec` or `AttributeSpec`, but `shape` is provided, `dims` will be set to a list of dummy dimension names, e.g., "dim_0", "dim_1", etc. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
+
+### Added
+- Warning when `data_type_def` and `data_type_inc` are the same in a spec. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
+
+### Removed
+- Removed unused and undocumented `hdmf.monitor` module. @rly [#1327](https://github.com/hdmf-dev/hdmf/pull/1327)
+
+
 ## HDMF 4.1.1 (Upcoming)
-### Enhancements
+
+### Fixed
+- Fixed copying of `TypeMap` and `TypeConfigurator`. Previously, the same global `TypeConfigurator` instance was used in all copies of a `TypeMap`. @rly [#1302](https://github.com/hdmf-dev/hdmf/pull/1302)
+- Fixed `get_data_shape` to use `Data.data.shape` instead of `Data.shape`, which may be overridden by subclasses. @rly [#1311](https://github.com/hdmf-dev/hdmf/pull/1311)
+
+### Added
 - Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
+- Added checks when loading a namespace for link specification conflicts between extension and core schemas. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309)
+- Added GitHub Actions workflow that tests compatibility with NWB extensions from the NWB extensions catalog. @rly [#1319](https://github.com/hdmf-dev/hdmf/pull/1319)
+
+### Changed
+- Changed error for attempting to overwrite an existing specification into a warning that any specification redefinitions will be ignored. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309)
+- Deprecated the experimental `HERDManager.link_resources` and `HERDManager.link_external_resources` and added the property `HERDManager.external_resources` to support downstream API function overloading. @mavaylon1, @rly [#1292](https://github.com/hdmf-dev/hdmf/pull/1292)
+
 
 ## HDMF 4.1.0 (May 28, 2025)
 
@@ -24,6 +53,7 @@
 ### Fixed
 - Fixed `get_data_shape` returning the wrong shape for lists of Data objects. @rly [#1270](https://github.com/hdmf-dev/hdmf/pull/1270)
 - Added protection against complex numbers in arrays and other data types. @bendichter [#1279](https://github.com/hdmf-dev/hdmf/pull/1279)
+
 
 ## HDMF 4.0.0 (January 22, 2025)
 
@@ -47,6 +77,7 @@
 
 ### Fixed
 - Fixed issue with `DynamicTable.add_column` not allowing subclasses of `DynamicTableRegion` or `EnumData`. @rly [#1091](https://github.com/hdmf-dev/hdmf/pull/1091)
+
 
 ## HDMF 3.14.6 (December 20, 2024)
 

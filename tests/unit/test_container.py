@@ -25,13 +25,30 @@ class ContainerWithChild(Container):
 
 
 class TestHERDManager(TestCase):
-    def test_link_and_get_resources(self):
+    def test_get_and_set_resources(self):
         em = HERDManager()
         er = HERD()
 
-        em.link_resources(er)
-        er_get = em.get_linked_resources()
+        em.external_resources = er
+        self.assertEqual(em.external_resources, er)
+
+        er_get = em.external_resources
         self.assertEqual(er, er_get)
+
+    def test_link_resources_deprecated(self):
+        em = HERDManager()
+        er = HERD()
+        with self.assertWarns(DeprecationWarning):
+            em.link_resources(herd=er)
+        self.assertEqual(em.external_resources, er)
+
+    def test_get_linked_resources_deprecated(self):
+        em = HERDManager()
+        er = HERD()
+        em.external_resources = er
+        with self.assertWarns(DeprecationWarning):
+            herd = em.get_linked_resources()
+        self.assertEqual(herd, er)
 
 
 class TestContainer(TestCase):

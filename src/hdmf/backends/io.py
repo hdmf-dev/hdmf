@@ -66,7 +66,7 @@ class HDMFIO(metaclass=ABCMeta):
             try:
                 self.herd = HERD.from_zip(path=self.herd_path)
                 if isinstance(container, HERDManager):
-                    container.link_resources(herd=self.herd)
+                    container.external_resources = self.herd
             except FileNotFoundError:
                 msg = "File not found at {}. HERD not added.".format(self.herd_path)
                 warn(msg)

@@ -1,4 +1,5 @@
 import copy
+import warnings
 from collections import OrderedDict
 
 from .spec import BaseStorageSpec, GroupSpec
@@ -43,12 +44,19 @@ class SpecCatalog:
         type_name = ndt_def if ndt_def is not None else ndt
         if type_name in self.__specs:
             if self.__specs[type_name] != spec or self.__spec_source_files[type_name] != source_file:
-                raise ValueError("'%s' - cannot overwrite existing specification" % type_name)
+                warnings.warn(f"{source_file} defines a different specification for {type_name} than "
+                              f"the existing definition from {self.__spec_source_files[type_name]}. "
+                              f"Defaulting to the existing specification from "
+                              f"{self.__spec_source_files[type_name]}, but compatibility issues "
+                              f"may be present. Please update the extension version if possible.",
+                            UserWarning, stacklevel=3)
+                spec = self.__specs[type_name]
+                source_file = self.__spec_source_files[type_name]
         self.__specs[type_name] = spec
         self.__spec_source_files[type_name] = source_file
 
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the Spec for'},
-            returns="the specification for writing the given object type to HDF5 ", rtype='Spec')
+            returns="the specification for writing the given object type to HDF5 ", rtype=BaseStorageSpec)
     def get_spec(self, **kwargs):
         '''
         Get the Spec object for the given type
@@ -121,6 +129,8 @@ class SpecCatalog:
             hierarchy = list()
             parent = data_type
             while parent is not None:
+                if parent in hierarchy:
+                    raise ValueError(f"Circular reference detected in type hierarchy for {data_type}")
                 hierarchy.append(parent)
                 parent = self.__parent_types.get(parent)
             # store the computed hierarchy for data_type and all types in between it and
