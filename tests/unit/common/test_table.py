@@ -919,7 +919,7 @@ class TestDynamicTable(TestCase):
 
         table = DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1', 'description': 'required region', 'required': True, 'table': True}]))
         self.assertIsInstance(table['col1'], DynamicTableRegion)
-             
+
     def test_build_columns_with_enum(self):
         """Test that building columns with enum as true creates an Enum column"""
         # TODO - diffiult to trigger empty enum data, add test if possible
