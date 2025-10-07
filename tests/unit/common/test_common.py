@@ -36,13 +36,6 @@ class TestCommonInit(TestCase):
         self.assertIn('hdmf-common', ns)
         self.assertIn('hdmf-experimental', ns)
 
-    def test_extensions_type_map(self):
-        # TODO - update to error when updating to HDMF 5.0
-        existing_type_map = get_type_map()
-        with self.assertWarnsWith(DeprecationWarning,
-                             "The 'extensions' argument is deprecated and will be removed in HDMF 5.0"):
-            get_type_map(extensions=existing_type_map)
-
     def test_get_resources_legacy(self):
         """Test legacy _get_resources function."""
         result = _get_resources()
