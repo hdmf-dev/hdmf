@@ -611,10 +611,12 @@ class BaseStorageSpec(Spec):
 
     @classmethod
     def get_data_type_spec(cls, data_type_def):  # unused
+        warn("get_data_type_spec is deprecated and will be removed in HDMF 6.0.", DeprecationWarning)
         return AttributeSpec(cls.type_key(), 'the data type of this object', 'text', value=data_type_def)
 
     @classmethod
     def get_namespace_spec(cls):  # unused
+        warn("get_namespace_spec is deprecated and will be removed in HDMF 6.0.", DeprecationWarning)
         return AttributeSpec('namespace', 'the namespace for the data type of this object', 'text', required=False)
 
     @property
@@ -685,6 +687,8 @@ class BaseStorageSpec(Spec):
     @docval(*_attr_args)
     def add_attribute(self, **kwargs):
         ''' Add an attribute to this specification '''
+        warn("BaseStorageSpec.add_attribute is deprecated. Use BaseStorageSpec.set_attribute instead",
+             DeprecationWarning, stacklevel=2)
         spec = AttributeSpec(**kwargs)
         self.set_attribute(spec)
         return spec
@@ -1491,6 +1495,8 @@ class GroupSpec(BaseStorageSpec):
     @docval(*_dataset_args)
     def add_dataset(self, **kwargs):
         ''' Add a new specification for a dataset to this group specification '''
+        warn("GroupSpec.add_dataset is deprecated and will be removed in HDMF 6.0. Use GroupSpec.set_dataset instead.",
+             DeprecationWarning, stacklevel=2)
         spec = self.dataset_spec_cls()(**kwargs)
         self.set_dataset(spec)
         return spec
@@ -1524,6 +1530,8 @@ class GroupSpec(BaseStorageSpec):
     @docval(*_link_args)
     def add_link(self, **kwargs):
         ''' Add a new specification for a link to this group specification '''
+        warn("GroupSpec.add_link is deprecated and will be removed in HDMF 6.0. Use GroupSpec.set_link instead.",
+             DeprecationWarning, stacklevel=2)
         spec = self.link_spec_cls()(**kwargs)
         self.set_link(spec)
         return spec
