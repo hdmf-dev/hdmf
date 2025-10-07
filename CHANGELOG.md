@@ -1,5 +1,22 @@
 # HDMF Changelog
 
+## HDMF 5.0.0 (Upcoming)
+
+### Changed
+- New spec resolution system: Instead of resolving includes during spec loading, resolution now happens after all specs are loaded via `NamespaceCatalog.resolve_all_specs()`. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
+  - New methods: `BaseStorageSpec.resolve_inc_spec()` replaces the old `BaseStorageSpec.resolve_spec()` method
+  - Resolution tracking: New properties `BaseStorageSpec.resolved` and `BaseStorageSpec.inc_spec_resolved` track resolution state
+  - Cross-namespace resolution: The system can now resolve specs that include types from different namespaces
+  - `dtype`, `shape`, `dims`, `value`, and `default_value` in `DatasetSpec` and `AttributeSpec` are now inherited and validated from the parent data type spec
+- If `dims` are not provided in a `DatasetSpec` or `AttributeSpec`, but `shape` is provided, `dims` will be set to a list of dummy dimension names, e.g., "dim_0", "dim_1", etc. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
+
+### Added
+- Warning when `data_type_def` and `data_type_inc` are the same in a spec. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
+
+### Removed
+- Removed unused and undocumented `hdmf.monitor` module. @rly [#1327](https://github.com/hdmf-dev/hdmf/pull/1327)
+- Removed deprecated `Data.set_data_io` usage and `HERDManager` methods. @rly [#1328](https://github.com/hdmf-dev/hdmf/pull/1328)
+
 ## HDMF 4.1.1 (Upcoming)
 
 ### Fixed
