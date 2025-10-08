@@ -168,40 +168,13 @@ def get_class(**kwargs):
     return __TYPE_MAP.get_dt_container_cls(data_type, namespace, post_init_method)
 
 
-@docval({'name': 'extensions', 'type': (str, TypeMap, list),
-         'doc': 'a path to a namespace, a TypeMap, or a list consisting paths to namespaces and TypeMaps',
-         'default': None},
-        returns="the namespaces loaded from the given file", rtype=tuple,
+@docval(returns="the namespaces loaded from the given file", rtype=tuple,
         is_method=False)
-def get_type_map(**kwargs):
+def get_type_map():
     '''
-    Get a BuildManager to use for I/O using the given extensions. If no extensions are provided,
-    return a BuildManager that uses the core namespace
+    Get a BuildManager to use for I/O using the core namespace.
     '''
-    extensions = getargs('extensions', kwargs)
-    type_map = None
-    if extensions is None:
-        type_map = deepcopy(__TYPE_MAP)
-    else:
-        warnings.warn("The 'extensions' argument is deprecated and will be removed in HDMF 5.0", DeprecationWarning)
-        if isinstance(extensions, TypeMap):
-            type_map = extensions
-        else:
-            type_map = deepcopy(__TYPE_MAP)
-        if isinstance(extensions, list):
-            for ext in extensions:
-                if isinstance(ext, str):
-                    type_map.load_namespaces(ext)
-                elif isinstance(ext, TypeMap):
-                    type_map.merge(ext)
-                else:
-                    msg = 'extensions must be a list of paths to namespace specs or a TypeMaps'
-                    raise ValueError(msg)
-        elif isinstance(extensions, str):
-            type_map.load_namespaces(extensions)
-        elif isinstance(extensions, TypeMap):
-            type_map.merge(extensions)
-    return type_map
+    return deepcopy(__TYPE_MAP)
 
 
 @docval(*get_docval(get_type_map),
