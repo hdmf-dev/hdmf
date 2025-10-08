@@ -687,7 +687,8 @@ class BaseStorageSpec(Spec):
     @docval(*_attr_args)
     def add_attribute(self, **kwargs):
         ''' Add an attribute to this specification '''
-        warn("BaseStorageSpec.add_attribute is deprecated. Use BaseStorageSpec.set_attribute instead",
+        warn("BaseStorageSpec.add_attribute is deprecated and will be removed in HDMF 6.0. "
+             "Use BaseStorageSpec.set_attribute instead.",
              DeprecationWarning, stacklevel=2)
         spec = AttributeSpec(**kwargs)
         self.set_attribute(spec)
@@ -1462,6 +1463,8 @@ class GroupSpec(BaseStorageSpec):
     @docval(*_group_args)
     def add_group(self, **kwargs):
         ''' Add a new specification for a subgroup to this group specification '''
+        warn("GroupSpec.add_group is deprecated and will be removed in HDMF 6.0. Use GroupSpec.set_group instead.",
+             DeprecationWarning, stacklevel=2)
         spec = self.__class__(**kwargs)
         self.set_group(spec)
         return spec
