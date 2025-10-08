@@ -1332,46 +1332,6 @@ class HDF5IOMultiFileTest(TestCase):
             except OSError:
                 pass
 
-    def test_copy_file_with_external_links(self):
-        # Create the first file
-        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        bucket1 = FooBucket('bucket1', [foo1])
-        foofile1 = FooFile(buckets=[bucket1])
-
-        # Write the first file
-        self.io[0].write(foofile1)
-
-        # Create the second file
-        read_foofile1 = self.io[0].read()
-        foo2 = Foo('foo2', read_foofile1.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 34, 6.28)
-        bucket2 = FooBucket('bucket2', [foo2])
-        foofile2 = FooFile(buckets=[bucket2])
-        # Write the second file
-        self.io[1].write(foofile2)
-        self.io[1].close()
-        self.io[0].close()  # Don't forget to close the first file too
-
-        # Copy the file
-        self.io[2].close()
-
-        with self.assertWarns(DeprecationWarning):
-            HDF5IO.copy_file(source_filename=self.paths[1],
-                             dest_filename=self.paths[2],
-                             expand_external=True,
-                             expand_soft=False,
-                             expand_refs=False)
-
-        # Test that everything is working as expected
-        # Confirm that our original data file is correct
-        f1 = File(self.paths[0], 'r')
-        self.assertIsInstance(f1.get('/buckets/bucket1/foo_holder/foo1/my_data', getlink=True), HardLink)
-        # Confirm that we successfully created and External Link in our second file
-        f2 = File(self.paths[1], 'r')
-        self.assertIsInstance(f2.get('/buckets/bucket2/foo_holder/foo2/my_data', getlink=True), ExternalLink)
-        # Confirm that we successfully resolved the External Link when we copied our second file
-        f3 = File(self.paths[2], 'r')
-        self.assertIsInstance(f3.get('/buckets/bucket2/foo_holder/foo2/my_data', getlink=True), HardLink)
-
 
 class TestCloseLinks(TestCase):
 
@@ -3885,17 +3845,6 @@ class TestContainerSetDataIO(TestCase):
         """Attempt to set a DataIO for a dataset that is missing."""
         with self.assertRaisesWith(ValueError, "data2 is None and cannot be wrapped in a DataIO class"):
             self.obj.set_data_io("data2", H5DataIO, data_io_kwargs=dict(chunks=True))
-
-    def test_set_data_io_old_api(self):
-        """Test that using the kwargs still works but throws a warning."""
-        msg = (
-            "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a dictionary to"
-            " the `data_io_kwargs` parameter instead."
-        )
-        with self.assertWarnsWith(DeprecationWarning, msg):
-            self.obj.set_data_io("data1", H5DataIO, chunks=True)
-        self.assertIsInstance(self.obj.data1, H5DataIO)
-        self.assertTrue(self.obj.data1.io_settings["chunks"])
 
     def test_set_data_io_h5py_dataset(self):
         file = File(self.file_path, 'w')
