@@ -8,9 +8,9 @@ from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError
 from .errors import ExpectedArrayError, IncorrectQuantityError
 from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from ..build.builders import BaseBuilder
-from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
-from ..spec import SpecNamespace
-from ..spec.spec import BaseStorageSpec, DtypeHelper
+from ..spec import (
+    Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec, BaseStorageSpec, DtypeHelper, SpecNamespace
+)
 from ..utils import docval, getargs, pystr, get_data_shape
 from ..query import ReferenceResolver
 

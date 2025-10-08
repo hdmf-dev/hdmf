@@ -5,8 +5,7 @@ from collections.abc import Callable
 import numpy as np
 
 from ..container import Container, Data, MultiContainerInterface
-from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec
-from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
+from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec, BaseStorageSpec
 from ..utils import docval, getargs, ExtenderMeta, get_docval, popargs, AllowPositional
 
 
@@ -379,7 +378,7 @@ class MCIClassGenerator(CustomClassGenerator):
     @classmethod
     def apply_generator_to_field(cls, field_spec, bases, type_map):
         """Return True if the field spec has quantity * or +, False otherwise."""
-        return getattr(field_spec, 'quantity', None) in (ZERO_OR_MANY, ONE_OR_MANY)
+        return isinstance(field_spec, (BaseStorageSpec, LinkSpec)) and field_spec.is_many()
 
     @classmethod
     def process_field_spec(cls, classdict, docval_args, parent_cls, attr_name, not_inherited_fields, type_map, spec):

@@ -19,8 +19,7 @@ from ..container import AbstractContainer, Data
 from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
-from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
-from ..spec.spec import BaseStorageSpec
+from ..spec import BaseStorageSpec, Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
 from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape, StrDataset
 
 _const_arg = '__constructor_arg'

@@ -9,7 +9,7 @@ import ruamel.yaml as yaml
 
 from .catalog import SpecCatalog
 from .namespace import SpecNamespace
-from .spec import GroupSpec, DatasetSpec
+from .spec2 import GroupSpec, DatasetSpec
 from ..utils import docval, getargs, popargs
 
 

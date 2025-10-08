@@ -9,7 +9,7 @@ from warnings import warn
 import graphlib
 
 from .catalog import SpecCatalog
-from .spec import DatasetSpec, GroupSpec, BaseStorageSpec
+from .spec2 import DatasetSpec, GroupSpec, BaseStorageSpec
 from ..utils import docval, getargs, popargs, get_docval, is_newer_version
 
 _namespace_args = [
@@ -567,9 +567,9 @@ class NamespaceCatalog:
             spec_file = inc_ns.catalog.get_spec_source_file(ndt)
             self.__register_dependent_types(spec, inc_ns, catalog, registered_types)
             if isinstance(spec, DatasetSpec):
-                built_spec = self.dataset_spec_cls.build_spec(spec)
+                built_spec = spec  # TODO self.dataset_spec_cls.build_spec(spec)
             else:
-                built_spec = self.group_spec_cls.build_spec(spec)
+                built_spec = spec  # TODO self.group_spec_cls.build_spec(spec)
             registered_types.add(ndt)
             catalog.register_spec(built_spec, spec_file)
 

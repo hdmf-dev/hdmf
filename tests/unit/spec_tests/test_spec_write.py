@@ -2,7 +2,7 @@ import datetime
 import os
 
 from hdmf.spec.namespace import SpecNamespace, NamespaceCatalog
-from hdmf.spec.spec import GroupSpec
+from hdmf.spec import GroupSpec
 from hdmf.spec.write import NamespaceBuilder, YAMLSpecWriter, export_spec
 from hdmf.testing import TestCase
 

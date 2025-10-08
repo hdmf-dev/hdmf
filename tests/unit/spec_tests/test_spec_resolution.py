@@ -15,6 +15,7 @@ import shutil
 
 from hdmf.spec import (
     AttributeSpec,
+    BaseStorageSpec,
     DatasetSpec,
     DtypeSpec,
     GroupSpec,
@@ -23,7 +24,6 @@ from hdmf.spec import (
     SpecNamespace,
     NamespaceCatalog,
 )
-from hdmf.spec.spec import BaseStorageSpec
 from hdmf.testing import TestCase
 
 
