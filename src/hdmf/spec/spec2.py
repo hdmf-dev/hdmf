@@ -10,7 +10,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 # no longer supports positional args. dims and shape are always converted to tuples if provided as lists
 # TODO: error messages have changed
 # DtypeHelper.check_dtype no longer returns the dtype, it just raises an error if invalid
-# TODO: quantity "zero_or_many", "one_or_many", "zero_or_one" are no longer allowed. Use "?", "*", "+" instead.
 # TODO: removed support for DatasetSpec.default_value
 # TODO: removed support for BaseStorageSpec.linkable
 
@@ -263,9 +262,27 @@ class AttributeSpec(Spec):
 
 
 class QuantityEnum(str, Enum):
+    """
+    An enum for quantity values.
+
+    The ZERO_OR_ONE value can be represented by either '?' or 'zero_or_one'.
+    The ZERO_OR_MANY value can be represented by either '*' or 'zero_or_many'.
+    The ONE_OR_MANY value can be represented by either '+' or 'one_or_many'.
+    """
     ZERO_OR_ONE = '?'
     ZERO_OR_MANY = '*'
     ONE_OR_MANY = '+'
+
+    @classmethod
+    def _missing_(cls, value):
+        """Allow string aliases to map to enum values."""
+        if value == 'zero_or_one':
+            return cls.ZERO_OR_ONE
+        elif value == 'zero_or_many':
+            return cls.ZERO_OR_MANY
+        elif value == 'one_or_many':
+            return cls.ONE_OR_MANY
+        return None
 
 
 class BaseStorageSpec(Spec, ABC):
