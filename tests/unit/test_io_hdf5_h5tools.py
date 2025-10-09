@@ -15,7 +15,6 @@ from h5py import SoftLink, HardLink, ExternalLink, File
 from h5py import filters as h5py_filters
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.hdf5.h5tools import HDF5IO, SPEC_LOC_ATTR, H5PY_3
-from hdmf.backends.io import HDMFIO
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
@@ -34,6 +33,7 @@ from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmana
                               Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
                               CORE_NAMESPACE, get_temp_filepath, CacheSpecTestHelper,
                               CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
+from tests.unit.helpers.io import DoNothingIO
 
 try:
     import zarr
@@ -3484,25 +3484,7 @@ class TestExport(TestCase):
         with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        class OtherIO(HDMFIO):
-
-            @staticmethod
-            def can_read(path):
-                pass
-
-            def read_builder(self):
-                pass
-
-            def write_builder(self, **kwargs):
-                pass
-
-            def open(self):
-                pass
-
-            def close(self):
-                pass
-
-        with OtherIO() as read_io:
+        with DoNothingIO() as read_io:
             with HDF5IO(self.paths[1], mode='w') as export_io:
                 msg = 'When a container is provided, src_io must have a non-None manager (BuildManager) property.'
                 with self.assertRaisesWith(ValueError, msg):
@@ -3517,30 +3499,9 @@ class TestExport(TestCase):
         with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        class OtherIO(HDMFIO):
-
-            @staticmethod
-            def can_read(path):
-                pass
-
-            def __init__(self, manager):
-                super().__init__(manager=manager)
-
-            def read_builder(self):
-                pass
-
-            def write_builder(self, **kwargs):
-                pass
-
-            def open(self):
-                pass
-
-            def close(self):
-                pass
-
-        with OtherIO(manager=get_foo_buildmanager()) as read_io:
+        with DoNothingIO(manager=get_foo_buildmanager()) as read_io:
             with HDF5IO(self.paths[1], mode='w') as export_io:
-                msg = "Cannot export from non-HDF5 backend OtherIO to HDF5 with write argument link_data=True."
+                msg = "Cannot export from non-HDF5 backend DoNothingIO to HDF5 with write argument link_data=True."
                 with self.assertRaisesWith(UnsupportedOperation, msg):
                     export_io.export(src_io=read_io, container=foofile)
 

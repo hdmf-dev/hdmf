@@ -14,6 +14,7 @@
 
 ### Added
 - Warning when `data_type_def` and `data_type_inc` are the same in a spec. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
+- Added abstract methods `HDMFIO.load_namespaces` and `HDMFIO.load_namespaces_io`. @rly [#1299](https://github.com/hdmf-dev/hdmf/pull/1299)
 
 ### Removed
 - Removed unused and undocumented `hdmf.monitor` module. @rly [#1327](https://github.com/hdmf-dev/hdmf/pull/1327)
