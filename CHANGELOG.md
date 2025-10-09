@@ -9,6 +9,8 @@
   - Cross-namespace resolution: The system can now resolve specs that include types from different namespaces
   - `dtype`, `shape`, `dims`, `value`, and `default_value` in `DatasetSpec` and `AttributeSpec` are now inherited and validated from the parent data type spec
 - If `dims` are not provided in a `DatasetSpec` or `AttributeSpec`, but `shape` is provided, `dims` will be set to a list of dummy dimension names, e.g., "dim_0", "dim_1", etc. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
+- Deprecated `BaseStorageSpec.add_attribute`, `GroupSpec.add_group`, `GroupSpec.add_dataset`, and `GroupSpec.add_link`. Use `set_attribute`, `set_group`, `set_dataset`, and `set_link` instead. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
+- Deprecated unused `BaseStorageSpec.get_data_type_spec` and `BaseStorageSpec.get_namespace_spec`. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 
 ### Added
 - Warning when `data_type_def` and `data_type_inc` are the same in a spec. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)

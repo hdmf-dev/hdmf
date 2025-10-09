@@ -98,6 +98,19 @@ class GroupSpecTests(TestCase):
         spec.set_dataset(self.datasets[0])
         self.assertIs(spec, self.datasets[0].parent)
 
+    def test_add_dataset(self):
+        group = GroupSpec(
+            doc='A test group',
+            name='root'
+        )
+        with self.assertWarns(DeprecationWarning):
+            group.add_dataset(
+                doc='A test dataset',
+                dtype='int',
+                name='dataset'
+            )
+        self.assertIsInstance(group.get_dataset('dataset'), DatasetSpec)
+
     def test_set_link(self):
         group = GroupSpec(
             doc='A test group',
@@ -117,11 +130,12 @@ class GroupSpecTests(TestCase):
             doc='A test group',
             name='root'
         )
-        group.add_link(
-            'A test link',
-            'LinkTarget',
-            name='link_name'
-        )
+        with self.assertWarns(DeprecationWarning):
+            group.add_link(
+                doc='A test link',
+                target_type='LinkTarget',
+                name='link_name'
+            )
         self.assertIsInstance(group.get_link('link_name'), LinkSpec)
 
     def test_set_group(self):
@@ -141,12 +155,12 @@ class GroupSpecTests(TestCase):
             doc='A test group',
             name='root'
         )
-        group.add_group(
-            'A test group',
-            name='subgroup'
-        )
+        with self.assertWarns(DeprecationWarning):
+            group.add_group(
+                'A test group',
+                name='subgroup'
+            )
         self.assertIsInstance(group.get_group('subgroup'), GroupSpec)
-
 
     def assertDatasetsEqual(self, spec1, spec2):
         spec1_dsets = spec1.datasets
@@ -173,7 +187,8 @@ class GroupSpecTests(TestCase):
                          datasets=self.datasets,
                          linkable=False)
         for attrspec in self.attributes:
-            spec.add_attribute(**attrspec)
+            with self.assertWarns(DeprecationWarning):
+                spec.add_attribute(**attrspec)
         self.assertListEqual(spec['attributes'], self.attributes)
         self.assertListEqual(spec['datasets'], self.datasets)
         self.assertNotIn('data_type_def', spec)
@@ -255,11 +270,13 @@ class GroupSpecTests(TestCase):
 
     def test_get_data_type_spec(self):
         expected = AttributeSpec('data_type', 'the data type of this object', 'text', value='MyType')
-        self.assertDictEqual(GroupSpec.get_data_type_spec('MyType'), expected)
+        with self.assertWarns(DeprecationWarning):
+            self.assertDictEqual(GroupSpec.get_data_type_spec('MyType'), expected)
 
     def test_get_namespace_spec(self):
         expected = AttributeSpec('namespace', 'the namespace for the data type of this object', 'text', required=False)
-        self.assertDictEqual(GroupSpec.get_namespace_spec(), expected)
+        with self.assertWarns(DeprecationWarning):
+            self.assertDictEqual(GroupSpec.get_namespace_spec(), expected)
 
     def test_build_warn_extra_args(self):
         spec_dict = {

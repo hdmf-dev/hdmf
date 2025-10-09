@@ -628,19 +628,6 @@ class CustomGroupSpec(BaseStorageOverride, GroupSpec):
     def dataset_spec_cls(cls):
         return CustomDatasetSpec
 
-    @docval(*deepcopy(swap_inc_def(GroupSpec, "CustomGroupSpec")))
-    def add_group(self, **kwargs):
-        spec = CustomGroupSpec(**kwargs)
-        self.set_group(spec)
-        return spec
-
-    @docval(*deepcopy(swap_inc_def(DatasetSpec, "CustomDatasetSpec")))
-    def add_dataset(self, **kwargs):
-        """Add a new specification for a subgroup to this group specification"""
-        spec = CustomDatasetSpec(**kwargs)
-        self.set_dataset(spec)
-        return spec
-
 
 class CustomDatasetSpec(BaseStorageOverride, DatasetSpec):
     @docval(*deepcopy(swap_inc_def(DatasetSpec, "CustomDatasetSpec")))
