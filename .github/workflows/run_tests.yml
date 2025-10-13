@@ -241,4 +241,4 @@ jobs:
 
       - name: Run hdmf-zarr tests
         run: |
-          pytest tests/unit/test_io_map.py
+          pytest tests/unit/build_tests/test_io_map.py
