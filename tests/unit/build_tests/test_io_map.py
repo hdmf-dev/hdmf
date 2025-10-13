@@ -14,6 +14,12 @@ import numpy as np
 
 from tests.unit.helpers.utils import CORE_NAMESPACE, create_test_type_map
 
+try:
+    from hdmf_zarr import ZarrDataIO
+    HDMF_ZARR_INSTALLED = True
+except ImportError:
+    HDMF_ZARR_INSTALLED = False
+
 H5PY_3 = h5py.__version__.startswith('3')
 
 
@@ -1146,3 +1152,113 @@ class TestObjectMapperBadValue(TestCase):
             self.mapper.build(container, self.manager)
 
     # TODO test passing a Container/Data/other object for a non-container/data array spec
+
+
+@unittest.skipIf(not HDMF_ZARR_INSTALLED, "hdmf_zarr not installed")
+class TestZarrDataIOCompoundDataset(TestCase):
+    """Test that ZarrDataIO parameters are correctly preserved when building compound datasets with references."""
+
+    def setUp(self):
+        """Set up test fixtures with specs for Foo and a compound dataset containing references."""
+        self.foo_spec = GroupSpec('A test group specification with data type Foo', data_type_def='Foo')
+
+        # Create a compound dtype spec that includes a reference
+        from hdmf.spec.spec import DtypeSpec
+        compound_dtype = [
+            DtypeSpec(name='id', dtype='int', doc='ID field'),
+            DtypeSpec(name='foo_ref', dtype=RefSpec('Foo', 'object'), doc='Reference to Foo')
+        ]
+
+        self.bar_spec = GroupSpec(
+            doc='A test group specification with a compound dataset containing references',
+            data_type_def='Bar',
+            datasets=[DatasetSpec(
+                doc='compound dataset with references',
+                dtype=compound_dtype,
+                name='data'
+            )],
+            attributes=[
+                AttributeSpec('attr1', 'an example string attribute', 'text'),
+                AttributeSpec('attr2', 'an example integer attribute', 'int')
+            ]
+        )
+
+        self.spec_catalog = SpecCatalog()
+        self.spec_catalog.register_spec(self.foo_spec, 'test.yaml')
+        self.spec_catalog.register_spec(self.bar_spec, 'test.yaml')
+        self.namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                       [{'source': 'test.yaml'}],
+                                       version='0.1.0',
+                                       catalog=self.spec_catalog)
+        self.namespace_catalog = NamespaceCatalog()
+        self.namespace_catalog.add_namespace(CORE_NAMESPACE, self.namespace)
+        self.type_map = TypeMap(self.namespace_catalog)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Foo', Foo)
+        self.type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
+        self.manager = BuildManager(self.type_map)
+
+    def test_zarrdataio_get_io_params_compound_refs(self):
+        """Test that ZarrDataIO uses get_io_params() when building compound datasets with references."""
+        # Create container instances
+        foo_inst = Foo('my_foo')
+
+        # Create compound data with a reference
+        compound_data = np.array(
+            [(1, foo_inst), (2, foo_inst)],
+            dtype=[('id', 'i4'), ('foo_ref', 'O')]
+        )
+
+        # Wrap in ZarrDataIO with specific parameters
+        zarr_data = ZarrDataIO(data=compound_data, chunks=(1,), filters=[])
+
+        bar_inst = Bar('my_bar', zarr_data, 'value1', 10)
+
+        # Build the containers - this should trigger the compound dataset ref handling
+        self.manager.build(foo_inst, root=True)
+        bar_builder = self.manager.build(bar_inst, root=True)
+
+        # Verify that the builder data is wrapped in ZarrDataIO
+        self.assertIsInstance(bar_builder.datasets['data'].data, ZarrDataIO)
+
+        # Verify that the ZarrDataIO parameters were preserved
+        built_zarr_data = bar_builder.datasets['data'].data
+        self.assertEqual(built_zarr_data.io_settings.get('chunks'), (1,))
+        self.assertEqual(built_zarr_data.io_settings.get('filters'), [])
+
+    def test_zarrdataio_preserves_filters_and_chunks(self):
+        """Test that ZarrDataIO preserves filters and chunks through the build process."""
+        # Create a simple Foo instance
+        foo_inst = Foo('my_foo')
+
+        # Create compound data
+        compound_data = np.array(
+            [(1, foo_inst), (2, foo_inst), (3, foo_inst)],
+            dtype=[('id', 'i4'), ('foo_ref', 'O')]
+        )
+
+        # Define specific ZarrDataIO parameters to test
+        test_chunks = (2,)
+        test_filters = []
+
+        zarr_data = ZarrDataIO(
+            data=compound_data,
+            chunks=test_chunks,
+            filters=test_filters
+        )
+
+        bar_inst = Bar('my_bar', zarr_data, 'value1', 10)
+
+        # Build
+        self.manager.build(foo_inst, root=True)
+        bar_builder = self.manager.build(bar_inst, root=True)
+
+        # Extract the built ZarrDataIO
+        result_zarr_data = bar_builder.datasets['data'].data
+
+        # Verify it's still ZarrDataIO
+        self.assertIsInstance(result_zarr_data, ZarrDataIO)
+
+        # Verify parameters match through get_io_params()
+        io_params = result_zarr_data.get_io_params()
+        self.assertEqual(io_params.get('chunks'), test_chunks)
+        self.assertEqual(io_params.get('filters'), test_filters)
