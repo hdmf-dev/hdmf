@@ -230,6 +230,7 @@ jobs:
       - name: Install run dependencies
         run: |
           pip install .
+          pip install hdmf_zarr
           pip list
 
       - name: Conda reporting
