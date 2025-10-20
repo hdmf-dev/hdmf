@@ -1022,7 +1022,7 @@ Fields:
     def test_repr_html(self):
         table = self.with_spec()
         for _ in range(5):
-                table.add_row(foo='a', bar='b', baz='c')
+            table.add_row(foo='a', bar='b', baz='c')
         html = table._repr_html_()
 
         assert html == (
