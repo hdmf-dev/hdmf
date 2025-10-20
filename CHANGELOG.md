@@ -10,6 +10,7 @@
 - Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
 - Added checks when loading a namespace for link specification conflicts between extension and core schemas. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309)
 - Added GitHub Actions workflow that tests compatibility with NWB extensions from the NWB extensions catalog. @rly [#1319](https://github.com/hdmf-dev/hdmf/pull/1319)
+- Added unit tests for hdmf.common module to improve code coverage. @stephprince [#1330](https://github.com/hdmf-dev/hdmf/pull/1330)
 
 ### Changed
 - Changed error for attempting to overwrite an existing specification into a warning that any specification redefinitions will be ignored. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309)
