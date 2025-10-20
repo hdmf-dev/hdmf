@@ -1109,8 +1109,6 @@ class DynamicTable(Container):
         # if index is out of range, different errors can be generated depending on the dtype of the column
         # but despite the differences, raise an IndexError from that error
         except IndexError as ie:
-            # in h5py <2, if the column is an h5py.Dataset, a ValueError was raised
-            # in h5py 3+, this became an IndexError
             x = re.match(r"^Index \((.*)\) out of range for \(.*\)$", str(ie))
             if x:
                 msg = ("Row index %s out of range for %s '%s' (length %d)."
