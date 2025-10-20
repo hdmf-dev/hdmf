@@ -355,14 +355,13 @@ class TypeConfigurator:
     When toggled on, every instance of a configuration file supported data type will be validated
     according to the corresponding TermSet.
     """
-    @docval({'name': 'path', 'type': str, 'doc': 'Path to the configuration file.', 'default': None})
+    @docval({'name': 'paths', 'type': list, 'doc': 'Paths to configuration files.', 'default': None})
     def __init__(self, **kwargs):
         self.config = None
-        if kwargs['path'] is None:
-            self.path = []
-        else:
-            self.path = [kwargs['path']]
-            self.load_type_config(config_path=self.path[0])
+        self.paths = []
+        if kwargs["paths"]:
+            for p in kwargs["paths"]:
+                self.load_type_config(p)
 
     @docval({'name': 'data_type', 'type': str,
              'doc': 'The desired data type within the configuration file.'},
@@ -386,19 +385,19 @@ class TypeConfigurator:
             raise ValueError(msg)
 
     @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'})
-    def load_type_config(self,config_path):
+    def load_type_config(self, config_path):
         """
         Load the configuration file for validation on the fields defined for the objects within the file.
         """
         with open(config_path, 'r') as config:
-            yaml=YAML(typ='safe')
+            yaml = YAML(typ='safe')
             termset_config = yaml.load(config)
             if self.config is None: # set the initial config/load after config has been unloaded
                 self.config = termset_config
-                if len(self.path)==0: # for loading after an unloaded config
-                    self.path.append(config_path)
+                if len(self.paths) == 0: # for loading after an unloaded config
+                    self.paths.append(config_path)
             else: # append/replace to the existing config
-                if config_path in self.path:
+                if config_path in self.paths:
                     msg = 'This configuration file path already exists within the configurator.'
                     raise ValueError(msg)
                 else:
@@ -415,12 +414,12 @@ class TypeConfigurator:
                                     new_config = termset_config['namespaces'][namespace]['data_types'][data_type]
                                     self.config['namespaces'][namespace]['data_types'][data_type] = new_config
 
-                    # append path to self.path
-                    self.path.append(config_path)
+                    # append path to self.paths
+                    self.paths.append(config_path)
 
     def unload_type_config(self):
         """
-        Remove validation according to termset configuration file.
+        Remove validation with all loaded termset configuration files. Effectively reset this instance.
         """
-        self.path = []
         self.config = None
+        self.paths = []

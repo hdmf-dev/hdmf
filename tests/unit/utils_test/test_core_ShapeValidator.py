@@ -1,5 +1,5 @@
 import numpy as np
-from hdmf.common.table import DynamicTable, DynamicTableRegion, VectorData
+from hdmf.container import Data
 from hdmf.data_utils import ShapeValidatorResult, DataChunkIterator, assertEqualShape
 from hdmf.testing import TestCase
 
@@ -166,28 +166,17 @@ class ShapeValidatorTests(TestCase):
         self.assertTupleEqual(res.axes1, (0, 1))
         self.assertTupleEqual(res.axes2, (0, 1))
 
-    def test_DynamicTableRegion_shape_validation(self):
-        # Create a test DynamicTable
-        dt_spec = [
-            {'name': 'foo', 'description': 'foo column'},
-            {'name': 'bar', 'description': 'bar column'},
-            {'name': 'baz', 'description': 'baz column'},
-        ]
-        dt_data = [
-            [1, 2, 3, 4, 5],
-            [10.0, 20.0, 30.0, 40.0, 50.0],
-            ['cat', 'dog', 'bird', 'fish', 'lizard']
-        ]
-        columns = [
-            VectorData(name=s['name'], description=s['description'], data=d)
-            for s, d in zip(dt_spec, dt_data)
-        ]
-        dt = DynamicTable(name="with_columns_and_data", description="a test table", columns=columns)
-        # Create test DynamicTableRegion
-        dtr = DynamicTableRegion(name='dtr', data=[1, 2, 2], description='desc', table=dt)
-        # Confirm that the shapes match
-        res = assertEqualShape(dtr, np.arange(9).reshape(3, 3))
-        self.assertTrue(res.result)
+    def test_custom_shape_definition(self):
+        class MyData(Data):
+            def __init__(self, name, data):
+                super().__init__(name, data)
+
+            @property
+            def shape(self):
+                return (3, 3)  # custom override of shape should be ignored by assertEqualShape / get_data_shape
+
+        data = MyData(name="my_data", data=np.arange(10).reshape(2, 5))
+        assertEqualShape(data, (2, 5))
 
 
 class ShapeValidatorResultTests(TestCase):

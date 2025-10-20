@@ -4,6 +4,7 @@ for reading and writing data in according to the HDMF-common specification
 import os.path
 from copy import deepcopy
 from collections.abc import Callable
+import warnings
 
 CORE_NAMESPACE = 'hdmf-common'
 EXP_NAMESPACE = 'hdmf-experimental'
@@ -26,11 +27,10 @@ global __TYPE_MAP
         is_method=False)
 def load_type_config(**kwargs):
     """
-    This method will either load the default config or the config provided by the path.
-    NOTE: This config is global and shared across all type maps.
+    This method will either load the config at the given path into either the global type map or a specific type map.
     """
     config_path = kwargs['config_path']
-    type_map = kwargs['type_map'] or get_type_map()
+    type_map = kwargs['type_map'] or __TYPE_MAP
 
     type_map.type_config.load_type_config(config_path)
 
@@ -38,23 +38,23 @@ def load_type_config(**kwargs):
         is_method=False)
 def get_loaded_type_config(**kwargs):
     """
-    This method returns the entire config file.
+    This method returns a dictionary with the configuration for each namespace and data type.
     """
-    type_map = kwargs['type_map'] or get_type_map()
+    type_map = kwargs['type_map'] or __TYPE_MAP
 
     if type_map.type_config.config is None:
         msg = "No configuration is loaded."
         raise ValueError(msg)
-    else:
-        return type_map.type_config.config
+
+    return type_map.type_config.config
 
 @docval({'name': 'type_map', 'type': TypeMap, 'doc': 'The TypeMap.', 'default': None},
         is_method=False)
 def unload_type_config(**kwargs):
     """
-    Unload the configuration file.
+    Unload all type configurations from the global type map or a specific type map.
     """
-    type_map = kwargs['type_map'] or get_type_map()
+    type_map = kwargs['type_map'] or __TYPE_MAP
 
     return type_map.type_config.unload_type_config()
 
@@ -183,6 +183,7 @@ def get_type_map(**kwargs):
     if extensions is None:
         type_map = deepcopy(__TYPE_MAP)
     else:
+        warnings.warn("The 'extensions' argument is deprecated and will be removed in HDMF 5.0", DeprecationWarning)
         if isinstance(extensions, TypeMap):
             type_map = extensions
         else:
