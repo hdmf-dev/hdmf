@@ -873,6 +873,81 @@ class TestDynamicTable(TestCase):
         self.assertEqual(table['description'].name, 'description')
         self.assertEqual(table['parent'].name, 'parent')
 
+    def test_from_dataframe_with_index(self):
+        df = pd.DataFrame({
+            'foo': [1, 2, 3, 4, 5],
+            'bar': [10.0, 20.0, 30.0, 40.0, 50.0],
+            'baz': ['cat', 'dog', 'bird', 'fish', 'lizard'],
+            'index': [0, 1, 2, 3, 4]
+        })
+
+        obtained_table = DynamicTable.from_dataframe(df, 'test', index_column='index')
+        self.check_table(obtained_table)
+
+    def test_from_dataframe_missing_required_columns(self):
+        df = pd.DataFrame({
+            'col1': [1, 2, 3, 4, 5],
+            'col3': [1, 2, 3, 4, 5],})
+
+        msg = "DataFrame is missing required columns: {'col5', 'col7'}"
+        with self.assertRaises(ValueError, msg=msg):
+            SubTable.from_dataframe(df, 'test')
+
+    def test_build_columns_with_nested_index_error(self):
+        """Test that building columns with nested index > 1 raises an error"""
+        df = pd.DataFrame({'col1': [1, 2, 3, 4, 5],})
+
+        msg = ('Creating nested index columns using this method is not yet supported. '
+               'Use add_column or define the columns using __columns__ instead.')
+        with self.assertRaisesWith(ValueError, msg):
+             DynamicTable.from_dataframe(df, 'test',
+                                         columns=([{'name': 'col1',
+                                                    'description': 'optional column',
+                                                    'index': 2},]))
+
+    def test_build_columns_with_index(self):
+        """Test that building columns with index=True creates a VectorIndex column"""
+        ragged_list = [[1, 2], [3], [4, 5]]
+        df = pd.DataFrame({'col1': ragged_list,})
+
+        table = DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1',
+                                                                   'description': 'optional column',
+                                                                   'index': True},]))
+        self.assertIsInstance(table['col1'], VectorData)
+        self.assertIsInstance(table['col1_index'], VectorIndex)
+        self.assertEqual(table['col1_index'][:], ragged_list)
+
+    def test_build_columns_with_dynamic_table_region(self):
+        """Test that building columns with index=True creates a VectorIndex column"""
+        df = pd.DataFrame({'col1': list()},)
+
+        table = DynamicTable.from_dataframe(df, 'test',
+                                            columns=([{'name': 'col1',
+                                                       'description': 'required region',
+                                                       'required': True,
+                                                       'table': True}]))
+        self.assertIsInstance(table['col1'], DynamicTableRegion)
+
+    def test_build_columns_with_enum(self):
+        """Test that building columns with enum as true creates an Enum column"""
+        # TODO - diffiult to trigger empty enum data, add test if possible
+        df = pd.DataFrame({'col1': [1, 2, 3, 4, 5],})
+        table = DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1',
+                                                                   'description': 'optional enum column',
+                                                                   'enum': True},]))
+        self.assertIsInstance(table['col1'], EnumData)
+
+    def test_from_dataframe_columns_specified_not_provided(self):
+        df = pd.DataFrame({
+            'col1': [1, 2, 3, 4, 5],
+            'col3': [1, 2, 3, 4, 5],})
+
+        msg = "cols specified but not provided: {'col2'}"
+        with self.assertRaises(ValueError, msg=msg):
+            DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1', 'description': 'optional column'},
+                                                              {'name': 'col2', 'description': 'optional column'},
+                                                              {'name': 'col3', 'description': 'optional column'},]))
+
     def test_missing_columns(self):
         table = self.with_spec()
         with self.assertRaises(ValueError):
@@ -946,6 +1021,8 @@ Fields:
 
     def test_repr_html(self):
         table = self.with_spec()
+        for _ in range(5):
+            table.add_row(foo='a', bar='b', baz='c')
         html = table._repr_html_()
 
         assert html == (
@@ -969,8 +1046,12 @@ Fields:
             'margin-left: 0px;" class="container-fields field-key" title=""><b>table</b></summary><table border="1" '
             'class="dataframe">\n  <thead>\n    <tr style="text-align: right;">\n      <th></th>\n      '
             '<th>foo</th>\n      <th>bar</th>\n      <th>baz</th>\n    </tr>\n    <tr>\n      <th>id</th>\n      '
-            '<th></th>\n      <th></th>\n      <th></th>\n    </tr>\n  </thead>\n  <tbody>\n  '
-            '</tbody>\n</table></details></div>'
+            '<th></th>\n      <th></th>\n      <th></th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      '
+            '<th>0</th>\n      <td>a</td>\n      <td>b</td>\n      <td>c</td>\n    </tr>\n    <tr>\n      '
+            '<th>1</th>\n      <td>a</td>\n      <td>b</td>\n      <td>c</td>\n    </tr>\n    <tr>\n      '
+            '<th>2</th>\n      <td>a</td>\n      <td>b</td>\n      <td>c</td>\n    </tr>\n    <tr>\n      '
+            '<th>3</th>\n      <td>a</td>\n      <td>b</td>\n      <td>c</td>\n    </tr>\n  '
+            '</tbody>\n</table><p>... and 1 more row(s).</p></details></div>'
         )
 
 
@@ -1113,6 +1194,14 @@ Fields:
         container = Container('test_container')
         table = self.with_columns_and_data()
         self.assertFalse(table == container)
+
+    def test_copy(self):
+        table = self.with_columns_and_data()
+        table2 = table.copy()
+        self.assertTrue(table == table2)
+        self.assertIsNot(table, table2)
+        for colname in table.colnames:
+            self.assertTrue(getattr(table, colname) == getattr(table2, colname))
 
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
@@ -1285,6 +1374,34 @@ class TestDynamicTableRegion(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             dynamic_table_region.get(0, df=False, index=False)
 
+    def test_create_region_with_valid_slice_range(self):
+        table = self.with_columns_and_data()
+        region = table.create_region(name='region', region=slice(0, 2), description='test region')
+        self.assertEqual(region.data, [0, 1])
+
+    def test_create_region_with_invalid_slice_range(self):
+        table = self.with_columns_and_data()
+        msg = 'region slice slice(-1, 2, None) is out of range for this DynamicTable of length 5'
+        with self.assertRaisesWith(IndexError, msg):
+            table.create_region(name='region2', region=slice(-1, 2), description='test region')
+
+    def test_create_region_with_none_slice(self):
+        table = self.with_columns_and_data()
+        region = table.create_region(name='region2', region=slice(0, None), description='test region')
+        self.assertEqual(region.data, [0, 1, 2, 3, 4])
+
+    def test_create_region_with_negative_index(self):
+        table = self.with_columns_and_data()
+
+        msg = 'The index -1 is out of range for this DynamicTable of length 5'
+        with self.assertRaisesWith(IndexError, msg):
+            table.create_region(name='region', region=[-1, 0], description='test region')
+
+    def test_create_region_with_out_of_range_index(self):
+        table = self.with_columns_and_data()
+        msg = 'The index 10 is out of range for this DynamicTable of length 5'
+        with self.assertRaisesWith(IndexError, msg):
+            table.create_region(name='region', region=[0, 10], description='test region')
 
 class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
 
@@ -2463,6 +2580,23 @@ class TestVectorIndex(TestCase):
         self.assertListEqual(foo_ind[0], ['a', 'b'])
         self.assertListEqual(foo_ind[1], ['c'])
 
+    def test_get_with_boolean(self):
+        """Test VectorIndex.get with boolean argument"""
+        data = VectorData(name='data', description='desc', data=['a', 'b', 'c', 'd', 'e'])
+        index = VectorIndex(name='index', data=[2, 3, 5], target=data)
+        result = index.get([True, False, True])
+
+        self.assertEqual(result, [['a', 'b',], ['d', 'e']])
+        self.assertEqual(len(result), 2)
+
+    def test_get_with_boolean_array(self):
+        """Test VectorIndex.get with boolean np.array argument"""
+        data = VectorData(name='data', description='desc', data=['a', 'b', 'c', 'd', 'e'])
+        index = VectorIndex(name='index', data=[2, 3, 5], target=data)
+        result = index.get(np.array([True, False, True]))
+
+        self.assertEqual(result, [['a', 'b',], ['d', 'e']])
+        self.assertEqual(len(result), 2)
 
 class TestDoubleIndex(TestCase):
 
@@ -2609,6 +2743,14 @@ class TestDynamicTableAddEnum(TestCase):
                                          ['c', 'c']]},
                            index=pd.Series(name='id', data=[0, 1, 2]))
         pd.testing.assert_frame_equal(exp, rec)
+
+    def test_add_column_table_and_enum_error(self):
+        """Test that adding a column with both table and enum raises an error."""
+        table = DynamicTable(name='table0', description='an example table')
+
+        msg = "column 'col1' cannot be both a table region and come from an enumerable set of elements"
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='col1', description='test', table=True, enum=True)
 
 
 class TestDynamicTableInitIndexRoundTrip(H5RoundTripMixin, TestCase):

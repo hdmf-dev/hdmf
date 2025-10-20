@@ -199,7 +199,7 @@ class VectorIndex(VectorData):
             if isinstance(arg, slice):
                 indices = list(range(*arg.indices(len(self.data))))
             else:
-                if isinstance(arg[0], bool):
+                if isinstance(arg[0], (bool, np.bool_)):
                     arg = np.where(arg)[0]
                 indices = arg
             ret = list()
@@ -1108,16 +1108,6 @@ class DynamicTable(Container):
             return ret
         # if index is out of range, different errors can be generated depending on the dtype of the column
         # but despite the differences, raise an IndexError from that error
-        except ValueError as ve:
-            # in h5py <2, if the column is an h5py.Dataset, a ValueError was raised
-            # in h5py 3+, this became an IndexError
-            x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
-            if x:
-                msg = ("Row index %s out of range for %s '%s' (length %d)."
-                       % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
-                raise IndexError(msg) from ve
-            else:  # pragma: no cover
-                raise ve
         except IndexError as ie:
             x = re.match(r"^Index \((.*)\) out of range for \(.*\)$", str(ie))
             if x:
@@ -1288,10 +1278,8 @@ class DynamicTable(Container):
 
         inside = f"{self[:min(nrows, len(self))].to_html()}"
 
-        if len(self) == nrows + 1:
-            inside += "<p>... and 1 more row.</p>"
-        elif len(self) > nrows + 1:
-            inside += f"<p>... and {len(self) - nrows} more rows.</p>"
+        if len(self) >= nrows + 1:
+            inside += f"<p>... and {len(self) - nrows} more row(s).</p>"
 
         out += (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
