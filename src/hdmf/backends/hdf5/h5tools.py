@@ -1518,7 +1518,7 @@ class HDF5IO(HDMFIO):
                 })
             except (AttributeError, TypeError):
                 # If get_storage_size() is not available (e.g., for LINDI datasets),
-                # just skip the HDF5-specific compression info
+                # just skip the compressed size and compression ratio
                 pass
 
         elif isinstance(dataset, np.ndarray):
