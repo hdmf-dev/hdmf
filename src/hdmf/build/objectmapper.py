@@ -974,8 +974,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             try:
                 from hdmf_zarr import ZarrDataIO
                 HDMF_ZARR_INSTALLED = True
-            except ImportError as e:
-                raise(e)
+            except ModuleNotFoundError:
                 HDMF_ZARR_INSTALLED = False
             if isinstance(container.data, H5DataIO):
                 # This is here to support appending a dataset of references.
