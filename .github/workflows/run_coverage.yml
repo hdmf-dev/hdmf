@@ -106,8 +106,8 @@ jobs:
 
       - name: Install run dependencies
         run: |
-          pip install hdmf-zarr
           pip install .
+          pip install hdmf-zarr
           pip list
 
       - name: Conda reporting
