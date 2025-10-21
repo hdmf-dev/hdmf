@@ -118,7 +118,7 @@ jobs:
 
       - name: Run hdmf-zarr tests
         run: |
-          pytest --cov --cov-report=xml --cov-report=term tests/unit/build_tests/test_io_map.py::TestZarrDataIOCompoundDataset test_codecov.py
+          pytest --cov --cov-report=xml --cov-report=term tests/unit/build_tests/test_io_map.py::TestZarrDataIOCompoundDataset
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

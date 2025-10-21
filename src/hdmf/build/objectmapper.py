@@ -1,6 +1,3 @@
-def debug_codecov():
-    print("Debugging codecov issue")
-
 import logging
 import re
 import warnings
