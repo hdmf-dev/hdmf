@@ -1154,7 +1154,7 @@ class TestObjectMapperBadValue(TestCase):
     # TODO test passing a Container/Data/other object for a non-container/data array spec
 
 
-@unittest.skipIf(not HDMF_ZARR_INSTALLED, "hdmf_zarr not installed")
+# @unittest.skipIf(not HDMF_ZARR_INSTALLED, "hdmf_zarr not installed")
 class TestZarrDataIOCompoundDataset(TestCase):
     """Test that ZarrDataIO parameters are correctly preserved when building compound datasets with references."""
 
