@@ -1499,20 +1499,27 @@ class HDF5IO(HDMFIO):
         if isinstance(dataset, h5py.Dataset):
             dataset_type = "HDF5 dataset"
             # get info from hdf5 dataset
-            compressed_size = dataset.id.get_storage_size()
-            if hasattr(dataset, "nbytes"):  # TODO: Remove this after h5py minimal version is larger than 3.0
-                uncompressed_size = dataset.nbytes
-            else:
-                uncompressed_size = dataset.size * dataset.dtype.itemsize
-            compression_ratio = uncompressed_size / compressed_size if compressed_size != 0 else "undefined"
+            uncompressed_size = dataset.size * dataset.dtype.itemsize
 
-            hdf5_info_dict = {
-                            "Chunk shape": dataset.chunks,
-                            "Compression": dataset.compression,
-                            "Compression opts": dataset.compression_opts,
-                            "Compression ratio": compression_ratio,
-                            }
-            array_info_dict.update(hdf5_info_dict)
+            array_info_dict.update(
+                {
+                    "Chunk shape": dataset.chunks,
+                    "Compression": dataset.compression,
+                    "Compression opts": dataset.compression_opts,
+                    "Uncompressed size (bytes)": uncompressed_size,
+                }
+            )
+            try:  # Note: get_storage_size() may not be available for all dataset types (e.g., LINDI)
+                compressed_size = dataset.id.get_storage_size()
+                compression_ratio = uncompressed_size / compressed_size if compressed_size != 0 else "undefined"
+                array_info_dict.update({
+                    "Compressed size (bytes)": compressed_size,
+                    "Compression ratio": compression_ratio,
+                })
+            except (AttributeError, TypeError):
+                # If get_storage_size() is not available (e.g., for LINDI datasets),
+                # just skip the HDF5-specific compression info
+                pass
 
         elif isinstance(dataset, np.ndarray):
             dataset_type = "NumPy array"
