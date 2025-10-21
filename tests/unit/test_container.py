@@ -522,10 +522,10 @@ class TestHTMLRepr(TestCase):
                 '</th><td style="text-align: left">32.00 bytes</td></tr><tr><th style="text-align: left">Chunk shape'
                 '</th><td style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression</th><td '
                 'style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression opts</th><td '
-                'style="text-align: left">None</td></tr><tr><th style="text-align: left">Uncompressed size (bytes)</th><td '
-                'style="text-align: left">32</td></tr><tr><th style="text-align: left">Compressed size (bytes)</th><td '
-                'style="text-align: left">32</td></tr><tr><th style="text-align: left">Compression ratio</th><td '
-                'style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4]'
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">Uncompressed size (bytes)'
+                '</th><td style="text-align: left">32</td></tr><tr><th style="text-align: left">Compressed size '
+                '(bytes)</th><td style="text-align: left">32</td></tr><tr><th style="text-align: left">Compression '
+                'ratio</th><td style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4]'
             )
 
             self.assertIn(expected_html_table, obj._repr_html_())
