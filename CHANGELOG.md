@@ -5,6 +5,7 @@
 ### Fixed
 - Fixed copying of `TypeMap` and `TypeConfigurator`. Previously, the same global `TypeConfigurator` instance was used in all copies of a `TypeMap`. @rly [#1302](https://github.com/hdmf-dev/hdmf/pull/1302)
 - Fixed `get_data_shape` to use `Data.data.shape` instead of `Data.shape`, which may be overridden by subclasses. @rly [#1311](https://github.com/hdmf-dev/hdmf/pull/1311)
+- Fixed HTML representation of datasets when reading from LINDI. @bendichter [#1335](https://github.com/hdmf-dev/hdmf/pull/1335)
 
 ### Added
 - Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
