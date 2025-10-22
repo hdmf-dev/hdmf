@@ -643,9 +643,9 @@ class DynamicTable(Container):
                 # EnumData is the indexing column, so it should go first
                 if data is not None:
                     elements, data = np.unique(data, return_inverse=True)
-                    tmp.append(EnumData(name, desc, data=data, elements=elements))
+                    tmp.append(EnumData(name=name, description=desc, data=data, elements=elements))
                 else:
-                    tmp.append(EnumData(name, desc, data=data))
+                    tmp.append(EnumData(name=name, description=desc, data=data))
                 # EnumData handles constructing the VectorData object that contains EnumData.elements
                 # --> use this functionality (rather than creating here) for consistency and less code/complexity
                 tmp.append(tmp[-1].elements)
