@@ -569,37 +569,56 @@ class TestHTMLRepr(TestCase):
         os.remove('array_data.h5')
 
     def test_repr_html_lindi_dataset(self):
-        """Test HTML repr for LINDI datasets without get_storage_size method."""
-        import lindi
+        """Test HTML repr for datasets without get_storage_size method (e.g., LINDI datasets)."""
+        from unittest.mock import PropertyMock, patch
+        import h5py
 
-        # Create a LINDI file directly (using .lindi.tar format for local files)
-        with lindi.LindiH5pyFile.from_lindi_file('temp_for_lindi.lindi.tar', mode='w') as f:
-            f.attrs['test_attr'] = 'test_value'
+        # Create a regular HDF5 dataset using h5py
+        with h5py.File('array_data.h5', 'w') as f:
             f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4, 5, 6, 7, 8], dtype=np.int64))
 
-        # Open the LINDI file and test HTML generation
-        with lindi.LindiH5pyFile.from_lindi_file('temp_for_lindi.lindi.tar', mode='r') as f:
-            lindi_dataset = f['my_dataset']
+        # Read the dataset and mock the id to simulate LINDI behavior
+        with h5py.File('array_data.h5', 'r') as f:
+            dataset = f['my_dataset']
+            original_id = dataset.id
 
-            # Test the generate_dataset_html method directly
-            result_html = HDF5IO.generate_dataset_html(lindi_dataset)
+            # Create a wrapper that has all attributes except get_storage_size
+            class MockDatasetId:
+                """Mock DatasetID that raises AttributeError for get_storage_size."""
+                def __getattr__(self, name):
+                    if name == 'get_storage_size':
+                        raise AttributeError(f"'{type(self).__name__}' object has no attribute 'get_storage_size'")
+                    return getattr(original_id, name)
 
-            # Expected HTML should include basic fields
-            expected_fields = [
-                'Data type',
-                'Shape',
-                'Array size',
-            ]
+            mock_id = MockDatasetId()
 
-            for field in expected_fields:
-                self.assertIn(field, result_html)
+            # Patch the dataset's id property
+            with patch.object(type(dataset), 'id', new_callable=PropertyMock) as mock_id_prop:
+                mock_id_prop.return_value = mock_id
 
-            # The HTML should be generated without errors even though LINDI datasets
-            # may not have all the same methods as regular HDF5 datasets
-            self.assertIsInstance(result_html, str)
+                # Test the generate_dataset_html method directly
+                result_html = HDF5IO.generate_dataset_html(dataset)
+
+                # Expected HTML should include basic fields
+                expected_fields = [
+                    'Data type',
+                    'Shape',
+                    'Array size',
+                ]
+
+                for field in expected_fields:
+                    self.assertIn(field, result_html)
+
+                # The HTML should be generated without errors even though the dataset
+                # doesn't have get_storage_size method (like LINDI datasets)
+                self.assertIsInstance(result_html, str)
+
+                # Should NOT include compressed size or compression ratio since get_storage_size is not available
+                self.assertNotIn('Compressed size (bytes)', result_html)
+                self.assertNotIn('Compression ratio', result_html)
 
         # Cleanup
-        os.remove('temp_for_lindi.lindi.tar')
+        os.remove('array_data.h5')
 
 
 class TestData(TestCase):
