@@ -57,6 +57,7 @@ termset = [
 # development dependencies
 test = [
     "codespell",
+    "lindi",
     "pre-commit",
     "pytest",
     "pytest-cov",
