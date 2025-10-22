@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 4.1.1 (Upcoming)
+## HDMF 4.1.1 (October 22, 2025)
 
 ### Fixed
 - Fixed copying of `TypeMap` and `TypeConfigurator`. Previously, the same global `TypeConfigurator` instance was used in all copies of a `TypeMap`. @rly [#1302](https://github.com/hdmf-dev/hdmf/pull/1302)
