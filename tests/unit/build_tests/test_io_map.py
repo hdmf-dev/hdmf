@@ -1169,7 +1169,7 @@ class TestZarrDataIOCompoundDataset(TestCase):
     def setUp(self):
         """Set up test fixtures with a compound dataset spec."""
         from hdmf.spec.spec import DtypeSpec
-        
+
         # Create a simple compound dtype (no references)
         compound_dtype = [
             DtypeSpec(name='id', dtype='int', doc='ID field'),
