@@ -571,29 +571,29 @@ class TestHTMLRepr(TestCase):
     def test_repr_html_lindi_dataset(self):
         """Test HTML repr for LINDI datasets without get_storage_size method."""
         import lindi
-        
+
         # Create a LINDI file directly (using .lindi.tar format for local files)
         with lindi.LindiH5pyFile.from_lindi_file('temp_for_lindi.lindi.tar', mode='w') as f:
             f.attrs['test_attr'] = 'test_value'
             ds = f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4, 5, 6, 7, 8], dtype=np.int64))
-        
+
         # Open the LINDI file and test HTML generation
         with lindi.LindiH5pyFile.from_lindi_file('temp_for_lindi.lindi.tar', mode='r') as f:
             lindi_dataset = f['my_dataset']
-            
+
             # Test the generate_dataset_html method directly
             result_html = HDF5IO.generate_dataset_html(lindi_dataset)
-            
+
             # Expected HTML should include basic fields
             expected_fields = [
                 'Data type',
                 'Shape',
                 'Array size',
             ]
-            
+
             for field in expected_fields:
                 self.assertIn(field, result_html)
-            
+
             # The HTML should be generated without errors even though LINDI datasets
             # may not have all the same methods as regular HDF5 datasets
             self.assertIsInstance(result_html, str)
