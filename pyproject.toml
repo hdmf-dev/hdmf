@@ -45,7 +45,7 @@ tqdm = ["tqdm>=4.41.0"]
 zarr = [
     "zarr>=2.12.0,<3",
     "numcodecs<0.16.0",  # numcodecs 0.16.0 is not compatible with zarr<3
-    "hdmf-zarr",
+    "hdmf-zarr>=0.12.0",
 ]
 sparse = ["scipy>=1.7"]
 termset = [
