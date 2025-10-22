@@ -6,6 +6,7 @@
 - Fixed copying of `TypeMap` and `TypeConfigurator`. Previously, the same global `TypeConfigurator` instance was used in all copies of a `TypeMap`. @rly [#1302](https://github.com/hdmf-dev/hdmf/pull/1302)
 - Fixed `get_data_shape` to use `Data.data.shape` instead of `Data.shape`, which may be overridden by subclasses. @rly [#1311](https://github.com/hdmf-dev/hdmf/pull/1311)
 - Fixed HTML representation of datasets when reading from LINDI. @bendichter [#1335](https://github.com/hdmf-dev/hdmf/pull/1335)
+- Fixed bug where compound datatypes were disregarding custom data I/O options with the zarr backend. @pauladkisson [#1297](https://github.com/hdmf-dev/hdmf/pull/1297)
 
 ### Added
 - Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
@@ -17,9 +18,6 @@
 - Changed error for attempting to overwrite an existing specification into a warning that any specification redefinitions will be ignored. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309)
 - Deprecated the experimental `HERDManager.link_resources` and `HERDManager.link_external_resources` and added the property `HERDManager.external_resources` to support downstream API function overloading. @mavaylon1, @rly [#1292](https://github.com/hdmf-dev/hdmf/pull/1292)
 
-
-### Fixed
-- Fixed bug where compound datatypes were disregarding custom data I/O options with the zarr backend. @pauladkisson [#1297](https://github.com/hdmf-dev/hdmf/pull/1297)
 
 ## HDMF 4.1.0 (May 28, 2025)
 
