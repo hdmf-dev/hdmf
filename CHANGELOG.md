@@ -18,6 +18,9 @@
 - Deprecated the experimental `HERDManager.link_resources` and `HERDManager.link_external_resources` and added the property `HERDManager.external_resources` to support downstream API function overloading. @mavaylon1, @rly [#1292](https://github.com/hdmf-dev/hdmf/pull/1292)
 
 
+### Fixed
+- Fixed bug where compound datatypes were disregarding custom data I/O options with the zarr backend. @pauladkisson [#1297](https://github.com/hdmf-dev/hdmf/pull/1297)
+
 ## HDMF 4.1.0 (May 28, 2025)
 
 ### Enhancements
