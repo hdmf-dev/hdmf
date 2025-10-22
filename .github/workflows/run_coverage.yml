@@ -73,61 +73,6 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  run-hdmf-zarr-coverage:
-    name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash -l {0}  # necessary for conda
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
-      cancel-in-progress: true
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { name: linux-python3.13-hdmf-zarr, python-ver: "3.13", os: ubuntu-latest }
-    steps:
-      - name: Checkout repo with submodules
-        uses: actions/checkout@v5
-        with:
-          submodules: 'recursive'
-          fetch-depth: 0  # tags are required to determine the version
-
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          auto-update-conda: true
-          activate-environment: hdmf-zarr
-          environment-file: environment-hdmf-zarr.yml
-          python-version: ${{ matrix.python-ver }}
-          channels: conda-forge
-          auto-activate-base: false
-
-      - name: Install run dependencies
-        run: |
-          pip install hdmf-zarr
-          pip install .
-          pip list
-
-      - name: Conda reporting
-        run: |
-          conda info
-          conda config --show-sources
-          conda list --show-channel-urls
-
-      - name: Run hdmf-zarr tests
-        run: |
-          pytest --cov --cov-report=xml --cov-report=term tests/unit/build_tests/test_io_map.py::TestZarrDataIOCompoundDataset
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          fail_ci_if_error: true
-          files: ./coverage.xml
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
   run-ros3-coverage:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
