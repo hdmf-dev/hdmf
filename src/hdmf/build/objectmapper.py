@@ -242,7 +242,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 else:
                     ret = value.astype(dtype_func)
                 ret_dtype = ret.dtype.type
-        elif isinstance(value, np.ndarray):
+        elif isinstance(value, (np.ndarray, StrDataset)):
             if spec_dtype_type is _unicode:
                 if isinstance(value, StrDataset):
                     ret = value
