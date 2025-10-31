@@ -23,22 +23,22 @@ jobs:
       matrix:
         include:
           # NOTE config below with "upload-wheels: true" specifies that wheels should be uploaded as an artifact
-          - { name: linux-python3.8-minimum      , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: linux-python3.12             , test-tox-env: pytest-py312-pinned    , python-ver: "3.12", os: ubuntu-latest }
-          - { name: linux-python3.12-upgraded    , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: ubuntu-latest , upload-wheels: true }
-          - { name: windows-python3.8-minimum    , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: windows-latest }
-          - { name: windows-python3.12-upgraded  , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: windows-latest }
-          - { name: macos-python3.8-minimum      , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: macos-13 }
-          - { name: macos-python3.12-upgraded    , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: macos-latest }
+          - { name: linux-python3.9-minimum              , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: ubuntu-latest }
+          - { name: linux-python3.13-upgraded            , test-tox-env: pytest-py313-upgraded          , python-ver: "3.13", os: ubuntu-latest }
+          - { name: linux-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: ubuntu-latest , upload-wheels: true }
+          - { name: windows-python3.9-minimum            , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: windows-latest }
+          - { name: windows-python3.13-upgraded-optional , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: windows-latest }
+          - { name: macos-python3.9-minimum              , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: macos-13 }
+          - { name: macos-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-ver }}
 
@@ -85,19 +85,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-gallery-python3.8-minimum     , test-tox-env: gallery-py38-minimum   , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: linux-gallery-python3.12-upgraded   , test-tox-env: gallery-py312-upgraded , python-ver: "3.12", os: ubuntu-latest }
-          - { name: windows-gallery-python3.8-minimum   , test-tox-env: gallery-py38-minimum   , python-ver: "3.8" , os: windows-latest }
-          - { name: windows-gallery-python3.12-upgraded , test-tox-env: gallery-py312-upgraded , python-ver: "3.12", os: windows-latest }
+          # TODO: Update to 3.13 when linkml and its deps support 3.13
+          - { name: linux-gallery-python3.9-minimum              , test-tox-env: gallery-py39-minimum            , python-ver: "3.9" , os: ubuntu-latest }
+          - { name: linux-gallery-python3.12-upgraded-optional   , test-tox-env: gallery-py312-upgraded-optional , python-ver: "3.12", os: ubuntu-latest }
+          - { name: windows-gallery-python3.9-minimum            , test-tox-env: gallery-py39-minimum            , python-ver: "3.9" , os: windows-latest }
+          - { name: windows-gallery-python3.12-upgraded-optional , test-tox-env: gallery-py312-upgraded-optional , python-ver: "3.12", os: windows-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-ver }}
 
@@ -111,69 +112,9 @@ jobs:
         run: |
           tox -e ${{ matrix.test-tox-env }}
 
-  run-tests-on-conda:
-    name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
-    defaults:
-     run:
-       shell: bash -l {0}
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
-      cancel-in-progress: true
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { name: conda-linux-python3.8-minimum    , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: conda-linux-python3.12-upgraded  , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: ubuntu-latest }
-    steps:
-      - name: Checkout repo with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-          fetch-depth: 0  # tags are required to determine the version
-
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          auto-update-conda: true
-          python-version: ${{ matrix.python-ver }}
-          channels: conda-forge
-          mamba-version: "*"
-
-      - name: Install build dependencies
-        run: |
-          conda config --set always_yes yes --set changeps1 no
-          conda info
-          mamba install -c conda-forge "tox>=4"
-
-      - name: Conda reporting
-        run: |
-          conda info
-          conda config --show-sources
-          conda list --show-channel-urls
-
-      # NOTE tox installs packages from PyPI not conda-forge...
-      - name: Run tox tests
-        run: |
-          tox -e ${{ matrix.test-tox-env }}
-
-      - name: Build wheel and source distribution
-        run: |
-          tox -e build
-          ls -1 dist
-
-      - name: Test installation from a wheel
-        run: |
-          tox -e wheelinstall --installpkg dist/*-none-any.whl
-
-      - name: Test installation from a source distribution
-        run: |
-          tox -e wheelinstall --installpkg dist/*.tar.gz
-
   deploy-dev:
     name: Deploy pre-release from dev
-    needs: [run-tests, run-gallery-tests, run-tests-on-conda]
+    needs: [run-tests, run-gallery-tests]
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     concurrency:
@@ -181,18 +122,18 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: '3.13'
 
       - name: Download wheel and source distributions from artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: distributions
           path: dist
@@ -222,10 +163,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.12-ros3  , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-python3.13-ros3  , python-ver: "3.13", os: ubuntu-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -239,7 +180,6 @@ jobs:
           python-version: ${{ matrix.python-ver }}
           channels: conda-forge
           auto-activate-base: false
-          mamba-version: "*"
 
       - name: Install run dependencies
         run: |

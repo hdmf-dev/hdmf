@@ -33,8 +33,11 @@ class TermSet:
         try:
             from linkml_runtime.utils.schemaview import SchemaView
         except ImportError:
-            msg = "Install linkml_runtime"
-            raise ValueError(msg)
+            msg = (
+                "There is an issue with importing linkml_runtime. Please make sure a "
+                "compatible version of linkml_runtime is installed."
+            )
+            raise ImportError(msg)
 
         self.term_schema_path = term_schema_path
         self.schemasheets_folder = schemasheets_folder
@@ -165,9 +168,12 @@ class TermSet:
         try:
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
-        except ImportError:   # pragma: no cover
-            msg = "Install schemasheets."
-            raise ValueError(msg)
+        except ImportError as e:   # pragma: no cover
+            msg = (
+                "There is an issue with importing schemasheets. Please make sure a compatible "
+                "version of schemascheets is installed."
+            )
+            raise ImportError(msg) from e
 
         schema_maker = SchemaMaker()
         tsv_file_paths = glob.glob(self.schemasheets_folder + "/*.tsv")
@@ -194,8 +200,11 @@ class TermSet:
                 warnings.filterwarnings("ignore", category=DeprecationWarning)
                 from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
         except ImportError:   # pragma: no cover
-            msg = 'Install oaklib.'
-            raise ValueError(msg)
+            msg = (
+                "There is an issue with importing oaklib. Please make sure a compatible "
+                "version of oaklib is installed."
+            )
+            raise ImportError(msg)
         expander = ValueSetExpander()
         # TODO: linkml should raise a warning if the schema does not have dynamic enums
         enum = list(self.view.all_enums())
@@ -346,14 +355,13 @@ class TypeConfigurator:
     When toggled on, every instance of a configuration file supported data type will be validated
     according to the corresponding TermSet.
     """
-    @docval({'name': 'path', 'type': str, 'doc': 'Path to the configuration file.', 'default': None})
+    @docval({'name': 'paths', 'type': list, 'doc': 'Paths to configuration files.', 'default': None})
     def __init__(self, **kwargs):
         self.config = None
-        if kwargs['path'] is None:
-            self.path = []
-        else:
-            self.path = [kwargs['path']]
-            self.load_type_config(config_path=self.path[0])
+        self.paths = []
+        if kwargs["paths"]:
+            for p in kwargs["paths"]:
+                self.load_type_config(p)
 
     @docval({'name': 'data_type', 'type': str,
              'doc': 'The desired data type within the configuration file.'},
@@ -377,19 +385,19 @@ class TypeConfigurator:
             raise ValueError(msg)
 
     @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'})
-    def load_type_config(self,config_path):
+    def load_type_config(self, config_path):
         """
         Load the configuration file for validation on the fields defined for the objects within the file.
         """
         with open(config_path, 'r') as config:
-            yaml=YAML(typ='safe')
+            yaml = YAML(typ='safe')
             termset_config = yaml.load(config)
             if self.config is None: # set the initial config/load after config has been unloaded
                 self.config = termset_config
-                if len(self.path)==0: # for loading after an unloaded config
-                    self.path.append(config_path)
+                if len(self.paths) == 0: # for loading after an unloaded config
+                    self.paths.append(config_path)
             else: # append/replace to the existing config
-                if config_path in self.path:
+                if config_path in self.paths:
                     msg = 'This configuration file path already exists within the configurator.'
                     raise ValueError(msg)
                 else:
@@ -406,12 +414,12 @@ class TypeConfigurator:
                                     new_config = termset_config['namespaces'][namespace]['data_types'][data_type]
                                     self.config['namespaces'][namespace]['data_types'][data_type] = new_config
 
-                    # append path to self.path
-                    self.path.append(config_path)
+                    # append path to self.paths
+                    self.paths.append(config_path)
 
     def unload_type_config(self):
         """
-        Remove validation according to termset configuration file.
+        Remove validation with all loaded termset configuration files. Effectively reset this instance.
         """
-        self.path = []
         self.config = None
+        self.paths = []

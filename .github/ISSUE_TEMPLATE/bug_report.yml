@@ -47,24 +47,16 @@ body:
     validations:
       required: true
   - type: dropdown
-    id: executable
-    attributes:
-      label: Python Executable
-      options:
-        - Conda
-        - Python
-    validations:
-      required: true
-  - type: dropdown
     id: python_version
     attributes:
       label: Python Version
       options:
+        - "3.13"
         - "3.12"
         - "3.11"
         - "3.10"
         - "3.9"
-        - "3.8"
+        - "newer"
     validations:
       required: true
   - type: textarea

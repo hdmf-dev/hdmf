@@ -70,7 +70,8 @@ class YAMLSpecWriter(SpecWriter):
             data = yaml_obj.load(fd_read)
         self.write_spec(data, path)
 
-    def sort_keys(self, obj):
+    @staticmethod
+    def sort_keys(obj):
         # Represent None as null
         def my_represent_none(self, data):
             return self.represent_scalar(u'tag:yaml.org,2002:null', u'null')
@@ -91,12 +92,12 @@ class YAMLSpecWriter(SpecWriter):
                 keys.remove('name')
                 keys.insert(0, 'name')
             return yaml.comments.CommentedMap(
-                yaml.compat.ordereddict([(k, self.sort_keys(obj[k])) for k in keys])
+                yaml.compat.ordereddict([(k, YAMLSpecWriter.sort_keys(obj[k])) for k in keys])
             )
         elif isinstance(obj, list):
-            return [self.sort_keys(v) for v in obj]
+            return [YAMLSpecWriter.sort_keys(v) for v in obj]
         elif isinstance(obj, tuple):
-            return (self.sort_keys(v) for v in obj)
+            return (YAMLSpecWriter.sort_keys(v) for v in obj)
         else:
             return obj
 

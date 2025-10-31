@@ -17,6 +17,8 @@ Latest Release
 .. image:: https://anaconda.org/conda-forge/hdmf/badges/version.svg
      :target: https://anaconda.org/conda-forge/hdmf
 
+.. image:: https://zenodo.org/badge/167271700.svg
+  :target: https://doi.org/10.5281/zenodo.8034516
 
 Overall Health
 ==============
@@ -41,6 +43,9 @@ Overall Health
 
 .. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_hdmf_zarr_tests.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_hdmf_zarr_tests.yml
+
+.. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_nwb_extension_tests.yml/badge.svg
+    :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_nwb_extension_tests.yml
 
 .. image:: https://github.com/hdmf-dev/hdmf/actions/workflows/run_all_tests.yml/badge.svg
     :target: https://github.com/hdmf-dev/hdmf/actions/workflows/run_all_tests.yml
@@ -94,7 +99,7 @@ Citing HDMF
 LICENSE
 =======
 
-"hdmf" Copyright (c) 2017-2024, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
+"hdmf" Copyright (c) 2017-2025, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
 (1) Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -110,7 +115,7 @@ You are under no obligation whatsoever to provide any bug fixes, patches, or upg
 COPYRIGHT
 =========
 
-"hdmf" Copyright (c) 2017-2024, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
+"hdmf" Copyright (c) 2017-2025, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy).  All rights reserved.
 If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Innovation & Partnerships Office at IPO@lbl.gov.
 
 NOTICE.  This Software was developed under funding from the U.S. Department of Energy and the U.S. Government consequently retains certain rights. As such, the U.S. Government has been granted for itself and others acting on its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the Software to reproduce, distribute copies to the public, prepare derivative works, and perform publicly and display publicly, and to permit other to do so.

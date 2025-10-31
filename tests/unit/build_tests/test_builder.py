@@ -1,4 +1,4 @@
-from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
+from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from hdmf.testing import TestCase
 
 
@@ -391,13 +391,4 @@ class TestReferenceBuilder(TestCase):
     def test_constructor(self):
         db = DatasetBuilder('db1', [1, 2, 3])
         rb = ReferenceBuilder(db)
-        self.assertIs(rb.builder, db)
-
-
-class TestRegionBuilder(TestCase):
-
-    def test_constructor(self):
-        db = DatasetBuilder('db1', [1, 2, 3])
-        rb = RegionBuilder(slice(1, 3), db)
-        self.assertEqual(rb.region, slice(1, 3))
         self.assertIs(rb.builder, db)

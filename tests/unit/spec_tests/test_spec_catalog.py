@@ -208,8 +208,10 @@ class SpecCatalogTest(TestCase):
         )
         source = 'test_extension.yaml'
         self.catalog.register_spec(spec1, source)
-        msg = "'Group1' - cannot overwrite existing specification"
-        with self.assertRaisesWith(ValueError, msg):
+        msg = (f"{source} defines a different specification for Group1 than the existing definition "
+               f"from {source}. Defaulting to the existing specification from {source}, but "
+               "compatibility issues may be present. Please update the extension version if possible.")
+        with self.assertWarnsWith(UserWarning, msg):
             self.catalog.register_spec(spec2, source)
 
     def test_catch_duplicate_spec_different_source(self):
@@ -224,6 +226,8 @@ class SpecCatalogTest(TestCase):
         source1 = 'test_extension1.yaml'
         source2 = 'test_extension2.yaml'
         self.catalog.register_spec(spec1, source1)
-        msg = "'Group1' - cannot overwrite existing specification"
-        with self.assertRaisesWith(ValueError, msg):
+        msg = (f"{source2} defines a different specification for Group1 than the existing definition "
+               f"from {source1}. Defaulting to the existing specification from {source1}, but "
+               "compatibility issues may be present. Please update the extension version if possible.")
+        with self.assertWarnsWith(UserWarning, msg):
             self.catalog.register_spec(spec2, source2)
