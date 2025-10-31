@@ -19,8 +19,8 @@ from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildM
 from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
-from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset
-from ..utils import NamespaceToBuilderHelper, WriteStatusTracker, is_zarr_array
+from ...utils import docval, getargs, popargs, get_data_shape, get_docval, is_zarr_array, StrDataset
+from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
