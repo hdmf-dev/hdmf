@@ -19,7 +19,7 @@ from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildM
 from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
-from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset
+from ...utils import docval, getargs, popargs, get_data_shape, get_docval, is_zarr_array, StrDataset
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
@@ -926,7 +926,7 @@ class HDF5IO(HDMFIO):
 
         # Use text dtype for Zarr datasets of strings. Zarr stores variable length strings
         # as objects, so we need to detect this special case here
-        if hasattr(data, 'attrs') and 'zarr_dtype' in data.attrs and data.attrs['zarr_dtype'] == 'str':
+        if is_zarr_array(data) and 'zarr_dtype' in data.attrs and data.attrs['zarr_dtype'] == 'str':
             return cls.__dtypes['text']
 
         dtype = cls.__resolve_dtype_helper__(dtype)
