@@ -22,12 +22,6 @@ from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import docval, getargs, popargs, get_data_shape, get_docval, StrDataset
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
-# try:
-#     from zarr import Array as ZarrArray
-#     import numcodecs
-#     ZARR_INSTALLED = True
-# except ImportError:
-#     ZARR_INSTALLED = False
 
 ROOT_NAME = 'root'
 SPEC_LOC_ATTR = '.specloc'
@@ -39,10 +33,6 @@ H5_REGREF = special_dtype(ref=RegionReference)
 RDCC_NBYTES = 32*2**20  # set raw data chunk cache size = 32 MiB
 
 H5PY_3 = h5py.__version__.startswith('3')
-
-
-# def _is_zarr_array(value):
-#     return ZARR_INSTALLED and isinstance(value, ZarrArray)
 
 
 class HDF5IO(HDMFIO):
@@ -934,14 +924,6 @@ class HDF5IO(HDMFIO):
         # TODO: These values exist, but I haven't solved them yet
         # binary
         # number
-
-        # # Use text dtype for Zarr datasets of strings. Zarr stores variable length strings
-        # # as objects, so we need to detect this special case here
-        # if _is_zarr_array(data) and data.filters:
-        #     if numcodecs.VLenUTF8() in data.filters:
-        #         return cls.__dtypes['text']
-        #     elif numcodecs.VLenBytes() in data.filters:
-        #         return cls.__dtypes['ascii']
 
         dtype = cls.__resolve_dtype_helper__(dtype)
         if dtype is None:

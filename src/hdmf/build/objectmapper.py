@@ -18,17 +18,8 @@ from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
 from ..spec.spec import BaseStorageSpec
-from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape
+from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape, is_zarr_array, StrDataset
 
-try:
-    from zarr import Array as ZarrArray
-    ZARR_INSTALLED = True
-except ImportError:
-    ZARR_INSTALLED = False
-
-
-def _is_zarr_array(value):
-    return ZARR_INSTALLED and isinstance(value, ZarrArray)
 
 _const_arg = '__constructor_arg'
 
@@ -219,20 +210,31 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # NOTE: Numpy < 2.0 has only fixed-length strings.
         # Numpy 2.0 introduces variable-length strings (dtype=np.dtypes.StringDType()).
         # HDMF does not yet do any special handling of numpy arrays with variable-length strings.
-        if isinstance(value, np.ndarray) or _is_zarr_array(value):
+        if is_zarr_array(value):
             if spec_dtype_type is _unicode:
-                if _is_zarr_array(value):
-                    # Zarr stores strings as objects, so we cannot convert to unicode dtype
+                # Zarr stores strings as objects, so we cannot convert to unicode dtype
+                ret = value
+                ret_dtype = "utf8"
+            elif spec_dtype_type is _ascii:
+                # Zarr stores strings as objects, so we cannot convert to ascii dtype
+                ret = value
+                ret_dtype = "ascii"
+            else:
+                dtype_func, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
+                if value.dtype == dtype_func:
+                    ret = value
+                else:
+                    ret = value.astype(dtype_func)
+                ret_dtype = ret.dtype.type
+        elif isinstance(value, np.ndarray):
+            if spec_dtype_type is _unicode:
+                if isinstance(value, StrDataset):
                     ret = value
                 else:
                     ret = value.astype('U')
                 ret_dtype = "utf8"
             elif spec_dtype_type is _ascii:
-                if _is_zarr_array(value):
-                    # Zarr stores strings as objects, so we cannot convert to unicode dtype
-                    ret = value
-                else:
-                    ret = value.astype('S')
+                ret = value.astype('S')
                 ret_dtype = "ascii"
             else:
                 dtype_func, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)

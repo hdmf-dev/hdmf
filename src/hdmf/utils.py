@@ -16,11 +16,18 @@ __macros = {
 }
 
 try:
-    # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
-    import zarr
-    __macros['array_data'].append(zarr.Array)
+    from zarr import Array as ZarrArray
+    ZARR_INSTALLED = True
 except ImportError:
-    pass
+    ZARR_INSTALLED = False
+
+
+def is_zarr_array(value):
+    return ZARR_INSTALLED and isinstance(value, ZarrArray)
+
+if ZARR_INSTALLED:
+    # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
+    __macros['array_data'].append(ZarrArray)
 
 
 # code to signify how to handle positional arguments in docval

@@ -7,13 +7,7 @@ from hdmf.build import ObjectMapper
 from hdmf.data_utils import DataChunkIterator
 from hdmf.spec import DatasetSpec, RefSpec, DtypeSpec
 from hdmf.testing import TestCase
-
-try:
-    import zarr
-    import numcodecs
-    SKIP_ZARR_TESTS = False
-except ImportError:
-    SKIP_ZARR_TESTS = True
+from hdmf.utils import ZARR_INSTALLED
 
 
 class TestConvertDtype(TestCase):
@@ -560,10 +554,13 @@ class TestConvertDtype(TestCase):
         self.assertIs(type(ret), bytes)
         self.assertEqual(ret_dtype, 'ascii')
 
-    @unittest.skipIf(SKIP_ZARR_TESTS, "Zarr is not installed")
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
     def test_zarr_array_spec_vlen_utf8(self):
         """Test that converting a zarr array with utf8 dtype for a variable length utf8 dtype spec
         returns the same object with a utf8 ret_dtype."""
+        import zarr
+        import numcodecs
+
         spec = DatasetSpec('an example dataset', 'text', name='data')
 
         value = zarr.array(['a', 'b'])  # fixed length unicode (dtype = <U1)
@@ -580,10 +577,13 @@ class TestConvertDtype(TestCase):
         self.assertIs(ret.dtype.type, np.object_)
         self.assertEqual(ret_dtype, 'utf8')
 
-    @unittest.skipIf(SKIP_ZARR_TESTS, "Zarr is not installed")
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
     def test_zarr_array_spec_vlen_ascii(self):
         """Test that converting a zarr array with fixed length utf8 dtype for a variable length ascii dtype spec
         returns the same object with a ascii ret_dtype."""
+        import zarr
+        import numcodecs
+
         spec = DatasetSpec('an example dataset', 'ascii', name='data')
 
         value = zarr.array(['a', 'b'])  # fixed length unicode (dtype = <U1)
