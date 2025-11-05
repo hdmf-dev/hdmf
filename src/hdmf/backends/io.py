@@ -5,7 +5,7 @@ from pathlib import Path
 from ..build import BuildManager, GroupBuilder
 from ..container import Container, HERDManager
 from .errors import UnsupportedOperation
-from ..utils import docval, getargs, popargs
+from ..utils import docval, getargs, popargs, get_basic_array_info, generate_array_html_repr
 from warnings import warn
 
 
@@ -64,7 +64,7 @@ class HDMFIO(metaclass=ABCMeta):
             try:
                 self.herd = HERD.from_zip(path=self.herd_path)
                 if isinstance(container, HERDManager):
-                    container.link_resources(herd=self.herd)
+                    container.external_resources = self.herd
             except FileNotFoundError:
                 msg = "File not found at {}. HERD not added.".format(self.herd_path)
                 warn(msg)
@@ -75,7 +75,7 @@ class HDMFIO(metaclass=ABCMeta):
         return container
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
-            {'name': 'herd', 'type': 'HERD',
+            {'name': 'herd', 'type': 'hdmf.common.resources.HERD',
              'doc': 'A HERD object to populate with references.',
              'default': None}, allow_extra=True)
     def write(self, **kwargs):
@@ -89,8 +89,8 @@ class HDMFIO(metaclass=ABCMeta):
                 from hdmf.common import HERD
                 herd = HERD(type_map=self.manager.type_map)
 
-            # add_ref_term_set to search for and resolve the TermSetWrapper
-            herd.add_ref_term_set(container) # container would be the NWBFile
+            # add_ref_container to search for and resolve the TermSetWrapper
+            herd.add_ref_container(container) # container would be the NWBFile
             # write HERD
             herd.to_zip(path=self.herd_path)
 
@@ -98,7 +98,8 @@ class HDMFIO(metaclass=ABCMeta):
         f_builder = self.__manager.build(container, source=self.__source, root=True)
         self.write_builder(f_builder, **kwargs)
 
-    @docval({'name': 'src_io', 'type': 'HDMFIO', 'doc': 'the HDMFIO object for reading the data to export'},
+    @docval({'name': 'src_io', 'type': 'hdmf.backends.io.HDMFIO',
+             'doc': 'the HDMFIO object for reading the data to export'},
             {'name': 'container', 'type': Container,
              'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
                      'exported'),
@@ -186,6 +187,14 @@ class HDMFIO(metaclass=ABCMeta):
     def close(self):
         ''' Close this HDMFIO object to further reading/writing'''
         pass
+
+    @staticmethod
+    def generate_dataset_html(dataset):
+        """Generates an html representation for a dataset"""
+        array_info_dict = get_basic_array_info(dataset)
+        repr_html = generate_array_html_repr(array_info_dict, dataset)
+
+        return repr_html
 
     def __enter__(self):
         return self

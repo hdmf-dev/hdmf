@@ -1,15 +1,213 @@
 # HDMF Changelog
 
-## HDMF 3.11.0 (Upcoming)
+## HDMF 4.1.2 (Upcoming)
+
+### Bug fixes
+- Fixed bug when converting string datasets that are Zarr arrays. @oruebel @rly [#1171](https://github.com/hdmf-dev/hdmf/pull/1171)
+
+## HDMF 4.1.1 (October 22, 2025)
+
+### Fixed
+- Fixed copying of `TypeMap` and `TypeConfigurator`. Previously, the same global `TypeConfigurator` instance was used in all copies of a `TypeMap`. @rly [#1302](https://github.com/hdmf-dev/hdmf/pull/1302)
+- Fixed `get_data_shape` to use `Data.data.shape` instead of `Data.shape`, which may be overridden by subclasses. @rly [#1311](https://github.com/hdmf-dev/hdmf/pull/1311)
+- Fixed HTML representation of datasets when reading from LINDI. @bendichter [#1335](https://github.com/hdmf-dev/hdmf/pull/1335)
+- Fixed bug where compound datatypes were disregarding custom data I/O options with the zarr backend. @pauladkisson [#1297](https://github.com/hdmf-dev/hdmf/pull/1297)
+
+### Added
+- Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
+- Added checks when loading a namespace for link specification conflicts between extension and core schemas. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309)
+- Added GitHub Actions workflow that tests compatibility with NWB extensions from the NWB extensions catalog. @rly [#1319](https://github.com/hdmf-dev/hdmf/pull/1319)
+- Added unit tests for hdmf.common module to improve code coverage. @stephprince [#1330](https://github.com/hdmf-dev/hdmf/pull/1330)
+
+### Changed
+- Changed error for attempting to overwrite an existing specification into a warning that any specification redefinitions will be ignored. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309)
+- Deprecated the experimental `HERDManager.link_resources` and `HERDManager.link_external_resources` and added the property `HERDManager.external_resources` to support downstream API function overloading. @mavaylon1, @rly [#1292](https://github.com/hdmf-dev/hdmf/pull/1292)
+
+
+## HDMF 4.1.0 (May 28, 2025)
+
+### Enhancements
+- Optimized `get` within `VectorIndex` to be more efficient when retrieving a dataset of references. @mavaylon1 [#1248](https://github.com/hdmf-dev/hdmf/pull/1248)
+- Enhanced warnings about ignoring cached namespaces. @stephprince [#1258](https://github.com/hdmf-dev/hdmf/pull/1258)
+- Added support in append for same dimensional args for numpy arrays. @mavaylon1 [#1261](https://github.com/hdmf-dev/hdmf/pull/1261)
+- Improved error messages when optional requirements are not installed. @rly [#1263](https://github.com/hdmf-dev/hdmf/pull/1263)
+- Updated Extension documentation. Renamed `ClassGenerator` to `ClassGeneratorManager`. @mavaylon1[#1268](https://github.com/hdmf-dev/hdmf/pull/1268)
+
+### Changed
+- Removed `requirements-min.txt` in favor of the `min-reqs` optional dependency group in `pyproject.toml`. @rly [#1246](https://github.com/hdmf-dev/hdmf/pull/1246)
+- Updated GitHub actions and ruff configuration. @rly [#1246](https://github.com/hdmf-dev/hdmf/pull/1246)
+- `hdmf.monitor` is unused and undocumented. It has been deprecated and will be removed in HDMF 5.0. @rly [#1245](https://github.com/hdmf-dev/hdmf/pull/1245)
+- Restricted numcodecs dependency to <0.16 due to incompatibility with the latest zarr<3 version. @rly [#1257](https://github.com/hdmf-dev/hdmf/pull/1257)
+- Increased minimum requirement for optional schemasheets dependency to 0.4.0rc1 due to incompatibility with linkml-runtime. @rly [#1263](https://github.com/hdmf-dev/hdmf/pull/1263)
+- Refactored `YamlSpecWriter.sort_keys` to be a static method so that it can be cleanly used elsewhere. @rly [#1274](https://github.com/hdmf-dev/hdmf/pull/1274)
+
+### Fixed
+- Fixed `get_data_shape` returning the wrong shape for lists of Data objects. @rly [#1270](https://github.com/hdmf-dev/hdmf/pull/1270)
+- Added protection against complex numbers in arrays and other data types. @bendichter [#1279](https://github.com/hdmf-dev/hdmf/pull/1279)
+
+
+## HDMF 4.0.0 (January 22, 2025)
+
+### Breaking changes
+- The following classes have been deprecated and removed: Array, AbstractSortedArray, SortedArray, LinSpace, Query, RegionSlicer, ListSlicer, H5RegionSlicer, DataRegion, RegionBuilder. The following methods have been deprecated and removed: fmt_docval_args, call_docval_func, get_container_cls, add_child, set_dataio (now refactored as set_data_io). We have also removed all early development for region references. @mavaylon1, @rly [#1998](https://github.com/hdmf-dev/hdmf/pull/1198), [#1212](https://github.com/hdmf-dev/hdmf/pull/1212)
+- Importing from `hdmf.build.map` is no longer supported. Import from `hdmf.build` instead. @rly [#1221](https://github.com/hdmf-dev/hdmf/pull/1221)
+- Python 3.8 has reached end of life. Dropped support for Python 3.8 and add support for Python 3.13. @mavaylon1 [#1209](https://github.com/hdmf-dev/hdmf/pull/1209)
+- Support for Zarr is limited to versions < 3. @rly [#1229](https://github.com/hdmf-dev/hdmf/pull/1229)
+- Scipy is no longer a required dependency. Users using the `CSRMatrix` data type should install `scipy` separately or with `pip install "hdmf[sparse]"`. @rly [#1140](https://github.com/hdmf-dev/hdmf/pull/1140)
+
+### Changed
+- Added checks to ensure that group and dataset spec names and default names do not contain slashes. @bendichter [#1219](https://github.com/hdmf-dev/hdmf/pull/1219)
+- Updated copyright dates. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Created optional dependency groups in `pyproject.toml` and update GitHub Actions workflows to use those instead of requirements files.  @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Stopped using pinned dependencies in the docs and testing. These are not necessary for library testing, confuse new users and developers, and add maintenance burden. Current dependencies are stable enough that they need not be pinned and users can report the libraries they use. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Stopped redundant testing using a conda environment. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+- Adopted changelog format conventions: https://keepachangelog.com/en/1.1.0/ . @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+
+### Added
+- Added script to check Python version support for HDMF dependencies. @rly [#1230](https://github.com/hdmf-dev/hdmf/pull/1230)
+
+### Fixed
+- Fixed issue with `DynamicTable.add_column` not allowing subclasses of `DynamicTableRegion` or `EnumData`. @rly [#1091](https://github.com/hdmf-dev/hdmf/pull/1091)
+
+
+## HDMF 3.14.6 (December 20, 2024)
+
+### Enhancements
+- Added support for expandable datasets of references for untyped and compound data types. @stephprince [#1188](https://github.com/hdmf-dev/hdmf/pull/1188)
+- Improved html representation of data in `Container` objects. @h-mayorquin [#1100](https://github.com/hdmf-dev/hdmf/pull/1100)
+- Added error when using colon for `Container` name. A colon cannot be used as a group name when writing to Zarr on Windows. @stephprince [#1202](https://github.com/hdmf-dev/hdmf/pull/1202)
+- Adjusted testing for hdmf-zarr. @rly [#1222](https://github.com/hdmf-dev/hdmf/pull/1222)
+
+### Bug fixes
+- Fixed inaccurate error message when validating reference data types. @stephprince [#1199](https://github.com/hdmf-dev/hdmf/pull/1199)
+- Fixed incorrect dtype conversion of a StrDataset. @stephprince [#1205](https://github.com/hdmf-dev/hdmf/pull/1205)
+
+## HDMF 3.14.5 (October 6, 2024)
+
+### Enhancements
+- Added support for overriding backend configurations of `h5py.Dataset` objects in `Container.set_data_io`. @pauladkisson [#1172](https://github.com/hdmf-dev/hdmf/pull/1172)
+
+### Bug fixes
+- Fixed bug in writing of string arrays to an HDF5 file that were read from an HDF5 file that was introduced in 3.14.4. @rly @stephprince
+  [#1189](https://github.com/hdmf-dev/hdmf/pull/1189)
+- Fixed export of scalar datasets with a compound data type. @stephprince [#1185](https://github.com/hdmf-dev/hdmf/pull/1185)
+- Fixed mamba-related error in conda-based GitHub Actions. @rly [#1194](https://github.com/hdmf-dev/hdmf/pull/1194)
+
+## HDMF 3.14.4 (September 4, 2024)
+
+### Enhancements
+- Added support to append to a dataset of references for HDMF-Zarr. @mavaylon1 [#1157](https://github.com/hdmf-dev/hdmf/pull/1157)
+- Adjusted stacklevel of warnings to point to user code when possible. @rly [#1166](https://github.com/hdmf-dev/hdmf/pull/1166)
+- Improved "already exists" error message when adding a container to a `MultiContainerInterface`. @rly [#1165](https://github.com/hdmf-dev/hdmf/pull/1165)
+- Added support to write multidimensional string arrays. @stephprince [#1173](https://github.com/hdmf-dev/hdmf/pull/1173)
+- Add support for appending to a dataset of references. @mavaylon1 [#1135](https://github.com/hdmf-dev/hdmf/pull/1135)
+
+### Bug fixes
+- Fixed issue where scalar datasets with a compound data type were being written as non-scalar datasets @stephprince [#1176](https://github.com/hdmf-dev/hdmf/pull/1176)
+- Fixed H5DataIO not exposing `maxshape` on non-dci dsets. @cboulay [#1149](https://github.com/hdmf-dev/hdmf/pull/1149)
+- Fixed generation of classes in an extension that contain attributes or datasets storing references to other types defined in the extension.
+  @rly [#1183](https://github.com/hdmf-dev/hdmf/pull/1183)
+
+## HDMF 3.14.3 (July 29, 2024)
+
+### Enhancements
+- Added new attribute "dimension_labels" on `DatasetBuilder` which specifies the names of the dimensions used in the
+dataset based on the shape of the dataset data and the dimension names in the spec for the data type. This attribute
+is available on build (during the write process), but not on read of a dataset from a file. @rly [#1081](https://github.com/hdmf-dev/hdmf/pull/1081)
+- Speed up loading namespaces by skipping register_type when already registered. @magland [#1102](https://github.com/hdmf-dev/hdmf/pull/1102)
+- Speed up namespace loading: return a shallow copy rather than a deep copy in build_const_args. @magland [#1103](https://github.com/hdmf-dev/hdmf/pull/1103)
+
+## HDMF 3.14.2 (July 7, 2024)
+
+### Enhancements
+- Warn when unexpected keys are present in specs. @rly [#1134](https://github.com/hdmf-dev/hdmf/pull/1134)
+- Support appending to zarr arrays. @mavaylon1 [#1136](https://github.com/hdmf-dev/hdmf/pull/1136)
+- Support specifying "value" key in DatasetSpec. @rly [#1143](https://github.com/hdmf-dev/hdmf/pull/1143)
+- Add support for numpy 2. @rly [#1139](https://github.com/hdmf-dev/hdmf/pull/1139)
+
+### Bug fixes
+- Fix iterator increment causing an extra +1 added after the end of completion. @CodyCBakerPhD [#1128](https://github.com/hdmf-dev/hdmf/pull/1128)
+
+## HDMF 3.14.1 (June 6, 2024)
+
+### Bug fixes
+- Excluded unnecessary artifacts from sdist and wheel. @rly [#1119](https://github.com/hdmf-dev/hdmf/pull/1119)
+- Fixed issue with resolving attribute specs that have the same name at different levels of a spec hierarchy.
+  @rly [#1122](https://github.com/hdmf-dev/hdmf/pull/1122)
+
+## HDMF 3.14.0 (May 20, 2024)
+
+### Enhancements
+- Updated `_field_config` to take `type_map` as an argument for APIs. @mavaylon1 [#1094](https://github.com/hdmf-dev/hdmf/pull/1094)
+- Added `TypeConfigurator` to automatically wrap fields with `TermSetWrapper` according to a configuration file. @mavaylon1 [#1016](https://github.com/hdmf-dev/hdmf/pull/1016)
+- Updated `TermSetWrapper` to support validating a single field within a compound array. @mavaylon1 [#1061](https://github.com/hdmf-dev/hdmf/pull/1061)
+- Updated testing to not install in editable mode and not run `coverage` by default. @rly [#1107](https://github.com/hdmf-dev/hdmf/pull/1107)
+- Add `post_init_method` parameter when generating classes to perform post-init functionality, i.e., validation. @mavaylon1 [#1089](https://github.com/hdmf-dev/hdmf/pull/1089)
+- Exposed `aws_region` to `HDF5IO` and downstream passes to `h5py.File`. @codycbakerphd [#1040](https://github.com/hdmf-dev/hdmf/pull/1040)
+- Exposed `progress_bar_class` to the `GenericDataChunkIterator` for more custom control over display of progress while iterating. @codycbakerphd [#1110](https://github.com/hdmf-dev/hdmf/pull/1110)
+- Updated loading, unloading, and getting the `TypeConfigurator` to support a `TypeMap` parameter. @mavaylon1 [#1117](https://github.com/hdmf-dev/hdmf/pull/1117)
+
+### Bug Fixes
+- Fixed `TermSetWrapper` warning raised during the setters. @mavaylon1 [#1116](https://github.com/hdmf-dev/hdmf/pull/1116)
+
+## HDMF 3.13.0 (March 20, 2024)
+
+### Enhancements
+- Unwrap `TermSetWrapper` within the builder to support different backends more efficiently. @mavaylon1 [#1070](https://github.com/hdmf-dev/hdmf/pull/1070)
+- Added docs page that lists limitations of support for the HDMF specification language. @rly [#1069](https://github.com/hdmf-dev/hdmf/pull/1069)
+- Added warning when using `add_row` or `add_column` to add a ragged array to `DynamicTable` without an index parameter. @stephprince [#1066](https://github.com/hdmf-dev/hdmf/pull/1066)
+
+## HDMF 3.12.2 (February 9, 2024)
+
+### Bug fixes
+- Fixed recursion error in html representation generation in jupyter notebooks. @stephprince [#1038](https://github.com/hdmf-dev/hdmf/pull/1038)
+
+## HDMF 3.12.1 (February 5, 2024)
+
+### Bug fixes
+- Fixed retrieving the correct path for a `HERD` zip file on read. [#1046](https://github.com/hdmf-dev/hdmf/pull/1046)
+- Fixed internal links in docstrings and tutorials. @stephprince [#1031](https://github.com/hdmf-dev/hdmf/pull/1031)
+- Fixed issue with creating documentation links to classes in docval arguments. @rly [#1036](https://github.com/hdmf-dev/hdmf/pull/1036)
+- Fixed issue with validator not validating against the spec that defines the data type of the builder. @rly [#1050](https://github.com/hdmf-dev/hdmf/pull/1050)
+
+## HDMF 3.12.0 (January 16, 2024)
+
+### Enhancements
+- Add Data.set_data_io(), which allows for setting a `DataIO` to a data object after-the-fact. @bendichter and @CodyCBakerPhD [#1013](https://github.com/hdmf-dev/hdmf/pull/1013)
+- Added `add_ref_termset`, updated helper methods for `HERD`, revised `add_ref` to support validations prior to populating the tables
+  and added `add_ref_container`.  @mavaylon1 [#968](https://github.com/hdmf-dev/hdmf/pull/968)
+- Use `stacklevel` in most warnings. @rly [#1027](https://github.com/hdmf-dev/hdmf/pull/1027)
+- Fixed broken links in documentation and added internal link checking to workflows. @stephprince [#1031](https://github.com/hdmf-dev/hdmf/pull/1031)
+
+### Minor Improvements
+- Updated `__gather_columns` to ignore the order of bases when generating columns from the super class. @mavaylon1 [#991](https://github.com/hdmf-dev/hdmf/pull/991)
+- Update `get_key` to return all the keys if there are multiple within a `HERD` instance. @mavaylon1 [#999](https://github.com/hdmf-dev/hdmf/pull/999)
+- Improve HTML rendering of tables. @bendichter [#998](https://github.com/hdmf-dev/hdmf/pull/998)
+- Improved issue and PR templates. @rly [#1004](https://github.com/hdmf-dev/hdmf/pull/1004)
+- Added check during validation for if a variable length dataset is empty. @bendichter, @oruebel [#789](https://github.com/hdmf-dev/hdmf/pull/789)
+
+### Bug fixes
+- Fixed issue with custom class generation when a spec has a `name`. @rly [#1006](https://github.com/hdmf-dev/hdmf/pull/1006)
+- Fixed issue with usage of deprecated `ruamel.yaml.safe_load` in `src/hdmf/testing/validate_spec.py`. @rly [#1008](https://github.com/hdmf-dev/hdmf/pull/1008)
+- Fixed issue where `ElementIdentifiers` data could be set to non-integer values. @rly [#1009](https://github.com/hdmf-dev/hdmf/pull/1009)
+- Fixed issue where string datasets/attributes with isodatetime-formatted values failed validation against a text spec. @rly [#1026](https://github.com/hdmf-dev/hdmf/pull/1026)
+
+## HDMF 3.11.0 (October 30, 2023)
 
 ### Enhancements
 - Added `target_tables` attribute to `DynamicTable` to allow users to specify the target table of any predefined
 `DynamicTableRegion` columns of a `DynamicTable` subclass. @rly [#971](https://github.com/hdmf-dev/hdmf/pull/971)
-- Updated `TermSet` to include `_repr_html_` for easy to read notebook representation. @mavaylon1 [967](https://github.com/hdmf-dev/hdmf/pull/967)
+- Updated `TermSet` to include `_repr_html_` for easy to read notebook representation. @mavaylon1 [#967](https://github.com/hdmf-dev/hdmf/pull/967)
+
+### Minor improvements
+- Set up GitHub dependabot to check for updates to GitHub Actions. @rly [#977](https://github.com/hdmf-dev/hdmf/pull/977)
+- Simplify tox configuration. @rly [#988](https://github.com/hdmf-dev/hdmf/pull/988)
+- Add testing for Python 3.12. @rly [#988](https://github.com/hdmf-dev/hdmf/pull/988)
 
 ### Bug fixes
 - Updated custom class generation to handle specs with fixed values and required names. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
 - Fixed custom class generation of `DynamicTable` subtypes to set attributes corresponding to column names for correct write. @rly [#800](https://github.com/hdmf-dev/hdmf/pull/800)
+- Added a `.mailmap` file to correct mapping of names/emails in git logs. @oruebel [#976](https://github.com/hdmf-dev/hdmf/pull/976)
 
 ## HDMF 3.10.0 (October 3, 2023)
 
@@ -85,8 +283,8 @@ will increase the minor version number to 3.10.0. See the 3.9.1 release notes be
 ## HDMF 3.6.0 (May 12, 2023)
 
 ### New features and minor improvements
-- Updated `ExternalResources` to have `FileTable` and new methods to query data. the `ResourceTable` has been removed along with methods relating to `Resource`. @mavaylon [#850](https://github.com/hdmf-dev/hdmf/pull/850)
-- Updated hdmf-common-schema version to 1.6.0. @mavaylon [#850](https://github.com/hdmf-dev/hdmf/pull/850)
+- Updated `ExternalResources` to have `FileTable` and new methods to query data. the `ResourceTable` has been removed along with methods relating to `Resource`. @mavaylon1 [#850](https://github.com/hdmf-dev/hdmf/pull/850)
+- Updated hdmf-common-schema version to 1.6.0. @mavaylon1 [#850](https://github.com/hdmf-dev/hdmf/pull/850)
 - Added testing of HDMF-Zarr on PR and nightly. @rly [#859](https://github.com/hdmf-dev/hdmf/pull/859)
 - Replaced `setup.py` with `pyproject.toml`. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
 - Use `ruff` instead of `flake8`. @rly [#844](https://github.com/hdmf-dev/hdmf/pull/844)
@@ -100,7 +298,7 @@ will increase the minor version number to 3.10.0. See the 3.9.1 release notes be
   [#853](https://github.com/hdmf-dev/hdmf/pull/853)
 
 ### Documentation and tutorial enhancements:
-- Updated `ExternalResources` how to tutorial to include the new features. @mavaylon [#850](https://github.com/hdmf-dev/hdmf/pull/850)
+- Updated `ExternalResources` how to tutorial to include the new features. @mavaylon1 [#850](https://github.com/hdmf-dev/hdmf/pull/850)
 
 ## HDMF 3.5.6 (April 28, 2023)
 
@@ -140,13 +338,13 @@ will increase the minor version number to 3.10.0. See the 3.9.1 release notes be
 
 ### Bug fixes
 - Fixed issue with conda CI. @rly [#823](https://github.com/hdmf-dev/hdmf/pull/823)
-- Fixed issue with deprecated `pkg_resources`. @mavaylon [#822](https://github.com/hdmf-dev/hdmf/pull/822)
-- Fixed `hdmf.common` deprecation warning. @mavaylon [#826]((https://github.com/hdmf-dev/hdmf/pull/826)
+- Fixed issue with deprecated `pkg_resources`. @mavaylon1 [#822](https://github.com/hdmf-dev/hdmf/pull/822)
+- Fixed `hdmf.common` deprecation warning. @mavaylon1 [#826]((https://github.com/hdmf-dev/hdmf/pull/826)
 
 ### Internal improvements
 - A number of typos fixed and Github action running codespell to ensure that no typo sneaks in [#825](https://github.com/hdmf-dev/hdmf/pull/825) was added.
-- Added additional documentation for `__fields__` in `AbstactContainer`. @mavaylon [#827](https://github.com/hdmf-dev/hdmf/pull/827)
-- Updated warning message for broken links. @mavaylon [#829](https://github.com/hdmf-dev/hdmf/pull/829)
+- Added additional documentation for `__fields__` in `AbstactContainer`. @mavaylon1 [#827](https://github.com/hdmf-dev/hdmf/pull/827)
+- Updated warning message for broken links. @mavaylon1 [#829](https://github.com/hdmf-dev/hdmf/pull/829)
 
 ## HDMF 3.5.1 (January 26, 2023)
 
@@ -165,9 +363,9 @@ will increase the minor version number to 3.10.0. See the 3.9.1 release notes be
 - Added ``HDMFIO.__del__`` to ensure that I/O objects are being closed on delete. @oruebel[#811](https://github.com/hdmf-dev/hdmf/pull/811)
 
 ### Minor improvements
-- Added support for reading and writing `ExternalResources` to and from denormalized TSV files. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
-- Changed the name of `ExternalResources.export_to_sqlite` to `ExternalResources.to_sqlite`. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
-- Updated the tutorial for `ExternalResources`. @mavaylon [#799](https://github.com/hdmf-dev/hdmf/pull/799)
+- Added support for reading and writing `ExternalResources` to and from denormalized TSV files. @mavaylon1 [#799](https://github.com/hdmf-dev/hdmf/pull/799)
+- Changed the name of `ExternalResources.export_to_sqlite` to `ExternalResources.to_sqlite`. @mavaylon1 [#799](https://github.com/hdmf-dev/hdmf/pull/799)
+- Updated the tutorial for `ExternalResources`. @mavaylon1 [#799](https://github.com/hdmf-dev/hdmf/pull/799)
 - Added `message` argument for assert methods defined by `hdmf.testing.TestCase` to allow developers to include custom error messages with asserts. @oruebel [#812](https://github.com/hdmf-dev/hdmf/pull/812)
 - Clarify the expected chunk shape behavior for `DataChunkIterator`. @oruebel [#813](https://github.com/hdmf-dev/hdmf/pull/813)
 
@@ -308,7 +506,7 @@ the fields (i.e., when the constructor sets some fields to fixed values). @rly
 - Plotted results in external resources tutorial. @oruebel (#667)
 - Added support for Python 3.10. @rly (#679)
 - Updated requirements. @rly @TheChymera (#681)
-- Improved testing for `ExternalResources`. @mavaylon (#673)
+- Improved testing for `ExternalResources`. @mavaylon1 (#673)
 - Improved docs for export. @rly (#674)
 - Enhanced data chunk iteration speeds through new ``GenericDataChunkIterator`` class.  @CodyCBakerPhD (#672)
 - Enhanced issue template forms on GitHub. @CodyCBakerPHD (#700)
@@ -384,7 +582,7 @@ the fields (i.e., when the constructor sets some fields to fixed values). @rly
 - Allow passing ``index=True`` to ``DynamicTable.to_dataframe()`` to support returning `DynamicTableRegion` columns
   as indices or Pandas DataFrame. @rly (#579)
 - Improve ``DynamicTable`` documentation. @rly (#639)
-- Updated external resources tutorial. @mavaylon (#611)
+- Updated external resources tutorial. @mavaylon1 (#611)
 
 ### Breaking changes and deprecations
 - Previously, when using ``DynamicTable.__getitem__`` or ``DynamicTable.get`` to access a selection of a
@@ -469,7 +667,7 @@ the fields (i.e., when the constructor sets some fields to fixed values). @rly
   - Add experimental namespace to HDMF common schema. New data types should go in the experimental namespace
     (hdmf-experimental) prior to being added to the core (hdmf-common) namespace. The purpose of this is to provide
     a place to test new data types that may break backward compatibility as they are refined. @ajtritt (#545)
-  - `ExternalResources` was changed to support storing both names and URIs for resources. @mavaylon (#517, #548)
+  - `ExternalResources` was changed to support storing both names and URIs for resources. @mavaylon1 (#517, #548)
   - The `VocabData` data type was replaced by `EnumData` to provide more flexible support for data from a set of
     fixed values.
   - Added `AlignedDynamicTable`, which defines a `DynamicTable` that supports storing a collection of sub-tables.
@@ -485,7 +683,7 @@ the fields (i.e., when the constructor sets some fields to fixed values). @rly
   Each sub-table is itself a DynamicTable that is aligned with the main table by row index. Each subtable
   defines a sub-category in the main table effectively creating a table with sub-headings to organize columns.
   @oruebel (#551)
-- Add tutoral for new `AlignedDynamicTable` type. @oruebel (#571)
+- Add tutorial for new `AlignedDynamicTable` type. @oruebel (#571)
 - Equality check for `DynamicTable` now also checks that the name and description of the table are the same. @rly (#566)
 
 ### Internal improvements

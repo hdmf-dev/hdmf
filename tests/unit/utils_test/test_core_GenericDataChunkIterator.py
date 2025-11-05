@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from tempfile import mkdtemp
 from shutil import rmtree
-from typing import Tuple, Iterable, Callable
+from typing import Tuple, Iterable, Callable, Union
 from sys import version_info
 
 import h5py
@@ -400,6 +400,32 @@ class GenericDataChunkIteratorTests(TestCase):
         with open(file=out_text_file, mode="w") as file:
             iterator = self.TestNumpyArrayDataChunkIterator(
                 array=self.test_array, display_progress=True, progress_bar_options=dict(file=file, desc=desc)
+            )
+            j = 0
+            for buffer in iterator:
+                j += 1  # dummy operation; must be silent for proper updating of bar
+        with open(file=out_text_file, mode="r") as file:
+            first_line = file.read()
+            self.assertIn(member=desc, container=first_line)
+
+    @unittest.skipIf(not TQDM_INSTALLED, "optional tqdm module is not installed")
+    def test_progress_bar_class(self):
+
+        class MyCustomProgressBar(tqdm.tqdm):
+            def update(self, n: int = 1) -> Union[bool, None]:
+                displayed = super().update(n)
+                print(f"Custom injection on step {n}") # noqa: T201
+
+                return displayed
+
+        out_text_file = self.test_dir / "test_progress_bar_class.txt"
+        desc = "Testing progress bar..."
+        with open(file=out_text_file, mode="w") as file:
+            iterator = self.TestNumpyArrayDataChunkIterator(
+                array=self.test_array,
+                display_progress=True,
+                progress_bar_class=MyCustomProgressBar,
+                progress_bar_options=dict(file=file, desc=desc),
             )
             j = 0
             for buffer in iterator:

@@ -1,7 +1,15 @@
 from abc import ABCMeta, abstractmethod
+import warnings
 
 from .data_utils import AbstractDataChunkIterator, DataChunkIterator, DataChunk
 from .utils import docval, getargs
+
+warnings.warn(
+    "The hdmf.monitor module is deprecated and will be removed in HDMF 5.0. If you are using this module, "
+    "please copy this module to your codebase or raise an issue in the HDMF repository: "
+    "https://github.com/hdmf-dev/hdmf/issues",
+    DeprecationWarning,
+)
 
 
 class NotYetExhausted(Exception):

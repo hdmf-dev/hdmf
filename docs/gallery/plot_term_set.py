@@ -65,8 +65,11 @@ for this tutorial, which provides a concise example of how a term set schema loo
     For more information how to properly format the schema to support LinkML Dynamic Enumerations, please
     refer to https://linkml.io/linkml/schemas/enums.html#dynamic-enums.
 """
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_termset.png'
+
 from hdmf.common import DynamicTable, VectorData
 import os
+import numpy as np
 
 try:
     import linkml_runtime  # noqa: F401
@@ -107,7 +110,7 @@ termset = TermSet(term_schema_path=dynamic_schema_path, dynamic=True)
 ######################################################
 # Viewing TermSet values
 # ----------------------------------------------------
-# :py:class:`~hdmf.term_set.TermSet` has methods to retrieve terms. The :py:func:`~hdmf.term_set.TermSet:view_set`
+# :py:class:`~hdmf.term_set.TermSet` has methods to retrieve terms. The :py:func:`~hdmf.term_set.TermSet.view_set`
 # method will return a dictionary of all the terms and the corresponding information for each term.
 # Users can index specific terms from the :py:class:`~hdmf.term_set.TermSet`. LinkML runtime will need to be installed.
 # You can do so by first running ``pip install linkml-runtime``.
@@ -128,6 +131,19 @@ data = VectorData(
     description='...',
     data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
     )
+
+######################################################
+# Validate Compound Data with TermSetWrapper
+# ----------------------------------------------------
+# :py:class:`~hdmf.term_set.TermSetWrapper` can be wrapped around compound data.
+# The user will set the field within the compound data type that is to be validated
+# with the termset.
+c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+data = VectorData(
+    name='species',
+    description='...',
+    data=TermSetWrapper(value=c_data, termset=terms, field='species')
+)
 
 ######################################################
 # Validate Attributes with TermSetWrapper
@@ -190,3 +206,6 @@ species.add_row(Species_1='Mus musculus', Species_2='Mus musculus')
 # To add a column that is validated using :py:class:`~hdmf.term_set.TermSetWrapper`,
 # wrap the data in the :py:func:`~hdmf.common.table.DynamicTable.add_column`
 # method as if you were making a new instance of :py:class:`~hdmf.common.table.VectorData`.
+species.add_column(name='Species_3',
+                   description='...',
+                   data=TermSetWrapper(value=['Ursus arctos horribilis', 'Mus musculus'], termset=terms),)

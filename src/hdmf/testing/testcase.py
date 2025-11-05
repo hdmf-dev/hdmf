@@ -174,7 +174,7 @@ class TestCase(unittest.TestCase):
         :param message: custom additional message to show when assertions as part of this assert are failing
         """
         array_data_types = tuple([i for i in get_docval_macro('array_data')
-                                  if (i != list and i != tuple and i != AbstractDataChunkIterator)])
+                                  if (i is not list and i is not tuple and i is not AbstractDataChunkIterator)])
         # We construct array_data_types this way to avoid explicit dependency on h5py, Zarr and other
         # I/O backends. Only list and tuple do not support [()] slicing, and AbstractDataChunkIterator
         # should never occur here. The effective value of array_data_types is then:
@@ -239,8 +239,8 @@ class TestCase(unittest.TestCase):
         :type check_path: bool
         :param check_source: Check that the builder.source values are equal
         :type check_source: bool
-        :param message: Custom message to add when any asserts as part of this assert are failing
-        :type message: str or None (default=None)
+        :param message: Custom message to add when any asserts as part of this assert are failing (default=None)
+        :type message: str or None
         """
         self.assertTrue(isinstance(builder1, Builder), message)
         self.assertTrue(isinstance(builder2, Builder), message)

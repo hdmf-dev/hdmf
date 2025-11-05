@@ -6,7 +6,6 @@ from collections.abc import Iterable
 from datetime import datetime, date
 
 import numpy as np
-from h5py import RegionReference
 
 from ..utils import docval, getargs, get_docval
 
@@ -14,7 +13,8 @@ from ..utils import docval, getargs, get_docval
 class Builder(dict, metaclass=ABCMeta):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the group'},
-            {'name': 'parent', 'type': 'Builder', 'doc': 'the parent builder of this Builder', 'default': None},
+            {'name': 'parent', 'type': 'hdmf.build.builders.Builder', 'doc': 'the parent builder of this Builder',
+             'default': None},
             {'name': 'source', 'type': str,
              'doc': 'the source of the data in this builder e.g. file name', 'default': None})
     def __init__(self, **kwargs):
@@ -79,7 +79,8 @@ class BaseBuilder(Builder, metaclass=ABCMeta):
     @docval({'name': 'name', 'type': str, 'doc': 'The name of the builder.'},
             {'name': 'attributes', 'type': dict, 'doc': 'A dictionary of attributes to create in this builder.',
              'default': dict()},
-            {'name': 'parent', 'type': 'GroupBuilder', 'doc': 'The parent builder of this builder.', 'default': None},
+            {'name': 'parent', 'type': 'hdmf.build.builders.GroupBuilder', 'doc': 'The parent builder of this builder.',
+             'default': None},
             {'name': 'source', 'type': str,
              'doc': 'The source of the data represented in this builder', 'default': None})
     def __init__(self, **kwargs):
@@ -134,7 +135,8 @@ class GroupBuilder(BaseBuilder):
              'doc': ('A dictionary or list of links to add to this group. If a dict is provided, only the '
                      'values are used.'),
              'default': dict()},
-            {'name': 'parent', 'type': 'GroupBuilder', 'doc': 'The parent builder of this builder.', 'default': None},
+            {'name': 'parent', 'type': 'hdmf.build.builders.GroupBuilder', 'doc': 'The parent builder of this builder.',
+             'default': None},
             {'name': 'source', 'type': str,
              'doc': 'The source of the data represented in this builder.', 'default': None})
     def __init__(self, **kwargs):
@@ -213,19 +215,22 @@ class GroupBuilder(BaseBuilder):
             raise ValueError("'%s' already exists in %s.%s, cannot set in %s."
                              % (name, self.name, self.obj_type[name], obj_type))
 
-    @docval({'name': 'builder', 'type': 'GroupBuilder', 'doc': 'The GroupBuilder to add to this group.'})
+    @docval({'name': 'builder', 'type': 'hdmf.build.builders.GroupBuilder',
+             'doc': 'The GroupBuilder to add to this group.'})
     def set_group(self, **kwargs):
         """Add a subgroup to this group."""
         builder = getargs('builder', kwargs)
         self.__set_builder(builder, GroupBuilder.__group)
 
-    @docval({'name': 'builder', 'type': 'DatasetBuilder', 'doc': 'The DatasetBuilder to add to this group.'})
+    @docval({'name': 'builder', 'type': 'hdmf.build.builders.DatasetBuilder',
+             'doc': 'The DatasetBuilder to add to this group.'})
     def set_dataset(self, **kwargs):
         """Add a dataset to this group."""
         builder = getargs('builder', kwargs)
         self.__set_builder(builder, GroupBuilder.__dataset)
 
-    @docval({'name': 'builder', 'type': 'LinkBuilder', 'doc': 'The LinkBuilder to add to this group.'})
+    @docval({'name': 'builder', 'type': 'hdmf.build.builders.LinkBuilder',
+             'doc': 'The LinkBuilder to add to this group.'})
     def set_link(self, **kwargs):
         """Add a link to this group."""
         builder = getargs('builder', kwargs)
@@ -314,16 +319,19 @@ class GroupBuilder(BaseBuilder):
 
 class DatasetBuilder(BaseBuilder):
     OBJECT_REF_TYPE = 'object'
-    REGION_REF_TYPE = 'region'
 
     @docval({'name': 'name', 'type': str, 'doc': 'The name of the dataset.'},
             {'name': 'data',
-             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', 'RegionBuilder', Iterable, datetime, date),
+             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', Iterable, datetime, date),
              'doc': 'The data in this dataset.', 'default': None},
             {'name': 'dtype', 'type': (type, np.dtype, str, list),
              'doc': 'The datatype of this dataset.', 'default': None},
             {'name': 'attributes', 'type': dict,
              'doc': 'A dictionary of attributes to create in this dataset.', 'default': dict()},
+            {'name': 'dimension_labels', 'type': tuple,
+             'doc': ('A list of labels for each dimension of this dataset from the spec. Currently this is '
+                     'supplied only on build.'),
+             'default': None},
             {'name': 'maxshape', 'type': (int, tuple),
              'doc': 'The shape of this dataset. Use None for scalars.', 'default': None},
             {'name': 'chunks', 'type': bool, 'doc': 'Whether or not to chunk this dataset.', 'default': False},
@@ -331,11 +339,14 @@ class DatasetBuilder(BaseBuilder):
             {'name': 'source', 'type': str, 'doc': 'The source of the data in this builder.', 'default': None})
     def __init__(self, **kwargs):
         """ Create a Builder object for a dataset """
-        name, data, dtype, attributes, maxshape, chunks, parent, source = getargs(
-            'name', 'data', 'dtype', 'attributes', 'maxshape', 'chunks', 'parent', 'source', kwargs)
+        name, data, dtype, attributes, dimension_labels, maxshape, chunks, parent, source = getargs(
+            'name', 'data', 'dtype', 'attributes', 'dimension_labels', 'maxshape', 'chunks', 'parent', 'source',
+            kwargs
+        )
         super().__init__(name, attributes, parent, source)
         self['data'] = data
         self['attributes'] = _copy.copy(attributes)
+        self.__dimension_labels = dimension_labels
         self.__chunks = chunks
         self.__maxshape = maxshape
         if isinstance(data, BaseBuilder):
@@ -354,6 +365,11 @@ class DatasetBuilder(BaseBuilder):
         if self['data'] is not None:
             raise AttributeError("Cannot overwrite data.")
         self['data'] = val
+
+    @property
+    def dimension_labels(self):
+        """Labels for each dimension of this dataset from the spec."""
+        return self.__dimension_labels
 
     @property
     def chunks(self):
@@ -411,20 +427,3 @@ class ReferenceBuilder(dict):
     def builder(self):
         """The target builder object."""
         return self['builder']
-
-
-class RegionBuilder(ReferenceBuilder):
-
-    @docval({'name': 'region', 'type': (slice, tuple, list, RegionReference),
-             'doc': 'The region, i.e. slice or indices, into the target dataset.'},
-            {'name': 'builder', 'type': DatasetBuilder, 'doc': 'The dataset this region reference applies to.'})
-    def __init__(self, **kwargs):
-        """Create a builder object for a region reference."""
-        region, builder = getargs('region', 'builder', kwargs)
-        super().__init__(builder)
-        self['region'] = region
-
-    @property
-    def region(self):
-        """The selected region of the target dataset."""
-        return self['region']

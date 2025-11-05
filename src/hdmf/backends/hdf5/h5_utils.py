@@ -8,7 +8,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from copy import copy
 
-from h5py import Group, Dataset, RegionReference, Reference, special_dtype
+from h5py import Group, Dataset, Reference, special_dtype
 from h5py import filters as h5py_filters
 import json
 import numpy as np
@@ -16,12 +16,10 @@ import warnings
 import os
 import logging
 
-from ...array import Array
-from ...data_utils import DataIO, AbstractDataChunkIterator
+from ...data_utils import DataIO, AbstractDataChunkIterator, append_data
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
-from ...region import RegionSlicer
 from ...spec import SpecWriter, SpecReader
-from ...utils import docval, getargs, popargs, get_docval
+from ...utils import docval, getargs, popargs, get_docval, get_data_shape
 
 
 class HDF5IODataChunkIteratorQueue(deque):
@@ -77,7 +75,7 @@ class HDF5IODataChunkIteratorQueue(deque):
         Append a value to the queue
 
         :param dataset: The dataset where the DataChunkIterator is written to
-        :type dataset: Dataset
+        :type dataset: :py:class:`~h5py.Dataset`
         :param data: DataChunkIterator with the data to be written
         :type data: AbstractDataChunkIterator
         """
@@ -85,8 +83,9 @@ class HDF5IODataChunkIteratorQueue(deque):
 
 
 class H5Dataset(HDMFDataset):
-    @docval({'name': 'dataset', 'type': (Dataset, Array), 'doc': 'the HDF5 file lazily evaluate'},
-            {'name': 'io', 'type': 'HDF5IO', 'doc': 'the IO object that was used to read the underlying dataset'})
+    @docval({'name': 'dataset', 'type': Dataset, 'doc': 'the HDF5 file lazily evaluate'},
+            {'name': 'io', 'type': 'hdmf.backends.hdf5.h5tools.HDF5IO',
+             'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
         self.__io = popargs('io', kwargs)
         super().__init__(**kwargs)
@@ -96,16 +95,26 @@ class H5Dataset(HDMFDataset):
         return self.__io
 
     @property
-    def regionref(self):
-        return self.dataset.regionref
-
-    @property
     def ref(self):
         return self.dataset.ref
 
     @property
     def shape(self):
         return self.dataset.shape
+
+    def append(self, arg):
+        # Get Builder
+        builder = self.io.manager.get_builder(arg)
+        if builder is None:
+            raise ValueError(
+                "The container being appended to the dataset has not yet been built. "
+                "Please write the container to the file, then open the modified file, and "
+                "append the read container to the dataset."
+            )
+
+        # Get HDF5 Reference
+        ref = self.io._create_ref(builder)
+        append_data(self.dataset, ref)
 
 
 class DatasetOfReferences(H5Dataset, ReferenceResolver, metaclass=ABCMeta):
@@ -174,8 +183,9 @@ class ContainerResolverMixin(ContainerResolver):
 
 class AbstractH5TableDataset(DatasetOfReferences):
 
-    @docval({'name': 'dataset', 'type': (Dataset, Array), 'doc': 'the HDF5 file lazily evaluate'},
-            {'name': 'io', 'type': 'HDF5IO', 'doc': 'the IO object that was used to read the underlying dataset'},
+    @docval({'name': 'dataset', 'type': Dataset, 'doc': 'the HDF5 file lazily evaluate'},
+            {'name': 'io', 'type': 'hdmf.backends.hdf5.h5tools.HDF5IO',
+             'doc': 'the IO object that was used to read the underlying dataset'},
             {'name': 'types', 'type': (list, tuple),
              'doc': 'the IO object that was used to read the underlying dataset'})
     def __init__(self, **kwargs):
@@ -183,9 +193,7 @@ class AbstractH5TableDataset(DatasetOfReferences):
         super().__init__(**kwargs)
         self.__refgetters = dict()
         for i, t in enumerate(types):
-            if t is RegionReference:
-                self.__refgetters[i] = self.__get_regref
-            elif t is Reference:
+            if t is Reference:
                 self.__refgetters[i] = self._get_ref
             elif t is str:
                 # we need this for when we read compound data types
@@ -207,8 +215,6 @@ class AbstractH5TableDataset(DatasetOfReferences):
                     t = sub.metadata['ref']
                     if t is Reference:
                         tmp.append('object')
-                    elif t is RegionReference:
-                        tmp.append('region')
             else:
                 tmp.append(sub.type.__name__)
         self.__dtype = tmp
@@ -241,10 +247,6 @@ class AbstractH5TableDataset(DatasetOfReferences):
         """
         return string.decode('utf-8') if isinstance(string, bytes) else string
 
-    def __get_regref(self, ref):
-        obj = self._get_ref(ref)
-        return obj[ref]
-
     def resolve(self, manager):
         return self[0:len(self)]
 
@@ -265,18 +267,6 @@ class AbstractH5ReferenceDataset(DatasetOfReferences):
     @property
     def dtype(self):
         return 'object'
-
-
-class AbstractH5RegionDataset(AbstractH5ReferenceDataset):
-
-    def __getitem__(self, arg):
-        obj = super().__getitem__(arg)
-        ref = self.dataset[arg]
-        return obj[ref]
-
-    @property
-    def dtype(self):
-        return 'region'
 
 
 class ContainerH5TableDataset(ContainerResolverMixin, AbstractH5TableDataset):
@@ -321,28 +311,6 @@ class BuilderH5ReferenceDataset(BuilderResolverMixin, AbstractH5ReferenceDataset
     @classmethod
     def get_inverse_class(cls):
         return ContainerH5ReferenceDataset
-
-
-class ContainerH5RegionDataset(ContainerResolverMixin, AbstractH5RegionDataset):
-    """
-    A reference-resolving dataset for resolving region references that returns
-    resolved references as Containers
-    """
-
-    @classmethod
-    def get_inverse_class(cls):
-        return BuilderH5RegionDataset
-
-
-class BuilderH5RegionDataset(BuilderResolverMixin, AbstractH5RegionDataset):
-    """
-    A reference-resolving dataset for resolving region references that returns
-    resolved references as Builders
-    """
-
-    @classmethod
-    def get_inverse_class(cls):
-        return ContainerH5RegionDataset
 
 
 class H5SpecWriter(SpecWriter):
@@ -402,28 +370,6 @@ class H5SpecReader(SpecReader):
             self.__cache = self.__read(ns_path)
         ret = self.__cache['namespaces']
         return ret
-
-
-class H5RegionSlicer(RegionSlicer):
-
-    @docval({'name': 'dataset', 'type': (Dataset, H5Dataset), 'doc': 'the HDF5 dataset to slice'},
-            {'name': 'region', 'type': RegionReference, 'doc': 'the region reference to use to slice'})
-    def __init__(self, **kwargs):
-        self.__dataset = getargs('dataset', kwargs)
-        self.__regref = getargs('region', kwargs)
-        self.__len = self.__dataset.regionref.selection(self.__regref)[0]
-        self.__region = None
-
-    def __read_region(self):
-        if self.__region is None:
-            self.__region = self.__dataset[self.__regref]
-
-    def __getitem__(self, idx):
-        self.__read_region()
-        return self.__region[idx]
-
-    def __len__(self):
-        return self.__len
 
 
 class H5DataIO(DataIO):
@@ -499,7 +445,7 @@ class H5DataIO(DataIO):
         # Check for possible collision with other parameters
         if not isinstance(getargs('data', kwargs), Dataset) and self.__link_data:
             self.__link_data = False
-            warnings.warn('link_data parameter in H5DataIO will be ignored')
+            warnings.warn('link_data parameter in H5DataIO will be ignored', stacklevel=3)
         # Call the super constructor and consume the data parameter
         super().__init__(**kwargs)
         # Construct the dict with the io args, ignoring all options that were set to None
@@ -523,7 +469,7 @@ class H5DataIO(DataIO):
                 self.__iosettings.pop('compression', None)
                 if 'compression_opts' in self.__iosettings:
                     warnings.warn('Compression disabled by compression=False setting. ' +
-                                  'compression_opts parameter will, therefore, be ignored.')
+                                  'compression_opts parameter will, therefore, be ignored.', stacklevel=3)
                     self.__iosettings.pop('compression_opts', None)
         # Validate the compression options used
         self._check_compression_options()
@@ -537,16 +483,38 @@ class H5DataIO(DataIO):
         # Check possible parameter collisions
         if isinstance(self.data, Dataset):
             for k in self.__iosettings.keys():
-                warnings.warn("%s in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset" % k)
+                warnings.warn("%s in H5DataIO will be ignored with H5DataIO.data being an HDF5 dataset" % k,
+                              stacklevel=3)
 
         self.__dataset = None
 
     @property
     def dataset(self):
+        """Get the cached h5py.Dataset."""
         return self.__dataset
 
     @dataset.setter
     def dataset(self, val):
+        """Cache the h5py.Dataset written with the stored IO settings.
+
+        This attribute can be used to cache a written, empty dataset and fill it in later.
+        This allows users to access the handle to the dataset *without* having to close
+        and reopen a file.
+
+        For example::
+
+            dataio = H5DataIO(shape=(5,), dtype=int)
+            foo = Foo('foo1', dataio, "I am foo1", 17, 3.14)
+            bucket = FooBucket('bucket1', [foo])
+            foofile = FooFile(buckets=[bucket])
+
+            io = HDF5IO(self.path, manager=self.manager, mode='w')
+            # write the object to disk, including initializing an empty int dataset with shape (5,)
+            io.write(foofile)
+
+            foo.my_data.dataset[:] = [0, 1, 2, 3, 4]
+            io.close()
+        """
         if self.__dataset is not None:
             raise ValueError("Cannot overwrite H5DataIO.dataset")
         self.__dataset = val
@@ -594,7 +562,7 @@ class H5DataIO(DataIO):
             if self.__iosettings['compression'] not in ['gzip', h5py_filters.h5z.FILTER_DEFLATE]:
                 warnings.warn(str(self.__iosettings['compression']) + " compression may not be available "
                               "on all installations of HDF5. Use of gzip is recommended to ensure portability of "
-                              "the generated HDF5 files.")
+                              "the generated HDF5 files.", stacklevel=4)
 
     @staticmethod
     def filter_available(filter, allow_plugin_filters):
@@ -603,7 +571,7 @@ class H5DataIO(DataIO):
 
         :param filter: String with the name of the filter, e.g., gzip, szip etc.
                        int with the registered filter ID, e.g. 307
-        :type filter: String, int
+        :type filter: str, int
         :param allow_plugin_filters: bool indicating whether the given filter can be dynamically loaded
         :return: bool indicating whether the given filter is available
         """
@@ -634,3 +602,14 @@ class H5DataIO(DataIO):
         if isinstance(self.data, Dataset) and not self.data.id.valid:
             return False
         return super().valid
+
+    @property
+    def maxshape(self):
+        if 'maxshape' in self.io_settings:
+            return self.io_settings['maxshape']
+        elif hasattr(self.data, 'maxshape'):
+            return self.data.maxshape
+        elif hasattr(self, "shape"):
+            return self.shape
+        else:
+            return get_data_shape(self.data)

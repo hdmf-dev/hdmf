@@ -67,3 +67,15 @@ class LinkSpecTests(TestCase):
                 )
                 self.assertEqual(spec.required, req)
                 self.assertEqual(spec.is_many(), many)
+
+    def test_build_warn_extra_args(self):
+        spec_dict = {
+            'name': 'link1',
+            'doc': 'test link',
+            'target_type': 'TestType',
+            'required': True,
+        }
+        msg = ("Unexpected keys ['required'] in spec {'name': 'link1', 'doc': 'test link', "
+               "'target_type': 'TestType', 'required': True}")
+        with self.assertWarnsWith(UserWarning, msg):
+            LinkSpec.build_spec(spec_dict)

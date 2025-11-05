@@ -70,12 +70,13 @@ sphinx_gallery_conf = {
 }
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.11", None),
+    "python": ("https://docs.python.org/3.12", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "h5py": ("https://docs.h5py.org/en/latest/", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
+    "zarr": ("https://zarr.readthedocs.io/en/v2.18.4/", None), # TODO - update when hdmf-zarr supports Zarr 3.0
 }
 
 # these links cannot be checked in github actions
@@ -83,6 +84,15 @@ linkcheck_ignore = [
     "https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key",
     "https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request",
 ]
+
+nitpicky = True
+nitpick_ignore = [('py:class', 'Intracomm'),
+                  ('py:class', 'h5py._hl.dataset.Dataset'),
+                  ('py:class', 'function'),
+                  ('py:class', 'unittest.case.TestCase'),
+                  ]
+
+suppress_warnings = ["config.cache"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -99,7 +109,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "HDMF"
-copyright = "2017-2023, Hierarchical Data Modeling Framework"
+copyright = "2017-2025, Hierarchical Data Modeling Framework"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -152,15 +162,11 @@ pygments_style = "sphinx"
 # html_theme = 'default'
 # html_theme = "sphinxdoc"
 html_theme = "sphinx_rtd_theme"
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 # html_theme_options = {}
-
-# Add any paths that contain custom themes here, relative to this directory.
-# html_theme_path = []
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".

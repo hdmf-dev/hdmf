@@ -1,0 +1,18 @@
+namespaces:
+  hdmf-common:
+    version: 3.12.2
+    data_types:
+      Data:
+        description:
+          termset: example_test_term_set.yaml
+      EnumData:
+        description:
+          termset: example_test_term_set.yaml
+      VectorData:
+        name:
+  namespace2:
+    version: 0
+    data_types:
+      MythicData:
+        description:
+          termset: example_test_term_set.yaml

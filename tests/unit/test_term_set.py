@@ -1,9 +1,15 @@
 import os
-
-from hdmf.term_set import TermSet, TermSetWrapper
-from hdmf.testing import TestCase, remove_test_file
-from hdmf.common import VectorData
 import numpy as np
+
+import pytest
+
+from hdmf import Container
+from hdmf.build import TypeMap
+from hdmf.term_set import TermSet, TermSetWrapper, TypeConfigurator
+from hdmf.testing import TestCase, remove_test_file
+from hdmf.common import (VectorData, unload_type_config,
+                         get_loaded_type_config, load_type_config)
+from hdmf.utils import popargs
 
 
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -152,21 +158,22 @@ class TestTermSetWrapper(TestCase):
         self.wrapped_array = TermSetWrapper(value=np.array(['Homo sapiens']), termset=self.termset)
         self.wrapped_list = TermSetWrapper(value=['Homo sapiens'], termset=self.termset)
 
+        c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        self.wrapped_comp_array = TermSetWrapper(value=c_data,
+                                                 termset=self.termset,
+                                                 field='species')
+
         self.np_data = VectorData(
             name='Species_1',
             description='...',
             data=self.wrapped_array
-        )
-        self.list_data = VectorData(
-            name='Species_1',
-            description='...',
-            data=self.wrapped_list
         )
 
     def test_properties(self):
         self.assertEqual(self.wrapped_array.value, ['Homo sapiens'])
         self.assertEqual(self.wrapped_array.termset.view_set, self.termset.view_set)
         self.assertEqual(self.wrapped_array.dtype, 'U12') # this covers __getattr__
+        self.assertEqual(self.wrapped_comp_array.field, 'species')
 
     def test_get_item(self):
         self.assertEqual(self.np_data.data[0], 'Homo sapiens')
@@ -215,3 +222,162 @@ class TestTermSetWrapper(TestCase):
         data_obj = VectorData(name='species', description='...', data=self.wrapped_list)
         with self.assertRaises(ValueError):
             data_obj.extend(['bad_data'])
+
+class TestTypeConfig(TestCase):
+    def setUp(self):
+        if not REQUIREMENTS_INSTALLED:
+            self.skipTest("optional LinkML module is not installed")
+
+    def tearDown(self):
+        unload_type_config()
+
+    def test_get_loaded_type_config_error(self):
+        with self.assertRaises(ValueError):
+            get_loaded_type_config()
+
+    def test_config_path(self):
+        path = 'tests/unit/hdmf_config.yaml'
+        tc = TypeConfigurator([path])
+        self.assertEqual(tc.paths, [path])
+
+    def test_get_config(self):
+        path = 'tests/unit/hdmf_config.yaml'
+        tc = TypeConfigurator([path])
+        self.assertEqual(tc.get_config('VectorData', 'hdmf-common'),
+                                      {'description': {'termset': 'example_test_term_set.yaml'}})
+
+    def test_get_config_namespace_error(self):
+        path = 'tests/unit/hdmf_config.yaml'
+        tc = TypeConfigurator([path])
+        with self.assertRaises(ValueError):
+            tc.get_config('VectorData', 'hdmf-common11')
+
+    def test_get_config_container_error(self):
+        path = 'tests/unit/hdmf_config.yaml'
+        tc = TypeConfigurator([path])
+        with self.assertRaises(ValueError):
+            tc.get_config('VectorData11', 'hdmf-common')
+
+    def test_already_loaded_path_error(self):
+        path = 'tests/unit/hdmf_config.yaml'
+        tc = TypeConfigurator([path])
+        with self.assertRaises(ValueError):
+            tc.load_type_config(config_path=path)
+
+    def test_load_two_unique_configs(self):
+        path = 'tests/unit/hdmf_config.yaml'
+        path2 = 'tests/unit/hdmf_config2.yaml'
+        tc = TypeConfigurator([path])
+        tc.load_type_config(config_path=path2)
+        config = {'namespaces': {'hdmf-common': {'version': '3.12.2',
+                  'data_types': {'VectorData': {'name': None},
+                  'VectorIndex': {'data': '...'},
+                  'Data': {'description': {'termset': 'example_test_term_set.yaml'}},
+                  'EnumData': {'description': {'termset': 'example_test_term_set.yaml'}}}},
+                  'foo_namespace': {'version': '...',
+                  'data_types': {'ExtensionContainer': {'description': None}}},
+                  'namespace2': {'version': 0, 'data_types':
+                  {'MythicData': {'description':
+                  {'termset': 'example_test_term_set.yaml'}}}}}}
+        self.assertEqual(tc.paths, [path, path2])
+        self.assertEqual(tc.config, config)
+
+
+class ExtensionContainer(Container):
+    __fields__ = ("description",)
+
+    def __init__(self, **kwargs):
+        description, namespace = popargs('description', 'namespace', kwargs)
+        self.namespace = namespace
+        super().__init__(**kwargs)
+        self.description = description
+
+    @property
+    def data_type(self):
+        """
+        Return the spec data type associated with this container.
+        """
+        return "ExtensionContainer"
+
+
+class TestGlobalTypeConfig(TestCase):
+    def setUp(self):
+        if not REQUIREMENTS_INSTALLED:
+            self.skipTest("optional LinkML module is not installed")
+        load_type_config(config_path='tests/unit/hdmf_config.yaml')
+
+    def tearDown(self):
+        unload_type_config()
+
+    def test_load_config(self):
+        config = get_loaded_type_config()
+        self.assertEqual(config,
+        {'namespaces': {'hdmf-common': {'version': '3.12.2',
+         'data_types': {'VectorData':
+        {'description': {'termset': 'example_test_term_set.yaml'}},
+         'VectorIndex': {'data': '...'}}}, 'foo_namespace':
+        {'version': '...', 'data_types':
+        {'ExtensionContainer': {'description': None}}}}}
+)
+
+    def test_validate_with_config(self):
+        data = VectorData(name='foo', data=[0], description='Homo sapiens')
+        self.assertEqual(data.description.value, 'Homo sapiens')
+
+    def test_already_wrapped_warn(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        with self.assertWarns(Warning):
+            VectorData(name='foo',
+                       data=[0],
+                       description=TermSetWrapper(value='Homo sapiens', termset=terms))
+
+    def test_field_not_in_config(self):
+        unload_type_config()
+        load_type_config(config_path='tests/unit/hdmf_config2.yaml')
+
+        VectorData(name='foo', data=[0], description='Homo sapiens')
+
+    def test_spec_none(self):
+        with self.assertWarns(Warning):
+            ExtensionContainer(name='foo',
+                               namespace='foo_namespace',
+                               description='Homo sapiens')
+
+
+@pytest.mark.skipif(not REQUIREMENTS_INSTALLED, reason="optional LinkML module is not installed")
+class TestNonGlobalTypeConfig(TestCase):
+    def test_two_type_maps(self):
+        type_map1 = TypeMap()
+        load_type_config(config_path='tests/unit/hdmf_config.yaml', type_map=type_map1)
+
+        type_map2 = TypeMap()
+        load_type_config(config_path='tests/unit/hdmf_config2.yaml', type_map=type_map2)
+
+        assert type_map1.type_config is not type_map2.type_config
+        assert type_map1.type_config.paths == ['tests/unit/hdmf_config.yaml']
+        assert type_map2.type_config.paths == ['tests/unit/hdmf_config2.yaml']
+
+        unload_type_config(type_map1)
+        unload_type_config(type_map2)
+
+        assert type_map1.type_config.paths == []
+        assert type_map2.type_config.paths == []
+
+
+class TestOptionalDepsNotInstalled(TestCase):
+
+    def setUp(self):
+        if REQUIREMENTS_INSTALLED:
+            self.skipTest("optional modules are installed")
+
+    def test_schemasheets_not_installed(self):
+        with self.assertRaises(ImportError):
+            TermSet(schemasheets_folder="tests/unit/test_term_set_input/schemasheets")
+
+    def test_linkml_runtime_not_installed(self):
+        with self.assertRaises(ImportError):
+            TermSet(term_schema_path="tests/unit/example_test_term_set.yaml")
+
+    def test_oaklib_not_installed(self):
+        with self.assertRaises(ImportError):
+            TermSet(term_schema_path="tests/unit/example_dynamic_term_set.yaml", dynamic=True)

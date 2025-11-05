@@ -1,16 +1,20 @@
 import types
-from abc import abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
+from typing import Type, Optional
 from uuid import uuid4
 from warnings import warn
+import os
 
 import h5py
 import numpy as np
 import pandas as pd
 
-from .data_utils import DataIO, append_data, extend_data
-from .utils import docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict
+from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator
+from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict,
+                    get_basic_array_info, generate_array_html_repr)
+
+from .term_set import TermSet, TermSetWrapper
 
 
 def _set_exp(cls):
@@ -30,7 +34,7 @@ def _exp_warn_msg(cls):
 
 class HERDManager:
     """
-    This class manages whether to set/attach an instance of HERD to the subclass.
+    When this class is used as a mixin for a Container, it enables setting and getting an instance of HERD.
     """
 
     @docval({'name': 'herd', 'type': 'HERD',
@@ -39,10 +43,30 @@ class HERDManager:
         """
         Method to attach an instance of HERD in order to auto-add terms/references to data.
         """
-        self._herd = kwargs['herd']
+        msg = (
+            "link_resources is deprecated and will be removed in HDMF 5.0. "
+            "Use the external_resources property instead."
+        )
+        warn(msg, DeprecationWarning, stacklevel=2)
+        self.external_resources = kwargs['herd']
 
     def get_linked_resources(self):
+        msg = (
+            "get_linked_resources is deprecated and will be removed in HDMF 5.0. "
+            "Use the external_resources property instead."
+        )
+        warn(msg, DeprecationWarning, stacklevel=2)
+        return self.external_resources
+
+    @property
+    def external_resources(self):
         return self._herd if hasattr(self, "_herd") else None
+
+    @external_resources.setter
+    def external_resources(self, herd):
+        if hasattr(self, "_herd"):
+            warn("Reassigning external_resources may lead to unexpected behavior.")
+        self._herd = herd
 
 
 class AbstractContainer(metaclass=ExtenderMeta):
@@ -74,7 +98,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
         Make a setter function for creating a :py:func:`property`
         """
         name = field['name']
-
         if not field.get('settable', True):
             return None
 
@@ -84,9 +107,85 @@ class AbstractContainer(metaclass=ExtenderMeta):
             if name in self.fields:
                 msg = "can't set attribute '%s' -- already set" % name
                 raise AttributeError(msg)
-            self.fields[name] = val
-
+            self.fields[name] = self._field_config(arg_name=name,
+                                                   val=val,
+                                                   type_map=self._get_type_map())
         return setter
+
+    def _get_type_map(self):
+        # TODO: refactor this so that it does not call get_type_map every time an attribute is set
+        # and there is non circular import
+        from hdmf.common import get_type_map # circular import
+        return get_type_map()
+
+    @property
+    def data_type(self):
+        """
+        Return the spec data type associated with this container.
+        """
+        return getattr(self, self._data_type_attr)
+
+    def _field_config(self, arg_name, val, type_map):
+        """
+        This method will be called in the setter. The termset configuration will be used (if loaded)
+        to check for a defined TermSet associated with the field. If found, the value of the field
+        will be wrapped with a TermSetWrapper.
+
+        Even though the path field in the configurator can be a list of paths, the config
+        itself is only one file. When a user loads custom configs, the config is appended/modified.
+        The modifications are not written to file, avoiding permanent modifications.
+        """
+        configurator = type_map.type_config
+
+        if not configurator.paths:
+            return val
+
+        # The type_map has a config always set; however, when toggled off, the config path is empty.
+        # TODO account for more than one different configurator path
+        CUR_DIR = os.path.dirname(os.path.realpath(configurator.paths[0]))
+        termset_config = configurator.config
+
+        # If the val has been manually wrapped then skip checking the config for the attr
+        if isinstance(val, TermSetWrapper):
+            msg = "Field value already wrapped with TermSetWrapper."
+            warn(msg)
+            return val
+
+        # return the value if the namespace for the container is not in the config
+        if self.namespace not in termset_config['namespaces']:
+            return val
+
+        # check to see that the container type is in the config under the namespace
+        config_namespace = termset_config['namespaces'][self.namespace]
+        data_type = self.data_type
+
+        # return the value if the data type for the container is not in the config
+        if data_type not in config_namespace['data_types']:
+            return val
+
+        # Get the ObjectMapper
+        obj_mapper = type_map.get_map(self)
+
+        # Get the spec for the constructor arg
+        spec = obj_mapper.get_carg_spec(arg_name)
+        if spec is None:
+            msg = "Spec not found for %s." % arg_name
+            warn(msg)
+            return val
+
+        # Get spec attr name
+        mapped_attr_name = obj_mapper.get_attribute(spec)
+
+        config_data_type = config_namespace['data_types'][data_type]
+        try:
+            config_termset_path = config_data_type[mapped_attr_name]
+        except KeyError:
+            return val
+
+        termset_path = os.path.join(CUR_DIR, config_termset_path['termset'])
+        termset = TermSet(term_schema_path=termset_path)
+        val = TermSetWrapper(value=val, termset=termset)
+        return val
 
     @classmethod
     def _getter(cls, field):
@@ -224,8 +323,8 @@ class AbstractContainer(metaclass=ExtenderMeta):
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
     def __init__(self, **kwargs):
         name = getargs('name', kwargs)
-        if '/' in name:
-            raise ValueError("name '" + name + "' cannot contain '/'")
+        if ('/' in name or ':' in name) and not self._in_construct_mode:
+            raise ValueError(f"name '{name}' cannot contain a '/' or ':'")
         self.__name = name
         self.__field_values = dict()
         self.__read_io = None
@@ -388,21 +487,6 @@ class AbstractContainer(metaclass=ExtenderMeta):
     def children(self):
         return tuple(self.__children)
 
-    @docval({'name': 'child', 'type': 'Container',
-             'doc': 'the child Container for this Container', 'default': None})
-    def add_child(self, **kwargs):
-        warn(DeprecationWarning('add_child is deprecated. Set the parent attribute instead.'))
-        child = getargs('child', kwargs)
-        if child is not None:
-            # if child.parent is a Container, then the mismatch between child.parent and parent
-            # is used to make a soft/external link from the parent to a child elsewhere
-            # if child.parent is not a Container, it is either None or a Proxy and should be set to self
-            if not isinstance(child.parent, AbstractContainer):
-                # actually add the child to the parent in parent setter
-                child.parent = self
-        else:
-            warn('Cannot add None as child to a container %s' % self.name)
-
     @classmethod
     def type_hierarchy(cls):
         return cls.__mro__
@@ -551,19 +635,17 @@ class Container(AbstractContainer):
             template += "\nFields:\n"
         for k in sorted(self.fields):  # sorted to enable tests
             v = self.fields[k]
-            # if isinstance(v, DataIO) or not hasattr(v, '__len__') or len(v) > 0:
             if hasattr(v, '__len__'):
-                if isinstance(v, (np.ndarray, list, tuple)):
-                    if len(v) > 0:
-                        template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
-                elif v:
+                if isinstance(v, (np.ndarray, list, tuple)) or v:
                     template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
             else:
                 template += "  {}: {}\n".format(k, v)
         return template
 
-    def _repr_html_(self):
-        CSS_STYLE = """
+    @property
+    def css_style(self) -> str:
+        """CSS styles for the HTML representation."""
+        return """
         <style>
             .container-fields {
                 font-family: "Open Sans", Arial, sans-serif;
@@ -581,7 +663,10 @@ class Container(AbstractContainer):
         </style>
         """
 
-        JS_SCRIPT = """
+    @property
+    def js_script(self) -> str:
+        """JavaScript for the HTML representation."""
+        return """
         <script>
             function copyToClipboard(text) {
                 navigator.clipboard.writeText(text).then(function() {
@@ -602,66 +687,103 @@ class Container(AbstractContainer):
             });
         </script>
         """
-        if self.name == self.__class__.__name__:
-            header_text = self.name
-        else:
-            header_text = f"{self.name} ({self.__class__.__name__})"
-        html_repr = CSS_STYLE
-        html_repr += JS_SCRIPT
+
+    def _repr_html_(self) -> str:
+        """Generates the HTML representation of the object."""
+        header_text = self.name if self.name == self.__class__.__name__ else f"{self.name} ({self.__class__.__name__})"
+        html_repr = self.css_style + self.js_script
         html_repr += "<div class='container-wrap'>"
-        html_repr += (
-            f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
-        )
-        html_repr += self._generate_html_repr(self.fields)
+        html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
+        html_repr += self._generate_html_repr(self.fields, is_field=True)
         html_repr += "</div>"
         return html_repr
 
-    def _generate_html_repr(self, fields, level=0, access_code=".fields"):
+    def _generate_html_repr(self, fields, level=0, access_code="", is_field=False):
+        """Recursively generates HTML representation for fields."""
         html_repr = ""
 
         if isinstance(fields, dict):
             for key, value in fields.items():
-                current_access_code = f"{access_code}['{key}']"
-                if (
-                    isinstance(value, (list, dict, np.ndarray))
-                    or hasattr(value, "fields")
-                ):
-                    label = key
-                    if isinstance(value, dict):
-                        label += f" ({len(value)})"
-
-                    html_repr += (
-                        f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
-                        f'class="container-fields field-key" title="{current_access_code}"><b>{label}</b></summary>'
-                    )
-                    if hasattr(value, "fields"):
-                        value = value.fields
-                        current_access_code = current_access_code + ".fields"
-                    html_repr += self._generate_html_repr(
-                        value, level + 1, current_access_code
-                    )
-                    html_repr += "</details>"
+                current_access_code = f"{access_code}.{key}" if is_field else f"{access_code}['{key}']"
+                if hasattr(value, '_generate_field_html'):
+                    html_repr += value._generate_field_html(key, value, level, current_access_code)
                 else:
-                    html_repr += (
-                        f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"'
-                        f' title="{current_access_code}">{key}:</span> <span class="field-value">{value}</span></div>'
-                    )
+                    html_repr += self._generate_field_html(key, value, level, current_access_code)
         elif isinstance(fields, list):
             for index, item in enumerate(fields):
-                current_access_code = f"{access_code}[{index}]"
-                html_repr += (
-                    f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-value"'
-                    f' title="{current_access_code}">{str(item)}</span></div>'
-                )
-        elif isinstance(fields, np.ndarray):
-            str_ = str(fields).replace("\n", "</br>")
-            html_repr += (
-                f'<div style="margin-left: {level * 20}px;" class="container-fields">{str_}</div>'
-            )
+                access_code += f'[{index}]'
+                html_repr += self._generate_field_html(index, item, level, access_code)
         else:
             pass
 
         return html_repr
+
+    def _generate_field_html(self, key, value, level, access_code):
+        """Generates HTML for a single field.
+
+        This function can be overwritten by a child class to implement customized html representations.
+        """
+
+        if isinstance(value, (int, float, str, bool)):
+            return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
+                   f' title="{access_code}">{key}: </span><span class="field-value">{value}</span></div>'
+
+        # Detects array-like objects that conform to the Array Interface specification
+        # (e.g., NumPy arrays, HDF5 datasets, DataIO objects). Objects must have both
+        # 'shape' and 'dtype' attributes. Iterators are excluded as they lack 'shape'.
+        # This approach keeps the implementation generic without coupling to specific backends methods
+        is_array_data = hasattr(value, "shape") and hasattr(value, "dtype")
+
+        if is_array_data:
+            html_content = self._generate_array_html(value, level + 1)
+        elif hasattr(value, "generate_html_repr"):
+            html_content = value.generate_html_repr(level + 1, access_code)
+        elif hasattr(value, '__repr_html__'):
+            html_content = value.__repr_html__()
+        elif hasattr(value, "fields"):  # Note that h5py.Dataset has a fields attribute so there is an implicit order
+            html_content = self._generate_html_repr(value.fields, level + 1, access_code, is_field=True)
+        elif isinstance(value, (list, dict, np.ndarray)):
+            html_content = self._generate_html_repr(value, level + 1, access_code, is_field=False)
+        else:
+            html_content = f'<span class="field-key">{value}</span>'
+
+
+        html_repr = (
+            f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
+            f'class="container-fields field-key" title="{access_code}"><b>{key}</b></summary>'
+        )
+        html_repr += html_content
+        html_repr += "</details>"
+
+        return html_repr
+
+
+    def _generate_array_html(self, array, level):
+        """Generates HTML for array data (e.g., NumPy arrays, HDF5 datasets, Zarr datasets and DataIO objects)."""
+
+        is_numpy_array = isinstance(array, np.ndarray)
+        read_io = self.get_read_io()
+        it_was_read_with_io = read_io is not None
+        is_data_io = isinstance(array, DataIO)
+
+        if is_numpy_array:
+            array_info_dict = get_basic_array_info(array)
+            repr_html = generate_array_html_repr(array_info_dict, array, "NumPy array")
+        elif is_data_io:
+            array_info_dict = get_basic_array_info(array.data)
+            repr_html = generate_array_html_repr(array_info_dict, array.data, "DataIO")
+        elif it_was_read_with_io:
+            # The backend handles the representation here. Two special cases worth noting:
+            # 1. Array-type attributes (e.g., start_frame in ImageSeries) remain NumPy arrays
+            #    even when their parent container has an IO
+            # 2. Data may have been modified after being read from storage
+            repr_html = read_io.generate_dataset_html(array)
+        else:  # Not sure which object could get here
+            object_class = array.__class__.__name__
+            array_info_dict = get_basic_array_info(array.data)
+            repr_html = generate_array_html_repr(array_info_dict, array.data, object_class)
+
+        return f'<div style="margin-left: {level * 20}px;" class="container-fields">{repr_html}</div>'
 
     @staticmethod
     def __smart_str(v, num_indent):
@@ -739,23 +861,66 @@ class Container(AbstractContainer):
         out += '\n' + indent + right_br
         return out
 
-    def set_data_io(self, dataset_name, data_io_class, **kwargs):
+    def set_data_io(
+        self,
+        dataset_name: str,
+        data_io_class: Type[DataIO],
+        data_io_kwargs: dict = None,
+        data_chunk_iterator_class: Optional[Type[AbstractDataChunkIterator]] = None,
+        data_chunk_iterator_kwargs: dict = None, **kwargs
+    ):
+        """
+        Apply DataIO object to a dataset field of the Container.
+
+        Parameters
+        ----------
+        dataset_name: str
+            Name of dataset to wrap in DataIO
+        data_io_class: Type[DataIO]
+            Class to use for DataIO, e.g. H5DataIO or ZarrDataIO
+        data_io_kwargs: dict
+            keyword arguments passed to the constructor of the DataIO class.
+        data_chunk_iterator_class: Type[AbstractDataChunkIterator]
+            Class to use for DataChunkIterator. If None, no DataChunkIterator is used.
+        data_chunk_iterator_kwargs: dict
+            keyword arguments passed to the constructor of the DataChunkIterator class.
+        **kwargs:
+            DEPRECATED. Use data_io_kwargs instead.
+            kwargs are passed to the constructor of the DataIO class.
+
+        Notes
+        -----
+        If data_chunk_iterator_class is not None, the data is wrapped in the DataChunkIterator before being wrapped in
+        the DataIO. This allows for rewriting the backend configuration of hdf5 datasets.
+        """
+        if kwargs or (data_io_kwargs is None):
+            warn(
+                "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a "
+                "dictionary to the `data_io_kwargs` parameter instead.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+            data_io_kwargs = kwargs
         data = self.fields.get(dataset_name)
+        data_chunk_iterator_kwargs = data_chunk_iterator_kwargs or dict()
         if data is None:
             raise ValueError(f"{dataset_name} is None and cannot be wrapped in a DataIO class")
-        self.fields[dataset_name] = data_io_class(data=data, **kwargs)
+        if data_chunk_iterator_class is not None:
+            data = data_chunk_iterator_class(data=data, **data_chunk_iterator_kwargs)
+        self.fields[dataset_name] = data_io_class(data=data, **data_io_kwargs)
 
 
 class Data(AbstractContainer):
     """
     A class for representing dataset containers
     """
-
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
             {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
     def __init__(self, **kwargs):
         data = popargs('data', kwargs)
         super().__init__(**kwargs)
+
+        self._validate_new_data(data)
         self.__data = data
 
     @property
@@ -771,14 +936,37 @@ class Data(AbstractContainer):
         """
         return get_data_shape(self.__data)
 
-    @docval({'name': 'dataio', 'type': DataIO, 'doc': 'the DataIO to apply to the data held by this Data'})
-    def set_dataio(self, **kwargs):
+    def set_data_io(
+        self,
+        data_io_class: Type[DataIO],
+        data_io_kwargs: dict,
+        data_chunk_iterator_class: Optional[Type[AbstractDataChunkIterator]] = None,
+        data_chunk_iterator_kwargs: dict = None,
+    ) -> None:
         """
-        Apply DataIO object to the data held by this Data object
+        Apply DataIO object to the data held by this Data object.
+
+        Parameters
+        ----------
+        data_io_class: Type[DataIO]
+            The DataIO to apply to the data held by this Data.
+        data_io_kwargs: dict
+            The keyword arguments to pass to the DataIO.
+        data_chunk_iterator_class: Type[AbstractDataChunkIterator]
+            The DataChunkIterator to use for the DataIO. If None, no DataChunkIterator is used.
+        data_chunk_iterator_kwargs: dict
+            The keyword arguments to pass to the DataChunkIterator.
+
+        Notes
+        -----
+        If data_chunk_iterator_class is not None, the data is wrapped in the DataChunkIterator before being wrapped in
+        the DataIO. This allows for rewriting the backend configuration of hdf5 datasets.
         """
-        dataio = getargs('dataio', kwargs)
-        dataio.data = self.__data
-        self.__data = dataio
+        data_chunk_iterator_kwargs = data_chunk_iterator_kwargs or dict()
+        data = self.__data
+        if data_chunk_iterator_class is not None:
+            data = data_chunk_iterator_class(data=data, **data_chunk_iterator_kwargs)
+        self.__data = data_io_class(data=data, **data_io_kwargs)
 
     @docval({'name': 'func', 'type': types.FunctionType, 'doc': 'a function to transform *data*'})
     def transform(self, **kwargs):
@@ -815,6 +1003,7 @@ class Data(AbstractContainer):
         return self.data[args]
 
     def append(self, arg):
+        self._validate_new_data_element(arg)
         self.__data = append_data(self.__data, arg)
 
     def extend(self, arg):
@@ -824,25 +1013,21 @@ class Data(AbstractContainer):
 
         :param arg: The iterable to add to the end of this VectorData
         """
+        self._validate_new_data(arg)
         self.__data = extend_data(self.__data, arg)
 
+    def _validate_new_data(self, data):
+        """Function to validate a new array that will be set or added to data. Raises an error if the data is invalid.
 
-class DataRegion(Data):
-
-    @property
-    @abstractmethod
-    def data(self):
-        '''
-        The target data that this region applies to
-        '''
+        Subclasses should override this function to perform class-specific validation.
+        """
         pass
 
-    @property
-    @abstractmethod
-    def region(self):
-        '''
-        The region that indexes into data e.g. slice or list of indices
-        '''
+    def _validate_new_data_element(self, arg):
+        """Function to validate a new value that will be added to the data. Raises an error if the data is invalid.
+
+        Subclasses should override this function to perform class-specific validation.
+        """
         pass
 
 
@@ -993,7 +1178,9 @@ class MultiContainerInterface(Container):
                     # still need to mark self as modified
                     self.set_modified()
                 if tmp.name in d:
-                    msg = "'%s' already exists in %s '%s'" % (tmp.name, cls.__name__, self.name)
+                    msg = (f"Cannot add {tmp.__class__} '{tmp.name}' at 0x{id(tmp)} to dict attribute '{attr_name}' in "
+                           f"{cls} '{self.name}'. {d[tmp.name].__class__} '{tmp.name}' at 0x{id(d[tmp.name])} "
+                           f"already exists in '{attr_name}' and has the same name.")
                     raise ValueError(msg)
                 d[tmp.name] = tmp
             return container

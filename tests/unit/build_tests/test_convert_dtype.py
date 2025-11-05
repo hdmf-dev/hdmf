@@ -1,12 +1,16 @@
 from datetime import datetime, date
-
 import numpy as np
+import h5py
+import unittest
+
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.build import ObjectMapper
 from hdmf.data_utils import DataChunkIterator
 from hdmf.spec import DatasetSpec, RefSpec, DtypeSpec
 from hdmf.testing import TestCase
+from hdmf.utils import ZARR_INSTALLED, StrDataset
 
+H5PY_3 = h5py.__version__.startswith('3')
 
 class TestConvertDtype(TestCase):
 
@@ -321,6 +325,19 @@ class TestConvertDtype(TestCase):
                 self.assertIs(ret, value)
                 self.assertEqual(ret_dtype, 'utf8')
 
+    @unittest.skipIf(not H5PY_3, "Use StrDataset only for h5py 3+")
+    def test_text_spec_str_dataset(self):
+        text_spec_types = ['text', 'utf', 'utf8', 'utf-8']
+        for spec_type in text_spec_types:
+            with self.subTest(spec_type=spec_type):
+                with h5py.File("test.h5", "w", driver="core", backing_store=False) as f:
+                    spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+                    value = StrDataset(f.create_dataset('data', data=['a', 'b', 'c']), None)
+                    ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+                    self.assertIs(ret, value)
+                    self.assertEqual(ret_dtype, 'utf8')
+
     def test_ascii_spec(self):
         ascii_spec_types = ['ascii', 'bytes']
         for spec_type in ascii_spec_types:
@@ -551,3 +568,75 @@ class TestConvertDtype(TestCase):
         self.assertEqual(ret, b'2020-11-10')
         self.assertIs(type(ret), bytes)
         self.assertEqual(ret_dtype, 'ascii')
+
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_zarr_array_spec_vlen_utf8(self):
+        """Test that converting a zarr array with utf8 dtype for a variable length utf8 dtype spec
+        returns the same object with a utf8 ret_dtype."""
+        import zarr
+        import numcodecs
+
+        spec = DatasetSpec('an example dataset', 'text', name='data')
+
+        value = zarr.array(['a', 'b'])  # fixed length unicode (dtype = <U1)
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertIs(ret.dtype.type, np.str_)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = zarr.array(['a', 'b'], dtype=object, object_codec=numcodecs.VLenUTF8())  # variable length unicode
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertIs(ret.dtype.type, np.object_)
+        self.assertEqual(ret_dtype, 'utf8')
+
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_zarr_array_spec_vlen_ascii(self):
+        """Test that converting a zarr array with fixed length utf8 dtype for a variable length ascii dtype spec
+        returns the same object with a ascii ret_dtype."""
+        import zarr
+        import numcodecs
+
+        spec = DatasetSpec('an example dataset', 'ascii', name='data')
+
+        value = zarr.array(['a', 'b'])  # fixed length unicode (dtype = <U1)
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertIs(ret.dtype.type, np.str_)  # the zarr array is not converted
+        self.assertEqual(ret_dtype, 'ascii')  # the dtype of the builder will be ascii
+
+        value = zarr.array(['a', 'b'], dtype=object, object_codec=numcodecs.VLenUTF8())  # variable length unicode
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertIs(ret.dtype.type, np.object_)  # the zarr array is not converted
+        self.assertEqual(ret_dtype, 'ascii')  # the dtype of the builder will be ascii
+
+    def test_complex_number_rejection(self):
+        """Test that complex numbers are properly rejected."""
+        spec = DatasetSpec('an example dataset', 'float64', name='data')
+
+        # Test single complex number
+        with self.assertRaisesWith(ValueError, "Complex numbers are not supported"):
+            ObjectMapper.convert_dtype(spec, 1 + 2j)
+
+        # Test complex numpy array
+        with self.assertRaisesWith(ValueError, "Complex numbers are not supported"):
+            ObjectMapper.convert_dtype(spec, np.array([1 + 2j, 3 + 4j]))
+
+        # Test list containing complex numbers
+        with self.assertRaisesWith(ValueError, "Complex numbers are not supported"):
+            ObjectMapper.convert_dtype(spec, [1.0, 2 + 3j, 4.0])
+
+        # Test that real numbers still work
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, np.array([1.0, 2.0, 3.0]))
+        self.assertIsInstance(ret, np.ndarray)
+        self.assertEqual(ret_dtype, np.float64)
+
+        # Test that regular Python float still works
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, 3.14)
+        self.assertIsInstance(ret, np.float64)
+        self.assertEqual(ret_dtype, np.float64)
