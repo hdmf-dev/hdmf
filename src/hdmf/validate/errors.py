@@ -171,7 +171,8 @@ class ShapeError(Error):
         name = getargs('name', kwargs)
         expected = getargs('expected', kwargs)
         received = getargs('received', kwargs)
-        reason = "incorrect shape - expected '%s', got '%s'" % (expected, received)
+        allowable_shapes_str = str(expected).replace("None", "*")
+        reason = "incorrect shape - expected '%s', got '%s'" % (allowable_shapes_str, received)
         loc = getargs('location', kwargs)
         super().__init__(name, reason, location=loc)
 
