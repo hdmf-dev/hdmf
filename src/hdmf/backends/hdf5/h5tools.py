@@ -19,7 +19,7 @@ from ...build import (Builder, GroupBuilder, DatasetBuilder, LinkBuilder, BuildM
 from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
-from ...utils import (docval, getargs, popargs, get_data_shape, get_docval, StrDataset,
+from ...utils import (docval, getargs, popargs, get_data_shape, get_docval, StrDataset, is_zarr_array,
                       get_basic_array_info, generate_array_html_repr)
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
@@ -876,6 +876,12 @@ class HDF5IO(HDMFIO):
         # TODO: These values exist, but I haven't solved them yet
         # binary
         # number
+
+        # Use text dtype for Zarr datasets of strings. Zarr stores variable length strings
+        # as objects, so we need to detect this special case here
+        if is_zarr_array(data) and 'zarr_dtype' in data.attrs and data.attrs['zarr_dtype'] == 'str':
+            return cls.__dtypes['text']
+
         dtype = cls.__resolve_dtype_helper__(dtype)
         if dtype is None:
             dtype = cls.get_type(data)
