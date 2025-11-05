@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 4.1.2 (Upcoming)
+
+### Bug fixes
+- Fixed bug when converting string datasets that are Zarr arrays. @oruebel @rly [#1171](https://github.com/hdmf-dev/hdmf/pull/1171)
+
 ## HDMF 4.1.1 (October 22, 2025)
 
 ### Fixed
