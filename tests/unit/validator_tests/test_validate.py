@@ -11,7 +11,7 @@ from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
-                                  IncorrectQuantityError, IllegalLinkError)
+                                  IncorrectQuantityError, IllegalLinkError, ShapeError)
 from hdmf.backends.hdf5 import HDF5IO
 
 CORE_NAMESPACE = 'test_core'
@@ -1323,3 +1323,287 @@ class TestValidateSubspec(ValidatorTestBase):
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 1)
         self.assertValidationError(result[0], MissingError, name='Bar/attr1')
+
+
+class TestShapeValidation(ValidatorTestBase):
+    """Test validation of dataset and attribute shapes, ensuring ShapeError is returned for invalid shapes."""
+
+    def getSpecs(self):
+        return (
+            GroupSpec(
+                doc='A test group with shape constraints',
+                data_type_def='ShapeTest',
+                datasets=[
+                    DatasetSpec(
+                        doc='A 1D dataset',
+                        name='data_1d',
+                        dtype='int',
+                        shape=(None,),
+                        quantity='?',
+                    ),
+                    DatasetSpec(
+                        doc='A 2D dataset',
+                        name='data_2d',
+                        dtype='float',
+                        shape=(None, None),
+                        quantity='?',
+                    ),
+                    DatasetSpec(
+                        doc='A fixed shape dataset',
+                        name='data_fixed',
+                        dtype='int',
+                        shape=(3, 4),
+                        quantity='?',
+                    ),
+                    DatasetSpec(
+                        doc='A 1D or 2D dataset',
+                        name='data_1d_or_2d',
+                        dtype='int',
+                        shape=((None,), (None, None)),
+                        quantity='?',
+                    ),
+                    DatasetSpec(
+                        doc='A 3D dataset',
+                        name='data_3d',
+                        dtype='float',
+                        shape=(None, None, None),
+                        quantity='?',
+                    ),
+                ],
+                attributes=[
+                    AttributeSpec(
+                        name='attr_1d',
+                        doc='A 1D attribute',
+                        dtype='int',
+                        shape=(None,),
+                        required=False,
+                    ),
+                    AttributeSpec(
+                        name='attr_2d',
+                        doc='A 2D attribute',
+                        dtype='float',
+                        shape=(None, None),
+                        required=False,
+                    ),
+                    AttributeSpec(
+                        name='attr_fixed',
+                        doc='A fixed shape attribute',
+                        dtype='int',
+                        shape=(2, 3),
+                        required=False,
+                    ),
+                    AttributeSpec(
+                        name='attr_1d_or_2d',
+                        doc='A wildcard dimension attribute',
+                        dtype='int',
+                        shape=((None,), (None, None)),
+                        required=False,
+                    ),
+                    AttributeSpec(
+                        name='attr_3d',
+                        doc='A 3D attribute',
+                        dtype='float',
+                        shape=(None, None, None),
+                        required=False,
+                    ),
+                ],
+            ),
+        )
+
+    def test_valid_1d_shape(self):
+        """Test that a 1D dataset with correct shape passes validation."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={
+                'data_type': 'ShapeTest',
+                'attr_1d': [1, 2, 3],
+                'attr_2d': [[1.0, 2.0], [3.0, 4.0]],
+                'attr_fixed': [[1, 2, 3], [4, 5, 6]],
+                'attr_1d_or_2d': [[1, 2], [3, 4]],
+                'attr_3d': [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]],
+            },
+            datasets=[
+                DatasetBuilder('data_1d', [1, 2, 3, 4, 5]),
+                DatasetBuilder('data_2d', [[1.0, 2.0], [3.0, 4.0]]),
+                DatasetBuilder('data_fixed', [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]),
+                DatasetBuilder('data_1d_or_2d', [[1, 2], [3, 4]]),
+                DatasetBuilder('data_3d', [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]]),
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def test_invalid_1d_dataset_shape(self):
+        """Test that a dataset with wrong number of dimensions returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest'},
+            datasets=[
+                DatasetBuilder('data_1d', [[1, 2], [3, 4]]),  # 2D instead of 1D
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('data_1d', str(result[0]))
+
+    def test_invalid_2d_dataset_shape(self):
+        """Test that a 2D dataset with wrong dimensions returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest'},
+            datasets=[
+                DatasetBuilder('data_2d', [1.0, 2.0, 3.0]),  # 1D instead of 2D
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('data_2d', str(result[0]))
+
+    def test_invalid_fixed_shape(self):
+        """Test that a dataset with incorrect fixed shape returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest'},
+            datasets=[
+                DatasetBuilder('data_fixed', [[1, 2, 3], [4, 5, 6]]),  # (2, 3) instead of (3, 4)
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('data_fixed', str(result[0]))
+        self.assertIn('(3, 4)', str(result[0]))
+        self.assertIn('(2, 3)', str(result[0]))
+
+    def test_invalid_multi_dimension(self):
+        """Test that a dataset with incorrect dimension for a spec that allows multiple number of dimensions
+        returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest'},
+            datasets=[
+                DatasetBuilder('data_1d_or_2d', [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]),  # 3D instead of 1D or 2D
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('data_1d_or_2d', str(result[0]))
+        # Should show wildcard as *
+        self.assertIn('(*,)', str(result[0]))
+        self.assertIn('(*, *)', str(result[0]))
+        self.assertIn('(2, 2, 2)', str(result[0]))
+
+    def test_invalid_3d_shape(self):
+        """Test that a 3D dataset with wrong dimensions returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest'},
+            datasets=[
+                DatasetBuilder('data_3d', np.array([[1.0, 2.0], [3.0, 4.0]])),  # 2D instead of 3D
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('data_3d', str(result[0]))
+
+    def test_invalid_1d_attribute_shape(self):
+        """Test that an attribute with incorrect shape returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest', 'attr_1d': [[1, 2], [3, 4]]},  # 2D instead of 1D
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('attr_1d', str(result[0]))
+
+    def test_invalid_2d_attribute_shape(self):
+        """Test that a 2D attribute with wrong dimensions returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest', 'attr_2d': [1.0, 2.0, 3.0]},  # 1D instead of 2D
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('attr_2d', str(result[0]))
+
+    def test_invalid_fixed_attribute_shape(self):
+        """Test that an attribute with incorrect fixed shape returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            # (2, 4) instead of (2, 3)
+            attributes={'data_type': 'ShapeTest', 'attr_fixed': [[1, 2, 3, 4], [5, 6, 7, 8]]},
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('attr_fixed', str(result[0]))
+        self.assertIn('(2, 3)', str(result[0]))
+        self.assertIn('(2, 4)', str(result[0]))
+
+    def test_invalid_multi_dimension_attribute(self):
+        """Test that an attribute with incorrect dimension for a spec that allows multiple number of dimensions
+        returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            # 3D instead of 1D or 2D
+            attributes={'data_type': 'ShapeTest', 'attr_1d_or_2d': [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]},
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('attr_1d_or_2d', str(result[0]))
+        # Should show wildcard as *
+        self.assertIn('(*,)', str(result[0]))
+        self.assertIn('(*, *)', str(result[0]))
+        self.assertIn('(2, 2, 2)', str(result[0]))
+
+    def test_invalid_3d_attribute_shape(self):
+        """Test that a 3D attribute with wrong dimensions returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest', 'attr_3d': np.array([[1.0, 2.0], [3.0, 4.0]])},  # 2D instead of 3D
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('attr_3d', str(result[0]))
+
+    def test_multiple_shape_errors(self):
+        """Test that multiple ShapeErrors are returned when multiple datasets have incorrect shapes."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest', 'attr_1d': [[1, 2], [3, 4]]},  # Wrong shape
+            datasets=[
+                DatasetBuilder('data_1d', [[1, 2], [3, 4]]),  # Wrong shape
+                DatasetBuilder('data_2d', [1.0, 2.0]),  # Wrong shape
+                DatasetBuilder('data_fixed', [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]),
+            ]
+        )
+        result = self.vmap.validate(builder)
+        # Should have 3 shape errors: attr_1d, data_1d, data_2d
+        self.assertEqual(len(result), 3)
+        self.assertTrue(all(isinstance(e, ShapeError) for e in result))
+
+    def test_scalar_instead_of_array(self):
+        """Test that providing a scalar where an array is expected returns ExpectedArrayError, not ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest', 'attr_1d': 42},  # Scalar instead of array
+            datasets=[
+                DatasetBuilder('data_1d', [1, 2, 3, 4, 5]),
+                DatasetBuilder('data_2d', [[1.0, 2.0], [3.0, 4.0]]),
+                DatasetBuilder('data_fixed', [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]),
+                DatasetBuilder('data_wildcard', [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]]),
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        # Should be ExpectedArrayError, not ShapeError
+        self.assertIsInstance(result[0], ExpectedArrayError)
+        self.assertNotIsInstance(result[0], ShapeError)
