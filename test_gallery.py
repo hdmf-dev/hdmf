@@ -31,6 +31,8 @@ _experimental_warning_re = (
     "and is not guaranteed to maintain backward compatibility"
 )
 
+_pkg_resources_re = "pkg_resources is deprecated as an API"
+
 def run_gallery_tests():
     global TOTAL, FAILURES, ERRORS
     logging.info("Testing execution of Sphinx Gallery files")
@@ -64,6 +66,11 @@ def run_gallery_tests():
                     "ignore",
                     message=_numpy_warning_re,
                     category=RuntimeWarning,
+                )
+                warnings.filterwarnings(
+                    "ignore",
+                    message=_pkg_resources_re,
+                    category=UserWarning,
                 )
                 _import_from_file(script)
         except (ImportError, ValueError) as e:
