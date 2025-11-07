@@ -30,6 +30,9 @@ class TestTermSet(TestCase):
         if not REQUIREMENTS_INSTALLED:
             self.skipTest("optional LinkML module is not installed")
 
+    def tearDown(self):
+        remove_test_file("tests/unit/test_term_set_input/schemasheets/nwb_static_enums.yaml")
+
     def test_termset_setup(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         self.assertEqual(termset.name, 'Species')
