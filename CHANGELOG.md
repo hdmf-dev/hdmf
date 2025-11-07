@@ -1,8 +1,8 @@
 # HDMF Changelog
 
-## HDMF 4.1.2 (Upcoming)
+## HDMF 4.1.2 (November 7, 2025)
 
-### Bug fixes
+### Fixed
 - Fixed bug when converting string datasets that are Zarr arrays. @oruebel @rly [#1171](https://github.com/hdmf-dev/hdmf/pull/1171)
 - Fixed unclear shape validation error message. @bendichter @rly [#787](https://github.com/hdmf-dev/hdmf/pull/787)
 
