@@ -5,6 +5,7 @@
 ### Bug fixes
 - Fixed bug when converting string datasets that are Zarr arrays. @oruebel @rly [#1171](https://github.com/hdmf-dev/hdmf/pull/1171)
 - Fixed unclear shape validation error message. @bendichter @rly [#787](https://github.com/hdmf-dev/hdmf/pull/787)
+- Fixed testing of sphinx gallery examples with optional dependencies. @rly [#1343](https://github.com/hdmf-dev/hdmf/pull/1343)
 
 ## HDMF 4.1.1 (October 22, 2025)
 
