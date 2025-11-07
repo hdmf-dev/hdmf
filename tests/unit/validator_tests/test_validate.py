@@ -1492,8 +1492,7 @@ class TestShapeValidation(ValidatorTestBase):
         self.assertIsInstance(result[0], ShapeError)
         self.assertIn('data_1d_or_2d', str(result[0]))
         # Should show wildcard as *
-        self.assertIn('(*,)', str(result[0]))
-        self.assertIn('(*, *)', str(result[0]))
+        self.assertIn('(*,) or (*, *)', str(result[0]))
         self.assertIn('(2, 2, 2)', str(result[0]))
 
     def test_invalid_3d_shape(self):
@@ -1559,8 +1558,7 @@ class TestShapeValidation(ValidatorTestBase):
         self.assertIsInstance(result[0], ShapeError)
         self.assertIn('attr_1d_or_2d', str(result[0]))
         # Should show wildcard as *
-        self.assertIn('(*,)', str(result[0]))
-        self.assertIn('(*, *)', str(result[0]))
+        self.assertIn('(*,) or (*, *)', str(result[0]))
         self.assertIn('(2, 2, 2)', str(result[0]))
 
     def test_invalid_3d_attribute_shape(self):

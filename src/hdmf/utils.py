@@ -197,7 +197,11 @@ def __fmt_str_quotes(x):
 
 
 def __shape_error_message(argname, valshape, allowable_shapes):
-    allowable_shapes_str = str(allowable_shapes).replace("None", "*")
+    if isinstance(allowable_shapes, (list, tuple)) and all(isinstance(e, (list, tuple)) for e in allowable_shapes):
+        allowable_shapes_str = " or ".join(map(str, allowable_shapes))
+    else:
+        allowable_shapes_str = str(allowable_shapes)
+    allowable_shapes_str = allowable_shapes_str.replace("None", "*")
     return f"incorrect shape for {argname}: got {valshape}, and expected {allowable_shapes_str}"
 
 

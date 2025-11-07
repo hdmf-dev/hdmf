@@ -59,9 +59,14 @@ class MyChainClass(MyTestClass):
             {'name': 'arg3', 'type': ('array_data', 'MyChainClass'), 'doc': 'arg3 is array data or MyChainClass',
              'shape': (None, 2)},
             {'name': 'arg4', 'type': ('array_data', 'MyChainClass'),
-             'doc': 'arg3 is array data or MyChainClass. it defaults to None.', 'shape': (None, 2), 'default': None})
+             'doc': 'arg4 is array data or MyChainClass. it defaults to None.', 'shape': (None, 2), 'default': None},
+            {'name': 'arg5', 'type': ('array_data', 'MyChainClass'),
+             'doc': 'arg5 is array data or MyChainClass that can be one of multiple shapes',
+             'shape': ((None,), (None, 2)), 'default': None},
+    )
     def __init__(self, **kwargs):
-        self._arg1, self._arg2, self._arg3, self._arg4 = popargs('arg1', 'arg2', 'arg3', 'arg4', kwargs)
+        self._arg1, self._arg2, self._arg3, self._arg4, self._arg5 = popargs(
+            'arg1', 'arg2', 'arg3', 'arg4', 'arg5', kwargs)
 
     @property
     def arg1(self):
@@ -98,6 +103,17 @@ class MyChainClass(MyTestClass):
     @arg4.setter
     def arg4(self, val):
         self._arg4 = val
+
+    @property
+    def arg5(self):
+        if isinstance(self._arg5, MyChainClass):
+            return self._arg5.arg5
+        else:
+            return self._arg5
+
+    @arg5.setter
+    def arg5(self, val):
+        self._arg5 = val
 
 
 class TestDocValidator(TestCase):
@@ -806,6 +822,24 @@ class TestDocValidatorChain(TestCase):
         err_msg = "MyChainClass.__init__: incorrect shape for arg3: got (3,), and expected (*, 2)"
         with self.assertRaisesWith(ValueError, err_msg):
             MyChainClass(self.obj1, obj2, [[100, 200]])
+
+    def test_shape_valid_multioption_shape_unpack(self):
+        """Test that passing an object for an argument with required shape and object.argument has an invalid shape
+        raises an error"""
+        obj2 = MyChainClass(self.obj1, arg3=[[10, 20], [30, 40], [50, 60]], arg5=[10, 20])
+        obj3 = MyChainClass(self.obj1, arg3=[[10, 20], [30, 40], [50, 60]], arg5=obj2)
+        self.assertListEqual(obj3.arg5, obj2.arg5)
+
+    def test_shape_invalid_multioption_shape_unpack(self):
+        """Test that passing an object for an argument with required shape and object.argument has an invalid shape
+        raises an error"""
+        obj2 = MyChainClass(self.obj1, arg3=[[10, 20], [30, 40], [50, 60]], arg5=[10, 20])
+        # change arg5 of obj2 to fail the required shape - contrived, but could happen because datasets can change
+        # shape after an object is initialized
+        obj2.arg5 = [[10, 20, 30], [40, 50, 60]]
+        msg = "MyChainClass.__init__: incorrect shape for arg5: got (2, 3), and expected (*, 2)"
+        with self.assertRaisesWith(ValueError, msg):
+            MyChainClass(self.obj1, arg3=[[10, 20], [30, 40], [50, 60]], arg5=obj2)
 
     def test_shape_none_unpack(self):
         """Test that passing an object for an argument with required shape and object.argument is None is OK"""
