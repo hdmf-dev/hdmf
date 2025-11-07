@@ -62,7 +62,7 @@ class MyChainClass(MyTestClass):
              'doc': 'arg4 is array data or MyChainClass. it defaults to None.', 'shape': (None, 2), 'default': None},
             {'name': 'arg5', 'type': ('array_data', 'MyChainClass'),
              'doc': 'arg5 is array data or MyChainClass that can be one of multiple shapes',
-             'shape': ((None,), (None, 2)), 'default': None},
+             'shape': ((None,), (None, 1), (None, 2)), 'default': None},
     )
     def __init__(self, **kwargs):
         self._arg1, self._arg2, self._arg3, self._arg4, self._arg5 = popargs(
@@ -837,7 +837,7 @@ class TestDocValidatorChain(TestCase):
         # change arg5 of obj2 to fail the required shape - contrived, but could happen because datasets can change
         # shape after an object is initialized
         obj2.arg5 = [[10, 20, 30], [40, 50, 60]]
-        msg = "MyChainClass.__init__: incorrect shape for arg5: got (2, 3), and expected (*, 2)"
+        msg = "MyChainClass.__init__: incorrect shape for arg5: got (2, 3), and expected (*,) or (*, 1) or (*, 2)"
         with self.assertRaisesWith(ValueError, msg):
             MyChainClass(self.obj1, arg3=[[10, 20], [30, 40], [50, 60]], arg5=obj2)
 
