@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from datetime import datetime, date
-from unittest import mock, skip
+from unittest import mock, skip, skipIf
 
 import numpy as np
 from dateutil.tz import tzlocal
@@ -13,6 +13,7 @@ from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
                                   IncorrectQuantityError, IllegalLinkError, ShapeError)
 from hdmf.backends.hdf5 import HDF5IO
+from hdmf.utils import ZARR_INSTALLED
 
 CORE_NAMESPACE = 'test_core'
 
@@ -1605,3 +1606,53 @@ class TestShapeValidation(ValidatorTestBase):
         # Should be ExpectedArrayError, not ShapeError
         self.assertIsInstance(result[0], ExpectedArrayError)
         self.assertNotIsInstance(result[0], ShapeError)
+
+    
+class TestObjectDtypeArrays(TestCase):
+    """Test validation of arrays with object dtype (e.g., zarr variable length strings)"""
+
+    def set_up_spec(self):
+        spec_catalog = SpecCatalog()
+        spec = GroupSpec('A test group specification with a data type',
+                         data_type_def='Bar',
+                         datasets=[DatasetSpec('an example dataset', 'text', name='data', shape=(None,))],
+                         attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+        spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")    
+    def test_non_empty_object_dtype_array(self):
+        """Test that validator can determine dtype for non-empty zarr.Array with object dtype"""
+        import zarr
+        import numcodecs
+
+        self.set_up_spec()
+
+        # Create a zarr array with object dtype containing strings
+        # Zarr uses object dtype for variable-length strings, unlike HDF5 which uses vlen metadata
+        zarr_array = zarr.array(['string1', 'string2', 'string3'], dtype=object, object_codec=numcodecs.VLenUTF8())
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+                                   datasets=[DatasetBuilder('data', zarr_array)])
+        results = self.vmap.validate(bar_builder)
+        # Should pass validation - object array with strings should be detected as 'utf' type
+        self.assertEqual(len(results), 0)
+
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")    
+    def test_empty_object_dtype_array(self):
+        """Test that validator can determine dtype for empty zarr.Array with object dtype"""
+        import zarr
+        import numcodecs
+
+        self.set_up_spec()
+
+        # Create an empty zarr array with object dtype
+        empty_zarr_array = zarr.array([], dtype=object, object_codec=numcodecs.VLenUTF8())
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+                                   datasets=[DatasetBuilder('data', empty_zarr_array)])
+        results = self.vmap.validate(bar_builder)
+        # Should pass validation - empty object array defaults to 'utf' type
+        self.assertEqual(len(results), 0)
