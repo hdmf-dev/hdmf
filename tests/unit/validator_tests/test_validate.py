@@ -1607,7 +1607,7 @@ class TestShapeValidation(ValidatorTestBase):
         self.assertIsInstance(result[0], ExpectedArrayError)
         self.assertNotIsInstance(result[0], ShapeError)
 
-    
+
 class TestObjectDtypeArrays(TestCase):
     """Test validation of arrays with object dtype (e.g., zarr variable length strings)"""
 
@@ -1622,7 +1622,7 @@ class TestObjectDtypeArrays(TestCase):
             'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
         self.vmap = ValidatorMap(self.namespace)
 
-    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")    
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
     def test_non_empty_object_dtype_array(self):
         """Test that validator can determine dtype for non-empty zarr.Array with object dtype"""
         import zarr
@@ -1640,7 +1640,7 @@ class TestObjectDtypeArrays(TestCase):
         # Should pass validation - object array with strings should be detected as 'utf' type
         self.assertEqual(len(results), 0)
 
-    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")    
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
     def test_empty_object_dtype_array(self):
         """Test that validator can determine dtype for empty zarr.Array with object dtype"""
         import zarr
