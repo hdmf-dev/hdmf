@@ -116,6 +116,42 @@ class EmptyArrayError(Exception):
     pass
 
 
+def _get_type_compound_dtype(data, builder_dtype):
+    """Helper function to get type information for compound dtypes."""
+    dtypes = []
+    string_formats = []
+    for i in range(len(builder_dtype)):
+        if len(np.shape(data)) == 0:
+            dtype, string_format = get_type(data[()][i])
+        else:
+            dtype, string_format = get_type(data[0][i])
+        dtypes.append(dtype)
+        string_formats.append(string_format)
+    return dtypes, string_formats
+
+
+def _get_type_from_dtype_attr(data, builder_dtype):
+    """Helper function to get type from data with dtype attribute (h5py.Dataset, zarr.Array, etc.)."""
+    # Handle variable-length data with vlen metadata (HDF5 style)
+    if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
+        if len(data) > 0:
+            return get_type(data[0], builder_dtype)
+        # Empty string array
+        if data.dtype.metadata["vlen"] is str:
+            return "utf", None
+        # Undetermined variable length data type
+        raise EmptyArrayError()  # pragma: no cover
+
+    # Handle object dtype (zarr style variable-length strings)
+    if data.dtype.kind == 'O':
+        if len(data) > 0:
+            return get_type(data[0], builder_dtype)
+        return "utf", None
+
+    # Standard data type (not compound or vlen)
+    return data.dtype, None
+
+
 def get_type(data, builder_dtype=None):
     """Return a tuple of (the string representation of the type, the format of the string data) for the given data."""
     # String data
@@ -134,54 +170,25 @@ def get_type(data, builder_dtype=None):
     elif isinstance(data, np.ndarray) and len(data.dtype) <= 1:
         if data.size > 0:
             return get_type(data[0], builder_dtype)
-        else:
-            raise EmptyArrayError()
+        raise EmptyArrayError()
     # Numpy bool data
     elif isinstance(data, np.bool_):
         return 'bool', None
     if not hasattr(data, '__len__'):
         return type(data).__name__, None
     # Case for h5py.Dataset, zarr.Array, and other I/O specific array types
-    else:
-        # Compound dtype
-        if builder_dtype and isinstance(builder_dtype, list):
-            dtypes = []
-            string_formats = []
-            for i in range(len(builder_dtype)):
-                if len(np.shape(data)) == 0:
-                    dtype, string_format = get_type(data[()][i])
-                else:
-                    dtype, string_format = get_type(data[0][i])
-                dtypes.append(dtype)
-                string_formats.append(string_format)
-            return dtypes, string_formats
-        # Object has 'dtype' attribute, e.g., an h5py.Dataset
-        if hasattr(data, 'dtype'):
-            if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
-                # Try to determine dtype from the first array element
-                if len(data) > 0:
-                    return get_type(data[0], builder_dtype)
-                # Empty array
-                else:
-                    # Empty string array
-                    if data.dtype.metadata["vlen"] is str:
-                        return "utf", None
-                    # Undetermined variable length data type.
-                    else:                        # pragma: no cover
-                        raise EmptyArrayError()  # pragma: no cover
-            elif data.dtype.kind == 'O':
-                if len(data) > 0:
-                    return get_type(data[0], builder_dtype)
-                else:
-                    return "utf", None
-            # Standard data type (i.e., not compound or vlen)
-            else:
-                return data.dtype, None
-        # If all else has failed, try to determine the datatype from the first element of the array
-        if len(data) > 0:
-            return get_type(data[0], builder_dtype)
-        else:
-            raise EmptyArrayError()
+    # Compound dtype
+    if builder_dtype and isinstance(builder_dtype, list):
+        return _get_type_compound_dtype(data, builder_dtype)
+
+    # Object has 'dtype' attribute, e.g., h5py.Dataset or zarr.Array
+    if hasattr(data, 'dtype'):
+        return _get_type_from_dtype_attr(data, builder_dtype)
+
+    # If all else has failed, try to determine the datatype from the first element of the array
+    if len(data) > 0:
+        return get_type(data[0], builder_dtype)
+    raise EmptyArrayError()
 
 
 def check_shape(expected, received):
