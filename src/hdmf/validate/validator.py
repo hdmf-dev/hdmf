@@ -141,7 +141,7 @@ def get_type(data, builder_dtype=None):
         return 'bool', None
     if not hasattr(data, '__len__'):
         return type(data).__name__, None
-    # Case for h5py.Dataset and other I/O specific array types
+    # Case for h5py.Dataset, zarr.Array, and other I/O specific array types
     else:
         # Compound dtype
         if builder_dtype and isinstance(builder_dtype, list):
@@ -169,6 +169,11 @@ def get_type(data, builder_dtype=None):
                     # Undetermined variable length data type.
                     else:                        # pragma: no cover
                         raise EmptyArrayError()  # pragma: no cover
+            elif data.dtype.kind == 'O':
+                if len(data) > 0:
+                    return get_type(data[0], builder_dtype)
+                else:
+                    return "utf", None
             # Standard data type (i.e., not compound or vlen)
             else:
                 return data.dtype, None
