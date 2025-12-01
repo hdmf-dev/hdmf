@@ -1662,14 +1662,14 @@ class TestVlenStringData(ValidatorTestBase):
         import numcodecs
 
         # Create a zarr array with object dtype containing strings
-        zarr_array = zarr.array(['string1', 'string2', 'string3'], 
-                                dtype=object, 
+        zarr_array = zarr.array(['string1', 'string2', 'string3'],
+                                dtype=object,
                                 object_codec=numcodecs.VLenUTF8())
         bar_builder = GroupBuilder('my_bar',
                                    attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                    datasets=[DatasetBuilder('data', zarr_array)])
         results = self.vmap.validate(bar_builder)
-        
+
         # Should pass validation - object array with strings should be detected as 'utf' type
         self.assertEqual(len(results), 0)
 
