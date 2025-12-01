@@ -1612,8 +1612,9 @@ class TestVlenStringData(ValidatorTestBase):
     """
     Test validation of variable length string data across backends.
 
-    HDF5 datasets and zarr arrays store variable-length strings different.
-    HDF5 uses vlen metadata and Zarr uses an object dtype.
+    HDF5 datasets and Zarr arrays store variable-length strings differently.
+    Validation of HDF5 vlen string datasets uses the data.dtype.metadata['vlen'] field and
+    validation of Zarr arrays uses the data.dtype.kind field from the object dtype.
     """
 
     def setUp(self):
