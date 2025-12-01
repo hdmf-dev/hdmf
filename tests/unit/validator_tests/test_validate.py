@@ -1608,19 +1608,52 @@ class TestShapeValidation(ValidatorTestBase):
         self.assertNotIsInstance(result[0], ShapeError)
 
 
-class TestObjectDtypeArrays(TestCase):
-    """Test validation of arrays with object dtype (e.g., zarr variable length strings)"""
+class TestVlenStringData(ValidatorTestBase):
+    """
+    Test validation of variable length string data across backends.
 
-    def set_up_spec(self):
-        spec_catalog = SpecCatalog()
-        spec = GroupSpec('A test group specification with a data type',
-                         data_type_def='Bar',
-                         datasets=[DatasetSpec('an example dataset', 'text', name='data', shape=(None,))],
-                         attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
-        spec_catalog.register_spec(spec, 'test.yaml')
-        self.namespace = SpecNamespace(
-            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
-        self.vmap = ValidatorMap(self.namespace)
+    HDF5 datasets and zarr arrays store variable-length strings different.
+    HDF5 uses vlen metadata and Zarr uses an object dtype.
+    """
+
+    def setUp(self):
+        self.hdf5_filename = 'test_string_dtype_validation.h5'
+        super().setUp()
+
+    def tearDown(self):
+        remove_test_file(self.hdf5_filename)
+        super().tearDown()
+
+    def getSpecs(self):
+        # spec with 'bytes' (ASCII) dtype requirement
+        foo = GroupSpec('A test group specification with a data type',
+                        data_type_def='Foo',
+                        datasets=[DatasetSpec('an example dataset', 'bytes', name='data', shape=(None,))],
+                        attributes=[AttributeSpec('attr1', 'an example attribute', 'text')])
+        # spec with 'text' dtype requirement
+        bar = GroupSpec('A test group specification with a data type',
+                        data_type_def='Bar',
+                        datasets=[DatasetSpec('an example dataset', 'text', name='data', shape=(None,))],
+                        attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+
+        return (foo, bar)
+
+    def runBuilderRoundTrip(self, builder, expected_errors=0):
+        """Executes a round-trip test for a builder (to write to HDF5 file and read back for validation tests)"""
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.add_namespace(self.namespace.name, self.namespace)
+        typemap = TypeMap(ns_catalog)
+        self.manager = BuildManager(typemap)
+
+        with HDF5IO(self.hdf5_filename, manager=self.manager, mode='w') as write_io:
+            write_io.write_builder(builder)
+
+        with HDF5IO(self.hdf5_filename, manager=self.manager, mode='r') as read_io:
+            read_builder = read_io.read_builder()
+            results = self.vmap.validate(read_builder)
+            if expected_errors == 0:
+                self.assertEqual(len(results), 0, results)
+            return results
 
     @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
     def test_object_dtype_array_utf(self):
@@ -1628,15 +1661,15 @@ class TestObjectDtypeArrays(TestCase):
         import zarr
         import numcodecs
 
-        self.set_up_spec()
-
         # Create a zarr array with object dtype containing strings
-        # Zarr uses object dtype for variable-length strings, unlike HDF5 which uses vlen metadata
-        zarr_array = zarr.array(['string1', 'string2', 'string3'], dtype=object, object_codec=numcodecs.VLenUTF8())
+        zarr_array = zarr.array(['string1', 'string2', 'string3'], 
+                                dtype=object, 
+                                object_codec=numcodecs.VLenUTF8())
         bar_builder = GroupBuilder('my_bar',
                                    attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                    datasets=[DatasetBuilder('data', zarr_array)])
         results = self.vmap.validate(bar_builder)
+        
         # Should pass validation - object array with strings should be detected as 'utf' type
         self.assertEqual(len(results), 0)
 
@@ -1645,8 +1678,6 @@ class TestObjectDtypeArrays(TestCase):
         """Test that validator can determine dtype for zarr.Array with object dtype containing ASCII bytes"""
         import zarr
         import numcodecs
-
-        self.set_up_spec()
 
         # Create a zarr array with object dtype containing bytes (ASCII strings)
         zarr_array = zarr.array(np.array(['string1', 'string2'], dtype=bytes),
@@ -1665,8 +1696,6 @@ class TestObjectDtypeArrays(TestCase):
         import zarr
         import numcodecs
 
-        self.set_up_spec()
-
         # Create an empty zarr array with object dtype
         empty_zarr_array = zarr.array([], dtype=object, object_codec=numcodecs.VLenUTF8())
         bar_builder = GroupBuilder('my_bar',
@@ -1675,3 +1704,34 @@ class TestObjectDtypeArrays(TestCase):
         results = self.vmap.validate(bar_builder)
         # Should pass validation - empty object array defaults to 'utf' type
         self.assertEqual(len(results), 0)
+
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_utf8_for_ascii_zarr(self):
+        """Test that validator does not allow UTF-8 data where ASCII is specified for zarr object dtype arrays"""
+        import zarr
+        import numcodecs
+
+        # Create a zarr array with UTF-8 strings
+        zarr_array = zarr.array(['string1', 'string2', 'string3'], dtype=object, object_codec=numcodecs.VLenUTF8())
+        bar_builder = GroupBuilder('my_foo',
+                                   attributes={'data_type': 'Foo', 'attr1': 'a string attribute'},
+                                   datasets=[DatasetBuilder('data', zarr_array)])
+        results = self.vmap.validate(bar_builder)
+
+        # Should fail validation - UTF-8 strings should not be allowed where bytes/ASCII is specified
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], DtypeError)
+        self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
+
+    def test_utf8_for_ascii_hdf5(self):
+        """Test that validator does not allow UTF-8 data where ASCII is specified for HDF5 vlen strings"""
+        # Create builder with UTF-8 string data and run round trip validation
+        builder = GroupBuilder('my_foo',
+                               attributes={'data_type': 'Foo', 'attr1': 'a string attribute'},
+                               datasets=[DatasetBuilder('data', ['string1', 'string2', 'string3'])])
+        results = self.runBuilderRoundTrip(builder, expected_errors=1)
+
+        # Should fail validation - UTF-8 strings should not be allowed where bytes/ASCII is specified
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], DtypeError)
+        self.assertEqual("Foo/data (data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
