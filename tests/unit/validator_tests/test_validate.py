@@ -1623,7 +1623,7 @@ class TestObjectDtypeArrays(TestCase):
         self.vmap = ValidatorMap(self.namespace)
 
     @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
-    def test_non_empty_object_dtype_array(self):
+    def test_object_dtype_array_utf(self):
         """Test that validator can determine dtype for non-empty zarr.Array with object dtype"""
         import zarr
         import numcodecs
@@ -1638,6 +1638,23 @@ class TestObjectDtypeArrays(TestCase):
                                    datasets=[DatasetBuilder('data', zarr_array)])
         results = self.vmap.validate(bar_builder)
         # Should pass validation - object array with strings should be detected as 'utf' type
+        self.assertEqual(len(results), 0)
+
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_object_dtype_array_ascii_bytes(self):
+        """Test that validator can determine dtype for zarr.Array with object dtype containing ASCII bytes"""
+        import zarr
+        import numcodecs
+
+        self.set_up_spec()
+
+        # Create a zarr array with object dtype containing bytes (ASCII strings)
+        zarr_array = zarr.array(np.array(['string1', 'string2'], dtype=bytes), dtype=object, object_codec=numcodecs.VLenBytes())
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+                                   datasets=[DatasetBuilder('data', zarr_array)])
+        results = self.vmap.validate(bar_builder)
+        # Should pass validation - object array with bytes should be detected as 'ascii' type
         self.assertEqual(len(results), 0)
 
     @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
