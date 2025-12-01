@@ -459,6 +459,15 @@ class TypeMap:
             for data_type in type_map.__container_types[namespace]:
                 container_cls = type_map.__container_types[namespace][data_type]
                 self.register_container_type(namespace, data_type, container_cls)
+        # Copy __data_types directly to preserve original namespace associations.
+        # This is needed because register_container_type uses setdefault, which means
+        # the iteration order of __container_types determines which namespace gets
+        # associated with a class. By copying __data_types directly, we ensure the
+        # original namespace associations are preserved (e.g., DynamicTableRegion
+        # stays associated with hdmf-common, not hdmf-experimental).
+        for container_cls, ns_dt in type_map._TypeMap__data_types.items():
+            if container_cls not in self.__data_types:
+                self.__data_types[container_cls] = ns_dt
         for container_cls in type_map.__mapper_cls:
             self.register_map(container_cls, type_map.__mapper_cls[container_cls])
         for custom_generators in reversed(type_map.__class_generator_manager.custom_generators):

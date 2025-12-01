@@ -5,6 +5,7 @@ from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNa
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.testing import TestCase
 
+from hdmf.container import Container
 from tests.unit.helpers.utils import Foo, FooBucket, CORE_NAMESPACE
 
 
@@ -343,6 +344,81 @@ class TestRetrieveContainerClass(TestBase):
     def test_get_dt_container_cls_no_namespace(self):
         with self.assertRaisesWith(ValueError, "Namespace could not be resolved for data type 'Unknown'."):
             self.type_map.get_dt_container_cls(data_type="Unknown")
+
+
+class TestTypeMapMerge(TestCase):
+    """Test TypeMap.merge preserves original namespace associations."""
+
+    def test_merge_preserves_data_types_namespace(self):
+        """Test that merge() preserves the original namespace associations in __data_types.
+
+        This is a regression test for https://github.com/hdmf-dev/hdmf/issues/1347
+        where DynamicTableRegion was incorrectly associated with hdmf-experimental
+        instead of hdmf-common after loading extensions.
+        """
+        # Create a "source" namespace with a type
+        source_spec = GroupSpec(
+            doc='A source type',
+            data_type_def='SourceType',
+        )
+        source_catalog = SpecCatalog()
+        source_catalog.register_spec(source_spec, 'source.yaml')
+        source_ns = SpecNamespace(
+            doc='source namespace',
+            name='source_ns',
+            schema=[{'source': 'source.yaml'}],
+            version='1.0.0',
+            catalog=source_catalog
+        )
+        source_ns_catalog = NamespaceCatalog()
+        source_ns_catalog.add_namespace('source_ns', source_ns)
+        source_type_map = TypeMap(source_ns_catalog)
+
+        # Create a container class for SourceType and register it
+        class SourceContainer(Container):
+            pass
+
+        source_type_map.register_container_type('source_ns', 'SourceType', SourceContainer)
+
+        # Create a "dependent" namespace that includes SourceType
+        dep_spec = GroupSpec(
+            doc='A dependent type',
+            data_type_def='DependentType',
+            data_type_inc='SourceType',
+        )
+        dep_catalog = SpecCatalog()
+        dep_catalog.register_spec(source_spec, 'source.yaml')  # need source spec for hierarchy
+        dep_catalog.register_spec(dep_spec, 'dependent.yaml')
+        dep_ns = SpecNamespace(
+            doc='dependent namespace',
+            name='dependent_ns',
+            schema=[{'source': 'source.yaml'}, {'source': 'dependent.yaml'}],
+            version='1.0.0',
+            catalog=dep_catalog
+        )
+
+        # Create a namespace catalog with both namespaces
+        # Order matters here - we add dependent_ns first to simulate the issue
+        combined_ns_catalog = NamespaceCatalog()
+        combined_ns_catalog.add_namespace('dependent_ns', dep_ns)
+        combined_ns_catalog.add_namespace('source_ns', source_ns)
+
+        # Create a new TypeMap for the combined namespaces
+        combined_type_map = TypeMap(combined_ns_catalog)
+
+        # Register SourceType in dependent_ns first (simulates what happens with TypeSource)
+        combined_type_map.register_container_type('dependent_ns', 'SourceType', SourceContainer)
+        # Then register in source_ns
+        combined_type_map.register_container_type('source_ns', 'SourceType', SourceContainer)
+
+        # Now merge the source_type_map (which has correct namespace association) into a new TypeMap
+        target_type_map = TypeMap(combined_ns_catalog)
+        target_type_map.merge(source_type_map)
+
+        # The key test: after merge, get_container_ns_dt should return source_ns, not dependent_ns
+        ns, dt = target_type_map.get_container_cls_dt(SourceContainer)
+        self.assertEqual(ns, 'source_ns')
+        self.assertEqual(dt, 'SourceType')
 
 
 # TODO:

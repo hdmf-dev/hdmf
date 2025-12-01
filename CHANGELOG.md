@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF (Unreleased)
+
+### Fixed
+- Fixed bug where `DynamicTableRegion` was written with namespace `hdmf_experimental` instead of `hdmf_common` when using NWB extensions that depend on `hdmf-experimental`. The issue was in `TypeMap.merge()` where the iteration order of `__container_types` could cause the wrong namespace to be associated with a class. @bendichter [#1347](https://github.com/hdmf-dev/hdmf/issues/1347)
+
 ## HDMF 4.1.2 (November 7, 2025)
 
 ### Fixed
