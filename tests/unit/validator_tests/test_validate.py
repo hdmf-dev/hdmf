@@ -1649,7 +1649,9 @@ class TestObjectDtypeArrays(TestCase):
         self.set_up_spec()
 
         # Create a zarr array with object dtype containing bytes (ASCII strings)
-        zarr_array = zarr.array(np.array(['string1', 'string2'], dtype=bytes), dtype=object, object_codec=numcodecs.VLenBytes())
+        zarr_array = zarr.array(np.array(['string1', 'string2'], dtype=bytes), 
+                                dtype=object, 
+                                object_codec=numcodecs.VLenBytes())
         bar_builder = GroupBuilder('my_bar',
                                    attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                    datasets=[DatasetBuilder('data', zarr_array)])
