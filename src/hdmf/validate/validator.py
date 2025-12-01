@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from copy import copy
 from itertools import chain
 from collections import defaultdict, OrderedDict
+from typing import Any, Optional, Union
 
 import numpy as np
 
@@ -116,7 +117,7 @@ class EmptyArrayError(Exception):
     pass
 
 
-def _get_type_compound_dtype(data, builder_dtype):
+def _get_type_compound_dtype(data: Any, builder_dtype: list) -> tuple[list, list]:
     """Helper function to get type information for compound dtypes."""
     dtypes = []
     string_formats = []
@@ -130,7 +131,7 @@ def _get_type_compound_dtype(data, builder_dtype):
     return dtypes, string_formats
 
 
-def _get_type_from_dtype_attr(data, builder_dtype):
+def _get_type_from_dtype_attr(data: Any, builder_dtype: Optional[list]) -> tuple[Union[str, np.dtype], Optional[str]]:
     """Helper function to get type from data with dtype attribute (h5py.Dataset, zarr.Array, etc.)."""
     # Handle variable-length data with vlen metadata (HDF5 style)
     if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
