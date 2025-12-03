@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from datetime import datetime, date
 from unittest import mock, skip, skipIf
 
+import h5py
 import numpy as np
 from dateutil.tz import tzlocal
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, TypeMap, BuildManager
@@ -13,7 +14,7 @@ from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
                                   IncorrectQuantityError, IllegalLinkError, ShapeError)
 from hdmf.backends.hdf5 import HDF5IO
-from hdmf.utils import ZARR_INSTALLED
+from hdmf.utils import ZARR_INSTALLED, StrDataset
 
 CORE_NAMESPACE = 'test_core'
 
@@ -1639,23 +1640,6 @@ class TestVlenStringData(ValidatorTestBase):
 
         return (foo, bar)
 
-    def runBuilderRoundTrip(self, builder, expected_errors=0):
-        """Executes a round-trip test for a builder (to write to HDF5 file and read back for validation tests)"""
-        ns_catalog = NamespaceCatalog()
-        ns_catalog.add_namespace(self.namespace.name, self.namespace)
-        typemap = TypeMap(ns_catalog)
-        self.manager = BuildManager(typemap)
-
-        with HDF5IO(self.hdf5_filename, manager=self.manager, mode='w') as write_io:
-            write_io.write_builder(builder)
-
-        with HDF5IO(self.hdf5_filename, manager=self.manager, mode='r') as read_io:
-            read_builder = read_io.read_builder()
-            results = self.vmap.validate(read_builder)
-            if expected_errors == 0:
-                self.assertEqual(len(results), 0, results)
-            return results
-
     @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
     def test_object_dtype_array_utf(self):
         """Test that validator can determine dtype for non-empty zarr.Array with object dtype"""
@@ -1726,13 +1710,16 @@ class TestVlenStringData(ValidatorTestBase):
 
     def test_utf8_for_ascii_hdf5(self):
         """Test that validator does not allow UTF-8 data where ASCII is specified for HDF5 vlen strings"""
-        # Create builder with UTF-8 string data and run round trip validation
-        builder = GroupBuilder('my_foo',
+        # Create hdf5 dataset with UTF-8 string data
+        # convert to StrDataset because data read directly from f.create_dataset will be bytes
+        f = h5py.File(name=self.hdf5_filename, mode='w', driver='core', backing_store=False)
+        dset = StrDataset(f.create_dataset('data', data=['string1', 'string2', 'string3']), encoding='utf8') 
+        foo_builder = GroupBuilder('my_foo',
                                attributes={'data_type': 'Foo', 'attr1': 'a string attribute'},
-                               datasets=[DatasetBuilder('data', ['string1', 'string2', 'string3'])])
-        results = self.runBuilderRoundTrip(builder, expected_errors=1)
+                               datasets=[DatasetBuilder('data', dset)])
+        results = self.vmap.validate(foo_builder)
 
         # Should fail validation - UTF-8 strings should not be allowed where bytes/ASCII is specified
         self.assertEqual(len(results), 1)
         self.assertIsInstance(results[0], DtypeError)
-        self.assertEqual("Foo/data (data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
+        self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
