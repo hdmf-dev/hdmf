@@ -1618,14 +1618,6 @@ class TestVlenStringData(ValidatorTestBase):
     validation of Zarr arrays uses the data.dtype.kind field from the object dtype.
     """
 
-    def setUp(self):
-        self.hdf5_filename = 'test_string_dtype_validation.h5'
-        super().setUp()
-
-    def tearDown(self):
-        remove_test_file(self.hdf5_filename)
-        super().tearDown()
-
     def getSpecs(self):
         # spec with 'bytes' (ASCII) dtype requirement
         foo = GroupSpec('A test group specification with a data type',
@@ -1712,8 +1704,8 @@ class TestVlenStringData(ValidatorTestBase):
         """Test that validator does not allow UTF-8 data where ASCII is specified for HDF5 vlen strings"""
         # Create hdf5 dataset with UTF-8 string data
         # convert to StrDataset because data read directly from f.create_dataset will be bytes
-        f = h5py.File(name=self.hdf5_filename, mode='w', driver='core', backing_store=False)
-        dset = StrDataset(f.create_dataset('data', data=['string1', 'string2', 'string3']), encoding='utf8')
+        f = h5py.File(name='test_string_dtype_validation.h5', mode='w', driver='core', backing_store=False)
+        dset = StrDataset(f.create_dataset('data', data=['string1', 'string2', 'string3']), encoding='utf8') 
         foo_builder = GroupBuilder('my_foo',
                                attributes={'data_type': 'Foo', 'attr1': 'a string attribute'},
                                datasets=[DatasetBuilder('data', dset)])
