@@ -1705,7 +1705,7 @@ class TestVlenStringData(ValidatorTestBase):
         # Create hdf5 dataset with UTF-8 string data
         # convert to StrDataset because data read directly from f.create_dataset will be bytes
         f = h5py.File(name='test_string_dtype_validation.h5', mode='w', driver='core', backing_store=False)
-        dset = StrDataset(f.create_dataset('data', data=['string1', 'string2', 'string3']), encoding='utf8') 
+        dset = StrDataset(f.create_dataset('data', data=['string1', 'string2', 'string3']), encoding='utf8')
         foo_builder = GroupBuilder('my_foo',
                                attributes={'data_type': 'Foo', 'attr1': 'a string attribute'},
                                datasets=[DatasetBuilder('data', dset)])
