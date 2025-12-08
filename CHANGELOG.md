@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 4.1.3 (Upcoming)
+
+### Fixed
+- Fixed bug when validating string datasets in NWB Zarr files. @stephprince [#1348](https://github.com/hdmf-dev/hdmf/pull/1348)
+
 ## HDMF 4.1.2 (November 7, 2025)
 
 ### Fixed
