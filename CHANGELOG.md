@@ -2,8 +2,15 @@
 
 ## HDMF 4.1.3 (Upcoming)
 
+### Added
+- Added an argument `copy` to `get_type_map` to control whether a copy of the type map is returned or not.
+  If `copy=False`, the returned type map will be a direct reference to the global type map. @rly
+  [#1352](https://github.com/hdmf-dev/hdmf/pull/1352)
+
 ### Fixed
 - Fixed bug when validating string datasets in NWB Zarr files. @stephprince [#1348](https://github.com/hdmf-dev/hdmf/pull/1348)
+- Fixed a performance regression that affected calling setters of HDMF Common data types. @rly [#1352](https://github.com/hdmf-dev/hdmf/pull/1352)
+
 
 ## HDMF 4.1.2 (November 7, 2025)
 
@@ -11,6 +18,7 @@
 - Fixed bug when converting string datasets that are Zarr arrays. @oruebel @rly [#1171](https://github.com/hdmf-dev/hdmf/pull/1171)
 - Fixed unclear shape validation error message. @bendichter @rly [#787](https://github.com/hdmf-dev/hdmf/pull/787)
 - Fixed testing of sphinx gallery examples with optional dependencies. @rly [#1343](https://github.com/hdmf-dev/hdmf/pull/1343)
+
 
 ## HDMF 4.1.1 (October 22, 2025)
 
@@ -29,6 +37,8 @@
 ### Changed
 - Changed error for attempting to overwrite an existing specification into a warning that any specification redefinitions will be ignored. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309)
 - Deprecated the experimental `HERDManager.link_resources` and `HERDManager.link_external_resources` and added the property `HERDManager.external_resources` to support downstream API function overloading. @mavaylon1, @rly [#1292](https://github.com/hdmf-dev/hdmf/pull/1292)
+- Deprecated calling `get_type_map` with the `extensions` argument. Call `load_namespaces` on the returned `TypeMap`
+  instead. @rly [#1302](https://github.com/hdmf-dev/hdmf/pull/1302)
 
 
 ## HDMF 4.1.0 (May 28, 2025)
