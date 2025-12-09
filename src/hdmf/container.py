@@ -116,7 +116,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         # TODO: refactor this so that it does not call get_type_map every time an attribute is set
         # and there is non circular import
         from hdmf.common import get_type_map # circular import
-        return get_type_map()
+        return get_type_map(copy=False)
 
     @property
     def data_type(self):
