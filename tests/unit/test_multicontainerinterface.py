@@ -325,6 +325,7 @@ class TestBasic(TestCase):
             foo['obj2']
 
     def test_repr_html_(self):
+        """Test HTML representation includes type annotations for nested containers."""
         obj1 = Container('obj1')
         obj2 = Container('obj2')
         foo = FooSingle()
@@ -353,9 +354,9 @@ class TestBasic(TestCase):
                 'margin-left: 0px;" class="container-fields field-key" '
                 'title=".containers"><b>containers</b></summary><details><summary style="display: list-item; '
                 'margin-left: 20px;" class="container-fields field-key" title=".containers['
-                '\'obj1\']"><b>obj1</b></summary></details><details><summary style="display: list-item; margin-left: '
+                '\'obj1\']"><b>obj1 <span style=\'font-weight: normal; color: #888;\'>(Container)</span></b></summary></details><details><summary style="display: list-item; margin-left: '
                 '20px;" class="container-fields field-key" title=".containers['
-                '\'obj2\']"><b>obj2</b></summary></details></details></div>'
+                '\'obj2\']"><b>obj2 <span style=\'font-weight: normal; color: #888;\'>(Container)</span></b></summary></details></details></div>'
             )
         )
 
