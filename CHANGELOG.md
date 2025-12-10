@@ -9,7 +9,7 @@
 
 ### Changed
 - Changed HTML representation of `MultiContainerInterface` to flatten the `data_interfaces` field,
-  removing the redundant nesting level for `ProcessingModule` in PyNWB. @h-mayorquin
+  removing the redundant nesting level for `ProcessingModule` in PyNWB. @h-mayorquin [#1354](https://github.com/hdmf-dev/hdmf/pull/1354)
 
 ### Fixed
 - Fixed bug when validating string datasets in NWB Zarr files. @stephprince [#1348](https://github.com/hdmf-dev/hdmf/pull/1348)
