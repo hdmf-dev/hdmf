@@ -706,19 +706,19 @@ class Container(AbstractContainer):
             for key, value in fields.items():
                 current_access_code = f"{access_code}.{key}" if is_field else f"{access_code}['{key}']"
                 if hasattr(value, '_generate_field_html'):
-                    html_repr += value._generate_field_html(key, value, level, current_access_code, is_field=is_field)
+                    html_repr += value._generate_field_html(key, value, level, current_access_code)
                 else:
-                    html_repr += self._generate_field_html(key, value, level, current_access_code, is_field=is_field)
+                    html_repr += self._generate_field_html(key, value, level, current_access_code)
         elif isinstance(fields, list):
             for index, item in enumerate(fields):
                 access_code += f'[{index}]'
-                html_repr += self._generate_field_html(index, item, level, access_code, is_field=False)
+                html_repr += self._generate_field_html(index, item, level, access_code)
         else:
             pass
 
         return html_repr
 
-    def _generate_field_html(self, key, value, level, access_code, is_field=True):
+    def _generate_field_html(self, key, value, level, access_code):
         """Generates HTML for a single field.
 
         This function can be overwritten by a child class to implement customized html representations.
@@ -749,18 +749,18 @@ class Container(AbstractContainer):
         else:
             html_content = f'<span class="field-key">{value}</span>'
 
-        # Build the header text, including type information for items inside collections
+        # Build the display name, including type information for nested items.
         # For registered containers (e.g., NWB types), data_type is a class attribute
         # that identifies the schema type. We display it next to the name if different.
-        # Only show type for items inside collections (is_field=False), not for direct fields.
-        # The latter avoids displaying data type for the top level elements in the NWBFile.
+        # Only show type for items at level >= 1 (not the top-level fields like acquisition, electrodes).
         display_name = str(key)
-        if not is_field:
+        is_nested_item = level >= 1
+        if is_nested_item:
             has_data_type_attr = hasattr(value, "_data_type_attr")
             data_type = getattr(type(value), value._data_type_attr, None) if has_data_type_attr else None
             # data_type is a string for registered containers, but a property for unregistered ones
             is_registered_container = isinstance(data_type, str)
-            is_name_different_from_type = str(key) != data_type  # To avoid redundancy
+            is_name_different_from_type = str(key) != data_type
             if is_registered_container and is_name_different_from_type:
                 data_type_str = f" <span style='font-weight: normal; color: #888;'>({data_type})</span>"
                 display_name += data_type_str
