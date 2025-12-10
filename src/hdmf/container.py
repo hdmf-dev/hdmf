@@ -1340,7 +1340,7 @@ class MultiContainerInterface(Container):
             setattr(cls, get, cls.__make_get(get, attr, container_type))
 
     def _generate_field_html(self, key, value, level, access_code):
-        """Override here to flatten 'data_interfaces' rendering in MultiContainers with data_interfaces keys 
+        """Override here to flatten 'data_interfaces' rendering in MultiContainers with data_interfaces keys
         In practice this is the ProcessingModule
 
         The 'data_interfaces' wrapper in ProcessingModule is redundant since the
