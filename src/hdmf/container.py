@@ -1339,6 +1339,25 @@ class MultiContainerInterface(Container):
         if get is not None:
             setattr(cls, get, cls.__make_get(get, attr, container_type))
 
+    def _generate_field_html(self, key, value, level, access_code):
+        """Override here to flatten 'data_interfaces' rendering in MultiContainers with data_interfaces keys 
+        In practice this is the ProcessingModule
+
+        The 'data_interfaces' wrapper in ProcessingModule is redundant since the
+        ProcessingModule container itself already indicates it holds data interfaces.
+        This method renders the contained objects directly without that extra nesting level.
+        """
+        # Only flatten the 'data_interfaces' field (used by ProcessingModule in PyNWB)
+        if isinstance(value, LabelledDict) and key == 'data_interfaces':
+            # Render the contents of the LabelledDict directly without the wrapper
+            html_repr = ""
+            for item_key, item_value in value.items():
+                item_access_code = f"{access_code}['{item_key}']"
+                html_repr += super()._generate_field_html(item_key, item_value, level, item_access_code)
+            return html_repr
+        else:
+            return super()._generate_field_html(key, value, level, access_code)
+
 
 class Row(object, metaclass=ExtenderMeta):
     """
