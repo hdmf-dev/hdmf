@@ -7,6 +7,10 @@
   If `copy=False`, the returned type map will be a direct reference to the global type map. @rly
   [#1352](https://github.com/hdmf-dev/hdmf/pull/1352)
 
+### Changed
+- Changed HTML representation of `MultiContainerInterface` to flatten the `data_interfaces` field,
+  removing the redundant nesting level for `ProcessingModule` in PyNWB. @h-mayorquin
+
 ### Fixed
 - Fixed bug when validating string datasets in NWB Zarr files. @stephprince [#1348](https://github.com/hdmf-dev/hdmf/pull/1348)
 - Fixed a performance regression that affected calling setters of HDMF Common data types. @rly [#1352](https://github.com/hdmf-dev/hdmf/pull/1352)
