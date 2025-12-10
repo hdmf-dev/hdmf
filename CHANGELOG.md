@@ -8,10 +8,7 @@
   [#1352](https://github.com/hdmf-dev/hdmf/pull/1352)
 
 ### Changed
-- Changed HTML representation of `MultiContainerInterface` to flatten the `data_interfaces` field,
-  removing the redundant nesting level for `ProcessingModule` in PyNWB. @h-mayorquin
-- Changed HTML representation to display the `data_type` for nested containers, showing
-  the type in parentheses next to the name (e.g., `MyTimeSeries (TimeSeries)`). @h-mayorquin
+- Changed HTML representation to display the `data_type` for nested containers, showing the type in parentheses next to the name (e.g., `MyTimeSeries (TimeSeries)`). @h-mayorquin
 
 ### Fixed
 - Fixed bug when validating string datasets in NWB Zarr files. @stephprince [#1348](https://github.com/hdmf-dev/hdmf/pull/1348)
