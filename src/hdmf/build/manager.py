@@ -93,6 +93,7 @@ class BuildManager:
         self.__active_builders = set()
         self.__type_map = type_map
         self.__ref_queue = deque()  # a queue of the ReferenceBuilders that need to be added
+        self.__in_export_mode = False
 
     @property
     def namespace_catalog(self):
@@ -101,6 +102,10 @@ class BuildManager:
     @property
     def type_map(self):
         return self.__type_map
+
+    @property
+    def in_export_mode(self):
+        return self.__in_export_mode
 
     @docval({"name": "object", "type": (BaseBuilder, AbstractContainer),
              "doc": "the container or builder to get a proxy for"},
@@ -151,15 +156,17 @@ class BuildManager:
         """ Build the GroupBuilder/DatasetBuilder for the given AbstractContainer"""
         container, export = getargs('container', 'export', kwargs)
         source, spec_ext, root = getargs('source', 'spec_ext', 'root', kwargs)
+        if export:
+            self.__in_export_mode = True
         result = self.get_builder(container)
         if root:
             self.__active_builders.clear()  # reset active builders at start of build process
         if result is None:
             self.logger.debug("Building new %s '%s' (container_source: %s, source: %s, extended spec: %s, export: %s)"
                               % (container.__class__.__name__, container.name, repr(container.container_source),
-                                 repr(source), spec_ext is not None, export))
+                                 repr(source), spec_ext is not None, self.__in_export_mode))
             # the container_source is not set or checked when exporting
-            if not export:
+            if not self.__in_export_mode:
                 if container.container_source is None:
                     container.container_source = source
                 elif source is None:
@@ -170,7 +177,7 @@ class BuildManager:
                                          % (container.name, container.__class__.__module__,
                                             container.__class__.__name__))
             # NOTE: if exporting, then existing cached builder will be ignored and overridden with new build result
-            result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext, export=export)
+            result = self.__type_map.build(container, self, source=source, spec_ext=spec_ext)
             self.prebuilt(container, result)
             self.__active_prebuilt(result)
             self.logger.debug("Done building %s '%s'" % (container.__class__.__name__, container.name))
@@ -179,8 +186,7 @@ class BuildManager:
             self.logger.debug("Rebuilding modified %s '%s' (source: %s, extended spec: %s)"
                               % (container.__class__.__name__, container.name,
                                  repr(source), spec_ext is not None))
-            result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext,
-                                           export=export)
+            result = self.__type_map.build(container, self, builder=result, source=source, spec_ext=spec_ext)
             self.logger.debug("Done rebuilding %s '%s'" % (container.__class__.__name__, container.name))
         else:
             self.logger.debug("Using prebuilt %s '%s' for %s '%s'"
@@ -189,6 +195,8 @@ class BuildManager:
         if root:  # create reference builders only after building all other builders
             self.__add_refs()
             self.__active_builders.clear()  # reset active builders now that build process has completed
+        if export:
+            self.__in_export_mode = False
         return result
 
     @docval({"name": "container", "type": AbstractContainer, "doc": "the AbstractContainer to save as prebuilt"},
@@ -771,12 +779,11 @@ class TypeMap:
              "doc": "the source of container being built i.e. file path", 'default': None},
             {"name": "builder", "type": BaseBuilder, "doc": "the Builder to build on", 'default': None},
             {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", 'default': None},
-            {"name": "export", "type": bool, "doc": "whether this build is for exporting",
-             'default': False})
+    )
     def build(self, **kwargs):
         """Build the GroupBuilder/DatasetBuilder for the given AbstractContainer"""
         container, manager, builder = getargs('container', 'manager', 'builder', kwargs)
-        source, spec_ext, export = getargs('source', 'spec_ext', 'export', kwargs)
+        source, spec_ext = getargs('source', 'spec_ext', kwargs)
 
         # get the ObjectMapper to map between Spec objects and AbstractContainer attributes
         obj_mapper = self.get_map(container)
@@ -786,7 +793,7 @@ class TypeMap:
         # convert the container to a builder using the ObjectMapper
         if manager is None:
             manager = BuildManager(self)
-        builder = obj_mapper.build(container, manager, builder=builder, source=source, spec_ext=spec_ext, export=export)
+        builder = obj_mapper.build(container, manager, builder=builder, source=source, spec_ext=spec_ext)
 
         # add additional attributes (namespace, data_type, object_id) to builder
         namespace, data_type = self.get_container_ns_dt(container)
