@@ -1,11 +1,14 @@
 # HDMF Changelog
 
-## HDMF 4.1.3 (Upcoming)
+## HDMF 4.2.0 (Upcoming)
 
 ### Added
 - Added an argument `copy` to `get_type_map` to control whether a copy of the type map is returned or not.
   If `copy=False`, the returned type map will be a direct reference to the global type map. @rly
   [#1352](https://github.com/hdmf-dev/hdmf/pull/1352)
+
+### Changed
+- Changed how to call `BuildManager.build`, `TypeMap.build`, and `ObjectMapper.build` when exporting. The `export` argument is no longer accepted by `TypeMap.build` and `ObjectMapper.build`; `BuildManager.build` still accepts the `export` argument but now uses it to set an internal flag instead of passing it through the call chain. @rly [#1358](https://github.com/hdmf-dev/hdmf/pull/1358)
 
 ### Fixed
 - Fixed bug when validating string datasets in NWB Zarr files. @stephprince [#1348](https://github.com/hdmf-dev/hdmf/pull/1348)

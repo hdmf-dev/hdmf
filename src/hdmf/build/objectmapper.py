@@ -764,8 +764,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
              "doc": "the source of container being built i.e. file path", 'default': None},
             {"name": "builder", "type": BaseBuilder, "doc": "the Builder to build on", 'default': None},
             {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", 'default': None},
-            {"name": "export", "type": bool, "doc": "whether this build is for exporting",
-             'default': False},
             returns="the Builder representing the given AbstractContainer", rtype=Builder)
     def build(self, **kwargs):
         '''Convert an AbstractContainer to a Builder representation.
@@ -773,16 +771,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
         References are not added but are queued to be added in the BuildManager.
         '''
         container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
-        builder, spec_ext, export = getargs('builder', 'spec_ext', 'export', kwargs)
+        builder, spec_ext = getargs('builder', 'spec_ext', kwargs)
         name = manager.get_builder_name(container)
         if isinstance(self.__spec, GroupSpec):
             self.logger.debug("Building %s '%s' as a group (source: %s)"
                               % (container.__class__.__name__, container.name, repr(source)))
             if builder is None:
                 builder = GroupBuilder(name, parent=parent, source=source)
-            self.__add_datasets(builder, self.__spec.datasets, container, manager, source, export)
-            self.__add_groups(builder, self.__spec.groups, container, manager, source, export)
-            self.__add_links(builder, self.__spec.links, container, manager, source, export)
+            self.__add_datasets(builder, self.__spec.datasets, container, manager, source)
+            self.__add_groups(builder, self.__spec.groups, container, manager, source)
+            self.__add_links(builder, self.__spec.links, container, manager, source)
         else:
             if builder is None:
                 if not isinstance(container, Data):
@@ -868,7 +866,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # TODO: We should add validation in the AttributeSpec to make sure refinements are valid
         # TODO: Check the BuildManager as refinements should probably be resolved rather than be passed in via spec_ext
         all_attrs = list({a.name: a for a in all_attrs[::-1]}.values())
-        self.__add_attributes(builder, all_attrs, container, manager, source, export)
+        self.__add_attributes(builder, all_attrs, container, manager)
         return builder
 
     def __check_dset_spec(self, orig, ext):
@@ -1052,7 +1050,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             raise ReferenceTargetNotBuiltError(builder, container)
         return target_builder
 
-    def __add_attributes(self, builder, attributes, container, build_manager, source, export):
+    def __add_attributes(self, builder, attributes, container, build_manager):
         if attributes:
             self.logger.debug("Adding attributes from %s '%s' to %s '%s'"
                               % (container.__class__.__name__, container.name,
@@ -1111,7 +1109,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
         return _filler
 
-    def __add_links(self, builder, links, container, build_manager, source, export):
+    def __add_links(self, builder, links, container, build_manager, source):
         if links:
             self.logger.debug("Adding links from %s '%s' to %s '%s'"
                               % (container.__class__.__name__, container.name,
@@ -1124,9 +1122,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if attr_value is None:
                 self.logger.debug("        Skipping link - no attribute value")
                 continue
-            self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
+            self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
-    def __add_datasets(self, builder, datasets, container, build_manager, source, export):
+    def __add_datasets(self, builder, datasets, container, build_manager, source):
         if datasets:
             self.logger.debug("Adding datasets from %s '%s' to %s '%s'"
                               % (container.__class__.__name__, container.name,
@@ -1165,15 +1163,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                       % repr(spec.name))
                     sub_builder = DatasetBuilder(spec.name, data, parent=builder, source=source, dtype=dtype)
                     builder.set_dataset(sub_builder)
-                self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source, export)
+                self.__add_attributes(sub_builder, spec.attributes, container, build_manager)
             else:
                 self.logger.debug("        Adding typed dataset for spec name: %s, %s: %s, %s: %s"
                                   % (repr(spec.name),
                                      spec.def_key(), repr(spec.data_type_def),
                                      spec.inc_key(), repr(spec.data_type_inc)))
-                self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
+                self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
-    def __add_groups(self, builder, groups, container, build_manager, source, export):
+    def __add_groups(self, builder, groups, container, build_manager, source):
         if groups:
             self.logger.debug("Adding groups from %s '%s' to %s '%s'"
                               % (container.__class__.__name__, container.name,
@@ -1185,10 +1183,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 sub_builder = builder.groups.get(spec.name)
                 if sub_builder is None:
                     sub_builder = GroupBuilder(spec.name, source=source)
-                self.__add_attributes(sub_builder, spec.attributes, container, build_manager, source, export)
-                self.__add_datasets(sub_builder, spec.datasets, container, build_manager, source, export)
-                self.__add_links(sub_builder, spec.links, container, build_manager, source, export)
-                self.__add_groups(sub_builder, spec.groups, container, build_manager, source, export)
+                self.__add_attributes(sub_builder, spec.attributes, container, build_manager)
+                self.__add_datasets(sub_builder, spec.datasets, container, build_manager, source)
+                self.__add_links(sub_builder, spec.links, container, build_manager, source)
+                self.__add_groups(sub_builder, spec.groups, container, build_manager, source)
                 empty = sub_builder.is_empty()
                 if not empty or (empty and spec.required):
                     if sub_builder.name not in builder.groups:
@@ -1201,9 +1199,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 attr_value = self.get_attr_value(spec, container, build_manager)
                 self.__check_quantity(attr_value, spec, container)
                 if attr_value is not None:
-                    self.__add_containers(builder, spec, attr_value, build_manager, source, container, export)
+                    self.__add_containers(builder, spec, attr_value, build_manager, source, container)
 
-    def __add_containers(self, builder, spec, value, build_manager, source, parent_container, export):
+    def __add_containers(self, builder, spec, value, build_manager, source, parent_container):
         if isinstance(value, AbstractContainer):
             self.logger.debug("    Adding container %s '%s' with parent %s '%s' to %s '%s'"
                               % (value.__class__.__name__, value.name,
@@ -1216,14 +1214,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     # or value was read from an external link
                     raise OrphanContainerBuildError(builder, value)
 
-            if value.modified or export:
+            if value.modified or build_manager.in_export_mode:
                 # writing a newly instantiated container (modified is False only after read) or as if it is newly
-                # instantianted (export=True)
+                # instantiated (in_export_mode=True)
                 self.logger.debug("    Building newly instantiated %s '%s'" % (value.__class__.__name__, value.name))
                 if isinstance(spec, BaseStorageSpec):
-                    new_builder = build_manager.build(value, source=source, spec_ext=spec, export=export)
+                    new_builder = build_manager.build(value, source=source, spec_ext=spec)
                 else:
-                    new_builder = build_manager.build(value, source=source, export=export)
+                    new_builder = build_manager.build(value, source=source)
                 # use spec to determine what kind of HDF5 object this AbstractContainer corresponds to
                 if isinstance(spec, LinkSpec) or value.parent is not parent_container:
                     self.logger.debug("    Adding link to %s '%s' in %s '%s'"
@@ -1246,9 +1244,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     self.logger.debug("    Building %s '%s' (container source: %s) and adding a link to it"
                                       % (value.__class__.__name__, value.name, value.container_source))
                     if isinstance(spec, BaseStorageSpec):
-                        new_builder = build_manager.build(value, source=source, spec_ext=spec, export=export)
+                        new_builder = build_manager.build(value, source=source, spec_ext=spec)
                     else:
-                        new_builder = build_manager.build(value, source=source, export=export)
+                        new_builder = build_manager.build(value, source=source)
                     builder.set_link(LinkBuilder(new_builder, name=spec.name, parent=builder))
                 else:
                     self.logger.debug("    Skipping build for %s '%s' because both it and its parents were read "
@@ -1259,7 +1257,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                                  (value.name, parent_container.name))
         elif isinstance(value, list):
             for container in value:
-                self.__add_containers(builder, spec, container, build_manager, source, parent_container, export)
+                self.__add_containers(builder, spec, container, build_manager, source, parent_container)
         else:  # pragma: no cover
             msg = ("Received %s, expected AbstractContainer or a list of AbstractContainers."
                    % value.__class__.__name__)
