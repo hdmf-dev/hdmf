@@ -354,9 +354,11 @@ class TestBasic(TestCase):
                 'margin-left: 0px;" class="container-fields field-key" '
                 'title=".containers"><b>containers</b></summary><details><summary style="display: list-item; '
                 'margin-left: 20px;" class="container-fields field-key" title=".containers['
-                '\'obj1\']"><b>obj1 <span style=\'font-weight: normal; color: #888;\'>(Container)</span></b></summary></details><details><summary style="display: list-item; margin-left: '
+                '\'obj1\']"><b>obj1 <span style=\'font-weight: normal; color: #888;\'>(Container)</span></b>'
+                '</summary></details><details><summary style="display: list-item; margin-left: '
                 '20px;" class="container-fields field-key" title=".containers['
-                '\'obj2\']"><b>obj2 <span style=\'font-weight: normal; color: #888;\'>(Container)</span></b></summary></details></details></div>'
+                '\'obj2\']"><b>obj2 <span style=\'font-weight: normal; color: #888;\'>(Container)</span></b>'
+                '</summary></details></details></div>'
             )
         )
 
