@@ -1216,7 +1216,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
             if value.modified or build_manager.in_export_mode:
                 # writing a newly instantiated container (modified is False only after read) or as if it is newly
-                # instantianted (in_export_mode=True)
+                # instantiated (in_export_mode=True)
                 self.logger.debug("    Building newly instantiated %s '%s'" % (value.__class__.__name__, value.name))
                 if isinstance(spec, BaseStorageSpec):
                     new_builder = build_manager.build(value, source=source, spec_ext=spec)
