@@ -1,7 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from datetime import datetime, date
-from unittest import mock, skip
+from unittest import mock, skip, skipIf
 
+import h5py
 import numpy as np
 from dateutil.tz import tzlocal
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, TypeMap, BuildManager
@@ -13,6 +14,7 @@ from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
                                   IncorrectQuantityError, IllegalLinkError, ShapeError)
 from hdmf.backends.hdf5 import HDF5IO
+from hdmf.utils import ZARR_INSTALLED, StrDataset
 
 CORE_NAMESPACE = 'test_core'
 
@@ -1605,3 +1607,111 @@ class TestShapeValidation(ValidatorTestBase):
         # Should be ExpectedArrayError, not ShapeError
         self.assertIsInstance(result[0], ExpectedArrayError)
         self.assertNotIsInstance(result[0], ShapeError)
+
+
+class TestVlenStringData(ValidatorTestBase):
+    """
+    Test validation of variable length string data across backends.
+
+    HDF5 datasets and Zarr arrays store variable-length strings differently.
+    Validation of HDF5 vlen string datasets uses the data.dtype.metadata['vlen'] field and
+    validation of Zarr arrays uses the data.dtype.kind field from the object dtype.
+    """
+
+    def getSpecs(self):
+        # spec with 'bytes' (ASCII) dtype requirement
+        foo = GroupSpec('A test group specification with a data type',
+                        data_type_def='Foo',
+                        datasets=[DatasetSpec('an example dataset', 'bytes', name='data', shape=(None,))],
+                        attributes=[AttributeSpec('attr1', 'an example attribute', 'text')])
+        # spec with 'text' dtype requirement
+        bar = GroupSpec('A test group specification with a data type',
+                        data_type_def='Bar',
+                        datasets=[DatasetSpec('an example dataset', 'text', name='data', shape=(None,))],
+                        attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+
+        return (foo, bar)
+
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_object_dtype_array_utf(self):
+        """Test that validator can determine dtype for non-empty zarr.Array with object dtype"""
+        import zarr
+        import numcodecs
+
+        # Create a zarr array with object dtype containing strings
+        zarr_array = zarr.array(['string1', 'string2', 'string3'],
+                                dtype=object,
+                                object_codec=numcodecs.VLenUTF8())
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+                                   datasets=[DatasetBuilder('data', zarr_array)])
+        results = self.vmap.validate(bar_builder)
+
+        # Should pass validation - object array with strings should be detected as 'utf' type
+        self.assertEqual(len(results), 0)
+
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_object_dtype_array_ascii_bytes(self):
+        """Test that validator can determine dtype for zarr.Array with object dtype containing ASCII bytes"""
+        import zarr
+        import numcodecs
+
+        # Create a zarr array with object dtype containing bytes (ASCII strings)
+        zarr_array = zarr.array(np.array(['string1', 'string2'], dtype=bytes),
+                                dtype=object,
+                                object_codec=numcodecs.VLenBytes())
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+                                   datasets=[DatasetBuilder('data', zarr_array)])
+        results = self.vmap.validate(bar_builder)
+        # Should pass validation - object array with bytes should be detected as 'ascii' type
+        self.assertEqual(len(results), 0)
+
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_empty_object_dtype_array(self):
+        """Test that validator can determine dtype for empty zarr.Array with object dtype"""
+        import zarr
+        import numcodecs
+
+        # Create an empty zarr array with object dtype
+        empty_zarr_array = zarr.array([], dtype=object, object_codec=numcodecs.VLenUTF8())
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+                                   datasets=[DatasetBuilder('data', empty_zarr_array)])
+        results = self.vmap.validate(bar_builder)
+        # Should pass validation - empty object array defaults to 'utf' type
+        self.assertEqual(len(results), 0)
+
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_utf8_for_ascii_zarr(self):
+        """Test that validator does not allow UTF-8 data where ASCII is specified for zarr object dtype arrays"""
+        import zarr
+        import numcodecs
+
+        # Create a zarr array with UTF-8 strings
+        zarr_array = zarr.array(['string1', 'string2', 'string3'], dtype=object, object_codec=numcodecs.VLenUTF8())
+        bar_builder = GroupBuilder('my_foo',
+                                   attributes={'data_type': 'Foo', 'attr1': 'a string attribute'},
+                                   datasets=[DatasetBuilder('data', zarr_array)])
+        results = self.vmap.validate(bar_builder)
+
+        # Should fail validation - UTF-8 strings should not be allowed where bytes/ASCII is specified
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], DtypeError)
+        self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
+
+    def test_utf8_for_ascii_hdf5(self):
+        """Test that validator does not allow UTF-8 data where ASCII is specified for HDF5 vlen strings"""
+        # Create hdf5 dataset with UTF-8 string data
+        # convert to StrDataset because data read directly from f.create_dataset will be bytes
+        f = h5py.File(name='test_string_dtype_validation.h5', mode='w', driver='core', backing_store=False)
+        dset = StrDataset(f.create_dataset('data', data=['string1', 'string2', 'string3']), encoding='utf8')
+        foo_builder = GroupBuilder('my_foo',
+                               attributes={'data_type': 'Foo', 'attr1': 'a string attribute'},
+                               datasets=[DatasetBuilder('data', dset)])
+        results = self.vmap.validate(foo_builder)
+
+        # Should fail validation - UTF-8 strings should not be allowed where bytes/ASCII is specified
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], DtypeError)
+        self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
