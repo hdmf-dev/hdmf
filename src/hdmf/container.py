@@ -1356,6 +1356,38 @@ class MultiContainerInterface(Container):
         if get is not None:
             setattr(cls, get, cls.__make_get(get, attr, container_type))
 
+    def _generate_field_html(self, key, value, level, access_code):
+        """Override to flatten single grouping attribute in MultiContainerInterface.
+
+        When a MultiContainerInterface has only one grouping attribute (len(__clsconf__) == 1)
+        and the value is a LabelledDict, the grouping attribute wrapper is redundant since
+        users can access children directly via container["name"] instead of container.attr["name"].
+        This method removes that extra nesting level in the HTML representation.
+
+        Examples of classes that get flattened:
+        - ProcessingModule: flattens "data_interfaces"
+        - Position: flattens "spatial_series"
+        - LFP: flattens "electrical_series"
+        - ImageSegmentation: flattens "plane_segmentations"
+        """
+        # Normalize to list since __clsconf__ can be a dict or a list (e.g. LFP in pynwb uses a list with 1 element)
+        clsconf = self.__clsconf__
+        if isinstance(clsconf, dict):
+            clsconf = [clsconf]
+
+        if len(clsconf) == 1 and isinstance(value, LabelledDict):
+            html_repr = ""
+            for child_name, child_container in value.items():
+                # Strip ".attr_name" from access_code and use direct ["child"] access
+                # e.g. ".spatial_series" becomes "", then we build "['SpatialSeries1']"
+                # This works because __getitem__ is defined for single clsconf (see line __build_class for details)
+                parent_access_code = access_code.rsplit('.', 1)[0]
+                child_access_code = f"{parent_access_code}['{child_name}']"
+                html_repr += super()._generate_field_html(child_name, child_container, level, child_access_code)
+            return html_repr
+
+        return super()._generate_field_html(key, value, level, access_code)
+
 
 class Row(object, metaclass=ExtenderMeta):
     """
