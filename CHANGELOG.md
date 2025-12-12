@@ -9,8 +9,9 @@
 
 ### Changed
 - Changed how to call `BuildManager.build`, `TypeMap.build`, and `ObjectMapper.build` when exporting. The `export` argument is no longer accepted by `TypeMap.build` and `ObjectMapper.build`; `BuildManager.build` still accepts the `export` argument but now uses it to set an internal flag instead of passing it through the call chain. @rly [#1358](https://github.com/hdmf-dev/hdmf/pull/1358)
-- Changed HTML representation of `MultiContainerInterface` to flatten the `data_interfaces` field,
-  removing the redundant nesting level for `ProcessingModule` in PyNWB. @h-mayorquin [#1354](https://github.com/hdmf-dev/hdmf/pull/1354)
+- Changed HTML representation of `MultiContainerInterface` to flatten the grouping attribute when only
+  one grouping is defined (`len(__clsconf__) == 1`), removing the redundant nesting level since users
+  can access children directly via `container["name"]`. @h-mayorquin [#1354](https://github.com/hdmf-dev/hdmf/pull/1354)
 
 ### Fixed
 - Fixed bug when validating string datasets in NWB Zarr files. @stephprince [#1348](https://github.com/hdmf-dev/hdmf/pull/1348)

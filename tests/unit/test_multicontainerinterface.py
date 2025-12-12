@@ -351,11 +351,9 @@ class TestBasic(TestCase):
                 'class=\'container-header\'><div '
                 'class=\'xr-obj-type\'><h3>FooSingle</h3></div></div><details><summary style="display: list-item; '
                 'margin-left: 0px;" class="container-fields field-key" '
-                'title=".containers"><b>containers</b></summary><details><summary style="display: list-item; '
-                'margin-left: 20px;" class="container-fields field-key" title=".containers['
-                '\'obj1\']"><b>obj1</b></summary></details><details><summary style="display: list-item; margin-left: '
-                '20px;" class="container-fields field-key" title=".containers['
-                '\'obj2\']"><b>obj2</b></summary></details></details></div>'
+                'title="[\'obj1\']"><b>obj1</b></summary></details><details><summary style="display: list-item; '
+                'margin-left: 0px;" class="container-fields field-key" '
+                'title="[\'obj2\']"><b>obj2</b></summary></details></div>'
             )
         )
 

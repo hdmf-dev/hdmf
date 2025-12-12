@@ -1340,23 +1340,26 @@ class MultiContainerInterface(Container):
             setattr(cls, get, cls.__make_get(get, attr, container_type))
 
     def _generate_field_html(self, key, value, level, access_code):
-        """Override here to flatten 'data_interfaces' rendering in MultiContainers with data_interfaces keys
-        In practice this is the ProcessingModule
+        """Override to flatten single grouping attribute in MultiContainerInterface.
 
-        The 'data_interfaces' wrapper in ProcessingModule is redundant since the
-        ProcessingModule container itself already indicates it holds data interfaces.
-        This method renders the contained objects directly without that extra nesting level.
+        When a MultiContainerInterface has only one grouping attribute (len(__clsconf__) == 1),
+        the grouping attribute wrapper is redundant since users can access children directly
+        via container["name"] instead of container.attr["name"]. This method removes
+        that extra nesting level in the HTML representation.
         """
-        # Only flatten the 'data_interfaces' field (used by ProcessingModule in PyNWB)
-        if isinstance(value, LabelledDict) and key == 'data_interfaces':
-            # Render the contents of the LabelledDict directly without the wrapper
+        clsconf = self.__clsconf__
+        if isinstance(clsconf, dict):
+            clsconf = [clsconf]
+
+        if len(clsconf) == 1 and isinstance(value, LabelledDict):
             html_repr = ""
-            for item_key, item_value in value.items():
-                item_access_code = f"{access_code}['{item_key}']"
-                html_repr += super()._generate_field_html(item_key, item_value, level, item_access_code)
+            for child_name, child_container in value.items():
+                parent_access_code = access_code.rsplit('.', 1)[0] if '.' in access_code else ""
+                child_access_code = f"{parent_access_code}['{child_name}']"
+                html_repr += super()._generate_field_html(child_name, child_container, level, child_access_code)
             return html_repr
-        else:
-            return super()._generate_field_html(key, value, level, access_code)
+
+        return super()._generate_field_html(key, value, level, access_code)
 
 
 class Row(object, metaclass=ExtenderMeta):
