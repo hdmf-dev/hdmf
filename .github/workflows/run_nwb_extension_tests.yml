@@ -55,7 +55,7 @@ jobs:
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -91,7 +91,7 @@ jobs:
       fail-fast: false  # Continue testing other extensions even if one fails
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
