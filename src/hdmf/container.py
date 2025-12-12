@@ -749,21 +749,13 @@ class Container(AbstractContainer):
         else:
             html_content = f'<span class="field-key">{value}</span>'
 
-        # Build the display name, including type information for nested items.
-        # For registered containers (e.g., NWB types), data_type is a class attribute
-        # that identifies the schema type. We display it next to the name if different.
-        # Only show type for items at level >= 1 (not the top-level fields like acquisition, electrodes).
         display_name = str(key)
-        is_nested_item = level >= 1
-        if is_nested_item:
-            has_data_type_attr = hasattr(value, "_data_type_attr")
-            data_type = getattr(type(value), value._data_type_attr, None) if has_data_type_attr else None
-            # data_type is a string for registered containers, but a property for unregistered ones
-            is_registered_container = isinstance(data_type, str)
-            is_name_different_from_type = str(key) != data_type
-            if is_registered_container and is_name_different_from_type:
-                data_type_str = f" <span style='font-weight: normal; color: #888;'>({data_type})</span>"
-                display_name += data_type_str
+        if isinstance(value, AbstractContainer):
+            class_name = type(value).__name__
+            is_name_different_from_class = str(key) != class_name
+            if is_name_different_from_class:
+                class_name_str = f" <span style='font-weight: normal; color: #888;'>({class_name})</span>"
+                display_name += class_name_str
 
         html_repr = (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
