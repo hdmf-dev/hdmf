@@ -1357,9 +1357,9 @@ class MultiContainerInterface(Container):
         clsconf = self.__clsconf__
         if isinstance(clsconf, dict):
             clsconf = [clsconf]
-        
+
         single_element_container = len(clsconf) == 1
-        
+
         if len(clsconf) == 1 and isinstance(value, LabelledDict):
             html_repr = ""
             for child_name, child_container in value.items():
