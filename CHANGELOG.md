@@ -8,6 +8,7 @@
   [#1352](https://github.com/hdmf-dev/hdmf/pull/1352)
 
 ### Changed
+- Changed HTML representation to display the `data_type` for nested containers, showing the type in parentheses next to the name (e.g., `MyTimeSeries (TimeSeries)`). @h-mayorquin [#1355](https://github.com/hdmf-dev/hdmf/pull/1355)
 - Changed how to call `BuildManager.build`, `TypeMap.build`, and `ObjectMapper.build` when exporting. The `export` argument is no longer accepted by `TypeMap.build` and `ObjectMapper.build`; `BuildManager.build` still accepts the `export` argument but now uses it to set an internal flag instead of passing it through the call chain. @rly [#1358](https://github.com/hdmf-dev/hdmf/pull/1358)
 - Changed HTML representation of `MultiContainerInterface` to flatten the grouping attribute when only
   one grouping is defined (`len(__clsconf__) == 1`), removing the redundant nesting level since users

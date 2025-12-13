@@ -722,6 +722,8 @@ class Container(AbstractContainer):
         """Generates HTML for a single field.
 
         This function can be overwritten by a child class to implement customized html representations.
+
+
         """
 
         if isinstance(value, (int, float, str, bool)):
@@ -747,10 +749,15 @@ class Container(AbstractContainer):
         else:
             html_content = f'<span class="field-key">{value}</span>'
 
+        display_name = str(key)
+        if isinstance(value, AbstractContainer):   # Excludes things like LabelledDict, ndarray, etc
+            class_name = type(value).__name__
+            class_name_str = f" <span style='font-weight: normal; color: #888;'>({class_name})</span>"
+            display_name += class_name_str
 
         html_repr = (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
-            f'class="container-fields field-key" title="{access_code}"><b>{key}</b></summary>'
+            f'class="container-fields field-key" title="{access_code}"><b>{display_name}</b></summary>'
         )
         html_repr += html_content
         html_repr += "</details>"
