@@ -750,12 +750,10 @@ class Container(AbstractContainer):
             html_content = f'<span class="field-key">{value}</span>'
 
         display_name = str(key)
-        if isinstance(value, AbstractContainer):
+        if isinstance(value, AbstractContainer):   # Excludes things like LabelledDict, ndarray, etc
             class_name = type(value).__name__
-            is_name_different_from_class = str(key) != class_name
-            if is_name_different_from_class:
-                class_name_str = f" <span style='font-weight: normal; color: #888;'>({class_name})</span>"
-                display_name += class_name_str
+            class_name_str = f" <span style='font-weight: normal; color: #888;'>({class_name})</span>"
+            display_name += class_name_str
 
         html_repr = (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
