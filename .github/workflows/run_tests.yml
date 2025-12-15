@@ -133,7 +133,7 @@ jobs:
           python-version: '3.13'
 
       - name: Download wheel and source distributions from artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: distributions
           path: dist
