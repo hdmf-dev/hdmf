@@ -17,6 +17,7 @@
 ### Fixed
 - Fixed bug when validating string datasets in NWB Zarr files. @stephprince [#1348](https://github.com/hdmf-dev/hdmf/pull/1348)
 - Fixed a performance regression that affected calling setters of HDMF Common data types. @rly [#1352](https://github.com/hdmf-dev/hdmf/pull/1352)
+- Updated GitHub Actions runners to not use the deprecated macos-13 runner. @rly [#1363](https://github.com/hdmf-dev/hdmf/pull/1363)
 
 
 ## HDMF 4.1.2 (November 7, 2025)
