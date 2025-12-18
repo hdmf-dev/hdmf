@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 4.2.0 (Upcoming)
+## HDMF 4.2.0 (December 18, 2025)
 
 ### Added
 - Added an argument `copy` to `get_type_map` to control whether a copy of the type map is returned or not.
