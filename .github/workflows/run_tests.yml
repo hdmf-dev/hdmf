@@ -28,7 +28,7 @@ jobs:
           - { name: linux-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: ubuntu-latest , upload-wheels: true }
           - { name: windows-python3.9-minimum            , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: windows-latest }
           - { name: windows-python3.13-upgraded-optional , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: windows-latest }
-          - { name: macos-python3.9-minimum              , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: macos-15 }
+          - { name: macos-python3.9-minimum              , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: macos-15-intel }
           - { name: macos-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: macos-latest }
     steps:
       - name: Checkout repo with submodules

@@ -31,7 +31,7 @@ classifiers = [
 ]
 # make sure to update min-reqs dependencies below when these lower bounds change
 dependencies = [
-    "h5py>=3.2.1",
+    "h5py>=3.1.0",
     "jsonschema>=3.2.0",
     'numpy>=1.19.3',
     "pandas>=1.2.0",
@@ -80,7 +80,7 @@ all = ["hdmf[tqdm,zarr,sparse,termset,test,docs]"]
 
 # minimum requirements of project dependencies for testing (see .github/workflows/run_all_tests.yml)
 min-reqs = [
-    "h5py==3.2.1",
+    "h5py==3.1.0",
     "jsonschema==3.2.0",
     "numpy==1.19.3",
     "pandas==1.2.0",
