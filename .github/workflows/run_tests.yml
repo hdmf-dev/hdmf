@@ -24,12 +24,13 @@ jobs:
         include:
           # NOTE config below with "upload-wheels: true" specifies that wheels should be uploaded as an artifact
           - { name: linux-python3.9-minimum              , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: ubuntu-latest }
-          - { name: linux-python3.13-upgraded            , test-tox-env: pytest-py313-upgraded          , python-ver: "3.13", os: ubuntu-latest }
-          - { name: linux-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: ubuntu-latest , upload-wheels: true }
+          - { name: linux-python3.14-upgraded            , test-tox-env: pytest-py314-upgraded          , python-ver: "3.14", os: ubuntu-latest }
+          - { name: linux-python3.14-upgraded-optional   , test-tox-env: pytest-py314-upgraded-optional , python-ver: "3.14", os: ubuntu-latest , upload-wheels: true }
           - { name: windows-python3.9-minimum            , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: windows-latest }
           - { name: windows-python3.13-upgraded-optional , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: windows-latest }
+          - { name: windows-python3.14-upgraded-optional , test-tox-env: pytest-py314-upgraded-optional , python-ver: "3.14", os: windows-latest }
           - { name: macos-python3.9-minimum              , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: macos-15-intel }
-          - { name: macos-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: macos-latest }
+          - { name: macos-python3.14-upgraded-optional   , test-tox-env: pytest-py314-upgraded-optional , python-ver: "3.14", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v6
@@ -130,7 +131,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.13'
+          python-version: '3.14'
 
       - name: Download wheel and source distributions from artifact
         uses: actions/download-artifact@v7
@@ -163,7 +164,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.13-ros3  , python-ver: "3.13", os: ubuntu-latest }
+          - { name: linux-python3.14-ros3  , python-ver: "3.14", os: ubuntu-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v6

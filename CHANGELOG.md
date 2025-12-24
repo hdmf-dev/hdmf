@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 4.3.0 (Upcoming)
+
+### Added
+- Added support for Python 3.14. @bendichter [#1366](https://github.com/hdmf-dev/hdmf/issues/1366)
+
 ## HDMF 4.2.0 (December 18, 2025)
 
 ### Added
