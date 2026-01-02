@@ -1043,12 +1043,20 @@ Fields:
             'class=\'container-header\'><div class=\'xr-obj-type\'><h3>with_spec (DynamicTable)</h3></div></div><div '
             'style="margin-left: 0px;" class="container-fields"><span class="field-key" title="">description: '
             '</span><span class="field-value">a test table</span></div><details><summary style="display: list-item; '
-            'margin-left: 0px;" class="container-fields field-key"><b>column descriptions</b></summary>'
-            "<table class='data-info'><tbody>"
-            "<tr><th style='text-align: left'>foo</th><td style='text-align: left'>foo column</td></tr>"
-            "<tr><th style='text-align: left'>bar</th><td style='text-align: left'>bar column</td></tr>"
-            "<tr><th style='text-align: left'>baz</th><td style='text-align: left'>baz column</td></tr>"
-            '</tbody></table></details>'
+            'margin-left: 0px;" class="container-fields field-key"><b>columns</b></summary>'
+            '<details><summary style="display: list-item; margin-left: 20px;" '
+            'class="container-fields field-key" title="[\'foo\']"><b>foo</b></summary>'
+            '<div style="margin-left: 40px;" class="container-fields">'
+            '<span class="field-value">foo column</span></div></details>'
+            '<details><summary style="display: list-item; margin-left: 20px;" '
+            'class="container-fields field-key" title="[\'bar\']"><b>bar</b></summary>'
+            '<div style="margin-left: 40px;" class="container-fields">'
+            '<span class="field-value">bar column</span></div></details>'
+            '<details><summary style="display: list-item; margin-left: 20px;" '
+            'class="container-fields field-key" title="[\'baz\']"><b>baz</b></summary>'
+            '<div style="margin-left: 40px;" class="container-fields">'
+            '<span class="field-value">baz column</span></div></details>'
+            '</details>'
             '<details><summary style="display: list-item; '
             'margin-left: 0px;" class="container-fields field-key" title=""><b>table</b></summary><table border="1" '
             'class="dataframe">\n  <thead>\n    <tr style="text-align: right;">\n      <th></th>\n      '

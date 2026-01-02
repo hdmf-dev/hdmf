@@ -1276,17 +1276,22 @@ class DynamicTable(Container):
             if key not in ("id", "colnames", "columns"):
                 out += self._generate_field_html(key, value, level, access_code)
 
-        # Generate column descriptions section
-        col_desc_html = "<table class='data-info'><tbody>"
+        # Generate columns section (field-style, individually collapsed by default)
+        col_desc_inner = ""
+        inner_level = level + 1
         for name in self.colnames:
             desc = self[name].description
-            col_desc_html += f"<tr><th style='text-align: left'>{name}</th>"
-            col_desc_html += f"<td style='text-align: left'>{desc}</td></tr>"
-        col_desc_html += "</tbody></table>"
+            col_access_code = f"{access_code}['{name}']" if access_code else f"['{name}']"
+            col_desc_inner += (
+                f'<details><summary style="display: list-item; margin-left: {inner_level * 20}px;" '
+                f'class="container-fields field-key" title="{col_access_code}"><b>{name}</b></summary>'
+                f'<div style="margin-left: {(inner_level + 1) * 20}px;" class="container-fields">'
+                f'<span class="field-value">{desc}</span></div></details>'
+            )
 
         out += (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
-            f'class="container-fields field-key"><b>column descriptions</b></summary>{col_desc_html}</details>'
+            f'class="container-fields field-key"><b>columns</b></summary>{col_desc_inner}</details>'
         )
 
         inside = f"{self[:min(nrows, len(self))].to_html()}"
