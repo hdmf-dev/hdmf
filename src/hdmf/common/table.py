@@ -160,6 +160,19 @@ class VectorIndex(VectorData):
         """
         self.add_vector(arg, **kwargs)
 
+    def get_target_data(self):
+        """
+        Get the final VectorData target, traversing any nested VectorIndex objects.
+
+        For single ragged arrays, this returns self.target (the VectorData).
+        For double/multi ragged arrays, this traverses the chain of VectorIndex
+        objects to return the final VectorData.
+        """
+        target = self.target
+        while isinstance(target, VectorIndex):
+            target = target.target
+        return target
+
     def __get_slice(self, arg):
         start = 0 if arg == 0 else self.data[arg - 1]
         end = self.data[arg]
@@ -1275,6 +1288,29 @@ class DynamicTable(Container):
         for key, value in self.fields.items():
             if key not in ("id", "colnames", "columns"):
                 out += self._generate_field_html(key, value, level, access_code)
+
+        # Generate columns section (field-style, individually collapsed by default)
+        col_desc_inner = ""
+        inner_level = level + 1
+        for name in self.colnames:
+            col = self[name]
+            # For ragged arrays (VectorIndex), get description from the final target VectorData
+            if isinstance(col, VectorIndex):
+                desc = col.get_target_data().description
+            else:
+                desc = col.description
+            col_access_code = f"{access_code}['{name}']" if access_code else f"['{name}']"
+            col_desc_inner += (
+                f'<details><summary style="display: list-item; margin-left: {inner_level * 20}px;" '
+                f'class="container-fields field-key" title="{col_access_code}"><b>{name}</b></summary>'
+                f'<div style="margin-left: {(inner_level + 1) * 20}px;" class="container-fields">'
+                f'<span class="field-value">{desc}</span></div></details>'
+            )
+
+        out += (
+            f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
+            f'class="container-fields field-key"><b>columns</b></summary>{col_desc_inner}</details>'
+        )
 
         inside = f"{self[:min(nrows, len(self))].to_html()}"
 
