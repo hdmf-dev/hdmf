@@ -1,5 +1,15 @@
 # HDMF Changelog
 
+## HDMF 4.2.1 (Upcoming)
+
+### Added
+
+### Changed
+- Added a collapsible "columns" section to the `DynamicTable` HTML representation that displays column descriptions, making it easier to inspect column metadata in notebooks. @h-mayorquin [#1369](https://github.com/hdmf-dev/hdmf/pull/1369)
+
+### Fixed
+
+
 ## HDMF 4.2.0 (December 18, 2025)
 
 ### Added
@@ -8,7 +18,6 @@
   [#1352](https://github.com/hdmf-dev/hdmf/pull/1352)
 
 ### Changed
-- Added a collapsible "columns" section to the `DynamicTable` HTML representation that displays column descriptions, making it easier to inspect column metadata in notebooks. @h-mayorquin [#1369](https://github.com/hdmf-dev/hdmf/pull/1369)
 - Changed HTML representation to display the `data_type` for nested containers, showing the type in parentheses next to the name (e.g., `MyTimeSeries (TimeSeries)`). @h-mayorquin [#1355](https://github.com/hdmf-dev/hdmf/pull/1355)
 - Changed how to call `BuildManager.build`, `TypeMap.build`, and `ObjectMapper.build` when exporting. The `export` argument is no longer accepted by `TypeMap.build` and `ObjectMapper.build`; `BuildManager.build` still accepts the `export` argument but now uses it to set an internal flag instead of passing it through the call chain. @rly [#1358](https://github.com/hdmf-dev/hdmf/pull/1358)
 - Changed HTML representation of `MultiContainerInterface` to flatten the grouping attribute when only
