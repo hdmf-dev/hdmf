@@ -2613,6 +2613,21 @@ class TestVectorIndex(TestCase):
         self.assertEqual(result, [['a', 'b',], ['d', 'e']])
         self.assertEqual(len(result), 2)
 
+    def test_get_target_data_single_index(self):
+        """Test get_target_data returns the VectorData for a single ragged array."""
+        foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3])
+        self.assertIs(foo_ind.get_target_data(), foo)
+
+    def test_get_target_data_double_index(self):
+        """Test get_target_data traverses nested VectorIndex to return the final VectorData."""
+        foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c', 'd'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+        self.assertIs(foo_ind_ind.get_target_data(), foo)
+        self.assertIs(foo_ind.get_target_data(), foo)
+
+
 class TestDoubleIndex(TestCase):
 
     def test_index(self):

@@ -160,6 +160,19 @@ class VectorIndex(VectorData):
         """
         self.add_vector(arg, **kwargs)
 
+    def get_target_data(self):
+        """
+        Get the final VectorData target, traversing any nested VectorIndex objects.
+
+        For single ragged arrays, this returns self.target (the VectorData).
+        For double/multi ragged arrays, this traverses the chain of VectorIndex
+        objects to return the final VectorData.
+        """
+        target = self.target
+        while isinstance(target, VectorIndex):
+            target = target.target
+        return target
+
     def __get_slice(self, arg):
         start = 0 if arg == 0 else self.data[arg - 1]
         end = self.data[arg]
@@ -1280,7 +1293,12 @@ class DynamicTable(Container):
         col_desc_inner = ""
         inner_level = level + 1
         for name in self.colnames:
-            desc = self[name].description
+            col = self[name]
+            # For ragged arrays (VectorIndex), get description from the final target VectorData
+            if isinstance(col, VectorIndex):
+                desc = col.get_target_data().description
+            else:
+                desc = col.description
             col_access_code = f"{access_code}['{name}']" if access_code else f"['{name}']"
             col_desc_inner += (
                 f'<details><summary style="display: list-item; margin-left: {inner_level * 20}px;" '
