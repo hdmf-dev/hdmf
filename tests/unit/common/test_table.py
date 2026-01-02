@@ -1043,6 +1043,13 @@ Fields:
             'class=\'container-header\'><div class=\'xr-obj-type\'><h3>with_spec (DynamicTable)</h3></div></div><div '
             'style="margin-left: 0px;" class="container-fields"><span class="field-key" title="">description: '
             '</span><span class="field-value">a test table</span></div><details><summary style="display: list-item; '
+            'margin-left: 0px;" class="container-fields field-key"><b>column descriptions</b></summary>'
+            "<table class='data-info'><tbody>"
+            "<tr><th style='text-align: left'>foo</th><td style='text-align: left'>foo column</td></tr>"
+            "<tr><th style='text-align: left'>bar</th><td style='text-align: left'>bar column</td></tr>"
+            "<tr><th style='text-align: left'>baz</th><td style='text-align: left'>baz column</td></tr>"
+            '</tbody></table></details>'
+            '<details><summary style="display: list-item; '
             'margin-left: 0px;" class="container-fields field-key" title=""><b>table</b></summary><table border="1" '
             'class="dataframe">\n  <thead>\n    <tr style="text-align: right;">\n      <th></th>\n      '
             '<th>foo</th>\n      <th>bar</th>\n      <th>baz</th>\n    </tr>\n    <tr>\n      <th>id</th>\n      '

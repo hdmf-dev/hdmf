@@ -1276,6 +1276,19 @@ class DynamicTable(Container):
             if key not in ("id", "colnames", "columns"):
                 out += self._generate_field_html(key, value, level, access_code)
 
+        # Generate column descriptions section
+        col_desc_html = "<table class='data-info'><tbody>"
+        for name in self.colnames:
+            desc = self[name].description
+            col_desc_html += f"<tr><th style='text-align: left'>{name}</th>"
+            col_desc_html += f"<td style='text-align: left'>{desc}</td></tr>"
+        col_desc_html += "</tbody></table>"
+
+        out += (
+            f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
+            f'class="container-fields field-key"><b>column descriptions</b></summary>{col_desc_html}</details>'
+        )
+
         inside = f"{self[:min(nrows, len(self))].to_html()}"
 
         if len(self) >= nrows + 1:
