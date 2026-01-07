@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'  # TODO: Update to 3.13 when linkml and its deps support 3.13
+          python-version: '3.13'  # TODO: Update to 3.14 when linkml and its deps support 3.14
 
       - name: Install Sphinx dependencies and package
         run: |
