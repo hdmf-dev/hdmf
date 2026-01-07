@@ -1043,6 +1043,21 @@ Fields:
             'class=\'container-header\'><div class=\'xr-obj-type\'><h3>with_spec (DynamicTable)</h3></div></div><div '
             'style="margin-left: 0px;" class="container-fields"><span class="field-key" title="">description: '
             '</span><span class="field-value">a test table</span></div><details><summary style="display: list-item; '
+            'margin-left: 0px;" class="container-fields field-key"><b>columns</b></summary>'
+            '<details><summary style="display: list-item; margin-left: 20px;" '
+            'class="container-fields field-key" title="[\'foo\']"><b>foo</b></summary>'
+            '<div style="margin-left: 40px;" class="container-fields">'
+            '<span class="field-value">foo column</span></div></details>'
+            '<details><summary style="display: list-item; margin-left: 20px;" '
+            'class="container-fields field-key" title="[\'bar\']"><b>bar</b></summary>'
+            '<div style="margin-left: 40px;" class="container-fields">'
+            '<span class="field-value">bar column</span></div></details>'
+            '<details><summary style="display: list-item; margin-left: 20px;" '
+            'class="container-fields field-key" title="[\'baz\']"><b>baz</b></summary>'
+            '<div style="margin-left: 40px;" class="container-fields">'
+            '<span class="field-value">baz column</span></div></details>'
+            '</details>'
+            '<details><summary style="display: list-item; '
             'margin-left: 0px;" class="container-fields field-key" title=""><b>table</b></summary><table border="1" '
             'class="dataframe">\n  <thead>\n    <tr style="text-align: right;">\n      <th></th>\n      '
             '<th>foo</th>\n      <th>bar</th>\n      <th>baz</th>\n    </tr>\n    <tr>\n      <th>id</th>\n      '
@@ -2597,6 +2612,21 @@ class TestVectorIndex(TestCase):
 
         self.assertEqual(result, [['a', 'b',], ['d', 'e']])
         self.assertEqual(len(result), 2)
+
+    def test_get_target_data_single_index(self):
+        """Test get_target_data returns the VectorData for a single ragged array."""
+        foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3])
+        self.assertIs(foo_ind.get_target_data(), foo)
+
+    def test_get_target_data_double_index(self):
+        """Test get_target_data traverses nested VectorIndex to return the final VectorData."""
+        foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c', 'd'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+        self.assertIs(foo_ind_ind.get_target_data(), foo)
+        self.assertIs(foo_ind.get_target_data(), foo)
+
 
 class TestDoubleIndex(TestCase):
 
