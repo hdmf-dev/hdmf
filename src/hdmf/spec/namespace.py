@@ -449,6 +449,7 @@ class NamespaceCatalog:
         if ns_name in self.__namespaces:  # pragma: no cover
             raise KeyError("namespace '%s' already exists" % ns_name)
         catalog = SpecCatalog()
+        source_types = list()
         included_types = dict()
         for s in namespace['schema']:
             # types_key may be different in each spec namespace, so check both the __spec_namespace_cls types key
@@ -458,7 +459,10 @@ class NamespaceCatalog:
                 types_to_load = set(types_to_load)
             if 'source' in s:
                 # read specs from file
-                self.__load_spec_file(reader, s['source'], catalog, types_to_load=types_to_load, resolve=resolve)
+                loaded_types = self.__load_spec_file(
+                    reader, s['source'], catalog, types_to_load=types_to_load, resolve=resolve
+                )
+                source_types.extend(loaded_types.keys())
                 self.__included_sources.setdefault(ns_name, list()).append(s['source'])
             elif 'namespace' in s:
                 # load specs from namespace
@@ -484,7 +488,7 @@ class NamespaceCatalog:
             self._check_namespace_conflicts(extension_ns_name=ns_name,
                                             extension_ns_source=s.get('source'),
                                             catalog=catalog)
-        return included_types
+        return tuple(source_types), included_types
 
     def __register_type(self, ndt, inc_ns, catalog, registered_types):
         if ndt in registered_types:
@@ -560,7 +564,7 @@ class NamespaceCatalog:
 
         # determine which namespaces to load and which to ignore
         ignored_namespaces = list()
-        ret = dict()
+        ret = dict()  # maps namespace name to tuple of source specs and dependent namespaces
         for r in ordered_readers:
             # continue to next reader if spec is already included
             ns_path_key = os.path.join(r.source, os.path.basename(namespace_path))
