@@ -8,6 +8,7 @@
 - Added a collapsible "columns" section to the `DynamicTable` HTML representation that displays column descriptions, making it easier to inspect column metadata in notebooks. @h-mayorquin [#1369](https://github.com/hdmf-dev/hdmf/pull/1369)
 
 ### Fixed
+- Fixed issue where a container was assigned to an incorrect namespace. @rly [#1373](https://github.com/hdmf-dev/hdmf/pull/1373)
 
 
 ## HDMF 4.2.0 (December 18, 2025)
