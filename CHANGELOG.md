@@ -6,6 +6,7 @@
 
 ### Changed
 - Added a collapsible "columns" section to the `DynamicTable` HTML representation that displays column descriptions, making it easier to inspect column metadata in notebooks. @h-mayorquin [#1369](https://github.com/hdmf-dev/hdmf/pull/1369)
+- Added ability to create specs with circular dependencies, e.g., Type A contains Type B, and Type B extends Type A, or Type A contains a reference to Type A (self-reference). @rly [#1374](https://github.com/hdmf-dev/hdmf/pull/1374)
 
 ### Fixed
 
