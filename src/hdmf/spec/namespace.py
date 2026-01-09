@@ -470,7 +470,8 @@ class NamespaceCatalog:
                     types_to_load = inc_ns.get_registered_types()  # load all types in namespace
                 registered_types = set()
                 for ndt in types_to_load:
-                    self.__register_type(ndt, inc_ns, catalog, registered_types)
+                    in_progress_registrations = set()
+                    self.__register_type(ndt, inc_ns, catalog, registered_types, in_progress_registrations)
                 included_types[s['namespace']] = tuple(sorted(registered_types))
             else:
                 raise ValueError("Spec '%s' schema must have either 'source' or 'namespace' key" % ns_name)
@@ -486,43 +487,71 @@ class NamespaceCatalog:
                                             catalog=catalog)
         return included_types
 
-    def __register_type(self, ndt, inc_ns, catalog, registered_types):
-        if ndt in registered_types:
-            # already registered
-            pass
-        else:
-            spec = inc_ns.get_spec(ndt)
-            spec_file = inc_ns.catalog.get_spec_source_file(ndt)
-            self.__register_dependent_types(spec, inc_ns, catalog, registered_types)
-            if isinstance(spec, DatasetSpec):
-                built_spec = self.dataset_spec_cls.build_spec(spec)
-            else:
-                built_spec = self.group_spec_cls.build_spec(spec)
-            registered_types.add(ndt)
-            catalog.register_spec(built_spec, spec_file)
+    def __register_type(self, ndt, inc_ns, catalog, registered_types, in_progress_registrations):
+        """Register a type and its dependencies from a namespace into a catalog.
 
-    def __register_dependent_types(self, spec, inc_ns, catalog, registered_types):
-        """Ensure that classes for all types used by this type are registered
+        Args:
+            ndt: The name of the data type to register
+            inc_ns: The namespace containing the type
+            catalog: The catalog to register the type into
+            registered_types: Set of already registered types (to avoid re-registering)
+            in_progress_registrations: Set of types currently being registered (for circular dependency detection)
         """
-        # TODO test cross-namespace registration...
-        def __register_dependent_types_helper(spec, inc_ns, catalog, registered_types):
-            if isinstance(spec, (GroupSpec, DatasetSpec)):
-                if spec.data_type_inc is not None:
-                    # TODO handle recursive definitions
-                    self.__register_type(spec.data_type_inc, inc_ns, catalog, registered_types)
-                if spec.data_type_def is not None:  # nested type definition
-                    self.__register_type(spec.data_type_def, inc_ns, catalog, registered_types)
-            else:  # spec is a LinkSpec
-                self.__register_type(spec.target_type, inc_ns, catalog, registered_types)
-            if isinstance(spec, GroupSpec):
-                for child_spec in (spec.groups + spec.datasets + spec.links):
-                    __register_dependent_types_helper(child_spec, inc_ns, catalog, registered_types)
+        if ndt in registered_types or ndt in in_progress_registrations:
+            # Already registered or currently being registered (circular dependency)
+            return
+        # Track that we're currently registering this type
+        in_progress_registrations.add(ndt)
+        spec = inc_ns.get_spec(ndt)
+        spec_file = inc_ns.catalog.get_spec_source_file(ndt)
+        self.__register_dependent_types(spec, inc_ns, catalog, registered_types, in_progress_registrations)
+        if isinstance(spec, DatasetSpec):
+            built_spec = self.dataset_spec_cls.build_spec(spec)
+        else:
+            built_spec = self.group_spec_cls.build_spec(spec)
+        registered_types.add(ndt)
+        catalog.register_spec(built_spec, spec_file)
 
+    def __register_dependent_types(self, spec, inc_ns, catalog, registered_types, in_progress_registrations):
+        """Ensure that all types used by this type are registered.
+
+        This handles:
+        - Parent types (data_type_inc)
+        - Nested type definitions (data_type_def in child specs)
+        - Link target types
+
+        Circular dependencies are handled by checking in_progress_registrations before
+        recursing. This allows patterns like:
+        - Type A contains Type B, and Type B extends Type A
+        - Type A contains a reference to Type A (self-reference)
+        """
+        def __register_dependent_types_helper(child_spec):
+            if isinstance(child_spec, (GroupSpec, DatasetSpec)):
+                if child_spec.data_type_inc is not None:
+                    self.__register_type(
+                        child_spec.data_type_inc, inc_ns, catalog, registered_types, in_progress_registrations
+                    )
+                if child_spec.data_type_def is not None:  # nested type definition
+                    self.__register_type(
+                        child_spec.data_type_def, inc_ns, catalog, registered_types, in_progress_registrations
+                    )
+            else:  # spec is a LinkSpec
+                self.__register_type(
+                    child_spec.target_type, inc_ns, catalog, registered_types, in_progress_registrations
+                )
+            if isinstance(child_spec, GroupSpec):
+                for nested_spec in (child_spec.groups + child_spec.datasets + child_spec.links):
+                    __register_dependent_types_helper(nested_spec)
+
+        # Register parent type first
         if spec.data_type_inc is not None:
-            self.__register_type(spec.data_type_inc, inc_ns, catalog, registered_types)
+            self.__register_type(spec.data_type_inc, inc_ns, catalog, registered_types, in_progress_registrations)
+
+        # Register types from child specs (groups, datasets, links)
         if isinstance(spec, GroupSpec):
             for child_spec in (spec.groups + spec.datasets + spec.links):
-                __register_dependent_types_helper(child_spec, inc_ns, catalog, registered_types)
+                __register_dependent_types_helper(child_spec)
+
 
     @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},
             {'name': 'resolve',
