@@ -3287,6 +3287,33 @@ class TestDynamicTableMeaningsTables(TestCase):
         self.assertEqual(len(table.meanings_tables), 1)
         self.assertIn('stimulus_type_meanings', table.meanings_tables)
 
+    def test_meanings_tables_setter(self):
+        """Test setting meanings_tables after construction."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        # Set via property setter
+        self.table.meanings_tables = [mt]
+        self.assertEqual(len(self.table.meanings_tables), 1)
+        self.assertIn('stimulus_type_meanings', self.table.meanings_tables)
+        self.assertEqual(mt.parent, self.table)
+
+    def test_meanings_tables_setter_multiple(self):
+        """Test setting multiple meanings_tables after construction."""
+        self.table.add_column(name='response_type', description='response type', data=['x', 'y'])
+
+        mt1 = MeaningsTable(target=self.table['stimulus_type'])
+        mt1.add_row(value='a', meaning='stimulus A')
+
+        mt2 = MeaningsTable(target=self.table['response_type'])
+        mt2.add_row(value='x', meaning='response X')
+
+        # Set multiple via property setter
+        self.table.meanings_tables = [mt1, mt2]
+        self.assertEqual(len(self.table.meanings_tables), 2)
+        self.assertIn('stimulus_type_meanings', self.table.meanings_tables)
+        self.assertIn('response_type_meanings', self.table.meanings_tables)
+
 
 class TestMeaningsTableRoundTrip(H5RoundTripMixin, TestCase):
     """Test roundtrip of DynamicTable with MeaningsTable."""

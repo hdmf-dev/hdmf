@@ -545,11 +545,8 @@ class DynamicTable(Container):
         if target_tables:
             self._set_dtr_targets(target_tables)
 
-        # Initialize meanings_tables as a dict (name -> MeaningsTable)
-        self.__meanings_tables = dict()
-        if meanings_tables is not None:
-            for mt in meanings_tables:
-                self.add_meanings_table(mt)
+        # Initialize meanings_tables via setter
+        self.meanings_tables = meanings_tables
 
     @property
     def meanings_tables(self):
@@ -557,6 +554,7 @@ class DynamicTable(Container):
         return self.__meanings_tables
 
     @meanings_tables.setter
+    @docval({'name': 'val', 'type': (tuple, list), 'doc': 'The MeaningsTable objects to set', 'default': None})
     def meanings_tables(self, val):
         """Set the MeaningsTable objects in this DynamicTable."""
         self.__meanings_tables = dict()
@@ -564,12 +562,11 @@ class DynamicTable(Container):
             for mt in val:
                 self.add_meanings_table(mt)
 
-    def add_meanings_table(self, meanings_table):
-        """Add a MeaningsTable to this DynamicTable.
-
-        Args:
-            meanings_table: The MeaningsTable to add. It should have a name ending with '_meanings'.
-        """
+    @docval({'name': 'meanings_table', 'type': 'MeaningsTable',
+             'doc': 'The MeaningsTable to add. It should have a name ending with "_meanings".'})
+    def add_meanings_table(self, **kwargs):
+        """Add a MeaningsTable to this DynamicTable."""
+        meanings_table = getargs('meanings_table', kwargs)
         if meanings_table.name in self.__meanings_tables:
             raise ValueError(f"MeaningsTable '{meanings_table.name}' already exists in this DynamicTable")
         if not isinstance(meanings_table.parent, Container):
@@ -578,16 +575,14 @@ class DynamicTable(Container):
             self.set_modified()
         self.__meanings_tables[meanings_table.name] = meanings_table
 
-    def get_meanings_table(self, name=None):
-        """Get a MeaningsTable from this DynamicTable.
-
-        Args:
-            name: The name of the MeaningsTable to get. If None and there is only one MeaningsTable,
-                  return that one. If None and there are multiple, raise an error.
-
-        Returns:
-            The MeaningsTable with the given name.
-        """
+    @docval({'name': 'name', 'type': str,
+             'doc': 'The name of the MeaningsTable to get. If None and there is only one MeaningsTable, '
+                    'return that one. If None and there are multiple, raise an error.',
+             'default': None},
+            returns='the MeaningsTable with the given name', rtype='MeaningsTable')
+    def get_meanings_table(self, **kwargs):
+        """Get a MeaningsTable from this DynamicTable."""
+        name = getargs('name', kwargs)
         if name is None:
             if len(self.__meanings_tables) == 0:
                 raise ValueError(f"No MeaningsTable objects in DynamicTable '{self.name}'")
