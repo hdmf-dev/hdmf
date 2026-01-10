@@ -470,8 +470,7 @@ class NamespaceCatalog:
                     types_to_load = inc_ns.get_registered_types()  # load all types in namespace
                 registered_types = set()
                 for ndt in types_to_load:
-                    in_progress_registrations = set()
-                    self.__register_type(ndt, inc_ns, catalog, registered_types, in_progress_registrations)
+                    self.__register_type(ndt, inc_ns, catalog, registered_types)
                 included_types[s['namespace']] = tuple(sorted(registered_types))
             else:
                 raise ValueError("Spec '%s' schema must have either 'source' or 'namespace' key" % ns_name)
@@ -487,15 +486,18 @@ class NamespaceCatalog:
                                             catalog=catalog)
         return included_types
 
-    def __register_type(self, ndt, inc_ns, catalog, registered_types, in_progress_registrations):
+    def __register_type(self, ndt, inc_ns, catalog, registered_types, in_progress_registrations=None):
         """Register a type and its dependencies from a namespace into a catalog.
 
         :param ndt: The name of the data type to register
         :param inc_ns: The namespace containing the type
         :param catalog: The catalog to register the type into
         :param registered_types: Set of already registered types (to avoid re-registering)
-        :param in_progress_registrations: Set of types currently being registered (for circular dependency detection)
+        :param in_progress_registrations: Set of types currently being registered (for circular dependency detection).
+            None if the registration process is starting.
         """
+        if in_progress_registrations is None:  
+            in_progress_registrations = set()
         if ndt in registered_types or ndt in in_progress_registrations:
             # Already registered or currently being registered (circular dependency)
             return
