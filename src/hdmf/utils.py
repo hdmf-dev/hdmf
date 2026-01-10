@@ -630,7 +630,7 @@ def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=No
 
             if module.startswith("builtins"):
                 return ":py:class:`~{name}`".format(name=name)
-            elif module.startswith("h5py") or module.startswith('pandas'):
+            elif module.startswith("h5py") or module.startswith('pandas') or module.startswith('pathlib'):
                 return ":py:class:`~{module}.{name}`".format(name=name, module=module.split('.')[0])
             else:
                 return ":py:class:`~{module}.{name}`".format(name=name, module=module)
