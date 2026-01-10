@@ -496,7 +496,7 @@ class NamespaceCatalog:
         :param in_progress_registrations: Set of types currently being registered (for circular dependency detection).
             None if the registration process is starting.
         """
-        if in_progress_registrations is None:  
+        if in_progress_registrations is None:
             in_progress_registrations = set()
         if ndt in registered_types or ndt in in_progress_registrations:
             # Already registered or currently being registered (circular dependency)
