@@ -487,16 +487,18 @@ class NamespaceCatalog:
                                             catalog=catalog)
         return included_types
 
-    def __register_type(self, ndt, inc_ns, catalog, registered_types, in_progress_registrations):
+    def __register_type(self, ndt, inc_ns, catalog, registered_types, in_progress_registrations=None):
         """Register a type and its dependencies from a namespace into a catalog.
 
-        Args:
-            ndt: The name of the data type to register
-            inc_ns: The namespace containing the type
-            catalog: The catalog to register the type into
-            registered_types: Set of already registered types (to avoid re-registering)
-            in_progress_registrations: Set of types currently being registered (for circular dependency detection)
+        :param ndt: The name of the data type to register
+        :param inc_ns: The namespace containing the type
+        :param catalog: The catalog to register the type into
+        :param registered_types: Set of already registered types (to avoid re-registering)
+        :param in_progress_registrations: Set of types currently being registered (for circular dependency detection).
+            None if the registration process is starting.
         """
+        if in_progress_registrations is None:
+            in_progress_registrations = set()
         if ndt in registered_types or ndt in in_progress_registrations:
             # Already registered or currently being registered (circular dependency)
             return
