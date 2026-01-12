@@ -1,15 +1,17 @@
 # HDMF Changelog
 
-## HDMF 4.2.1 (Upcoming)
+## HDMF 4.3.0 (Upcoming)
 
 ### Added
 - Added support for HDMF Common Schema 1.9.0, which includes a new data type `MeaningsTable` and changes to `DynamicTable` to support included `MeaningsTable` objects. @rly [#1376](https://github.com/hdmf-dev/hdmf/pull/1376)
+- Added support for Python 3.14. @bendichter [#1366](https://github.com/hdmf-dev/hdmf/issues/1366)
 
 ### Changed
 - Added a collapsible "columns" section to the `DynamicTable` HTML representation that displays column descriptions, making it easier to inspect column metadata in notebooks. @h-mayorquin [#1369](https://github.com/hdmf-dev/hdmf/pull/1369)
 - Added ability to create specs with circular dependencies, e.g., Type A contains Type B, and Type B extends Type A, or Type A contains a reference to Type A (self-reference). @rly [#1374](https://github.com/hdmf-dev/hdmf/pull/1374)
 
 ### Fixed
+- Fixed issue where a container was assigned to an incorrect namespace. @rly [#1373](https://github.com/hdmf-dev/hdmf/pull/1373)
 
 
 ## HDMF 4.2.0 (December 18, 2025)

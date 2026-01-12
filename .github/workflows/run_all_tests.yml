@@ -30,20 +30,26 @@ jobs:
           - { name: linux-python3.11-upgraded              , test-tox-env: pytest-py311-upgraded            , python-ver: "3.11", os: ubuntu-latest }
           - { name: linux-python3.12-upgraded              , test-tox-env: pytest-py312-upgraded            , python-ver: "3.12", os: ubuntu-latest }
           - { name: linux-python3.13-upgraded              , test-tox-env: pytest-py313-upgraded            , python-ver: "3.13", os: ubuntu-latest }
-          - { name: linux-python3.13-upgraded-optional     , test-tox-env: pytest-py313-upgraded-optional   , python-ver: "3.13", os: ubuntu-latest }
-          - { name: linux-python3.13-prerelease-optional   , test-tox-env: pytest-py313-prerelease-optional , python-ver: "3.13", os: ubuntu-latest }
+          - { name: linux-python3.14-upgraded              , test-tox-env: pytest-py314-upgraded            , python-ver: "3.14", os: ubuntu-latest }
+          - { name: linux-python3.14-upgraded-optional     , test-tox-env: pytest-py314-upgraded-optional   , python-ver: "3.14", os: ubuntu-latest }
+          - { name: linux-python3.14-prerelease-optional   , test-tox-env: pytest-py314-prerelease-optional , python-ver: "3.14", os: ubuntu-latest }
           - { name: windows-python3.9-minimum              , test-tox-env: pytest-py39-minimum              , python-ver: "3.9" , os: windows-latest }
           - { name: windows-python3.10-upgraded            , test-tox-env: pytest-py310-upgraded            , python-ver: "3.10", os: windows-latest }
           - { name: windows-python3.11-upgraded            , test-tox-env: pytest-py311-upgraded            , python-ver: "3.11", os: windows-latest }
           - { name: windows-python3.12-upgraded            , test-tox-env: pytest-py312-upgraded            , python-ver: "3.12", os: windows-latest }
           - { name: windows-python3.13-upgraded            , test-tox-env: pytest-py313-upgraded            , python-ver: "3.13", os: windows-latest }
-          - { name: windows-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional   , python-ver: "3.13", os: windows-latest }
-          - { name: windows-python3.13-prerelease-optional , test-tox-env: pytest-py313-prerelease-optional , python-ver: "3.13", os: windows-latest }
+          - { name: windows-python3.14-upgraded            , test-tox-env: pytest-py314-upgraded            , python-ver: "3.14", os: windows-latest }
+          - { name: windows-python3.14-upgraded-optional   , test-tox-env: pytest-py314-upgraded-optional   , python-ver: "3.14", os: windows-latest }
+          - { name: windows-python3.14-prerelease-optional , test-tox-env: pytest-py314-prerelease-optional , python-ver: "3.14", os: windows-latest }
           - { name: macos-python3.9-minimum                , test-tox-env: pytest-py39-minimum              , python-ver: "3.9" , os: macos-15-intel }
           - { name: macos-python3.10-upgraded              , test-tox-env: pytest-py310-upgraded            , python-ver: "3.10", os: macos-latest }
           - { name: macos-python3.11-upgraded              , test-tox-env: pytest-py311-upgraded            , python-ver: "3.11", os: macos-latest }
           - { name: macos-python3.12-upgraded              , test-tox-env: pytest-py312-upgraded            , python-ver: "3.12", os: macos-latest }
           - { name: macos-python3.13-upgraded              , test-tox-env: pytest-py313-upgraded            , python-ver: "3.13", os: macos-latest }
+          - { name: macos-python3.14-upgraded              , test-tox-env: pytest-py314-upgraded            , python-ver: "3.14", os: macos-latest }
+          - { name: macos-python3.14-prerelease            , test-tox-env: pytest-py314-prerelease          , python-ver: "3.14", os: macos-latest }
+          # No prebuilt wheels for numcodecs==0.15.1 for Python 3.14 on PyPI and cannot build numcodecs == 0.15.1 on macos-latest
+          # So optional requirements testing on macos-latest (arm64) is disabled. See https://github.com/hdmf-dev/hdmf/pull/1367
           - { name: macos-python3.13-upgraded-optional     , test-tox-env: pytest-py313-upgraded-optional   , python-ver: "3.13", os: macos-latest }
           - { name: macos-python3.13-prerelease-optional   , test-tox-env: pytest-py313-prerelease-optional , python-ver: "3.13", os: macos-latest }
     steps:
@@ -94,16 +100,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # TODO: Update to 3.13 when linkml and its deps support 3.13
+          # TODO: Update to 3.14 when linkml and its deps support 3.14
           - { name: linux-gallery-python3.9-minimum                , test-tox-env: gallery-py39-minimum              , python-ver: "3.9" , os: ubuntu-latest }
-          - { name: linux-gallery-python3.12-upgraded-optional     , test-tox-env: gallery-py312-upgraded-optional   , python-ver: "3.12", os: ubuntu-latest }
-          - { name: linux-gallery-python3.12-prerelease-optional   , test-tox-env: gallery-py312-prerelease-optional , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-gallery-python3.13-upgraded-optional     , test-tox-env: gallery-py313-upgraded-optional   , python-ver: "3.13", os: ubuntu-latest }
+          - { name: linux-gallery-python3.13-prerelease-optional   , test-tox-env: gallery-py313-prerelease-optional , python-ver: "3.13", os: ubuntu-latest }
           - { name: windows-gallery-python3.9-minimum              , test-tox-env: gallery-py39-minimum              , python-ver: "3.9" , os: windows-latest }
-          - { name: windows-gallery-python3.12-upgraded-optional   , test-tox-env: gallery-py312-upgraded-optional   , python-ver: "3.12", os: windows-latest }
-          - { name: windows-gallery-python3.12-prerelease-optional , test-tox-env: gallery-py312-prerelease-optional , python-ver: "3.12", os: windows-latest }
+          - { name: windows-gallery-python3.13-upgraded-optional   , test-tox-env: gallery-py313-upgraded-optional   , python-ver: "3.13", os: windows-latest }
+          - { name: windows-gallery-python3.13-prerelease-optional , test-tox-env: gallery-py313-prerelease-optional , python-ver: "3.13", os: windows-latest }
           - { name: macos-gallery-python3.9-minimum                , test-tox-env: gallery-py39-minimum              , python-ver: "3.9" , os: macos-15-intel }
-          - { name: macos-gallery-python3.12-upgraded-optional     , test-tox-env: gallery-py312-upgraded-optional   , python-ver: "3.12", os: macos-latest }
-          - { name: macos-gallery-python3.12-prerelease-optional   , test-tox-env: gallery-py312-prerelease-optional , python-ver: "3.12", os: macos-latest }
+          - { name: macos-gallery-python3.13-upgraded-optional     , test-tox-env: gallery-py313-upgraded-optional   , python-ver: "3.13", os: macos-latest }
+          - { name: macos-gallery-python3.13-prerelease-optional   , test-tox-env: gallery-py313-prerelease-optional , python-ver: "3.13", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v6
@@ -139,9 +145,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.13-ros3   , python-ver: "3.13", os: ubuntu-latest }
-          - { name: windows-python3.13-ros3 , python-ver: "3.13", os: windows-latest }
-          - { name: macos-python3.13-ros3   , python-ver: "3.13", os: macos-latest }
+          - { name: linux-python3.14-ros3   , python-ver: "3.14", os: ubuntu-latest }
+          - { name: windows-python3.14-ros3 , python-ver: "3.14", os: windows-latest }
+          - { name: macos-python3.14-ros3   , python-ver: "3.14", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v6

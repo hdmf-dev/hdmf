@@ -520,8 +520,8 @@ class TypeMap:
         if namespace is None:
             for ns_key, ns_data_types in self.__container_types.items():
                 # NOTE that the type_name may appear in multiple namespaces based on how they were resolved
-                # but the same type_name should point to the same class
-                if data_type in ns_data_types:
+                # but the same type_name should point to the same container class or TypeSource class
+                if data_type in ns_data_types and not isinstance(ns_data_types[data_type], TypeSource):
                     namespace = ns_key
                     break
         if namespace is None:
