@@ -360,8 +360,9 @@ class DynamicTable(Container):
              'default': None},
             {'name': 'meanings_tables',
              'doc': ('MeaningsTable objects that provide meanings for values in VectorData columns. '
-                     'The key should be the name of the VectorData column and the value should be the '
-                     'MeaningsTable object. The MeaningsTable will be named "{column_name}_meanings".'),
+                     'Each MeaningsTable must have a name of "{column_name}_meanings" where column_name '
+                     'is the name of the target column in this DynamicTable. The target column must '
+                     'exist in this table.'),
              'type': (tuple, list),
              'default': None},
             allow_positional=AllowPositional.WARNING)
@@ -563,12 +564,17 @@ class DynamicTable(Container):
                 self.add_meanings_table(mt)
 
     @docval({'name': 'meanings_table', 'type': 'MeaningsTable',
-             'doc': 'The MeaningsTable to add. It should have a name ending with "_meanings".'})
+             'doc': 'The MeaningsTable to add. Its name must be "{column_name}_meanings" where '
+                    'column_name is the name of a column in this DynamicTable.'})
     def add_meanings_table(self, **kwargs):
         """Add a MeaningsTable to this DynamicTable."""
         meanings_table = getargs('meanings_table', kwargs)
         if meanings_table.name in self.__meanings_tables:
             raise ValueError(f"MeaningsTable '{meanings_table.name}' already exists in this DynamicTable")
+        # Check that the target is a column of this DynamicTable
+        target_name = meanings_table.target.name
+        if target_name not in self:
+            raise ValueError(f"MeaningsTable target '{target_name}' is not a column in DynamicTable '{self.name}'")
         if not isinstance(meanings_table.parent, Container):
             meanings_table.parent = self
         else:
@@ -576,23 +582,25 @@ class DynamicTable(Container):
         self.__meanings_tables[meanings_table.name] = meanings_table
 
     @docval({'name': 'name', 'type': str,
-             'doc': 'The name of the MeaningsTable to get. If None and there is only one MeaningsTable, '
-                    'return that one. If None and there are multiple, raise an error.',
-             'default': None},
+             'doc': 'The name of the MeaningsTable to get.'},
             returns='the MeaningsTable with the given name', rtype='MeaningsTable')
     def get_meanings_table(self, **kwargs):
-        """Get a MeaningsTable from this DynamicTable."""
+        """Get a MeaningsTable from this DynamicTable by name."""
         name = getargs('name', kwargs)
-        if name is None:
-            if len(self.__meanings_tables) == 0:
-                raise ValueError(f"No MeaningsTable objects in DynamicTable '{self.name}'")
-            if len(self.__meanings_tables) > 1:
-                raise ValueError(f"Multiple MeaningsTable objects in DynamicTable '{self.name}', "
-                                 "must specify a name")
-            return next(iter(self.__meanings_tables.values()))
         if name not in self.__meanings_tables:
             raise KeyError(f"MeaningsTable '{name}' not found in DynamicTable '{self.name}'")
         return self.__meanings_tables[name]
+
+    @docval({'name': 'col_name', 'type': str,
+             'doc': 'The name of the column to get the MeaningsTable for.'},
+            returns='the MeaningsTable for the given column', rtype='MeaningsTable')
+    def get_meanings_for_column(self, **kwargs):
+        """Get a MeaningsTable for a column in this DynamicTable."""
+        col_name = getargs('col_name', kwargs)
+        meanings_table_name = f"{col_name}_meanings"
+        if meanings_table_name not in self.__meanings_tables:
+            raise KeyError(f"No MeaningsTable found for column '{col_name}' in DynamicTable '{self.name}'")
+        return self.__meanings_tables[meanings_table_name]
 
     def __set_table_attr(self, col):
         if hasattr(self, col.name) and col.name not in self.__uninit_cols:
@@ -1792,9 +1800,9 @@ class MeaningsTable(DynamicTable):
     of this table, even if the value is not observed in the data. Additional columns may be
     added to store additional metadata about each value.
 
-    The name of the MeaningsTable should correspond to the name of the linked VectorData object
-    with a "_meanings" suffix. For example, if the linked VectorData object is named
-    "stimulus_type", the corresponding MeaningsTable should be named "stimulus_type_meanings".
+    The name of the MeaningsTable is automatically set to "{target.name}_meanings" based on
+    the linked VectorData object. For example, if the linked VectorData object is named
+    "stimulus_type", the MeaningsTable will be named "stimulus_type_meanings".
 
     Note: MeaningsTable does not support containing nested MeaningsTables.
     """
@@ -1810,9 +1818,6 @@ class MeaningsTable(DynamicTable):
 
     @docval({'name': 'target', 'type': VectorData,
              'doc': 'the VectorData object for which this table provides meanings'},
-            {'name': 'name', 'type': str,
-             'doc': 'the name of this table. If not provided, defaults to "{target.name}_meanings".',
-             'default': None},
             {'name': 'description', 'type': str,
              'doc': 'a description of what is in this table', 'default': None},
             {'name': 'id', 'type': ('array_data', 'data', ElementIdentifiers),
@@ -1824,9 +1829,7 @@ class MeaningsTable(DynamicTable):
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         target = popargs('target', kwargs)
-        name = kwargs.get('name')
-        if name is None:
-            kwargs['name'] = f"{target.name}_meanings"
+        kwargs['name'] = f"{target.name}_meanings"
         description = kwargs.get('description')
         if description is None:
             kwargs['description'] = f"Meanings for values in '{target.name}'"

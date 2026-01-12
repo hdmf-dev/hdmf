@@ -3169,11 +3169,12 @@ class TestMeaningsTable(TestCase):
         mt = MeaningsTable(target=target)
         self.assertEqual(mt.description, "Meanings for values in 'stimulus_type'")
 
-    def test_constructor_custom_name(self):
-        """Test that custom name can be set."""
+    def test_name_auto_generated(self):
+        """Test that name is automatically generated."""
         target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
-        mt = MeaningsTable(target=target, name='custom_name')
-        self.assertEqual(mt.name, 'custom_name')
+        # Name should always be auto-generated based on target
+        mt = MeaningsTable(target=target)
+        self.assertEqual(mt.name, 'stimulus_type_meanings')
 
     def test_constructor_custom_description(self):
         """Test that custom description can be set."""
@@ -3225,35 +3226,31 @@ class TestDynamicTableMeaningsTables(TestCase):
         retrieved = self.table.get_meanings_table('stimulus_type_meanings')
         self.assertEqual(retrieved, mt)
 
-    def test_get_meanings_table_single(self):
-        """Test getting the only MeaningsTable without specifying name."""
+    def test_get_meanings_for_column(self):
+        """Test getting a MeaningsTable by column name."""
         mt = MeaningsTable(target=self.table['stimulus_type'])
         mt.add_row(value='a', meaning='stimulus A')
         self.table.add_meanings_table(mt)
-        retrieved = self.table.get_meanings_table()
+        retrieved = self.table.get_meanings_for_column('stimulus_type')
         self.assertEqual(retrieved, mt)
+
+    def test_get_meanings_for_column_not_found(self):
+        """Test error when no MeaningsTable exists for a column."""
+        with self.assertRaises(KeyError):
+            self.table.get_meanings_for_column('stimulus_type')
 
     def test_get_meanings_table_not_found(self):
         """Test error when MeaningsTable not found."""
         with self.assertRaises(KeyError):
             self.table.get_meanings_table('nonexistent')
 
-    def test_get_meanings_table_none_when_empty(self):
-        """Test error when no MeaningsTables exist and none specified."""
-        with self.assertRaises(ValueError):
-            self.table.get_meanings_table()
-
-    def test_get_meanings_table_multiple_requires_name(self):
-        """Test that name is required when multiple MeaningsTables exist."""
-        self.table.add_column(name='response_type', description='response type', data=['x', 'y'])
-        mt1 = MeaningsTable(target=self.table['stimulus_type'])
-        mt1.add_row(value='a', meaning='stimulus A')
-        mt2 = MeaningsTable(target=self.table['response_type'])
-        mt2.add_row(value='x', meaning='response X')
-        self.table.add_meanings_table(mt1)
-        self.table.add_meanings_table(mt2)
-        with self.assertRaises(ValueError):
-            self.table.get_meanings_table()
+    def test_add_meanings_table_invalid_target(self):
+        """Test error when MeaningsTable target is not a column in the table."""
+        other_col = VectorData(name='other_col', description='not in table', data=['x', 'y'])
+        mt = MeaningsTable(target=other_col)
+        mt.add_row(value='x', meaning='X meaning')
+        with self.assertRaisesRegex(ValueError, "not a column in DynamicTable"):
+            self.table.add_meanings_table(mt)
 
     def test_add_meanings_table_duplicate(self):
         """Test error when adding duplicate MeaningsTable."""
