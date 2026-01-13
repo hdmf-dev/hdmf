@@ -79,6 +79,24 @@ class VectorData(Data):
             for i in ar:
                 self.add_row(i, **kwargs)
 
+    def get_meanings(self):
+        """Get the MeaningsTable associated with this VectorData column, if one exists.
+
+        Returns:
+            MeaningsTable: The MeaningsTable for this column, or None if this column
+                is not part of a DynamicTable or has no associated MeaningsTable.
+        """
+        parent = self.parent
+        if parent is None:
+            return None
+        # Check if parent is a DynamicTable (avoid circular import by checking for the method)
+        if not hasattr(parent, 'get_meanings_for_column'):
+            return None
+        try:
+            return parent.get_meanings_for_column(self.name)
+        except KeyError:
+            return None
+
 
 @register_class('VectorIndex')
 class VectorIndex(VectorData):

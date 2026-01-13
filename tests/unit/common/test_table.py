@@ -3269,6 +3269,24 @@ class TestDynamicTableMeaningsTables(TestCase):
         self.table.add_meanings_table(mt)
         self.assertEqual(mt.parent, self.table)
 
+    def test_vectordata_get_meanings(self):
+        """Test getting MeaningsTable from a VectorData column."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        self.table.add_meanings_table(mt)
+        retrieved = self.table['stimulus_type'].get_meanings()
+        self.assertEqual(retrieved, mt)
+
+    def test_vectordata_get_meanings_no_table(self):
+        """Test get_meanings returns None when VectorData has no parent."""
+        col = VectorData(name='test_col', description='test', data=['a', 'b'])
+        self.assertIsNone(col.get_meanings())
+
+    def test_vectordata_get_meanings_no_meanings_table(self):
+        """Test get_meanings returns None when no MeaningsTable exists for the column."""
+        result = self.table['stimulus_type'].get_meanings()
+        self.assertIsNone(result)
+
     def test_constructor_with_meanings_tables(self):
         """Test constructing DynamicTable with meanings_tables argument."""
         col = VectorData(name='stimulus_type', description='stimulus type', data=['a', 'b'])
