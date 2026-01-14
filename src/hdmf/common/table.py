@@ -89,12 +89,10 @@ class VectorData(Data):
         parent = self.parent
         if parent is None:
             return None
-        # Check if parent is a DynamicTable (avoid circular import by checking for the method)
-        if not hasattr(parent, 'get_meanings_for_column'):
-            return None
         try:
             return parent.get_meanings_for_column(self.name)
-        except KeyError:
+        except (KeyError, AttributeError):
+            # AttributeError if parent is not a DynamicTable
             return None
 
 
