@@ -470,8 +470,7 @@ class NamespaceCatalog:
                     types_to_load = inc_ns.get_registered_types()  # load all types in namespace
                 registered_types = set()
                 for ndt in types_to_load:
-                    in_progress_registrations = set()
-                    self.__register_type(ndt, inc_ns, catalog, registered_types, in_progress_registrations)
+                    self.__register_type(ndt, inc_ns, catalog, registered_types)
                 included_types[s['namespace']] = tuple(sorted(registered_types))
             else:
                 raise ValueError("Spec '%s' schema must have either 'source' or 'namespace' key" % ns_name)
