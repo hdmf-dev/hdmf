@@ -4,7 +4,6 @@ the storage and use of dynamic data tables as part of the hdmf-common schema
 """
 
 import re
-from abc import ABC
 from collections import OrderedDict
 from typing import NamedTuple, Union
 from warnings import warn
@@ -308,7 +307,7 @@ class ElementIdentifiers(Data):
 
 
 @register_class('BaseDynamicTable')
-class BaseDynamicTable(Container, ABC):
+class BaseDynamicTable(Container):
     r"""
     A column-based table. Columns are defined by the argument *columns*. This argument
     must be a list/tuple of :class:`~hdmf.common.table.VectorData` and :class:`~hdmf.common.table.VectorIndex` objects
