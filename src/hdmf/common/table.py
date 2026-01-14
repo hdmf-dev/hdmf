@@ -1869,5 +1869,4 @@ class MeaningsTable(BaseDynamicTable):
             allow_extra=True)
     def add_row(self, **kwargs):
         """Add a row to the table mapping a value to its meaning."""
-        value, meaning = popargs('value', 'meaning', kwargs)
-        super().add_row(value=value, meaning=meaning, **kwargs)
+        super().add_row(**kwargs)
