@@ -10,6 +10,7 @@ from hdmf import TermSet, TermSetWrapper
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 from hdmf.backends.hdf5.h5tools import H5_TEXT, H5PY_3
 from hdmf.common import (
+    BaseDynamicTable,
     DynamicTable,
     VectorData,
     VectorIndex,
@@ -35,6 +36,104 @@ try:
     REQUIREMENTS_INSTALLED = True
 except ImportError:
     REQUIREMENTS_INSTALLED = False
+
+
+class TestBaseDynamicTable(TestCase):
+    """Test BaseDynamicTable - the base class for column-based tables.
+
+    NOTE: Most table functionality was refactored from DynamicTable to BaseDynamicTable.
+    DynamicTable remains the primary user-facing class, and since it inherits from
+    BaseDynamicTable, the tests in TestDynamicTable below implicitly cover BaseDynamicTable
+    functionality. This test class focuses on BaseDynamicTable-specific behavior, particularly
+    verifying that it can be instantiated directly and that it does NOT have meanings_tables
+    support (which is only available in DynamicTable).
+    """
+
+    def test_constructor_empty(self):
+        """Test creating an empty BaseDynamicTable."""
+        table = BaseDynamicTable(name='test_table', description='a test table')
+        self.assertEqual(table.name, 'test_table')
+        self.assertEqual(table.description, 'a test table')
+        self.assertEqual(len(table), 0)
+
+    def test_constructor_with_columns(self):
+        """Test creating a BaseDynamicTable with columns."""
+        col1 = VectorData(name='col1', description='column 1', data=[1, 2, 3])
+        col2 = VectorData(name='col2', description='column 2', data=['a', 'b', 'c'])
+        table = BaseDynamicTable(
+            name='test_table',
+            description='a test table',
+            columns=[col1, col2]
+        )
+        self.assertEqual(len(table), 3)
+        self.assertTupleEqual(table.colnames, ('col1', 'col2'))
+        self.assertEqual(table['col1'].data, [1, 2, 3])
+        self.assertEqual(table['col2'].data, ['a', 'b', 'c'])
+
+    def test_add_row(self):
+        """Test adding rows to a BaseDynamicTable."""
+        table = BaseDynamicTable(name='test_table', description='a test table')
+        table.add_column(name='col1', description='column 1')
+        table.add_column(name='col2', description='column 2')
+        table.add_row(col1=1, col2='a')
+        table.add_row(col1=2, col2='b')
+        self.assertEqual(len(table), 2)
+        self.assertEqual(table['col1'][0], 1)
+        self.assertEqual(table['col2'][1], 'b')
+
+    def test_add_column(self):
+        """Test adding columns to a BaseDynamicTable."""
+        table = BaseDynamicTable(name='test_table', description='a test table')
+        table.add_column(name='col1', description='column 1')
+        self.assertTupleEqual(table.colnames, ('col1',))
+        table.add_column(name='col2', description='column 2')
+        self.assertTupleEqual(table.colnames, ('col1', 'col2'))
+
+    def test_getitem_column(self):
+        """Test getting a column from a BaseDynamicTable."""
+        col1 = VectorData(name='col1', description='column 1', data=[1, 2, 3])
+        table = BaseDynamicTable(
+            name='test_table',
+            description='a test table',
+            columns=[col1]
+        )
+        self.assertIs(table['col1'], col1)
+
+    def test_getitem_row(self):
+        """Test getting a row from a BaseDynamicTable."""
+        col1 = VectorData(name='col1', description='column 1', data=[1, 2, 3])
+        col2 = VectorData(name='col2', description='column 2', data=['a', 'b', 'c'])
+        table = BaseDynamicTable(
+            name='test_table',
+            description='a test table',
+            columns=[col1, col2]
+        )
+        row = table[1]
+        self.assertEqual(row['col1'].values[0], 2)
+        self.assertEqual(row['col2'].values[0], 'b')
+
+    def test_to_dataframe(self):
+        """Test converting a BaseDynamicTable to a DataFrame."""
+        col1 = VectorData(name='col1', description='column 1', data=[1, 2, 3])
+        col2 = VectorData(name='col2', description='column 2', data=['a', 'b', 'c'])
+        table = BaseDynamicTable(
+            name='test_table',
+            description='a test table',
+            columns=[col1, col2]
+        )
+        df = table.to_dataframe()
+        self.assertIsInstance(df, pd.DataFrame)
+        self.assertEqual(list(df.columns), ['col1', 'col2'])
+        self.assertEqual(list(df['col1']), [1, 2, 3])
+        self.assertEqual(list(df['col2']), ['a', 'b', 'c'])
+
+    def test_no_meanings_tables_attribute(self):
+        """Test that BaseDynamicTable does not have meanings_tables attribute."""
+        table = BaseDynamicTable(name='test_table', description='a test table')
+        self.assertFalse(hasattr(table, 'meanings_tables'))
+        self.assertFalse(hasattr(table, 'add_meanings_table'))
+        self.assertFalse(hasattr(table, 'get_meanings_table'))
+        self.assertFalse(hasattr(table, 'get_meanings_for_column'))
 
 
 class TestDynamicTable(TestCase):
