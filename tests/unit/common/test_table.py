@@ -1205,7 +1205,7 @@ Fields:
 
     def test_no_df_nested(self):
         table = self.with_columns_and_data()
-        msg = 'DynamicTable.get() with df=False and index=False is not yet supported.'
+        msg = 'BaseDynamicTable.get() with df=False and index=False is not yet supported.'
         with self.assertRaisesWith(ValueError, msg):
             table.get(0, df=False, index=False)
 
@@ -1496,7 +1496,7 @@ class TestDynamicTableRegion(TestCase):
 
     def test_create_region_with_invalid_slice_range(self):
         table = self.with_columns_and_data()
-        msg = 'region slice slice(-1, 2, None) is out of range for this DynamicTable of length 5'
+        msg = 'region slice slice(-1, 2, None) is out of range for this BaseDynamicTable of length 5'
         with self.assertRaisesWith(IndexError, msg):
             table.create_region(name='region2', region=slice(-1, 2), description='test region')
 
@@ -1508,13 +1508,13 @@ class TestDynamicTableRegion(TestCase):
     def test_create_region_with_negative_index(self):
         table = self.with_columns_and_data()
 
-        msg = 'The index -1 is out of range for this DynamicTable of length 5'
+        msg = 'The index -1 is out of range for this BaseDynamicTable of length 5'
         with self.assertRaisesWith(IndexError, msg):
             table.create_region(name='region', region=[-1, 0], description='test region')
 
     def test_create_region_with_out_of_range_index(self):
         table = self.with_columns_and_data()
-        msg = 'The index 10 is out of range for this DynamicTable of length 5'
+        msg = 'The index 10 is out of range for this BaseDynamicTable of length 5'
         with self.assertRaisesWith(IndexError, msg):
             table.create_region(name='region', region=[0, 10], description='test region')
 
