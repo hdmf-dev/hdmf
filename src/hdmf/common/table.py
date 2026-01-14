@@ -4,6 +4,7 @@ the storage and use of dynamic data tables as part of the hdmf-common schema
 """
 
 import re
+from abc import ABC
 from collections import OrderedDict
 from typing import NamedTuple, Union
 from warnings import warn
@@ -15,7 +16,7 @@ import itertools
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
-from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type, is_ragged
+from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type, is_ragged, get_docval
 from ..term_set import TermSetWrapper
 
 
@@ -306,8 +307,8 @@ class ElementIdentifiers(Data):
         super()._validate_new_data_element(arg)
 
 
-@register_class('DynamicTable')
-class DynamicTable(Container):
+@register_class('BaseDynamicTable')
+class BaseDynamicTable(Container, ABC):
     r"""
     A column-based table. Columns are defined by the argument *columns*. This argument
     must be a list/tuple of :class:`~hdmf.common.table.VectorData` and :class:`~hdmf.common.table.VectorIndex` objects
@@ -316,23 +317,18 @@ class DynamicTable(Container):
     additional structure to the table columns. Setting the key ``index`` to ``True`` can be used to indicate that the
     :class:`~hdmf.common.table.VectorData` column will store a ragged array (i.e. will be accompanied with a
     :class:`~hdmf.common.table.VectorIndex`). Setting the key ``table`` to ``True`` can be used to indicate that the
-    column will store regions to another DynamicTable. Setting the key ``enum`` to ``True`` can be used to indicate
+    column will store regions to another BaseDynamicTable. Setting the key ``enum`` to ``True`` can be used to indicate
     that the column data will come from a fixed set of values.
 
-    Columns in DynamicTable subclasses can be statically defined by specifying the class attribute *\_\_columns\_\_*,
-    rather than specifying them at runtime at the instance level. This is useful for defining a table structure
-    that will get reused. The requirements for *\_\_columns\_\_* are the same as the requirements described above
-    for specifying table columns with the *columns* argument to the DynamicTable constructor.
-
-    Note: DynamicTable does not use MultiContainerInterface for meanings_tables because MeaningsTable
-    is defined later in this module and inherits from DynamicTable, creating a circular reference that
-    MultiContainerInterface cannot handle with forward references.
+    Columns in BaseDynamicTable subclasses can be statically defined by specifying the class attribute
+    *\_\_columns\_\_*, rather than specifying them at runtime at the instance level. This is useful for defining a
+    table structure that will get reused. The requirements for *\_\_columns\_\_* are the same as the requirements
+    described above for specifying table columns with the *columns* argument to the BaseDynamicTable constructor.
     """
 
     __fields__ = (
         {'name': 'id', 'child': True},
         {'name': 'columns', 'child': True},
-        {'name': 'meanings_tables', 'child': True},
         'colnames',
         'description'
     )
@@ -351,7 +347,7 @@ class DynamicTable(Container):
             msg = "'__columns__' must be of type tuple, found %s" % type(cls.__columns__)
             raise TypeError(msg)
 
-        if len(bases) and 'DynamicTable' in globals():
+        if len(bases) and 'BaseDynamicTable' in globals():
             for item in bases[::-1]: # look for __columns__ in the base classes, closest first
                 if issubclass(item, Container):
                     try:
@@ -376,18 +372,10 @@ class DynamicTable(Container):
                      'added to the table if it is not already present (i.e., when it is optional).'),
              'type': dict,
              'default': None},
-            {'name': 'meanings_tables',
-             'doc': ('MeaningsTable objects that provide meanings for values in VectorData columns. '
-                     'Each MeaningsTable must have a name of "{column_name}_meanings" where column_name '
-                     'is the name of the target column in this DynamicTable. The target column must '
-                     'exist in this table.'),
-             'type': (tuple, list),
-             'default': None},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):  # noqa: C901
         id, columns, desc, colnames = popargs('id', 'columns', 'description', 'colnames', kwargs)
         target_tables = popargs('target_tables', kwargs)
-        meanings_tables = popargs('meanings_tables', kwargs)
         super().__init__(**kwargs)
         self.description = desc
 
@@ -564,61 +552,6 @@ class DynamicTable(Container):
         if target_tables:
             self._set_dtr_targets(target_tables)
 
-        # Initialize meanings_tables via setter
-        self.meanings_tables = meanings_tables
-
-    @property
-    def meanings_tables(self):
-        """Get the dict of MeaningsTable objects in this DynamicTable."""
-        return self.__meanings_tables
-
-    @meanings_tables.setter
-    @docval({'name': 'val', 'type': (tuple, list), 'doc': 'The MeaningsTable objects to set', 'default': None})
-    def meanings_tables(self, val):
-        """Set the MeaningsTable objects in this DynamicTable."""
-        self.__meanings_tables = dict()
-        if val is not None:
-            for mt in val:
-                self.add_meanings_table(mt)
-
-    @docval({'name': 'meanings_table', 'type': 'MeaningsTable',
-             'doc': 'The MeaningsTable to add. Its name must be "{column_name}_meanings" where '
-                    'column_name is the name of a column in this DynamicTable.'})
-    def add_meanings_table(self, **kwargs):
-        """Add a MeaningsTable to this DynamicTable."""
-        meanings_table = getargs('meanings_table', kwargs)
-        if meanings_table.name in self.__meanings_tables:
-            raise ValueError(f"MeaningsTable '{meanings_table.name}' already exists in this DynamicTable")
-        # Check that the target is a column of this DynamicTable
-        target_name = meanings_table.target.name
-        if target_name not in self:
-            raise ValueError(f"MeaningsTable target '{target_name}' is not a column in DynamicTable '{self.name}'")
-        if not isinstance(meanings_table.parent, Container):
-            meanings_table.parent = self
-        else:
-            self.set_modified()
-        self.__meanings_tables[meanings_table.name] = meanings_table
-
-    @docval({'name': 'name', 'type': str,
-             'doc': 'The name of the MeaningsTable to get.'},
-            returns='the MeaningsTable with the given name', rtype='MeaningsTable')
-    def get_meanings_table(self, **kwargs):
-        """Get a MeaningsTable from this DynamicTable by name."""
-        name = getargs('name', kwargs)
-        if name not in self.__meanings_tables:
-            raise KeyError(f"MeaningsTable '{name}' not found in DynamicTable '{self.name}'")
-        return self.__meanings_tables[name]
-
-    @docval({'name': 'col_name', 'type': str,
-             'doc': 'The name of the column to get the MeaningsTable for.'},
-            returns='the MeaningsTable for the given column', rtype='MeaningsTable')
-    def get_meanings_for_column(self, **kwargs):
-        """Get a MeaningsTable for a column in this DynamicTable."""
-        col_name = getargs('col_name', kwargs)
-        meanings_table_name = f"{col_name}_meanings"
-        if meanings_table_name not in self.__meanings_tables:
-            raise KeyError(f"No MeaningsTable found for column '{col_name}' in DynamicTable '{self.name}'")
-        return self.__meanings_tables[meanings_table_name]
 
     def __set_table_attr(self, col):
         if hasattr(self, col.name) and col.name not in self.__uninit_cols:
@@ -646,7 +579,7 @@ class DynamicTable(Container):
                                     col_cls=col.get('class'),
                                     # Pass through extra kwargs for add_column that subclasses may have added
                                     **{k: col[k] for k in col.keys()
-                                       if k not in DynamicTable.__reserved_colspec_keys})
+                                       if k not in BaseDynamicTable.__reserved_colspec_keys})
                 else:
                     # track the not yet initialized optional predefined columns
                     self.__uninit_cols[col['name']] = col
@@ -798,7 +731,7 @@ class DynamicTable(Container):
                                         # Pass through extra keyword arguments for add_column that
                                         # subclasses may have added
                                         **{k: col[k] for k in col.keys()
-                                           if k not in DynamicTable.__reserved_colspec_keys})
+                                           if k not in BaseDynamicTable.__reserved_colspec_keys})
                     extra_columns.remove(col['name'])
 
         if extra_columns:
@@ -853,19 +786,19 @@ class DynamicTable(Container):
                          stacklevel=3)
 
     def __eq__(self, other):
-        """Compare if the two DynamicTables contain the same data.
+        """Compare if the two BaseDynamicTables contain the same data.
 
-        First this returns False if the other DynamicTable has a different name or
+        First this returns False if the other BaseDynamicTable has a different name or
         description. Then, this table and the other table are converted to pandas
         dataframes and the equality of the two tables is returned.
 
-        :param other: DynamicTable to compare to
+        :param other: BaseDynamicTable to compare to
 
-        :return: Bool indicating whether the two DynamicTables contain the same data
+        :return: Bool indicating whether the two BaseDynamicTables contain the same data
         """
         if other is self:
             return True
-        if not isinstance(other, DynamicTable):
+        if not isinstance(other, BaseDynamicTable):
             return False
         if self.name != other.name or self.description != other.description:
             return False
@@ -875,7 +808,7 @@ class DynamicTable(Container):
             {'name': 'description', 'type': str, 'doc': 'a description for this column'},
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors', 'default': list()},
-            {'name': 'table', 'type': (bool, 'DynamicTable'),
+            {'name': 'table', 'type': (bool, 'BaseDynamicTable'),
              'doc': 'whether or not this is a table region or the table the region applies to', 'default': False},
             {'name': 'index', 'type': (bool, VectorIndex, 'array_data', int),
              'doc': '        * ``False`` (default): do not generate a VectorIndex\n\n'
@@ -1498,6 +1431,85 @@ class DynamicTable(Container):
         return self.__class__(**kwargs)
 
 
+@register_class('DynamicTable')
+class DynamicTable(BaseDynamicTable):
+    """A standard DynamicTable container with support for storing MeaningsTable objects in a dedicated subgroup.
+
+    See BaseDynamicTable for more details.
+    """
+
+    __fields__ = (
+        {'name': 'meanings_tables', 'child': True},
+    )
+
+    @docval(*get_docval(BaseDynamicTable.__init__, 'name', 'description', 'id', 'columns', 'colnames', 'target_tables'),
+            {'name': 'meanings_tables',
+             'doc': ('MeaningsTable objects that provide meanings for values in VectorData columns. '
+                     'Each MeaningsTable must have a name of "{column_name}_meanings" where column_name '
+                     'is the name of the target column in this DynamicTable. The target column must '
+                     'exist in this table.'),
+             'type': (tuple, list),
+             'default': None},
+            allow_positional=AllowPositional.WARNING)
+    def __init__(self, **kwargs):
+        meanings_tables = popargs('meanings_tables', kwargs)
+        super().__init__(**kwargs)
+        self.meanings_tables = meanings_tables
+
+    @property
+    def meanings_tables(self):
+        """Get the dict of MeaningsTable objects in this DynamicTable."""
+        return self.__meanings_tables
+
+    @meanings_tables.setter
+    @docval({'name': 'val', 'type': (tuple, list), 'doc': 'The MeaningsTable objects to set', 'default': None})
+    def meanings_tables(self, val):
+        """Set the MeaningsTable objects in this DynamicTable."""
+        self.__meanings_tables = dict()
+        if val is not None:
+            for mt in val:
+                self.add_meanings_table(mt)
+
+    @docval({'name': 'meanings_table', 'type': 'MeaningsTable',
+             'doc': 'The MeaningsTable to add. Its name must be "{column_name}_meanings" where '
+                    'column_name is the name of a column in this DynamicTable.'})
+    def add_meanings_table(self, **kwargs):
+        """Add a MeaningsTable to this DynamicTable."""
+        meanings_table = getargs('meanings_table', kwargs)
+        if meanings_table.name in self.__meanings_tables:
+            raise ValueError(f"MeaningsTable '{meanings_table.name}' already exists in this DynamicTable")
+        # Check that the target is a column of this DynamicTable
+        target_name = meanings_table.target.name
+        if target_name not in self:
+            raise ValueError(f"MeaningsTable target '{target_name}' is not a column in DynamicTable '{self.name}'")
+        if not isinstance(meanings_table.parent, Container):
+            meanings_table.parent = self
+        else:
+            self.set_modified()
+        self.__meanings_tables[meanings_table.name] = meanings_table
+
+    @docval({'name': 'name', 'type': str,
+             'doc': 'The name of the MeaningsTable to get.'},
+            returns='the MeaningsTable with the given name', rtype='MeaningsTable')
+    def get_meanings_table(self, **kwargs):
+        """Get a MeaningsTable from this DynamicTable by name."""
+        name = getargs('name', kwargs)
+        if name not in self.__meanings_tables:
+            raise KeyError(f"MeaningsTable '{name}' not found in DynamicTable '{self.name}'")
+        return self.__meanings_tables[name]
+
+    @docval({'name': 'col_name', 'type': str,
+             'doc': 'The name of the column to get the MeaningsTable for.'},
+            returns='the MeaningsTable for the given column', rtype='MeaningsTable')
+    def get_meanings_for_column(self, **kwargs):
+        """Get a MeaningsTable for a column in this DynamicTable."""
+        col_name = getargs('col_name', kwargs)
+        meanings_table_name = f"{col_name}_meanings"
+        if meanings_table_name not in self.__meanings_tables:
+            raise KeyError(f"No MeaningsTable found for column '{col_name}' in DynamicTable '{self.name}'")
+        return self.__meanings_tables[meanings_table_name]
+
+
 @register_class('DynamicTableRegion')
 class DynamicTableRegion(VectorData):
     """
@@ -1810,7 +1822,7 @@ class EnumData(VectorData):
 
 
 @register_class('MeaningsTable')
-class MeaningsTable(DynamicTable):
+class MeaningsTable(BaseDynamicTable):
     """
     A table to store information about the meanings of values in a linked VectorData object.
 
@@ -1821,8 +1833,6 @@ class MeaningsTable(DynamicTable):
     The name of the MeaningsTable is automatically set to "{target.name}_meanings" based on
     the linked VectorData object. For example, if the linked VectorData object is named
     "stimulus_type", the MeaningsTable will be named "stimulus_type_meanings".
-
-    Note: MeaningsTable does not support containing nested MeaningsTables.
     """
 
     __fields__ = (

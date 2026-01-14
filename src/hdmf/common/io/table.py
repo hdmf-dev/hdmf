@@ -1,21 +1,17 @@
 from .. import register_map
-from ..table import DynamicTable, VectorData, VectorIndex, DynamicTableRegion
+from ..table import BaseDynamicTable, DynamicTable, VectorData, VectorIndex, DynamicTableRegion
 from ...build import ObjectMapper, BuildManager, CustomClassGenerator
 from ...spec import Spec
 from ...utils import docval, getargs
 
 
-@register_map(DynamicTable)
-class DynamicTableMap(ObjectMapper):
+@register_map(BaseDynamicTable)
+class BaseDynamicTableMap(ObjectMapper):
 
     def __init__(self, spec):
         super().__init__(spec)
         vector_data_spec = spec.get_data_type('VectorData')
         self.map_spec('columns', vector_data_spec)
-        # Map meanings_tables to the MeaningsTable spec within the 'meanings_tables' group
-        meanings_tables_group = spec.get_group('meanings_tables')
-        meanings_table_spec = meanings_tables_group.get_data_type('MeaningsTable')
-        self.map_spec('meanings_tables', meanings_table_spec)
 
     @ObjectMapper.object_attr('colnames')
     def attr_columns(self, container, manager):
@@ -24,7 +20,7 @@ class DynamicTableMap(ObjectMapper):
         return container.colnames
 
     @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
-            {"name": "container", "type": DynamicTable, "doc": "the container to get the attribute value from"},
+            {"name": "container", "type": BaseDynamicTable, "doc": "the container to get the attribute value from"},
             {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
             returns='the value of the attribute')
     def get_attr_value(self, **kwargs):
@@ -49,15 +45,26 @@ class DynamicTableMap(ObjectMapper):
         return attr_value
 
 
+@register_map(DynamicTable)
+class DynamicTableMap(BaseDynamicTableMap):
+
+    def __init__(self, spec):
+        super().__init__(spec)
+        # Map meanings_tables to the MeaningsTable spec within the 'meanings_tables' group
+        meanings_tables_group = spec.get_group('meanings_tables')
+        meanings_table_spec = meanings_tables_group.get_data_type('MeaningsTable')
+        self.map_spec('meanings_tables', meanings_table_spec)
+
+
 class DynamicTableGenerator(CustomClassGenerator):
 
     @classmethod
     def apply_generator_to_field(cls, field_spec, bases, type_map):
-        """Return True if this is a DynamicTable and the field spec is a column."""
+        """Return True if this is a BaseDynamicTable and the field spec is a column."""
         for b in bases:
-            if issubclass(b, DynamicTable):
+            if issubclass(b, BaseDynamicTable):
                 break
-        else:  # return False if no base is a subclass of DynamicTable
+        else:  # return False if no base is a subclass of BaseDynamicTable
             return False
         dtype = cls._get_type(field_spec, type_map)
         return isinstance(dtype, type) and issubclass(dtype, VectorData)
@@ -100,7 +107,7 @@ class DynamicTableGenerator(CustomClassGenerator):
 
         classdict.setdefault('__columns__', list()).append(column_conf)
 
-        # do not add DynamicTable columns to init docval
+        # do not add BaseDynamicTable columns to init docval
 
     @classmethod
     def post_process(cls, classdict, bases, docval_args, spec):
