@@ -22,13 +22,13 @@ from ..term_set import TermSetWrapper
 @register_class('VectorData')
 class VectorData(Data):
     """
-    A n-dimensional dataset representing a column of a DynamicTable.
+    A n-dimensional dataset representing a column of a BaseDynamicTable.
     If used without an accompanying VectorIndex, first dimension is
-    along the rows of the DynamicTable and each step along the first
+    along the rows of the BaseDynamicTable and each step along the first
     dimension is a cell of the larger table. VectorData can also be
     used to represent a ragged array if paired with a VectorIndex.
     This allows for storing arrays of varying length in a single cell
-    of the DynamicTable by indexing into this VectorData. The first
+    of the BaseDynamicTable by indexing into this VectorData. The first
     vector is at VectorData[0:VectorIndex(0)+1]. The second vector is at
     VectorData[VectorIndex(0)+1:VectorIndex(1)+1], and so on.
     """
@@ -100,7 +100,7 @@ class VectorData(Data):
 class VectorIndex(VectorData):
     """
     When paired with a VectorData, this allows for storing arrays of varying
-    length in a single cell of the DynamicTable by indexing into this VectorData.
+    length in a single cell of the BaseDynamicTable by indexing into this VectorData.
     The first vector is at VectorData[0:VectorIndex(0)+1]. The second vector is at
     VectorData[VectorIndex(0)+1:VectorIndex(1)+1], and so on.
     """
@@ -259,7 +259,7 @@ class VectorIndex(VectorData):
 @register_class('ElementIdentifiers')
 class ElementIdentifiers(Data):
     """
-    Data container with a list of unique identifiers for values within a dataset, e.g. rows of a DynamicTable.
+    Data container with a list of unique identifiers for values within a dataset, e.g. rows of a BaseDynamicTable.
     """
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this ElementIdentifiers'},
@@ -878,7 +878,7 @@ class BaseDynamicTable(Container):
         if table is not False:
             if col_cls is None:
                  col_cls = DynamicTableRegion
-            if isinstance(table, DynamicTable):
+            if isinstance(table, BaseDynamicTable):
                 ckwargs['table'] = table
         # Update col_cls if enum is specified
         if enum is not False:
@@ -1015,7 +1015,7 @@ class BaseDynamicTable(Container):
             {'name': 'description', 'type': str, 'doc': 'a brief description of what the region is'})
     def create_region(self, **kwargs):
         """
-        Create a DynamicTableRegion selecting a region (i.e., rows) in this DynamicTable.
+        Create a DynamicTableRegion selecting a region (i.e., rows) in this BaseDynamicTable.
 
         :raises: IndexError if the provided region contains invalid indices
 
@@ -1023,14 +1023,14 @@ class BaseDynamicTable(Container):
         region = getargs('region', kwargs)
         if isinstance(region, slice):
             if (region.start is not None and region.start < 0) or (region.stop is not None and region.stop > len(self)):
-                msg = 'region slice %s is out of range for this DynamicTable of length %d' % (str(region), len(self))
+                msg = f'region slice {region} is out of range for this BaseDynamicTable of length {len(self)}'
                 raise IndexError(msg)
             region = list(range(*region.indices(len(self))))
         else:
             for idx in region:
                 if idx < 0 or idx >= len(self):
                     raise IndexError('The index ' + str(idx) +
-                                     ' is out of range for this DynamicTable of length '
+                                     ' is out of range for this BaseDynamicTable of length '
                                      + str(len(self)))
         desc = getargs('description', kwargs)
         name = getargs('name', kwargs)
@@ -1050,7 +1050,7 @@ class BaseDynamicTable(Container):
         then the returned pandas DataFrame will contain a nested DataFrame in each row of the
         DynamicTableRegion column. If ``df=False`` and ``index=True``, then a list of lists will be returned
         where the list containing the DynamicTableRegion column contains the indices of the DynamicTableRegion.
-        Note that in this case, the DynamicTable referenced by the DynamicTableRegion can be accessed through
+        Note that in this case, the BaseDynamicTable referenced by the DynamicTableRegion can be accessed through
         the ``table`` attribute of the DynamicTableRegion object. ``df=False`` and ``index=False`` is
         not yet supported.
 
@@ -1074,7 +1074,7 @@ class BaseDynamicTable(Container):
         ret = None
         if not df and not index:
             # returning nested lists of lists for DTRs and ragged DTRs is complicated and not yet supported
-            raise ValueError('DynamicTable.get() with df=False and index=False is not yet supported.')
+            raise ValueError('BaseDynamicTable.get() with df=False and index=False is not yet supported.')
         if isinstance(key, tuple):
             # index by row and column --> return specific cell
             arg1 = key[0]
@@ -1115,9 +1115,9 @@ class BaseDynamicTable(Container):
         :type arg: int, list, np.ndarray, or slice
         """
         if not (np.issubdtype(type(arg), np.integer) or isinstance(arg, (slice, list, np.ndarray))):
-            raise KeyError("Key type not supported by DynamicTable %s" % str(type(arg)))
+            raise KeyError("Key type not supported by BaseDynamicTable %s" % str(type(arg)))
         if isinstance(arg, np.ndarray) and arg.ndim != 1:
-            raise ValueError("Cannot index DynamicTable with multiple dimensions")
+            raise ValueError("Cannot index BaseDynamicTable with multiple dimensions")
         if exclude is None:
             exclude = set([])
         ret = OrderedDict()
@@ -1205,7 +1205,7 @@ class BaseDynamicTable(Container):
 
     def get_foreign_columns(self):
         """
-        Determine the names of all columns that link to another DynamicTable, i.e.,
+        Determine the names of all columns that link to another BaseDynamicTable, i.e.,
         find all DynamicTableRegion type columns. Similar to a foreign key in a
         database, a DynamicTableRegion column references elements in another table.
 
@@ -1242,12 +1242,12 @@ class BaseDynamicTable(Container):
         Returns: List of NamedTuple objects with:
                 * 'source_table' : The source table containing the DynamicTableRegion column
                 * 'source_column' : The relevant DynamicTableRegion column in the 'source_table'
-                * 'target_table' : The target DynamicTable; same as source_column.table.
+                * 'target_table' : The target BaseDynamicTable; same as source_column.table.
         """
         link_type = NamedTuple('DynamicTableLink',
-                               [('source_table', DynamicTable),
+                               [('source_table', BaseDynamicTable),
                                 ('source_column', Union[DynamicTableRegion, VectorIndex]),
-                                ('target_table', DynamicTable)])
+                                ('target_table', BaseDynamicTable)])
         curr_tables = [self, ]  # Set of tables
         other_tables = getargs('other_tables', kwargs)
         if other_tables is not None:
@@ -1365,7 +1365,7 @@ class BaseDynamicTable(Container):
     )
     def from_dataframe(cls, **kwargs):
         '''
-        Construct an instance of DynamicTable (or a subclass) from a pandas DataFrame.
+        Construct an instance of BaseDynamicTable (or a subclass) from a pandas DataFrame.
 
         The columns of the resulting table are defined by the columns of the
         dataframe and the index by the dataframe's index (make sure it has a
@@ -1373,7 +1373,7 @@ class BaseDynamicTable(Container):
         parameter. We recommend that you supply *columns* - a list/tuple of
         dictionaries containing the name and description of the column- to help
         others understand the contents of your table. See
-        :py:class:`~hdmf.common.table.DynamicTable` for more details on *columns*.
+        :py:class:`~hdmf.common.table.BaseDynamicTable` for more details on *columns*.
         '''
 
         columns = kwargs.pop('columns')
@@ -1420,7 +1420,7 @@ class BaseDynamicTable(Container):
 
     def copy(self):
         """
-        Return a copy of this DynamicTable.
+        Return a copy of this BaseDynamicTable.
         This is useful for linking.
         """
         kwargs = dict(name=self.name, id=self.id, columns=self.columns, description=self.description,
@@ -1511,12 +1511,12 @@ class DynamicTable(BaseDynamicTable):
 class DynamicTableRegion(VectorData):
     """
     DynamicTableRegion provides a link from one table to an index or region of another. The `table`
-    attribute is another `DynamicTable`, indicating which table is referenced. The data is int(s)
+    attribute is a `BaseDynamicTable` indicating which table is referenced. The data is int(s)
     indicating the row(s) (0-indexed) of the target array. `DynamicTableRegion`s can be used to
     associate multiple rows with the same meta-data without data duplication. They can also be used to
-    create hierarchical relationships between multiple `DynamicTable`s. `DynamicTableRegion` objects
+    create hierarchical relationships between multiple `BaseDynamicTable`s. `DynamicTableRegion` objects
     may be paired with a `VectorIndex` object to create ragged references, so a single cell of a
-    `DynamicTable` can reference many rows of another `DynamicTable`.
+    `BaseDynamicTable` can reference many rows of another `BaseDynamicTable`.
     """
 
     __fields__ = (
@@ -1527,8 +1527,8 @@ class DynamicTableRegion(VectorData):
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors'},
             {'name': 'description', 'type': str, 'doc': 'a description of what this region represents'},
-            {'name': 'table', 'type': DynamicTable,
-             'doc': 'the DynamicTable this region applies to', 'default': None},
+            {'name': 'table', 'type': BaseDynamicTable,
+             'doc': 'the BaseDynamicTable this region applies to', 'default': None},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):
         t = popargs('table', kwargs)
@@ -1537,7 +1537,7 @@ class DynamicTableRegion(VectorData):
 
     @property
     def table(self):
-        """The DynamicTable this DynamicTableRegion is pointing to"""
+        """The BaseDynamicTable this DynamicTableRegion is pointing to"""
         return self.fields.get('table')
 
     @table.setter
@@ -1545,7 +1545,7 @@ class DynamicTableRegion(VectorData):
         """
         Set the table this DynamicTableRegion should be pointing to
 
-        :param val: The DynamicTable this DynamicTableRegion should be pointing to
+        :param val: The BaseDynamicTable this DynamicTableRegion should be pointing to
 
         :raises: AttributeError if table is already in fields
         :raises: IndexError if the current indices are out of bounds for the new table given by val
@@ -1633,8 +1633,8 @@ class DynamicTableRegion(VectorData):
     def _index_lol(self, result, index, lut):
         """
         This is a helper function for indexing a list of lists/ndarrays. When not returning a
-        DataFrame, indexing a DynamicTable will return a list of lists and ndarrays. To sort
-        the result of a DynamicTable index according to the order of the indices passed in by the
+        DataFrame, indexing a BaseDynamicTable will return a list of lists and ndarrays. To sort
+        the result of a BaseDynamicTable index according to the order of the indices passed in by the
         user, we have to recursively sort the sub-lists/sub-ndarrays.
         """
         ret = list()
@@ -1656,9 +1656,9 @@ class DynamicTableRegion(VectorData):
         """
         Convert the whole DynamicTableRegion to a pandas dataframe.
 
-        Keyword arguments are passed through to the to_dataframe method of DynamicTable that
+        Keyword arguments are passed through to the to_dataframe method of BaseDynamicTable that
         is being referenced (i.e., self.table). This allows specification of the 'exclude'
-        parameter and any other parameters of DynamicTable.to_dataframe.
+        parameter and any other parameters of BaseDynamicTable.to_dataframe.
         """
         return self.table.to_dataframe(**kwargs).iloc[self.data[:]]
 
