@@ -372,10 +372,7 @@ class TestCustomSpecClasses(TestCase):
         namespace_deps = self.ns_catalog.load_namespaces(namespace_path)
 
         # test that the dependencies are correct, including dependencies of the dependencies
-        expected = set([
-            'Data', 'Container', 'BaseDynamicTable', 'DynamicTable', 'ElementIdentifiers', 'VectorData',
-            'MeaningsTable'
-        ])
+        expected = set(['Data', 'Container', 'DynamicTable', 'ElementIdentifiers', 'VectorData', 'MeaningsTable'])
         self.assertSetEqual(set(namespace_deps['test']['hdmf-common']), expected)
 
         # test that the types are loaded
@@ -415,8 +412,8 @@ class TestCustomSpecClasses(TestCase):
         ext_namespace_deps = self.ns_catalog.load_namespaces(ext_namespace_path)
 
         # test that the dependencies are correct, including dependencies of the dependencies
-        expected_deps = set(['TestData', 'TestContainer', 'TestTable', 'Container', 'Data', 'BaseDynamicTable',
-                             'DynamicTable', 'ElementIdentifiers', 'VectorData', 'MeaningsTable'])
+        expected_deps = set(['TestData', 'TestContainer', 'TestTable', 'Container', 'Data', 'DynamicTable',
+                             'ElementIdentifiers', 'VectorData', 'MeaningsTable'])
         self.assertSetEqual(set(ext_namespace_deps['test-ext']['test']), expected_deps)
 
     def test_load_namespaces_bad_path(self):

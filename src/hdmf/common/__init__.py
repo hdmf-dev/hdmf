@@ -288,7 +288,6 @@ else:
     raise RuntimeError("Unable to load a TypeMap - no namespace file found")
 
 
-BaseDynamicTable = get_class('BaseDynamicTable', CORE_NAMESPACE)
 DynamicTable = get_class('DynamicTable', CORE_NAMESPACE)
 VectorData = get_class('VectorData', CORE_NAMESPACE)
 VectorIndex = get_class('VectorIndex', CORE_NAMESPACE)
