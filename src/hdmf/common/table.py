@@ -1819,8 +1819,6 @@ class MeaningsTable(DynamicTable):
     The name of the MeaningsTable is automatically set to "{target.name}_meanings" based on
     the linked VectorData object. For example, if the linked VectorData object is named
     "stimulus_type", the MeaningsTable will be named "stimulus_type_meanings".
-
-    Note: MeaningsTable does not support containing nested MeaningsTables.
     """
 
     __fields__ = (
