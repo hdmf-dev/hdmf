@@ -4,6 +4,7 @@
 
 ### Added
 - Added support for Python 3.14. @bendichter [#1366](https://github.com/hdmf-dev/hdmf/issues/1366)
+- Added `_repr_html_` method to `LabelledDict` for interactive HTML display in notebooks. @h-mayorquin [#1381](https://github.com/hdmf-dev/hdmf/pull/1381)
 
 ### Changed
 - Added a collapsible "columns" section to the `DynamicTable` HTML representation that displays column descriptions, making it easier to inspect column metadata in notebooks. @h-mayorquin [#1369](https://github.com/hdmf-dev/hdmf/pull/1369)
