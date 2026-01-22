@@ -287,3 +287,18 @@ class TestLabelledDict(TestCase):
 
         with self.assertRaisesWith(TypeError, "setdefault is not supported for LabelledDict"):
             ld.setdefault(object())
+
+    def test_repr_html_(self):
+        """Test that _repr_html_ generates HTML with label and items."""
+        ld = LabelledDict(label='acquisition', key_attr='prop1')
+        obj1 = MyTestClass('item1', 'value1')
+        obj2 = MyTestClass('item2', 'value2')
+        ld.add(obj1)
+        ld.add(obj2)
+
+        html = ld._repr_html_()
+        self.assertIn('acquisition', html)
+        self.assertIn('item1', html)
+        self.assertIn('item2', html)
+        self.assertIn('MyTestClass', html)
+        self.assertIn('<style>', html)
