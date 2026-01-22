@@ -302,3 +302,25 @@ class TestLabelledDict(TestCase):
         self.assertIn('item2', html)
         self.assertIn('MyTestClass', html)
         self.assertIn('<style>', html)
+
+    def test_repr_html_empty(self):
+        """Test that _repr_html_ works on an empty LabelledDict."""
+        ld = LabelledDict(label='acquisition', key_attr='prop1')
+        html = ld._repr_html_()
+        self.assertIn('acquisition', html)
+        self.assertIn('Empty', html)
+
+    def test_repr_html_nested(self):
+        """Test that _repr_html_ uses item's _repr_html_ when available."""
+        from hdmf.container import Container
+
+        ld = LabelledDict(label='acquisition', key_attr='name')
+        container = Container('my_container')
+        ld.add(container)
+
+        html = ld._repr_html_()
+        self.assertIn('acquisition', html)
+        self.assertIn('my_container', html)
+        self.assertIn('Container', html)
+        # Verify nested _repr_html_ was called (Container's HTML includes this class)
+        self.assertIn('container-header', html)
