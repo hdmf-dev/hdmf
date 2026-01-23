@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 4.3.1 (Upcoming)
+
+### Added
+- Added `_repr_html_` method to `LabelledDict` for interactive HTML display in notebooks. @h-mayorquin [#1381](https://github.com/hdmf-dev/hdmf/pull/1381)
+
+
 ## HDMF 4.3.0 (January 21, 2026)
 
 ### Added
