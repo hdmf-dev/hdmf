@@ -5,8 +5,11 @@
 ### Added
 - Added `_repr_html_` method to `LabelledDict` for interactive HTML display in notebooks. @h-mayorquin [#1381](https://github.com/hdmf-dev/hdmf/pull/1381)
 
+### Fixed
+- Fixed issue with with testing and deployment of releases. @rly [#1383](https://github.com/hdmf-dev/hdmf/pull/1383)
 
-## HDMF 4.3.0 (January 21, 2026)
+
+## HDMF 4.3.0 (January 22, 2026)
 
 ### Added
 - Added support for Python 3.14. @bendichter [#1366](https://github.com/hdmf-dev/hdmf/issues/1366)
