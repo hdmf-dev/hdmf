@@ -28,7 +28,7 @@ jobs:
 
       - name: Run tox tests
         run: |
-          tox -e py313-upgraded
+          tox -e pytest-py314-upgraded
 
       - name: Build wheel and source distribution
         run: |
