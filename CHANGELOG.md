@@ -1,9 +1,12 @@
 # HDMF Changelog
 
-## HDMF 4.3.1 (Upcoming)
+## HDMF 4.3.1 (January 28, 2026)
 
 ### Added
 - Added `_repr_html_` method to `LabelledDict` for interactive HTML display in notebooks. @h-mayorquin [#1381](https://github.com/hdmf-dev/hdmf/pull/1381)
+
+### Changed
+- Restricted `pandas` version to <3 until support for pandas v3 is added. @rly [#1385](https://github.com/hdmf-dev/hdmf/pull/1385)
 
 ### Fixed
 - Fixed issue with with testing and deployment of releases. @rly [#1383](https://github.com/hdmf-dev/hdmf/pull/1383)
