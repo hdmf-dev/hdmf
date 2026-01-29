@@ -3,10 +3,7 @@ HERD: HDMF External Resources Data Structure
 ==============================================
 
 This is a user guide to interacting with the
-:py:class:`~hdmf.common.resources.HERD` class. The HERD type
-is experimental and is subject to change in future releases. If you use this type,
-please provide feedback to the HDMF team so that we can improve the structure and
-access of data stored with this type for your use cases.
+:py:class:`~hdmf.common.resources.HERD` class.
 
 Introduction
 -------------
@@ -96,9 +93,6 @@ from hdmf import Container, HERDManager
 from hdmf import Data
 import numpy as np
 import os
-# Ignore experimental feature warnings in the tutorial to improve rendering
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning, message="HERD is experimental*")
 
 try:
     import linkml_runtime  # noqa: F401
