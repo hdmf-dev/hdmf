@@ -24,7 +24,7 @@ def make_herd_1_8_0_file(outdir):
 
     Parameters
     ----------
-    outdir : Path
+    outdir : pathlib.Path
         Directory where the test files will be written.
     """
     species = Data(name="species", data=["Homo sapiens", "Mus musculus"])
