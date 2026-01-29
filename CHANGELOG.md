@@ -1,5 +1,12 @@
 # HDMF Changelog
 
+## HDMF 5.0.0 (Upcoming)
+
+### Added
+- Added support for HDMF Common Schema 1.9.0.
+  - Introduced a new data type `MeaningsTable` and changes to `DynamicTable` to support included `MeaningsTable` objects. @rly [#1376](https://github.com/hdmf-dev/hdmf/pull/1376)
+
+
 ## HDMF 4.3.1 (January 28, 2026)
 
 ### Added
@@ -15,7 +22,6 @@
 ## HDMF 4.3.0 (January 22, 2026)
 
 ### Added
-- Added support for HDMF Common Schema 1.9.0, which includes a new data type `MeaningsTable` and changes to `DynamicTable` to support included `MeaningsTable` objects. @rly [#1376](https://github.com/hdmf-dev/hdmf/pull/1376)
 - Added support for Python 3.14. @bendichter [#1366](https://github.com/hdmf-dev/hdmf/issues/1366)
 
 ### Changed
