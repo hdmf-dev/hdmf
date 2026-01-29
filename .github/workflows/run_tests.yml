@@ -29,7 +29,7 @@ jobs:
           - { name: windows-python3.9-minimum            , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: windows-latest }
           - { name: windows-python3.14-upgraded-optional , test-tox-env: pytest-py314-upgraded-optional , python-ver: "3.14", os: windows-latest }
           - { name: macos-python3.9-minimum              , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: macos-15-intel }
-          - { name: macos-python3.14-upgraded            , test-tox-env: pytest-py313-upgraded          , python-ver: "3.14", os: macos-latest }
+          - { name: macos-python3.14-upgraded            , test-tox-env: pytest-py314-upgraded          , python-ver: "3.14", os: macos-latest }
           # No prebuilt wheels for numcodecs==0.15.1 for Python 3.14 on PyPI and cannot build numcodecs == 0.15.1 on macos-latest
           # So optional requirements testing on macos-latest (arm64) is disabled. See https://github.com/hdmf-dev/hdmf/pull/1367
           - { name: macos-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: macos-latest }

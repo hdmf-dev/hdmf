@@ -109,7 +109,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "HDMF"
-copyright = "2017-2025, Hierarchical Data Modeling Framework"
+copyright = "2017-2026, Hierarchical Data Modeling Framework"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
