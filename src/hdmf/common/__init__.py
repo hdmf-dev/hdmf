@@ -171,6 +171,12 @@ def get_class(**kwargs):
 @docval({'name': 'extensions', 'type': (str, TypeMap, list),
          'doc': 'a path to a namespace, a TypeMap, or a list consisting paths to namespaces and TypeMaps',
          'default': None},
+        {
+            'name': 'copy', 'type': bool,
+            'doc': 'Whether to return a deepcopy of the TypeMap. '
+            'If False, a direct reference may be returned (use with caution).',
+            'default': True
+        },
         returns="the namespaces loaded from the given file", rtype=tuple,
         is_method=False)
 def get_type_map(**kwargs):
@@ -178,10 +184,13 @@ def get_type_map(**kwargs):
     Get a BuildManager to use for I/O using the given extensions. If no extensions are provided,
     return a BuildManager that uses the core namespace
     '''
-    extensions = getargs('extensions', kwargs)
+    extensions, copy_map = getargs('extensions', 'copy', kwargs)
     type_map = None
     if extensions is None:
-        type_map = deepcopy(__TYPE_MAP)
+        if copy_map:
+            type_map = deepcopy(__TYPE_MAP)
+        else:
+            type_map = __TYPE_MAP
     else:
         warnings.warn("The 'extensions' argument is deprecated and will be removed in HDMF 5.0", DeprecationWarning)
         if isinstance(extensions, TypeMap):
@@ -284,6 +293,7 @@ VectorData = get_class('VectorData', CORE_NAMESPACE)
 VectorIndex = get_class('VectorIndex', CORE_NAMESPACE)
 ElementIdentifiers = get_class('ElementIdentifiers', CORE_NAMESPACE)
 DynamicTableRegion = get_class('DynamicTableRegion', CORE_NAMESPACE)
+MeaningsTable = get_class('MeaningsTable', CORE_NAMESPACE)
 EnumData = get_class('EnumData', EXP_NAMESPACE)
 CSRMatrix = get_class('CSRMatrix', CORE_NAMESPACE)
 HERD = get_class('HERD', EXP_NAMESPACE)

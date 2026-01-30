@@ -14,6 +14,12 @@ import numpy as np
 
 from tests.unit.helpers.utils import CORE_NAMESPACE, create_test_type_map
 
+try:
+    from hdmf_zarr import ZarrDataIO
+    HDMF_ZARR_INSTALLED = True
+except ImportError:
+    HDMF_ZARR_INSTALLED = False
+
 H5PY_3 = h5py.__version__.startswith('3')
 
 
@@ -96,6 +102,14 @@ class FooData(Data):
     @property
     def data_type(self):
         return 'FooData'
+
+
+class BazData(Data):
+    """A Data type with compound dtype for testing."""
+
+    @property
+    def data_type(self):
+        return 'BazData'
 
 
 class TestGetSubSpec(TestCase):
@@ -1146,3 +1160,69 @@ class TestObjectMapperBadValue(TestCase):
             self.mapper.build(container, self.manager)
 
     # TODO test passing a Container/Data/other object for a non-container/data array spec
+
+
+@unittest.skipIf(not HDMF_ZARR_INSTALLED, "hdmf_zarr not installed")
+class TestZarrDataIOCompoundDataset(TestCase):
+    """Test that ZarrDataIO parameters are correctly preserved when building compound datasets."""
+
+    def setUp(self):
+        """Set up test fixtures with a compound dataset spec."""
+        from hdmf.spec.spec import DtypeSpec
+
+        # Create a simple compound dtype (no references)
+        compound_dtype = [
+            DtypeSpec(name='id', dtype='int', doc='ID field'),
+            DtypeSpec(name='name', dtype='text', doc='Name field')
+        ]
+        baz_spec = DatasetSpec(
+            doc='A test dataset specification with compound dtype',
+            data_type_def='BazData',
+            dtype=compound_dtype
+        )
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(baz_spec, 'test.yaml')
+        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                  [{'source': 'test.yaml'}],
+                                  version='0.1.0',
+                                  catalog=spec_catalog)
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(CORE_NAMESPACE, 'BazData', BazData)
+        self.manager = BuildManager(type_map)
+
+    def test_zarrdataio_preserves_filters_and_chunks(self):
+        """Test that ZarrDataIO preserves filters and chunks through the build process."""
+        # Create compound data with simple types
+        compound_data = np.array(
+            [(1, 'alice'), (2, 'bob'), (3, 'charlie')],
+            dtype=[('id', 'i4'), ('name', 'U10')]
+        )
+
+        # Define specific ZarrDataIO parameters to test
+        test_chunks = (2,)
+        test_filters = []
+
+        zarr_data = ZarrDataIO(
+            data=compound_data,
+            chunks=test_chunks,
+            filters=test_filters
+        )
+
+        baz_inst = BazData(name='my_baz', data=zarr_data)
+
+        # Build - this should trigger the compound dataset handling
+        baz_builder = self.manager.build(baz_inst, root=True)
+
+        # Extract the built ZarrDataIO
+        result_zarr_data = baz_builder.data
+
+        # Verify it's still ZarrDataIO
+        self.assertIsInstance(result_zarr_data, ZarrDataIO)
+
+        # Verify parameters match through get_io_params()
+        io_params = result_zarr_data.get_io_params()
+        self.assertEqual(io_params.get('chunks'), test_chunks)
+        self.assertEqual(io_params.get('filters'), test_filters)

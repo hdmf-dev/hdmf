@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: BSD License",
     "Development Status :: 5 - Production/Stable",
     "Operating System :: OS Independent",
@@ -34,7 +35,7 @@ dependencies = [
     "h5py>=3.1.0",
     "jsonschema>=3.2.0",
     'numpy>=1.19.3',
-    "pandas>=1.2.0",
+    "pandas>=1.2.0,<3",
     "ruamel.yaml>=0.16",
 ]
 dynamic = ["version"]
@@ -45,6 +46,7 @@ tqdm = ["tqdm>=4.41.0"]
 zarr = [
     "zarr>=2.12.0,<3",
     "numcodecs<0.16.0",  # numcodecs 0.16.0 is not compatible with zarr<3
+    "hdmf-zarr>=0.12.0",
 ]
 sparse = ["scipy>=1.7"]
 termset = [
