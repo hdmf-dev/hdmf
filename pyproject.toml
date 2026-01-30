@@ -174,7 +174,9 @@ line-length = 120
 [tool.ruff.lint.per-file-ignores]
 "docs/gallery/*" = ["E402", "T201"]
 "src/*/__init__.py" = ["F401"]
+"src/hdmf/testing/make_test_files.py" = ["T201"]
 "test_gallery.py" = ["T201"]
+
 
 [tool.ruff.lint.mccabe]
 max-complexity = 17

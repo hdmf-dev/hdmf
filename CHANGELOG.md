@@ -12,17 +12,21 @@
 - Deprecated `BaseStorageSpec.add_attribute`, `GroupSpec.add_group`, `GroupSpec.add_dataset`, and `GroupSpec.add_link`. Use `set_attribute`, `set_group`, `set_dataset`, and `set_link` instead. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 - Deprecated unused `BaseStorageSpec.get_data_type_spec` and `BaseStorageSpec.get_namespace_spec`. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 
-### Added
-- Added support for HDMF Common Schema 1.9.0.
-  - Introduced a new data type `MeaningsTable` and changes to `DynamicTable` to support included `MeaningsTable` objects. @rly [#1376](https://github.com/hdmf-dev/hdmf/pull/1376)
-- Warning when `data_type_def` and `data_type_inc` are the same in a spec. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
-- Added abstract methods `HDMFIO.load_namespaces` and `HDMFIO.load_namespaces_io`. @rly [#1299](https://github.com/hdmf-dev/hdmf/pull/1299)
-
 ### Removed
 - Removed unused and undocumented `hdmf.monitor` module. @rly [#1327](https://github.com/hdmf-dev/hdmf/pull/1327)
 - Removed deprecated `Data.set_data_io` usage and `HERDManager` methods. @rly [#1328](https://github.com/hdmf-dev/hdmf/pull/1328)
 - Removed deprecated `HDF5IO.copy_file` method. Use the `HDF5IO.export` or the `h5py.File.copy` method instead. @stephprince [#1332](https://github.com/hdmf-dev/hdmf/pull/1332)
 - Removed deprecated `extensions` kwarg for `get_type_map` function. @stephprince [#1332](https://github.com/hdmf-dev/hdmf/pull/1332)
+
+### Added
+- Added support for HDMF Common Schema 1.9.0.
+  - Introduced a new data type `MeaningsTable` and changes to `DynamicTable` to support included `MeaningsTable` objects. @rly [#1376](https://github.com/hdmf-dev/hdmf/pull/1376)
+  - Promoted `HERD` from the hdmf-experimental namespace to the HDMF Common namespace. @rly [#1387](https://github.com/hdmf-dev/hdmf/pull/1387)
+- Added warning when `data_type_def` and `data_type_inc` are the same in a spec. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
+- Added abstract methods `HDMFIO.load_namespaces` and `HDMFIO.load_namespaces_io`. @rly [#1299](https://github.com/hdmf-dev/hdmf/pull/1299)
+
+### Fixed
+- Fixed a broken test and refactored `VectorIndex.get`. @rly, @mavaylon1 [#1293](https://github.com/hdmf-dev/hdmf/pull/1293)
 
 
 ## HDMF 4.3.1 (January 28, 2026)
