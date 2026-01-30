@@ -16,6 +16,7 @@ from hdmf.common import (
     ElementIdentifiers,
     EnumData,
     DynamicTableRegion,
+    MeaningsTable,
     get_manager,
     SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
@@ -3150,3 +3151,237 @@ class TestDynamicTableSubclassColumns(TestCase):
                          {'name': 'col3', 'description': '...'}, {'name': 'col4', 'description': '...'})
 )
         self.assertEqual(self.foo2.__columns__, self.foo3.__columns__)
+
+
+class TestMeaningsTable(TestCase):
+    """Test the MeaningsTable class."""
+
+    def test_constructor_default_name(self):
+        """Test that name is automatically set based on target."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        mt = MeaningsTable(target=target)
+        self.assertEqual(mt.name, 'stimulus_type_meanings')
+        self.assertEqual(mt.target, target)
+
+    def test_constructor_default_description(self):
+        """Test that description is automatically set based on target."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        mt = MeaningsTable(target=target)
+        self.assertEqual(mt.description, "Meanings for values in 'stimulus_type'")
+
+    def test_name_auto_generated(self):
+        """Test that name is automatically generated."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        # Name should always be auto-generated based on target
+        mt = MeaningsTable(target=target)
+        self.assertEqual(mt.name, 'stimulus_type_meanings')
+
+    def test_constructor_custom_description(self):
+        """Test that custom description can be set."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        mt = MeaningsTable(target=target, description='custom description')
+        self.assertEqual(mt.description, 'custom description')
+
+    def test_add_row(self):
+        """Test adding rows to MeaningsTable."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        mt = MeaningsTable(target=target)
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        self.assertEqual(len(mt), 2)
+        self.assertEqual(mt['value'].data, ['a', 'b'])
+        self.assertEqual(mt['meaning'].data, ['stimulus A', 'stimulus B'])
+
+    def test_required_columns(self):
+        """Test that MeaningsTable has required value and meaning columns."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        mt = MeaningsTable(target=target)
+        self.assertIn('value', mt.colnames)
+        self.assertIn('meaning', mt.colnames)
+
+
+class TestDynamicTableMeaningsTables(TestCase):
+    """Test DynamicTable with MeaningsTables."""
+
+    def setUp(self):
+        self.table = DynamicTable(name='test_table', description='a test table')
+        self.table.add_column(name='stimulus_type', description='stimulus type')
+        self.table.add_row(stimulus_type='a')
+        self.table.add_row(stimulus_type='b')
+
+    def test_add_meanings_table(self):
+        """Test adding a MeaningsTable to a DynamicTable."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        self.table.add_meanings_table(mt)
+        self.assertEqual(len(self.table.meanings_tables), 1)
+        self.assertIn('stimulus_type_meanings', self.table.meanings_tables)
+
+    def test_get_meanings_table(self):
+        """Test getting a MeaningsTable from a DynamicTable."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        self.table.add_meanings_table(mt)
+        retrieved = self.table.get_meanings_table('stimulus_type_meanings')
+        self.assertEqual(retrieved, mt)
+
+    def test_get_meanings_for_column(self):
+        """Test getting a MeaningsTable by column name."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        self.table.add_meanings_table(mt)
+        retrieved = self.table.get_meanings_for_column('stimulus_type')
+        self.assertEqual(retrieved, mt)
+
+    def test_get_meanings_for_column_not_found(self):
+        """Test error when no MeaningsTable exists for a column."""
+        with self.assertRaises(KeyError):
+            self.table.get_meanings_for_column('stimulus_type')
+
+    def test_get_meanings_table_not_found(self):
+        """Test error when MeaningsTable not found."""
+        with self.assertRaises(KeyError):
+            self.table.get_meanings_table('nonexistent')
+
+    def test_add_meanings_table_invalid_target(self):
+        """Test error when MeaningsTable target is not a column in the table."""
+        other_col = VectorData(name='other_col', description='not in table', data=['x', 'y'])
+        mt = MeaningsTable(target=other_col)
+        mt.add_row(value='x', meaning='X meaning')
+        with self.assertRaisesRegex(ValueError, "not a column in DynamicTable"):
+            self.table.add_meanings_table(mt)
+
+    def test_add_meanings_table_duplicate(self):
+        """Test error when adding duplicate MeaningsTable."""
+        mt1 = MeaningsTable(target=self.table['stimulus_type'])
+        mt1.add_row(value='a', meaning='stimulus A')
+        self.table.add_meanings_table(mt1)
+        mt2 = MeaningsTable(target=self.table['stimulus_type'])
+        mt2.add_row(value='b', meaning='stimulus B')
+        with self.assertRaises(ValueError):
+            self.table.add_meanings_table(mt2)
+
+    def test_meanings_tables_parent(self):
+        """Test that MeaningsTable parent is set to DynamicTable."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        self.table.add_meanings_table(mt)
+        self.assertEqual(mt.parent, self.table)
+
+    def test_vectordata_get_meanings(self):
+        """Test getting MeaningsTable from a VectorData column."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        self.table.add_meanings_table(mt)
+        retrieved = self.table['stimulus_type'].get_meanings()
+        self.assertEqual(retrieved, mt)
+
+    def test_vectordata_get_meanings_no_table(self):
+        """Test get_meanings returns None when VectorData has no parent."""
+        col = VectorData(name='test_col', description='test', data=['a', 'b'])
+        self.assertIsNone(col.get_meanings())
+
+    def test_vectordata_get_meanings_no_meanings_table(self):
+        """Test get_meanings returns None when no MeaningsTable exists for the column."""
+        result = self.table['stimulus_type'].get_meanings()
+        self.assertIsNone(result)
+
+    def test_constructor_with_meanings_tables(self):
+        """Test constructing DynamicTable with meanings_tables argument."""
+        col = VectorData(name='stimulus_type', description='stimulus type', data=['a', 'b'])
+        mt = MeaningsTable(target=col)
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        table = DynamicTable(
+            name='test_table',
+            description='a test table',
+            columns=[col],
+            meanings_tables=[mt]
+        )
+        self.assertEqual(len(table.meanings_tables), 1)
+        self.assertIn('stimulus_type_meanings', table.meanings_tables)
+
+    def test_meanings_tables_setter(self):
+        """Test setting meanings_tables after construction."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        # Set via property setter
+        self.table.meanings_tables = [mt]
+        self.assertEqual(len(self.table.meanings_tables), 1)
+        self.assertIn('stimulus_type_meanings', self.table.meanings_tables)
+        self.assertEqual(mt.parent, self.table)
+
+    def test_meanings_tables_setter_multiple(self):
+        """Test setting multiple meanings_tables after construction."""
+        self.table.add_column(name='response_type', description='response type', data=['x', 'y'])
+
+        mt1 = MeaningsTable(target=self.table['stimulus_type'])
+        mt1.add_row(value='a', meaning='stimulus A')
+
+        mt2 = MeaningsTable(target=self.table['response_type'])
+        mt2.add_row(value='x', meaning='response X')
+
+        # Set multiple via property setter
+        self.table.meanings_tables = [mt1, mt2]
+        self.assertEqual(len(self.table.meanings_tables), 2)
+        self.assertIn('stimulus_type_meanings', self.table.meanings_tables)
+        self.assertIn('response_type_meanings', self.table.meanings_tables)
+
+
+class TestMeaningsTableRoundTrip(H5RoundTripMixin, TestCase):
+    """Test roundtrip of DynamicTable with MeaningsTable."""
+
+    def setUpContainer(self):
+        table = DynamicTable(name='test_table', description='a test table')
+        table.add_column(name='stimulus_type', description='stimulus type')
+        table.add_row(stimulus_type='a')
+        table.add_row(stimulus_type='b')
+        table.add_row(stimulus_type='c')
+
+        mt = MeaningsTable(target=table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        mt.add_row(value='c', meaning='stimulus C')
+        table.add_meanings_table(mt)
+
+        return table
+
+    def test_roundtrip_meanings_table_data(self):
+        """Test that MeaningsTable data is preserved after roundtrip."""
+        read_container = self.roundtripContainer()
+        mt = read_container.get_meanings_table('stimulus_type_meanings')
+        self.assertEqual(len(mt), 3)
+        self.assertEqual(list(mt['value'].data), ['a', 'b', 'c'])
+        self.assertEqual(list(mt['meaning'].data), ['stimulus A', 'stimulus B', 'stimulus C'])
+
+
+class TestMultipleMeaningsTablesRoundTrip(H5RoundTripMixin, TestCase):
+    """Test roundtrip of DynamicTable with multiple MeaningsTables."""
+
+    def setUpContainer(self):
+        table = DynamicTable(name='test_table', description='a test table')
+        table.add_column(name='stimulus_type', description='stimulus type')
+        table.add_column(name='response_type', description='response type')
+        table.add_row(stimulus_type='a', response_type='x')
+        table.add_row(stimulus_type='b', response_type='y')
+
+        mt1 = MeaningsTable(target=table['stimulus_type'])
+        mt1.add_row(value='a', meaning='stimulus A')
+        mt1.add_row(value='b', meaning='stimulus B')
+        table.add_meanings_table(mt1)
+
+        mt2 = MeaningsTable(target=table['response_type'])
+        mt2.add_row(value='x', meaning='response X')
+        mt2.add_row(value='y', meaning='response Y')
+        table.add_meanings_table(mt2)
+
+        return table
+
+    def test_roundtrip_multiple_meanings_tables(self):
+        """Test that multiple MeaningsTables are preserved after roundtrip."""
+        read_container = self.roundtripContainer()
+        self.assertEqual(len(read_container.meanings_tables), 2)
+        self.assertIn('stimulus_type_meanings', read_container.meanings_tables)
+        self.assertIn('response_type_meanings', read_container.meanings_tables)

@@ -1283,7 +1283,17 @@ class MultiContainerInterface(Container):
             cls.__build_conf_methods(conf_dict, conf_index, multi)
 
         # make __getitem__ (square bracket access) only if one conf type is defined
-        if len(clsconf) == 1:
+        # and the class (or a non-MCI parent) does not already define its own __getitem__
+        has_getitem = '__getitem__' in cls.__dict__
+        if not has_getitem:
+            # check if any parent class (excluding MCI) defines __getitem__
+            for parent in cls.__mro__[1:]:
+                if parent is MultiContainerInterface:
+                    continue
+                if '__getitem__' in parent.__dict__:
+                    has_getitem = True
+                    break
+        if len(clsconf) == 1 and not has_getitem:
             attr = clsconf[0].get('attr')
             container_type = clsconf[0].get('type')
             setattr(cls, '__getitem__', cls.__make_getitem(attr, container_type))
