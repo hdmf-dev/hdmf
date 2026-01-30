@@ -73,7 +73,7 @@ class TestSpec(TestCase):
     source: mylab.extensions.yaml
     title: Extensions for my lab
   version: 0.0.1
-""" % self.date.isoformat()  # noqa: E122
+""" % self.date.isoformat()
             nsstr = file.read()
             self.assertEqual(nsstr, match_str)
 
@@ -424,7 +424,7 @@ class TestExportSpec(TestSpec):
   schema:
   - source: mylab.extensions.yaml
   version: 0.0.1
-""" % self.date.isoformat()  # noqa: E122
+""" % self.date.isoformat()
             nsstr = file.read()
             self.assertEqual(nsstr, match_str)
 

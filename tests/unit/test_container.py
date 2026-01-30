@@ -464,7 +464,8 @@ class TestHTMLRepr(TestCase):
             'class=\'container-header\'><div class=\'xr-obj-type\'><h3>test name ('
             'ContainerWithChildAndData)</h3></div></div><details><summary style="display: list-item; margin-left: '
             '0px;" class="container-fields field-key" '
-            'title=".child"><b>child</b></summary></details><details><summary style="display: list-item; margin-left: '
+            'title=".child"><b>child <span style=\'font-weight: normal; color: #888;\'>(Container)</span></b>'
+            '</summary></details><details><summary style="display: list-item; margin-left: '
             '0px;" class="container-fields field-key" title=".data"><b>data</b></summary><div style="margin-left: '
             '20px;" class="container-fields"><span class="field-key" title=".data[0]">0: </span><span '
             'class="field-value">1</span></div><div style="margin-left: 20px;" class="container-fields"><span '
@@ -508,8 +509,10 @@ class TestHTMLRepr(TestCase):
                 '</th><td style="text-align: left">32.00 bytes</td></tr><tr><th style="text-align: left">Chunk shape'
                 '</th><td style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression</th><td '
                 'style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression opts</th><td '
-                'style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression ratio</th><td '
-                'style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4]'
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">Uncompressed size (bytes)'
+                '</th><td style="text-align: left">32</td></tr><tr><th style="text-align: left">Compressed size '
+                '(bytes)</th><td style="text-align: left">32</td></tr><tr><th style="text-align: left">Compression '
+                'ratio</th><td style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4]'
             )
 
             self.assertIn(expected_html_table, obj._repr_html_())
@@ -533,6 +536,59 @@ class TestHTMLRepr(TestCase):
             self.assertIn(expected_html_table, obj._repr_html_())
 
         os.remove('array_data.h5')
+
+    def test_repr_html_lindi_dataset(self):
+        """Test HTML repr for datasets without get_storage_size method (e.g., LINDI datasets)."""
+        from unittest.mock import PropertyMock, patch
+        import h5py
+
+        # Create a regular HDF5 dataset using h5py
+        with h5py.File('array_data.h5', 'w') as f:
+            f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4, 5, 6, 7, 8], dtype=np.int64))
+
+        # Read the dataset and mock the id to simulate LINDI behavior
+        with h5py.File('array_data.h5', 'r') as f:
+            dataset = f['my_dataset']
+            original_id = dataset.id
+
+            # Create a wrapper that has all attributes except get_storage_size
+            class MockDatasetId:
+                """Mock DatasetID that raises AttributeError for get_storage_size."""
+                def __getattr__(self, name):
+                    if name == 'get_storage_size':
+                        raise AttributeError(f"'{type(self).__name__}' object has no attribute 'get_storage_size'")
+                    return getattr(original_id, name)
+
+            mock_id = MockDatasetId()
+
+            # Patch the dataset's id property
+            with patch.object(type(dataset), 'id', new_callable=PropertyMock) as mock_id_prop:
+                mock_id_prop.return_value = mock_id
+
+                # Test the generate_dataset_html method directly
+                result_html = HDF5IO.generate_dataset_html(dataset)
+
+                # Expected HTML should include basic fields
+                expected_fields = [
+                    'Data type',
+                    'Shape',
+                    'Array size',
+                ]
+
+                for field in expected_fields:
+                    self.assertIn(field, result_html)
+
+                # The HTML should be generated without errors even though the dataset
+                # doesn't have get_storage_size method (like LINDI datasets)
+                self.assertIsInstance(result_html, str)
+
+                # Should NOT include compressed size or compression ratio since get_storage_size is not available
+                self.assertNotIn('Compressed size (bytes)', result_html)
+                self.assertNotIn('Compression ratio', result_html)
+
+        # Cleanup
+        os.remove('array_data.h5')
+
 
 class TestData(TestCase):
 

@@ -70,7 +70,7 @@ sphinx_gallery_conf = {
 }
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.12", None),
+    "python": ("https://docs.python.org/3.14", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
@@ -109,7 +109,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "HDMF"
-copyright = "2017-2025, Hierarchical Data Modeling Framework"
+copyright = "2017-2026, Hierarchical Data Modeling Framework"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

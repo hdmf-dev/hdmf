@@ -24,15 +24,18 @@ jobs:
         include:
           # NOTE config below with "upload-wheels: true" specifies that wheels should be uploaded as an artifact
           - { name: linux-python3.9-minimum              , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: ubuntu-latest }
-          - { name: linux-python3.13-upgraded            , test-tox-env: pytest-py313-upgraded          , python-ver: "3.13", os: ubuntu-latest }
-          - { name: linux-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: ubuntu-latest , upload-wheels: true }
+          - { name: linux-python3.14-upgraded            , test-tox-env: pytest-py314-upgraded          , python-ver: "3.14", os: ubuntu-latest }
+          - { name: linux-python3.14-upgraded-optional   , test-tox-env: pytest-py314-upgraded-optional , python-ver: "3.14", os: ubuntu-latest , upload-wheels: true }
           - { name: windows-python3.9-minimum            , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: windows-latest }
-          - { name: windows-python3.13-upgraded-optional , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: windows-latest }
-          - { name: macos-python3.9-minimum              , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: macos-13 }
+          - { name: windows-python3.14-upgraded-optional , test-tox-env: pytest-py314-upgraded-optional , python-ver: "3.14", os: windows-latest }
+          - { name: macos-python3.9-minimum              , test-tox-env: pytest-py39-minimum            , python-ver: "3.9" , os: macos-15-intel }
+          - { name: macos-python3.14-upgraded            , test-tox-env: pytest-py314-upgraded          , python-ver: "3.14", os: macos-latest }
+          # No prebuilt wheels for numcodecs==0.15.1 for Python 3.14 on PyPI and cannot build numcodecs == 0.15.1 on macos-latest
+          # So optional requirements testing on macos-latest (arm64) is disabled. See https://github.com/hdmf-dev/hdmf/pull/1367
           - { name: macos-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -67,7 +70,7 @@ jobs:
 
       - name: Upload distribution as a workspace artifact
         if: ${{ matrix.upload-wheels }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: distributions
           path: dist
@@ -85,14 +88,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # TODO: Update to 3.13 when linkml and its deps support 3.13
+          # TODO: Update to 3.14 when linkml and its deps support 3.14
           - { name: linux-gallery-python3.9-minimum              , test-tox-env: gallery-py39-minimum            , python-ver: "3.9" , os: ubuntu-latest }
-          - { name: linux-gallery-python3.12-upgraded-optional   , test-tox-env: gallery-py312-upgraded-optional , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-gallery-python3.13-upgraded-optional   , test-tox-env: gallery-py313-upgraded-optional , python-ver: "3.13", os: ubuntu-latest }
           - { name: windows-gallery-python3.9-minimum            , test-tox-env: gallery-py39-minimum            , python-ver: "3.9" , os: windows-latest }
-          - { name: windows-gallery-python3.12-upgraded-optional , test-tox-env: gallery-py312-upgraded-optional , python-ver: "3.12", os: windows-latest }
+          - { name: windows-gallery-python3.13-upgraded-optional , test-tox-env: gallery-py313-upgraded-optional , python-ver: "3.13", os: windows-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -122,7 +125,7 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -130,10 +133,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.13'
+          python-version: '3.14'
 
       - name: Download wheel and source distributions from artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: distributions
           path: dist
@@ -163,10 +166,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.13-ros3  , python-ver: "3.13", os: ubuntu-latest }
+          - { name: linux-python3.14-ros3  , python-ver: "3.14", os: ubuntu-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version

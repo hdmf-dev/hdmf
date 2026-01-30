@@ -1,7 +1,8 @@
 from abc import ABCMeta, abstractmethod
 from datetime import datetime, date
-from unittest import mock, skip
+from unittest import mock, skip, skipIf
 
+import h5py
 import numpy as np
 from dateutil.tz import tzlocal
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, TypeMap, BuildManager
@@ -11,8 +12,9 @@ from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
-                                  IncorrectQuantityError, IllegalLinkError)
+                                  IncorrectQuantityError, IllegalLinkError, ShapeError)
 from hdmf.backends.hdf5 import HDF5IO
+from hdmf.utils import ZARR_INSTALLED, StrDataset
 
 CORE_NAMESPACE = 'test_core'
 
@@ -1331,3 +1333,393 @@ class TestValidateSubspec(ValidatorTestBase):
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 1)
         self.assertValidationError(result[0], MissingError, name='Bar/attr1')
+
+
+class TestShapeValidation(ValidatorTestBase):
+    """Test validation of dataset and attribute shapes, ensuring ShapeError is returned for invalid shapes."""
+
+    def getSpecs(self):
+        return (
+            GroupSpec(
+                doc='A test group with shape constraints',
+                data_type_def='ShapeTest',
+                datasets=[
+                    DatasetSpec(
+                        doc='A 1D dataset',
+                        name='data_1d',
+                        dtype='int',
+                        shape=(None,),
+                        quantity='?',
+                    ),
+                    DatasetSpec(
+                        doc='A 2D dataset',
+                        name='data_2d',
+                        dtype='float',
+                        shape=(None, None),
+                        quantity='?',
+                    ),
+                    DatasetSpec(
+                        doc='A fixed shape dataset',
+                        name='data_fixed',
+                        dtype='int',
+                        shape=(3, 4),
+                        quantity='?',
+                    ),
+                    DatasetSpec(
+                        doc='A 1D or 2D dataset',
+                        name='data_1d_or_2d',
+                        dtype='int',
+                        shape=((None,), (None, None)),
+                        quantity='?',
+                    ),
+                    DatasetSpec(
+                        doc='A 3D dataset',
+                        name='data_3d',
+                        dtype='float',
+                        shape=(None, None, None),
+                        quantity='?',
+                    ),
+                ],
+                attributes=[
+                    AttributeSpec(
+                        name='attr_1d',
+                        doc='A 1D attribute',
+                        dtype='int',
+                        shape=(None,),
+                        required=False,
+                    ),
+                    AttributeSpec(
+                        name='attr_2d',
+                        doc='A 2D attribute',
+                        dtype='float',
+                        shape=(None, None),
+                        required=False,
+                    ),
+                    AttributeSpec(
+                        name='attr_fixed',
+                        doc='A fixed shape attribute',
+                        dtype='int',
+                        shape=(2, 3),
+                        required=False,
+                    ),
+                    AttributeSpec(
+                        name='attr_1d_or_2d',
+                        doc='A wildcard dimension attribute',
+                        dtype='int',
+                        shape=((None,), (None, None)),
+                        required=False,
+                    ),
+                    AttributeSpec(
+                        name='attr_3d',
+                        doc='A 3D attribute',
+                        dtype='float',
+                        shape=(None, None, None),
+                        required=False,
+                    ),
+                ],
+            ),
+        )
+
+    def test_valid_1d_shape(self):
+        """Test that a 1D dataset with correct shape passes validation."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={
+                'data_type': 'ShapeTest',
+                'attr_1d': [1, 2, 3],
+                'attr_2d': [[1.0, 2.0], [3.0, 4.0]],
+                'attr_fixed': [[1, 2, 3], [4, 5, 6]],
+                'attr_1d_or_2d': [[1, 2], [3, 4]],
+                'attr_3d': [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]],
+            },
+            datasets=[
+                DatasetBuilder('data_1d', [1, 2, 3, 4, 5]),
+                DatasetBuilder('data_2d', [[1.0, 2.0], [3.0, 4.0]]),
+                DatasetBuilder('data_fixed', [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]),
+                DatasetBuilder('data_1d_or_2d', [[1, 2], [3, 4]]),
+                DatasetBuilder('data_3d', [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]]),
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def test_invalid_1d_dataset_shape(self):
+        """Test that a dataset with wrong number of dimensions returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest'},
+            datasets=[
+                DatasetBuilder('data_1d', [[1, 2], [3, 4]]),  # 2D instead of 1D
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('data_1d', str(result[0]))
+
+    def test_invalid_2d_dataset_shape(self):
+        """Test that a 2D dataset with wrong dimensions returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest'},
+            datasets=[
+                DatasetBuilder('data_2d', [1.0, 2.0, 3.0]),  # 1D instead of 2D
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('data_2d', str(result[0]))
+
+    def test_invalid_fixed_shape(self):
+        """Test that a dataset with incorrect fixed shape returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest'},
+            datasets=[
+                DatasetBuilder('data_fixed', [[1, 2, 3], [4, 5, 6]]),  # (2, 3) instead of (3, 4)
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('data_fixed', str(result[0]))
+        self.assertIn('(3, 4)', str(result[0]))
+        self.assertIn('(2, 3)', str(result[0]))
+
+    def test_invalid_multi_dimension(self):
+        """Test that a dataset with incorrect dimension for a spec that allows multiple number of dimensions
+        returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest'},
+            datasets=[
+                DatasetBuilder('data_1d_or_2d', [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]),  # 3D instead of 1D or 2D
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('data_1d_or_2d', str(result[0]))
+        # Should show wildcard as *
+        self.assertIn('(*,) or (*, *)', str(result[0]))
+        self.assertIn('(2, 2, 2)', str(result[0]))
+
+    def test_invalid_3d_shape(self):
+        """Test that a 3D dataset with wrong dimensions returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest'},
+            datasets=[
+                DatasetBuilder('data_3d', np.array([[1.0, 2.0], [3.0, 4.0]])),  # 2D instead of 3D
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('data_3d', str(result[0]))
+
+    def test_invalid_1d_attribute_shape(self):
+        """Test that an attribute with incorrect shape returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest', 'attr_1d': [[1, 2], [3, 4]]},  # 2D instead of 1D
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('attr_1d', str(result[0]))
+
+    def test_invalid_2d_attribute_shape(self):
+        """Test that a 2D attribute with wrong dimensions returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest', 'attr_2d': [1.0, 2.0, 3.0]},  # 1D instead of 2D
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('attr_2d', str(result[0]))
+
+    def test_invalid_fixed_attribute_shape(self):
+        """Test that an attribute with incorrect fixed shape returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            # (2, 4) instead of (2, 3)
+            attributes={'data_type': 'ShapeTest', 'attr_fixed': [[1, 2, 3, 4], [5, 6, 7, 8]]},
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('attr_fixed', str(result[0]))
+        self.assertIn('(2, 3)', str(result[0]))
+        self.assertIn('(2, 4)', str(result[0]))
+
+    def test_invalid_multi_dimension_attribute(self):
+        """Test that an attribute with incorrect dimension for a spec that allows multiple number of dimensions
+        returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            # 3D instead of 1D or 2D
+            attributes={'data_type': 'ShapeTest', 'attr_1d_or_2d': [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]},
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('attr_1d_or_2d', str(result[0]))
+        # Should show wildcard as *
+        self.assertIn('(*,) or (*, *)', str(result[0]))
+        self.assertIn('(2, 2, 2)', str(result[0]))
+
+    def test_invalid_3d_attribute_shape(self):
+        """Test that a 3D attribute with wrong dimensions returns ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest', 'attr_3d': np.array([[1.0, 2.0], [3.0, 4.0]])},  # 2D instead of 3D
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ShapeError)
+        self.assertIn('attr_3d', str(result[0]))
+
+    def test_multiple_shape_errors(self):
+        """Test that multiple ShapeErrors are returned when multiple datasets have incorrect shapes."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest', 'attr_1d': [[1, 2], [3, 4]]},  # Wrong shape
+            datasets=[
+                DatasetBuilder('data_1d', [[1, 2], [3, 4]]),  # Wrong shape
+                DatasetBuilder('data_2d', [1.0, 2.0]),  # Wrong shape
+                DatasetBuilder('data_fixed', [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]),
+            ]
+        )
+        result = self.vmap.validate(builder)
+        # Should have 3 shape errors: attr_1d, data_1d, data_2d
+        self.assertEqual(len(result), 3)
+        self.assertTrue(all(isinstance(e, ShapeError) for e in result))
+
+    def test_scalar_instead_of_array(self):
+        """Test that providing a scalar where an array is expected returns ExpectedArrayError, not ShapeError."""
+        builder = GroupBuilder(
+            'my_test',
+            attributes={'data_type': 'ShapeTest', 'attr_1d': 42},  # Scalar instead of array
+            datasets=[
+                DatasetBuilder('data_1d', [1, 2, 3, 4, 5]),
+                DatasetBuilder('data_2d', [[1.0, 2.0], [3.0, 4.0]]),
+                DatasetBuilder('data_fixed', [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]),
+                DatasetBuilder('data_wildcard', [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]]),
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        # Should be ExpectedArrayError, not ShapeError
+        self.assertIsInstance(result[0], ExpectedArrayError)
+        self.assertNotIsInstance(result[0], ShapeError)
+
+
+class TestVlenStringData(ValidatorTestBase):
+    """
+    Test validation of variable length string data across backends.
+
+    HDF5 datasets and Zarr arrays store variable-length strings differently.
+    Validation of HDF5 vlen string datasets uses the data.dtype.metadata['vlen'] field and
+    validation of Zarr arrays uses the data.dtype.kind field from the object dtype.
+    """
+
+    def getSpecs(self):
+        # spec with 'bytes' (ASCII) dtype requirement
+        foo = GroupSpec('A test group specification with a data type',
+                        data_type_def='Foo',
+                        datasets=[DatasetSpec('an example dataset', 'bytes', name='data', shape=(None,))],
+                        attributes=[AttributeSpec('attr1', 'an example attribute', 'text')])
+        # spec with 'text' dtype requirement
+        bar = GroupSpec('A test group specification with a data type',
+                        data_type_def='Bar',
+                        datasets=[DatasetSpec('an example dataset', 'text', name='data', shape=(None,))],
+                        attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+
+        return (foo, bar)
+
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_object_dtype_array_utf(self):
+        """Test that validator can determine dtype for non-empty zarr.Array with object dtype"""
+        import zarr
+        import numcodecs
+
+        # Create a zarr array with object dtype containing strings
+        zarr_array = zarr.array(['string1', 'string2', 'string3'],
+                                dtype=object,
+                                object_codec=numcodecs.VLenUTF8())
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+                                   datasets=[DatasetBuilder('data', zarr_array)])
+        results = self.vmap.validate(bar_builder)
+
+        # Should pass validation - object array with strings should be detected as 'utf' type
+        self.assertEqual(len(results), 0)
+
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_object_dtype_array_ascii_bytes(self):
+        """Test that validator can determine dtype for zarr.Array with object dtype containing ASCII bytes"""
+        import zarr
+        import numcodecs
+
+        # Create a zarr array with object dtype containing bytes (ASCII strings)
+        zarr_array = zarr.array(np.array(['string1', 'string2'], dtype=bytes),
+                                dtype=object,
+                                object_codec=numcodecs.VLenBytes())
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+                                   datasets=[DatasetBuilder('data', zarr_array)])
+        results = self.vmap.validate(bar_builder)
+        # Should pass validation - object array with bytes should be detected as 'ascii' type
+        self.assertEqual(len(results), 0)
+
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_empty_object_dtype_array(self):
+        """Test that validator can determine dtype for empty zarr.Array with object dtype"""
+        import zarr
+        import numcodecs
+
+        # Create an empty zarr array with object dtype
+        empty_zarr_array = zarr.array([], dtype=object, object_codec=numcodecs.VLenUTF8())
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+                                   datasets=[DatasetBuilder('data', empty_zarr_array)])
+        results = self.vmap.validate(bar_builder)
+        # Should pass validation - empty object array defaults to 'utf' type
+        self.assertEqual(len(results), 0)
+
+    @skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_utf8_for_ascii_zarr(self):
+        """Test that validator does not allow UTF-8 data where ASCII is specified for zarr object dtype arrays"""
+        import zarr
+        import numcodecs
+
+        # Create a zarr array with UTF-8 strings
+        zarr_array = zarr.array(['string1', 'string2', 'string3'], dtype=object, object_codec=numcodecs.VLenUTF8())
+        bar_builder = GroupBuilder('my_foo',
+                                   attributes={'data_type': 'Foo', 'attr1': 'a string attribute'},
+                                   datasets=[DatasetBuilder('data', zarr_array)])
+        results = self.vmap.validate(bar_builder)
+
+        # Should fail validation - UTF-8 strings should not be allowed where bytes/ASCII is specified
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], DtypeError)
+        self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
+
+    def test_utf8_for_ascii_hdf5(self):
+        """Test that validator does not allow UTF-8 data where ASCII is specified for HDF5 vlen strings"""
+        # Create hdf5 dataset with UTF-8 string data
+        # convert to StrDataset because data read directly from f.create_dataset will be bytes
+        f = h5py.File(name='test_string_dtype_validation.h5', mode='w', driver='core', backing_store=False)
+        dset = StrDataset(f.create_dataset('data', data=['string1', 'string2', 'string3']), encoding='utf8')
+        foo_builder = GroupBuilder('my_foo',
+                               attributes={'data_type': 'Foo', 'attr1': 'a string attribute'},
+                               datasets=[DatasetBuilder('data', dset)])
+        results = self.vmap.validate(foo_builder)
+
+        # Should fail validation - UTF-8 strings should not be allowed where bytes/ASCII is specified
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], DtypeError)
+        self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))

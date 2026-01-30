@@ -11,7 +11,7 @@ EXP_NAMESPACE = 'hdmf-experimental'
 
 
 from ..spec import NamespaceCatalog  # noqa: E402
-from ..utils import docval, getargs, get_docval  # noqa: E402
+from ..utils import docval, getargs, get_docval, AllowPositional  # noqa: E402
 from ..backends.io import HDMFIO  # noqa: E402
 from ..backends.hdf5 import HDF5IO  # noqa: E402
 from ..validate import ValidatorMap  # noqa: E402
@@ -168,13 +168,25 @@ def get_class(**kwargs):
     return __TYPE_MAP.get_dt_container_cls(data_type, namespace, post_init_method)
 
 
-@docval(returns="the namespaces loaded from the given file", rtype=tuple,
+@docval({
+            'name': 'copy', 'type': bool,
+            'doc': 'Whether to return a deepcopy of the TypeMap. '
+            'If False, a direct reference may be returned (use with caution).',
+            'default': True
+        },
+        allow_positional=AllowPositional.ERROR,
+        returns="the namespaces loaded from the given file", rtype=tuple,
         is_method=False)
-def get_type_map():
+def get_type_map(**kwargs):
     '''
     Get a BuildManager to use for I/O using the core namespace.
     '''
-    return deepcopy(__TYPE_MAP)
+    copy_map = getargs('copy', kwargs)
+    if copy_map:
+        type_map = deepcopy(__TYPE_MAP)
+    else:
+        type_map = __TYPE_MAP
+    return type_map
 
 
 @docval(*get_docval(get_type_map),
@@ -257,6 +269,7 @@ VectorData = get_class('VectorData', CORE_NAMESPACE)
 VectorIndex = get_class('VectorIndex', CORE_NAMESPACE)
 ElementIdentifiers = get_class('ElementIdentifiers', CORE_NAMESPACE)
 DynamicTableRegion = get_class('DynamicTableRegion', CORE_NAMESPACE)
+MeaningsTable = get_class('MeaningsTable', CORE_NAMESPACE)
 EnumData = get_class('EnumData', EXP_NAMESPACE)
 CSRMatrix = get_class('CSRMatrix', CORE_NAMESPACE)
 HERD = get_class('HERD', EXP_NAMESPACE)

@@ -95,7 +95,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         # TODO: refactor this so that it does not call get_type_map every time an attribute is set
         # and there is non circular import
         from hdmf.common import get_type_map # circular import
-        return get_type_map()
+        return get_type_map(copy=False)
 
     @property
     def data_type(self):
@@ -701,6 +701,8 @@ class Container(AbstractContainer):
         """Generates HTML for a single field.
 
         This function can be overwritten by a child class to implement customized html representations.
+
+
         """
 
         if isinstance(value, (int, float, str, bool)):
@@ -726,10 +728,15 @@ class Container(AbstractContainer):
         else:
             html_content = f'<span class="field-key">{value}</span>'
 
+        display_name = str(key)
+        if isinstance(value, AbstractContainer):   # Excludes things like LabelledDict, ndarray, etc
+            class_name = type(value).__name__
+            class_name_str = f" <span style='font-weight: normal; color: #888;'>({class_name})</span>"
+            display_name += class_name_str
 
         html_repr = (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
-            f'class="container-fields field-key" title="{access_code}"><b>{key}</b></summary>'
+            f'class="container-fields field-key" title="{access_code}"><b>{display_name}</b></summary>'
         )
         html_repr += html_content
         html_repr += "</details>"
@@ -1244,7 +1251,17 @@ class MultiContainerInterface(Container):
             cls.__build_conf_methods(conf_dict, conf_index, multi)
 
         # make __getitem__ (square bracket access) only if one conf type is defined
-        if len(clsconf) == 1:
+        # and the class (or a non-MCI parent) does not already define its own __getitem__
+        has_getitem = '__getitem__' in cls.__dict__
+        if not has_getitem:
+            # check if any parent class (excluding MCI) defines __getitem__
+            for parent in cls.__mro__[1:]:
+                if parent is MultiContainerInterface:
+                    continue
+                if '__getitem__' in parent.__dict__:
+                    has_getitem = True
+                    break
+        if len(clsconf) == 1 and not has_getitem:
             attr = clsconf[0].get('attr')
             container_type = clsconf[0].get('type')
             setattr(cls, '__getitem__', cls.__make_getitem(attr, container_type))
@@ -1306,6 +1323,38 @@ class MultiContainerInterface(Container):
         get = conf_dict.get('get')
         if get is not None:
             setattr(cls, get, cls.__make_get(get, attr, container_type))
+
+    def _generate_field_html(self, key, value, level, access_code):
+        """Override to flatten single grouping attribute in MultiContainerInterface.
+
+        When a MultiContainerInterface has only one grouping attribute (len(__clsconf__) == 1)
+        and the value is a LabelledDict, the grouping attribute wrapper is redundant since
+        users can access children directly via container["name"] instead of container.attr["name"].
+        This method removes that extra nesting level in the HTML representation.
+
+        Examples of classes that get flattened:
+        - ProcessingModule: flattens "data_interfaces"
+        - Position: flattens "spatial_series"
+        - LFP: flattens "electrical_series"
+        - ImageSegmentation: flattens "plane_segmentations"
+        """
+        # Normalize to list since __clsconf__ can be a dict or a list (e.g. LFP in pynwb uses a list with 1 element)
+        clsconf = self.__clsconf__
+        if isinstance(clsconf, dict):
+            clsconf = [clsconf]
+
+        if len(clsconf) == 1 and isinstance(value, LabelledDict):
+            html_repr = ""
+            for child_name, child_container in value.items():
+                # Strip ".attr_name" from access_code and use direct ["child"] access
+                # e.g. ".spatial_series" becomes "", then we build "['SpatialSeries1']"
+                # This works because __getitem__ is defined for single clsconf (see line __build_class for details)
+                parent_access_code = access_code.rsplit('.', 1)[0]
+                child_access_code = f"{parent_access_code}['{child_name}']"
+                html_repr += super()._generate_field_html(child_name, child_container, level, child_access_code)
+            return html_repr
+
+        return super()._generate_field_html(key, value, level, access_code)
 
 
 class Row(object, metaclass=ExtenderMeta):
