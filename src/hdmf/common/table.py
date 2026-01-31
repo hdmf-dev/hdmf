@@ -79,6 +79,22 @@ class VectorData(Data):
             for i in ar:
                 self.add_row(i, **kwargs)
 
+    def get_meanings(self):
+        """Get the MeaningsTable associated with this VectorData column, if one exists.
+
+        Returns:
+            MeaningsTable: The MeaningsTable for this column, or None if this column
+                is not part of a DynamicTable or has no associated MeaningsTable.
+        """
+        parent = self.parent
+        if parent is None:
+            return None
+        try:
+            return parent.get_meanings_for_column(self.name)
+        except (KeyError, AttributeError):
+            # AttributeError if parent is not a DynamicTable
+            return None
+
 
 @register_class('VectorIndex')
 class VectorIndex(VectorData):
@@ -160,6 +176,19 @@ class VectorIndex(VectorData):
         """
         self.add_vector(arg, **kwargs)
 
+    def get_target_data(self):
+        """
+        Get the final VectorData target, traversing any nested VectorIndex objects.
+
+        For single ragged arrays, this returns self.target (the VectorData).
+        For double/multi ragged arrays, this traverses the chain of VectorIndex
+        objects to return the final VectorData.
+        """
+        target = self.target
+        while isinstance(target, VectorIndex):
+            target = target.target
+        return target
+
     def __get_slice(self, arg):
         start = 0 if arg == 0 else self.data[arg - 1]
         end = self.data[arg]
@@ -199,26 +228,13 @@ class VectorIndex(VectorData):
             if isinstance(arg, slice):
                 indices = list(range(*arg.indices(len(self.data))))
             else:
-                if isinstance(arg[0], bool):
+                if isinstance(arg[0], (bool, np.bool_)):
                     arg = np.where(arg)[0]
                 indices = arg
             ret = list()
             if len(indices) > 0:
-                # Note: len(indices) == 0 for test_to_hierarchical_dataframe_empty_tables.
-                # This is an edge case test for to_hierarchical_dataframe() on empty tables.
-                # When len(indices) == 0, ret is expected to be an empty list, defined above.
-                try:
-                    data = self.target.get(slice(None),  **kwargs)
-                except IndexError:
-                    """
-                    Note: TODO: test_to_hierarchical_dataframe_indexed_dtr_on_last_level.
-                    This is the old way to get the data and not an untested feature.
-                    """
-                    for i in indices:
-                        ret.append(self.__getitem_helper(i, **kwargs))
-
-                    return ret
-
+                # Load the entire target table at once to avoid multiple I/O calls
+                data = self.target.get(slice(None),  **kwargs)
                 slices = [self.__get_slice(i) for i in indices]
                 if isinstance(data, pd.DataFrame):
                     ret = [data.iloc[s] for s in slices]
@@ -292,11 +308,16 @@ class DynamicTable(Container):
     rather than specifying them at runtime at the instance level. This is useful for defining a table structure
     that will get reused. The requirements for *\_\_columns\_\_* are the same as the requirements described above
     for specifying table columns with the *columns* argument to the DynamicTable constructor.
+
+    Note: DynamicTable does not use MultiContainerInterface for meanings_tables because MeaningsTable
+    is defined later in this module and inherits from DynamicTable, creating a circular reference that
+    MultiContainerInterface cannot handle with forward references.
     """
 
     __fields__ = (
         {'name': 'id', 'child': True},
         {'name': 'columns', 'child': True},
+        {'name': 'meanings_tables', 'child': True},
         'colnames',
         'description'
     )
@@ -340,10 +361,18 @@ class DynamicTable(Container):
                      'added to the table if it is not already present (i.e., when it is optional).'),
              'type': dict,
              'default': None},
+            {'name': 'meanings_tables',
+             'doc': ('MeaningsTable objects that provide meanings for values in VectorData columns. '
+                     'Each MeaningsTable must have a name of "{column_name}_meanings" where column_name '
+                     'is the name of the target column in this DynamicTable. The target column must '
+                     'exist in this table.'),
+             'type': (tuple, list),
+             'default': None},
             allow_positional=AllowPositional.WARNING)
     def __init__(self, **kwargs):  # noqa: C901
         id, columns, desc, colnames = popargs('id', 'columns', 'description', 'colnames', kwargs)
         target_tables = popargs('target_tables', kwargs)
+        meanings_tables = popargs('meanings_tables', kwargs)
         super().__init__(**kwargs)
         self.description = desc
 
@@ -520,6 +549,61 @@ class DynamicTable(Container):
         if target_tables:
             self._set_dtr_targets(target_tables)
 
+        # Initialize meanings_tables via setter
+        self.meanings_tables = meanings_tables
+
+    @property
+    def meanings_tables(self):
+        """Get the dict of MeaningsTable objects in this DynamicTable."""
+        return self.__meanings_tables
+
+    @meanings_tables.setter
+    @docval({'name': 'val', 'type': (tuple, list), 'doc': 'The MeaningsTable objects to set', 'default': None})
+    def meanings_tables(self, val):
+        """Set the MeaningsTable objects in this DynamicTable."""
+        self.__meanings_tables = dict()
+        if val is not None:
+            for mt in val:
+                self.add_meanings_table(mt)
+
+    @docval({'name': 'meanings_table', 'type': 'MeaningsTable',
+             'doc': 'The MeaningsTable to add. Its name must be "{column_name}_meanings" where '
+                    'column_name is the name of a column in this DynamicTable.'})
+    def add_meanings_table(self, **kwargs):
+        """Add a MeaningsTable to this DynamicTable."""
+        meanings_table = getargs('meanings_table', kwargs)
+        if meanings_table.name in self.__meanings_tables:
+            raise ValueError(f"MeaningsTable '{meanings_table.name}' already exists in this DynamicTable")
+        # Check that the target is a column of this DynamicTable
+        target_name = meanings_table.target.name
+        if target_name not in self:
+            raise ValueError(f"MeaningsTable target '{target_name}' is not a column in DynamicTable '{self.name}'")
+        if not isinstance(meanings_table.parent, Container):
+            meanings_table.parent = self
+        else:
+            self.set_modified()
+        self.__meanings_tables[meanings_table.name] = meanings_table
+
+    @docval({'name': 'name', 'type': str,
+             'doc': 'The name of the MeaningsTable to get.'},
+            returns='the MeaningsTable with the given name', rtype='MeaningsTable')
+    def get_meanings_table(self, **kwargs):
+        """Get a MeaningsTable from this DynamicTable by name."""
+        name = getargs('name', kwargs)
+        if name not in self.__meanings_tables:
+            raise KeyError(f"MeaningsTable '{name}' not found in DynamicTable '{self.name}'")
+        return self.__meanings_tables[name]
+
+    @docval({'name': 'col_name', 'type': str,
+             'doc': 'The name of the column to get the MeaningsTable for.'},
+            returns='the MeaningsTable for the given column', rtype='MeaningsTable')
+    def get_meanings_for_column(self, **kwargs):
+        """Get a MeaningsTable for a column in this DynamicTable."""
+        col_name = getargs('col_name', kwargs)
+        meanings_table_name = f"{col_name}_meanings"
+        if meanings_table_name not in self.__meanings_tables:
+            raise KeyError(f"No MeaningsTable found for column '{col_name}' in DynamicTable '{self.name}'")
+        return self.__meanings_tables[meanings_table_name]
 
     def __set_table_attr(self, col):
         if hasattr(self, col.name) and col.name not in self.__uninit_cols:
@@ -643,9 +727,9 @@ class DynamicTable(Container):
                 # EnumData is the indexing column, so it should go first
                 if data is not None:
                     elements, data = np.unique(data, return_inverse=True)
-                    tmp.append(EnumData(name, desc, data=data, elements=elements))
+                    tmp.append(EnumData(name=name, description=desc, data=data, elements=elements))
                 else:
-                    tmp.append(EnumData(name, desc, data=data))
+                    tmp.append(EnumData(name=name, description=desc, data=data))
                 # EnumData handles constructing the VectorData object that contains EnumData.elements
                 # --> use this functionality (rather than creating here) for consistency and less code/complexity
                 tmp.append(tmp[-1].elements)
@@ -1108,16 +1192,6 @@ class DynamicTable(Container):
             return ret
         # if index is out of range, different errors can be generated depending on the dtype of the column
         # but despite the differences, raise an IndexError from that error
-        except ValueError as ve:
-            # in h5py <2, if the column is an h5py.Dataset, a ValueError was raised
-            # in h5py 3+, this became an IndexError
-            x = re.match(r"^Index \((.*)\) out of range \(.*\)$", str(ve))
-            if x:
-                msg = ("Row index %s out of range for %s '%s' (length %d)."
-                       % (x.groups()[0], self.__class__.__name__, self.name, len(self)))
-                raise IndexError(msg) from ve
-            else:  # pragma: no cover
-                raise ve
         except IndexError as ie:
             x = re.match(r"^Index \((.*)\) out of range for \(.*\)$", str(ie))
             if x:
@@ -1286,12 +1360,33 @@ class DynamicTable(Container):
             if key not in ("id", "colnames", "columns"):
                 out += self._generate_field_html(key, value, level, access_code)
 
+        # Generate columns section (field-style, individually collapsed by default)
+        col_desc_inner = ""
+        inner_level = level + 1
+        for name in self.colnames:
+            col = self[name]
+            # For ragged arrays (VectorIndex), get description from the final target VectorData
+            if isinstance(col, VectorIndex):
+                desc = col.get_target_data().description
+            else:
+                desc = col.description
+            col_access_code = f"{access_code}['{name}']" if access_code else f"['{name}']"
+            col_desc_inner += (
+                f'<details><summary style="display: list-item; margin-left: {inner_level * 20}px;" '
+                f'class="container-fields field-key" title="{col_access_code}"><b>{name}</b></summary>'
+                f'<div style="margin-left: {(inner_level + 1) * 20}px;" class="container-fields">'
+                f'<span class="field-value">{desc}</span></div></details>'
+            )
+
+        out += (
+            f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
+            f'class="container-fields field-key"><b>columns</b></summary>{col_desc_inner}</details>'
+        )
+
         inside = f"{self[:min(nrows, len(self))].to_html()}"
 
-        if len(self) == nrows + 1:
-            inside += "<p>... and 1 more row.</p>"
-        elif len(self) > nrows + 1:
-            inside += f"<p>... and {len(self) - nrows} more rows.</p>"
+        if len(self) >= nrows + 1:
+            inside += f"<p>... and {len(self) - nrows} more row(s).</p>"
 
         out += (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
@@ -1697,3 +1792,57 @@ class EnumData(VectorData):
         if not index:
             val = self.__add_term(val)
         super().append(val)
+
+
+@register_class('MeaningsTable')
+class MeaningsTable(DynamicTable):
+    """
+    A table to store information about the meanings of values in a linked VectorData object.
+
+    All possible values of the linked VectorData object should be present in the 'value' column
+    of this table, even if the value is not observed in the data. Additional columns may be
+    added to store additional metadata about each value.
+
+    The name of the MeaningsTable is automatically set to "{target.name}_meanings" based on
+    the linked VectorData object. For example, if the linked VectorData object is named
+    "stimulus_type", the MeaningsTable will be named "stimulus_type_meanings".
+    """
+
+    __fields__ = (
+        {'name': 'target', 'child': False},
+    )
+
+    __columns__ = (
+        {'name': 'value', 'description': 'The value in the linked VectorData object.', 'required': True},
+        {'name': 'meaning', 'description': 'The meaning of the value.', 'required': True},
+    )
+
+    @docval({'name': 'target', 'type': VectorData,
+             'doc': 'the VectorData object for which this table provides meanings'},
+            {'name': 'description', 'type': str,
+             'doc': 'a description of what is in this table', 'default': None},
+            {'name': 'id', 'type': ('array_data', 'data', ElementIdentifiers),
+             'doc': 'the identifiers for this table', 'default': None},
+            {'name': 'columns', 'type': (tuple, list), 'doc': 'the columns in this table', 'default': None},
+            {'name': 'colnames', 'type': 'array_data',
+             'doc': 'the ordered names of the columns in this table. columns must also be provided.',
+             'default': None},
+            allow_positional=AllowPositional.WARNING)
+    def __init__(self, **kwargs):
+        target = popargs('target', kwargs)
+        kwargs['name'] = f"{target.name}_meanings"
+        description = kwargs.get('description')
+        if description is None:
+            kwargs['description'] = f"Meanings for values in '{target.name}'"
+        super().__init__(**kwargs)
+        self.target = target
+
+    @docval({'name': 'value', 'type': None, 'doc': 'the value in the linked VectorData object'},
+            {'name': 'meaning', 'type': str, 'doc': 'the meaning of the value'},
+            {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
+            {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
+             'default': False},
+            allow_extra=True)
+    def add_row(self, **kwargs):
+        """Add a row to the table mapping a value to its meaning."""
+        super().add_row(**kwargs)

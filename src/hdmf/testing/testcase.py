@@ -101,7 +101,7 @@ class TestCase(unittest.TestCase):
                                      ignore_hdmf_attrs=ignore_hdmf_attrs,
                                      ignore_string_to_byte=ignore_string_to_byte,
                                      message=message)
-        elif isinstance(f1, dict) and len(f1) and isinstance(f1.values()[0], Container):
+        elif isinstance(f1, dict) and len(f1) and isinstance(next(iter(f1.values())), Container):
             self.assertIsInstance(f2, dict, message)
             f1_keys = set(f1.keys())
             f2_keys = set(f2.keys())
