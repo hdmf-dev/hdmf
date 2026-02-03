@@ -430,13 +430,16 @@ class NamespaceCatalog:
             nested_subspecs.extend(self.__collect_nested_subspecs(subgroup_spec))
         return nested_subspecs
 
-    def __get_spec_dependencies(self, spec: BaseStorageSpec, catalog: SpecCatalog) -> set[tuple[str, str]]:
-        """Get the set of edges representing the dependencies of the given spec.
+    def __get_spec_dependencies(
+        self, spec: BaseStorageSpec, catalog: SpecCatalog
+    ) -> tuple[set[tuple[str, str]], set[tuple[str, str]]]:
+        """Get edges representing the dependencies of the given spec.
 
-        Edges that would create cycles are skipped. This includes self-referential types
-        (A contains A) and indirect cycles (A contains B, B extends A).
+        Returns (edges, skipped_edges) where skipped_edges are cycle-creating edges
+        that were excluded from the dependency graph.
         """
         edges = set()
+        skipped_edges = set()
         if spec.data_type_inc is not None:
             edges.add((spec.data_type_def, spec.data_type_inc))
         if isinstance(spec, GroupSpec):
@@ -444,12 +447,14 @@ class NamespaceCatalog:
             for subspec in nested_subspecs:
                 if subspec.data_type_inc is not None:
                     if spec.data_type_def == subspec.data_type_inc:
+                        skipped_edges.add((spec.data_type_def, subspec.data_type_inc))
                         continue
                     hierarchy = catalog.get_hierarchy(subspec.data_type_inc)
                     if spec.data_type_def in hierarchy:
+                        skipped_edges.add((spec.data_type_def, subspec.data_type_inc))
                         continue
                     edges.add((spec.data_type_def, subspec.data_type_inc))
-        return edges
+        return edges, skipped_edges
 
     def __resolve_local(
         self, namespace: SpecNamespace, spec: BaseStorageSpec, resolving_in_progress: set = None
@@ -497,11 +502,36 @@ class NamespaceCatalog:
         # Build dependency graph, skipping edges that would create cycles
         ts = graphlib.TopologicalSorter()
         all_type_names = set()
+        all_skipped_edges = set()
         for type_name in namespace.catalog.get_registered_types():
             all_type_names.add(type_name)
             spec = namespace.catalog.get_spec(type_name)
-            for edge in self.__get_spec_dependencies(spec, namespace.catalog):
+            edges, skipped_edges = self.__get_spec_dependencies(spec, namespace.catalog)
+            all_skipped_edges.update(skipped_edges)
+            for edge in edges:
                 ts.add(*edge)
+
+        # For types that inherit from a type with skipped (cycle) edges, add dependencies on the
+        # cycle partner. E.g., if DynamicTable -> MeaningsTable was skipped (cycle), and
+        # AlignedDynamicTable extends DynamicTable, add AlignedDynamicTable -> MeaningsTable.
+        # This ensures MeaningsTable is resolved before AlignedDynamicTable, so that when
+        # AlignedDynamicTable inherits DynamicTable's MeaningsTable subspec and re-resolves it,
+        # the catalog MeaningsTable is already fully resolved.
+        # Walk the full inheritance hierarchy to handle longer chains (D extends C extends A).
+        if all_skipped_edges:
+            skipped_deps = dict()
+            for parent, dep in all_skipped_edges:
+                skipped_deps.setdefault(parent, set()).add(dep)
+            for type_name in namespace.catalog.get_registered_types():
+                for ancestor in namespace.catalog.get_hierarchy(type_name):
+                    if ancestor not in skipped_deps:
+                        continue
+                    for dep in skipped_deps[ancestor]:
+                        if dep == type_name:
+                            continue
+                        # Only add if it won't create a new cycle
+                        if type_name not in namespace.catalog.get_hierarchy(dep):
+                            ts.add(type_name, dep)
 
         # Get topological order using level-by-level processing with alphabetical sorting
         # within each level to ensure deterministic ordering regardless of insertion order.
