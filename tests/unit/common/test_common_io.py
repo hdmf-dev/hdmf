@@ -1,5 +1,3 @@
-import pprint
-
 from h5py import File
 
 from hdmf.backends.hdf5 import HDF5IO
@@ -68,13 +66,7 @@ class TestCacheSpec(TestCase):
                         with self.subTest('Data type spec is read back in'):
                             self.assertIsNotNone(cached_spec)
                         with self.subTest('Cached spec matches original spec'):
-                            try:
-                                self.assertDictEqual(original_spec, cached_spec)
-                            except AssertionError:
-                                print("DIFFERENCE in spec for", dt)  # noqa: T201
-                                print("ORIGINAL:", pprint.pformat(original_spec))  # noqa: T201
-                                print("CACHED  :", pprint.pformat(cached_spec))  # noqa: T201
-                                raise
+                            self.assertDictEqual(original_spec, cached_spec)
 
 
 class TestGetHdf5IO(TestCase):
