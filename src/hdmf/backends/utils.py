@@ -85,10 +85,12 @@ class NamespaceToBuilderHelper(object):
         kwargs['attributes'] = cls.__get_new_specs(spec.attributes, spec)
         to_copy = ['doc', 'name', 'default_name', 'linkable', 'quantity', spec.inc_key(), spec.def_key()]
         if isinstance(spec, GroupSpec):
-            kwargs['datasets'] = cls.__get_new_specs(spec.datasets, spec)
-            kwargs['groups'] = cls.__get_new_specs(spec.groups, spec)
-            kwargs['links'] = cls.__get_new_specs(spec.links, spec)
+            # Recursively copy subspecs to filter out inherited structure from nested specs
+            kwargs['datasets'] = [cls.__copy_spec(s) for s in cls.__get_new_specs(spec.datasets, spec)]
+            kwargs['groups'] = [cls.__copy_spec(s) for s in cls.__get_new_specs(spec.groups, spec)]
+            kwargs['links'] = cls.__get_new_specs(spec.links, spec)  # LinkSpec doesn't have nested specs
         else:
+            # DatasetSpec - recursively copy to filter inherited structure
             to_copy.append('dtype')
             to_copy.append('shape')
             to_copy.append('dims')

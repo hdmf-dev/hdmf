@@ -457,7 +457,8 @@ class NamespaceCatalog:
         return edges, skipped_edges
 
     def __resolve_local(
-        self, namespace: SpecNamespace, spec: BaseStorageSpec, resolving_in_progress: set = None
+        self, namespace: SpecNamespace, spec: BaseStorageSpec, resolving_in_progress: set = None,
+        deferred: list = None, resolved_types: set = None, visited: set = None
     ) -> None:
         """Resolve the data_type_inc of this spec and its children recursively.
 
@@ -470,20 +471,60 @@ class NamespaceCatalog:
         resolving_in_progress : set, optional
             Set of type names currently being resolved, used to prevent infinite recursion
             in circular dependencies.
+        deferred : list, optional
+            List to collect (subspec, type_name) tuples for subspecs that couldn't be resolved
+            because their target type is still being resolved or hasn't been resolved yet.
+            These will be resolved later.
+        resolved_types : set, optional
+            Set of type names that have been fully resolved. Used to defer resolution of
+            subspecs that reference types not yet resolved.
+        visited : set, optional
+            Set of spec object ids that have already been visited during this resolution pass.
+            Used to prevent infinite recursion when the same spec object is referenced
+            multiple times in the hierarchy.
         """
         if resolving_in_progress is None:
             resolving_in_progress = set()
+        if visited is None:
+            visited = set()
+
+        # Check if we've already visited this exact spec object to prevent infinite loops
+        spec_id = id(spec)
+        if spec_id in visited:
+            return
+        visited.add(spec_id)
 
         if spec.data_type_inc is not None and not spec.inc_spec_resolved:
+            # Check if we should defer resolution:
+            # 1. The target type is currently being resolved (cycle)
+            # 2. The target type hasn't been resolved yet (comes later in topological order)
+            should_defer = False
             if spec.data_type_inc in resolving_in_progress:
+                should_defer = True
+            elif resolved_types is not None and spec.data_type_inc not in resolved_types:
+                # Target type hasn't been resolved yet - check if it's a registered type
+                # that will be resolved later (not a type from another namespace)
+                try:
+                    self.get_spec(namespace.name, spec.data_type_inc)
+                    should_defer = True
+                except ValueError:
+                    # Type not found in this namespace, might be from another namespace
+                    # In that case, proceed with resolution
+                    pass
+
+            if should_defer:
+                # Can't resolve now - defer this resolution until later
+                if deferred is not None:
+                    deferred.append((spec, spec.data_type_inc))
                 return
+
             included_spec = self.get_spec(namespace.name, spec.data_type_inc)
             spec.resolve_inc_spec(included_spec, namespace)
             resolving_in_progress = resolving_in_progress | {spec.data_type_inc}
 
         if isinstance(spec, GroupSpec):
             for subspec in list(spec.groups) + list(spec.datasets):
-                self.__resolve_local(namespace, subspec, resolving_in_progress)
+                self.__resolve_local(namespace, subspec, resolving_in_progress, deferred, resolved_types, visited)
 
         spec.resolved = True
 
@@ -492,7 +533,7 @@ class NamespaceCatalog:
         for namespace in self.__namespaces.values():
             self.__resolve_namespace_specs(namespace)
 
-    def __resolve_namespace_specs(self, namespace: SpecNamespace) -> None:
+    def __resolve_namespace_specs(self, namespace: SpecNamespace) -> None:  # noqa: C901
         """Resolve all specs in the catalog using topological sort order.
 
         A dependency graph is built from each type's data_type_inc and nested subspec data_type_inc values.
@@ -548,10 +589,35 @@ class NamespaceCatalog:
             if s not in static_order:
                 static_order.insert(0, s)
 
-        # Resolve specs in topological order
+        # Resolve specs in topological order, collecting deferred subspecs
+        deferred = []
+        resolved_types = set()
         for type_name in static_order:
             spec = self.get_spec(namespace.name, type_name)
-            self.__resolve_local(namespace, spec, resolving_in_progress={type_name})
+            self.__resolve_local(
+                namespace, spec,
+                resolving_in_progress={type_name},
+                deferred=deferred,
+                resolved_types=resolved_types
+            )
+            resolved_types.add(type_name)
+
+        # Second pass: resolve deferred subspecs.
+        # These are nested subspecs that couldn't be resolved in the first pass because
+        # their target type was still being resolved (cycle) or hadn't been resolved yet
+        # (comes later in topological order). Now all top-level types are resolved, so
+        # we can complete the resolution.
+        # After resolving, we also need to recursively resolve any nested subspecs that
+        # were added during resolution (e.g., MeaningsTable extends DynamicTable, so it
+        # gets DynamicTable's meanings_tables group, which contains another MeaningsTable
+        # subspec that needs resolution).
+        for subspec, target_type in deferred:
+            if not subspec.inc_spec_resolved:
+                included_spec = self.get_spec(namespace.name, target_type)
+                subspec.resolve_inc_spec(included_spec, namespace)
+                # Recursively resolve any nested subspecs that were added during resolution
+                # All types are now resolved, so pass the full resolved_types set
+                self.__resolve_local(namespace, subspec, resolving_in_progress=set(), resolved_types=resolved_types)
 
 
     def __load_namespace(self, namespace, reader):

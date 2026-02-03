@@ -66,7 +66,7 @@ class TestCacheSpec(TestCase):
                         with self.subTest('Data type spec is read back in'):
                             self.assertIsNotNone(cached_spec)
                         with self.subTest('Cached spec matches original spec'):
-                            self.assertDictEqual(original_spec, cached_spec)
+                            self.assertEqual(dict(original_spec), dict(cached_spec))
 
 
 class TestGetHdf5IO(TestCase):
