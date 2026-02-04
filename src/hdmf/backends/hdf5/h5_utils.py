@@ -326,7 +326,7 @@ class H5SpecWriter(SpecWriter):
         '''
         Converts a spec into a JSON string to write to a dataset
         '''
-        return json.dumps(spec, separators=(',', ':'))
+        return str(spec)  # json.dumps(spec, separators=(',', ':'))
 
     def __write(self, d, name):
         data = self.stringify(d)
