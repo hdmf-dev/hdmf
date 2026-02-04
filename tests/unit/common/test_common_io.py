@@ -34,6 +34,7 @@ class TestCacheSpec(TestCase):
         with HDF5IO(self.path, manager=self.manager, mode="a") as io:
             io.write(self.container)
         with File(self.path, 'r') as f:
+            print(f["specifications"]["hdmf-common"]["1.9.0"]["table"][()])  # noqa: T201
             self.assertIn('specifications', f)
         self._check_spec()
 
