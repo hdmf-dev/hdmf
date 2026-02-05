@@ -248,8 +248,6 @@ class NamespaceCatalog:
         self.__included_specs = dict()
         self.__included_sources = dict()
 
-        self._loaded_specs = self.__loaded_specs
-
     def __copy__(self):
         ret = NamespaceCatalog(self.__group_spec_cls,
                                self.__dataset_spec_cls,
@@ -535,8 +533,11 @@ class NamespaceCatalog:
                 # Ensure the included type is resolved first
                 self.__resolve_type_and_deps(subspec.data_type_inc, namespace, resolved, in_progress)
                 inc_type_spec = namespace.catalog.get_spec(subspec.data_type_inc)
-                if inc_type_spec is not None:
-                    subspec.resolve_inc_spec(inc_type_spec, namespace)
+                if inc_type_spec is None:
+                    raise ValueError(
+                        "No specification for '%s' in namespace '%s'" % (subspec.data_type_inc, namespace.name)
+                    )
+                subspec.resolve_inc_spec(inc_type_spec, namespace)
             subspec.resolved = True
 
             # Do NOT recurse into subspecs. We only resolve the direct children of

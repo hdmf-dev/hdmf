@@ -29,7 +29,7 @@ class ValidatorTestBase(TestCase, metaclass=ABCMeta):
             'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
         self.ns_catalog = NamespaceCatalog()
         self.ns_catalog.add_namespace(self.namespace.name, self.namespace)
-        self.ns_catalog.resolve_all_specs()
+        self.ns_catalog.resolve_all_specs()  # some tests require spec resolution
         self.vmap = ValidatorMap(self.namespace)
 
     @abstractmethod

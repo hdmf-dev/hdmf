@@ -332,17 +332,17 @@ class TestDynamicContainer(TestCase):
             Baz1(name='My Baz', data=[1, 2, 3, 4], attr1='string attribute',
                  attr2=1000, attr3=98.6, attr4=1.0, baz2=bar)
 
-    # def test_dynamic_container_composition_missing_type(self):
-    #     baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc='Bar',
-    #                           attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
-    #                                       AttributeSpec('attr4', 'another float attribute', 'float')],
-    #                           groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
-    #     self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
+    def test_dynamic_container_composition_missing_type(self):
+        baz_spec1 = GroupSpec('A composition test outside', data_type_def='Baz1', data_type_inc='Bar',
+                              attributes=[AttributeSpec('attr3', 'a float attribute', 'float'),
+                                          AttributeSpec('attr4', 'another float attribute', 'float')],
+                              groups=[GroupSpec('A composition inside', data_type_inc='Baz2')])
+        self.spec_catalog.register_spec(baz_spec1, 'extension.yaml')
 
-    #     # this error will be raised during load_namespaces when resolving all specs
-    #     msg = "No specification for 'Baz2' in namespace 'test_core'"
-    #     with self.assertRaisesWith(ValueError, msg):
-    #         self.type_map.namespace_catalog.resolve_all_specs()
+        # this error will be raised during load_namespaces when resolving all specs
+        msg = "No specification for 'Baz2' in namespace 'test_core'"
+        with self.assertRaisesWith(ValueError, msg):
+            self.type_map.namespace_catalog.resolve_all_specs()
 
     def test_dynamic_container_fixed_name(self):
         """Test that dynamic class generation for an extended type with a fixed name works."""
