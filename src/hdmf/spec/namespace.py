@@ -430,61 +430,49 @@ class NamespaceCatalog:
             nested_subspecs.extend(self.__collect_nested_subspecs(subgroup_spec))
         return nested_subspecs
 
-    def __get_spec_dependencies(
-        self, spec: BaseStorageSpec, catalog: SpecCatalog
-    ) -> tuple[set[tuple[str, str]], set[tuple[str, str]]]:
-        """Get edges representing the dependencies of the given spec.
-
-        Returns (edges, skipped_edges) where skipped_edges are cycle-creating edges
-        that were excluded from the dependency graph.
-        """
+    def __get_spec_dependencies(self, spec: BaseStorageSpec) -> set[tuple[str, str]]:
+        """Get the set of edges representing the dependencies of the given spec."""
         edges = set()
-        skipped_edges = set()
         if spec.data_type_inc is not None:
+            # The included spec should be resolved before this spec
             edges.add((spec.data_type_def, spec.data_type_inc))
         if isinstance(spec, GroupSpec):
+            # For each nested subspec, the included specs of that nested subspec should be resolved before
+            # this spec
             nested_subspecs = self.__collect_nested_subspecs(spec)
             for subspec in nested_subspecs:
                 if subspec.data_type_inc is not None:
-                    if spec.data_type_def == subspec.data_type_inc:
-                        skipped_edges.add((spec.data_type_def, subspec.data_type_inc))
-                        continue
-                    hierarchy = catalog.get_hierarchy(subspec.data_type_inc)
-                    if spec.data_type_def in hierarchy:
-                        skipped_edges.add((spec.data_type_def, subspec.data_type_inc))
-                        continue
+                    # TODO: cycles are not yet supported
+                    # if spec.data_type_def == subspec.data_type_inc:
+                    #     # Allow the simple case of a "cycle" where A contains B, and B includes A
+                    #     # but do not add this edge to the graph because it makes a cycle.
+                    #     continue
                     edges.add((spec.data_type_def, subspec.data_type_inc))
-        return edges, skipped_edges
+        return edges
 
-    def __resolve_local(
-        self, namespace: SpecNamespace, spec: BaseStorageSpec, resolving_in_progress: set = None
-    ) -> None:
-        """Resolve the data_type_inc of this spec and its children recursively.
-
-        Parameters
-        ----------
-        namespace : SpecNamespace
-            The namespace containing the specs.
-        spec : BaseStorageSpec
-            The spec to resolve.
-        resolving_in_progress : set, optional
-            Set of type names currently being resolved, used to prevent infinite recursion
-            in circular dependencies.
-        """
-        if resolving_in_progress is None:
-            resolving_in_progress = set()
-
+    def __resolve_local(self, namespace: SpecNamespace, spec: BaseStorageSpec) -> None:
         if spec.data_type_inc is not None and not spec.inc_spec_resolved:
-            if spec.data_type_inc in resolving_in_progress:
-                return
+            # NOTE: The included spec may have already been resolved into the current spec if the current spec
+            # was copied (included) from another spec. For example, if A has a subspec B that includes C, and
+            # D includes A, then when resolving D, first, already resolved subspec B is copied from A to D, and
+            # then resolve_local may be called on B again
             included_spec = self.get_spec(namespace.name, spec.data_type_inc)
+
+            # NOTE: In most cases, because we are resolving specs in topological order, the included spec
+            # should have already been resolved. However, in the case of the "cycle" described above where
+            # A contains B, and B includes A, then the included spec will not have been resolved yet.
+
+            # Resolve the included spec into this spec
             spec.resolve_inc_spec(included_spec, namespace)
-            resolving_in_progress = resolving_in_progress | {spec.data_type_inc}
 
         if isinstance(spec, GroupSpec):
-            for subspec in list(spec.groups) + list(spec.datasets):
-                self.__resolve_local(namespace, subspec, resolving_in_progress)
+            # Recursively resolve all subspecs
+            nested_subspecs = self.__collect_nested_subspecs(spec)
+            for subspec in nested_subspecs:
+                self.__resolve_local(namespace, subspec)
 
+        # Mark this spec as resolved if the included spec has been resolved and all subspecs have been resolved.
+        # This is not necessary / not used anywhere, but may be useful for debugging.
         spec.resolved = True
 
     def resolve_all_specs(self) -> None:
@@ -493,65 +481,38 @@ class NamespaceCatalog:
             self.__resolve_namespace_specs(namespace)
 
     def __resolve_namespace_specs(self, namespace: SpecNamespace) -> None:
-        """Resolve all specs in the catalog using topological sort order.
-
-        A dependency graph is built from each type's data_type_inc and nested subspec data_type_inc values.
-        Cycle-creating edges are skipped. The graph is then sorted topologically, and types at the same
-        level are sorted alphabetically to ensure deterministic ordering across environments.
-        """
-        # Build dependency graph, skipping edges that would create cycles
+        """Resolve all specs in the catalog."""
+        # Build a graph of all type dependencies
+        # For example, if A includes B, A has subspec that includes C, and B includes D, then A -> B, A -> C, B -> D
         ts = graphlib.TopologicalSorter()
-        all_type_names = set()
-        all_skipped_edges = set()
+        specs_without_deps = set()  # track specs that have no dependencies
         for type_name in namespace.catalog.get_registered_types():
-            all_type_names.add(type_name)
             spec = namespace.catalog.get_spec(type_name)
-            edges, skipped_edges = self.__get_spec_dependencies(spec, namespace.catalog)
-            all_skipped_edges.update(skipped_edges)
-            for edge in edges:
-                ts.add(*edge)
+            edges = self.__get_spec_dependencies(spec)
+            if not edges:
+                specs_without_deps.add(type_name)
+            else:
+                for e in edges:
+                    ts.add(*e)
 
-        # For types that inherit from a type with skipped (cycle) edges, add dependencies on the
-        # cycle partner. E.g., if DynamicTable -> MeaningsTable was skipped (cycle), and
-        # AlignedDynamicTable extends DynamicTable, add AlignedDynamicTable -> MeaningsTable.
-        # This ensures MeaningsTable is resolved before AlignedDynamicTable, so that when
-        # AlignedDynamicTable inherits DynamicTable's MeaningsTable subspec and re-resolves it,
-        # the catalog MeaningsTable is already fully resolved.
-        # Walk the full inheritance hierarchy to handle longer chains (D extends C extends A).
-        if all_skipped_edges:
-            skipped_deps = dict()
-            for parent, dep in all_skipped_edges:
-                skipped_deps.setdefault(parent, set()).add(dep)
-            for type_name in namespace.catalog.get_registered_types():
-                for ancestor in namespace.catalog.get_hierarchy(type_name):
-                    if ancestor not in skipped_deps:
-                        continue
-                    for dep in skipped_deps[ancestor]:
-                        if dep == type_name:
-                            continue
-                        # Only add if it won't create a new cycle
-                        if type_name not in namespace.catalog.get_hierarchy(dep):
-                            ts.add(type_name, dep)
+        # Check for cycles and get static topological order
+        # For example, in the ABCD example above, the static order is D, B, C, A
+        try:
+            static_order = list(ts.static_order())
+        except graphlib.CycleError:  # pragma: no cover
+            # This should not happen because cycles will cause an error during spec object creation
+            raise ValueError("Cycle detected in specification dependencies. Cannot resolve specifications.")
 
-        # Get topological order using level-by-level processing with alphabetical sorting
-        # within each level to ensure deterministic ordering regardless of insertion order.
-        ts.prepare()
-        static_order = []
-        while ts.is_active():
-            ready = sorted(ts.get_ready())  # alphabetical sort within each level
-            static_order.extend(ready)
-            for node in ready:
-                ts.done(node)
-
-        # Add types that have no dependencies and are not depended on by any other type
-        for s in all_type_names:
+        # In rare cases, a namespace may have specs that have no dependencies and are not included by any other
+        # spec, so they will not be in the topological sort. Add them to the front of the order.
+        for s in specs_without_deps:
             if s not in static_order:
                 static_order.insert(0, s)
 
         # Resolve specs in topological order
         for type_name in static_order:
             spec = self.get_spec(namespace.name, type_name)
-            self.__resolve_local(namespace, spec, resolving_in_progress={type_name})
+            self.__resolve_local(namespace, spec)
 
 
     def __load_namespace(self, namespace, reader):
@@ -597,26 +558,26 @@ class NamespaceCatalog:
 
         return included_types
 
-    def __register_type(self, ndt, inc_ns, catalog, registered_types, registering_in_progress=None):
+    def __register_type(self, ndt, inc_ns, catalog, registered_types, in_progress_registrations=None):
         """Register a type and its dependencies from a namespace into a catalog.
 
         :param ndt: The name of the data type to register
         :param inc_ns: The namespace containing the type
         :param catalog: The catalog to register the type into
         :param registered_types: Set of already registered types (to avoid re-registering)
-        :param registering_in_progress: Set of types currently being registered (for circular dependency detection).
+        :param in_progress_registrations: Set of types currently being registered (for circular dependency detection).
             None if the registration process is starting.
         """
-        if registering_in_progress is None:
-            registering_in_progress = set()
-        if ndt in registered_types or ndt in registering_in_progress:
+        if in_progress_registrations is None:
+            in_progress_registrations = set()
+        if ndt in registered_types or ndt in in_progress_registrations:
             # Already registered or currently being registered (circular dependency)
             return
         # Track that we're currently registering this type
-        registering_in_progress.add(ndt)
+        in_progress_registrations.add(ndt)
         spec = inc_ns.get_spec(ndt)
         spec_file = inc_ns.catalog.get_spec_source_file(ndt)
-        self.__register_dependent_types(spec, inc_ns, catalog, registered_types, registering_in_progress)
+        self.__register_dependent_types(spec, inc_ns, catalog, registered_types, in_progress_registrations)
         if isinstance(spec, DatasetSpec):
             built_spec = self.dataset_spec_cls.build_spec(spec)
         else:
@@ -624,7 +585,7 @@ class NamespaceCatalog:
         registered_types.add(ndt)
         catalog.register_spec(built_spec, spec_file)
 
-    def __register_dependent_types(self, spec, inc_ns, catalog, registered_types, registering_in_progress):
+    def __register_dependent_types(self, spec, inc_ns, catalog, registered_types, in_progress_registrations):
         """Ensure that all types used by this type are registered.
 
         This handles:
@@ -632,7 +593,7 @@ class NamespaceCatalog:
         - Nested type definitions (data_type_def in child specs)
         - Link target types
 
-        Circular dependencies are handled by checking registering_in_progress before
+        Circular dependencies are handled by checking in_progress_registrations before
         recursing. This allows patterns like:
         - Type A contains Type B, and Type B extends Type A
         - Type A contains a reference to Type A (self-reference)
@@ -641,15 +602,15 @@ class NamespaceCatalog:
             if isinstance(child_spec, (GroupSpec, DatasetSpec)):
                 if child_spec.data_type_inc is not None:
                     self.__register_type(
-                        child_spec.data_type_inc, inc_ns, catalog, registered_types, registering_in_progress
+                        child_spec.data_type_inc, inc_ns, catalog, registered_types, in_progress_registrations
                     )
                 if child_spec.data_type_def is not None:  # nested type definition
                     self.__register_type(
-                        child_spec.data_type_def, inc_ns, catalog, registered_types, registering_in_progress
+                        child_spec.data_type_def, inc_ns, catalog, registered_types, in_progress_registrations
                     )
             else:  # spec is a LinkSpec
                 self.__register_type(
-                    child_spec.target_type, inc_ns, catalog, registered_types, registering_in_progress
+                    child_spec.target_type, inc_ns, catalog, registered_types, in_progress_registrations
                 )
             if isinstance(child_spec, GroupSpec):
                 for nested_spec in (child_spec.groups + child_spec.datasets + child_spec.links):
@@ -657,7 +618,7 @@ class NamespaceCatalog:
 
         # Register parent type first
         if spec.data_type_inc is not None:
-            self.__register_type(spec.data_type_inc, inc_ns, catalog, registered_types, registering_in_progress)
+            self.__register_type(spec.data_type_inc, inc_ns, catalog, registered_types, in_progress_registrations)
 
         # Register types from child specs (groups, datasets, links)
         if isinstance(spec, GroupSpec):
