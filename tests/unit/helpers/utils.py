@@ -500,7 +500,7 @@ def create_test_type_map(specs, container_classes, mappers=None):
     )
     namespace_catalog = NamespaceCatalog()
     namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-    # namespace_catalog.resolve_all_specs()
+    namespace_catalog.resolve_all_specs()
     type_map = TypeMap(namespace_catalog)
     for type_name, container_cls in container_classes.items():
         type_map.register_container_type(CORE_NAMESPACE, type_name, container_cls)

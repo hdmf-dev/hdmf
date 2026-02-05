@@ -444,96 +444,107 @@ class NamespaceCatalog:
         for subspec_dict in spec_dict.get('datasets', list()):
             self.__resolve_includes(self.__dataset_spec_cls, subspec_dict, catalog)
 
-    # def __collect_nested_subspecs(self, spec: GroupSpec) -> list[BaseStorageSpec]:
-    #     """Collect all nested subspecs of the given group spec."""
-    #     nested_subspecs = list(spec.groups + spec.datasets)
-    #     for subgroup_spec in spec.groups:
-    #         nested_subspecs.extend(self.__collect_nested_subspecs(subgroup_spec))
-    #     return nested_subspecs
+    def resolve_all_specs(self) -> None:
+        """Resolve all specs in all namespaces in the catalog.
 
-    # def __get_spec_dependencies(self, spec: BaseStorageSpec) -> set[tuple[str, str]]:
-    #     """Get the set of edges representing the dependencies of the given spec."""
-    #     edges = set()
-    #     if spec.data_type_inc is not None:
-    #         # The included spec should be resolved before this spec
-    #         edges.add((spec.data_type_def, spec.data_type_inc))
-    #     if isinstance(spec, GroupSpec):
-    #         # For each nested subspec, the included specs of that nested subspec should be resolved before
-    #         # this spec
-    #         nested_subspecs = self.__collect_nested_subspecs(spec)
-    #         for subspec in nested_subspecs:
-    #             if subspec.data_type_inc is not None:
-    #                 # TODO: cycles are not yet supported
-    #                 # if spec.data_type_def == subspec.data_type_inc:
-    #                 #     # Allow the simple case of a "cycle" where A contains B, and B includes A
-    #                 #     # but do not add this edge to the graph because it makes a cycle.
-    #                 #     continue
-    #                 edges.add((spec.data_type_def, subspec.data_type_inc))
-    #     return edges
+        This method resolves all type-level includes (merging parent type fields into child types) and
+        subspec-level includes (merging included type fields into subspecs). It uses a recursive
+        depth-first approach with cycle detection to handle containment cycles (e.g., DynamicTable
+        contains MeaningsTable, MeaningsTable extends DynamicTable).
+        """
+        for namespace in self.__namespaces.values():
+            self.__resolve_namespace_specs(namespace)
 
-    # def __resolve_local(self, namespace: SpecNamespace, spec: BaseStorageSpec) -> None:
-    #     if spec.data_type_inc is not None and not spec.inc_spec_resolved:
-    #         # NOTE: The included spec may have already been resolved into the current spec if the current spec
-    #         # was copied (included) from another spec. For example, if A has a subspec B that includes C, and
-    #         # D includes A, then when resolving D, first, already resolved subspec B is copied from A to D, and
-    #         # then resolve_local may be called on B again
-    #         included_spec = self.get_spec(namespace.name, spec.data_type_inc)
+    def __resolve_namespace_specs(self, namespace: SpecNamespace) -> None:
+        """Resolve all specs in the given namespace using recursive DFS."""
+        resolved = set()
+        in_progress = set()
+        for type_name in namespace.catalog.get_registered_types():
+            self.__resolve_type_and_deps(type_name, namespace, resolved, in_progress)
 
-    #         # NOTE: In most cases, because we are resolving specs in topological order, the included spec
-    #         # should have already been resolved. However, in the case of the "cycle" described above where
-    #         # A contains B, and B includes A, then the included spec will not have been resolved yet.
+    def __resolve_type_and_deps(self, type_name, namespace, resolved, in_progress):
+        """Resolve a type and all its dependencies recursively.
 
-    #         # Resolve the included spec into this spec
-    #         spec.resolve_inc_spec(included_spec, namespace)
+        Parameters
+        ----------
+        type_name : str
+            The name of the type to resolve
+        namespace : SpecNamespace
+            The namespace containing the type
+        resolved : set
+            Set of type names that have been fully resolved
+        in_progress : set
+            Set of type names currently being resolved (for cycle detection)
+        """
+        if type_name in resolved:
+            return
+        if type_name in in_progress:
+            # Cycle detected -- this type is being resolved higher up the call stack.
+            # This is OK for containment cycles (e.g., DynamicTable contains MeaningsTable,
+            # MeaningsTable extends DynamicTable). We skip re-resolution; the type will be
+            # resolved when the call stack unwinds.
+            return
 
-    #     if isinstance(spec, GroupSpec):
-    #         # Recursively resolve all subspecs
-    #         nested_subspecs = self.__collect_nested_subspecs(spec)
-    #         for subspec in nested_subspecs:
-    #             self.__resolve_local(namespace, subspec)
+        spec = namespace.catalog.get_spec(type_name)
+        if spec is None:
+            return
 
-    #     # Mark this spec as resolved if the included spec has been resolved and all subspecs have been resolved.
-    #     # This is not necessary / not used anywhere, but may be useful for debugging.
-    #     spec.resolved = True
+        # Note: We intentionally do NOT skip types imported from other namespaces here.
+        # Imported types are copies that were built BEFORE resolve_all_specs was called,
+        # so they need to be resolved too. The inc_spec_resolved check on each spec
+        # will prevent double-resolution.
 
-    # def resolve_all_specs(self) -> None:
-    #     """Resolve all specs in all namespaces in the catalog."""
-    #     for namespace in self.__namespaces.values():
-    #         self.__resolve_namespace_specs(namespace)
+        in_progress.add(type_name)
 
-    # def __resolve_namespace_specs(self, namespace: SpecNamespace) -> None:
-    #     """Resolve all specs in the catalog."""
-    #     # Build a graph of all type dependencies
-    #     # For example, if A includes B, A has subspec that includes C, and B includes D, then A -> B, A -> C, B -> D
-    #     ts = graphlib.TopologicalSorter()
-    #     specs_without_deps = set()  # track specs that have no dependencies
-    #     for type_name in namespace.catalog.get_registered_types():
-    #         spec = namespace.catalog.get_spec(type_name)
-    #         edges = self.__get_spec_dependencies(spec)
-    #         if not edges:
-    #             specs_without_deps.add(type_name)
-    #         else:
-    #             for e in edges:
-    #                 ts.add(*e)
+        # 1. Resolve parent type first
+        if spec.data_type_inc is not None:
+            self.__resolve_type_and_deps(spec.data_type_inc, namespace, resolved, in_progress)
 
-    #     # Check for cycles and get static topological order
-    #     # For example, in the ABCD example above, the static order is D, B, C, A
-    #     try:
-    #         static_order = list(ts.static_order())
-    #     except graphlib.CycleError:  # pragma: no cover
-    #         # This should not happen because cycles will cause an error during spec object creation
-    #         raise ValueError("Cycle detected in specification dependencies. Cannot resolve specifications.")
+        # 2. Resolve this type's inc_spec if not already done (e.g., via resolve_inc_spec in __init__)
+        if spec.data_type_inc is not None and not spec.inc_spec_resolved:
+            parent_spec = namespace.catalog.get_spec(spec.data_type_inc)
+            if parent_spec is None:
+                raise ValueError(
+                    "No specification for '%s' in namespace '%s'" % (spec.data_type_inc, namespace.name)
+                )
+            spec.resolve_inc_spec(parent_spec, namespace)
 
-    #     # In rare cases, a namespace may have specs that have no dependencies and are not included by any other
-    #     # spec, so they will not be in the topological sort. Add them to the front of the order.
-    #     for s in specs_without_deps:
-    #         if s not in static_order:
-    #             static_order.insert(0, s)
+        # 3. Resolve subspecs (datasets and groups with data_type_inc)
+        if isinstance(spec, GroupSpec):
+            self.__resolve_subspecs(spec, namespace, resolved, in_progress)
 
-    #     # Resolve specs in topological order
-    #     for type_name in static_order:
-    #         spec = self.get_spec(namespace.name, type_name)
-    #         self.__resolve_local(namespace, spec)
+        spec.resolved = True
+        in_progress.discard(type_name)
+        resolved.add(type_name)
+
+    def __resolve_subspecs(self, spec, namespace, resolved, in_progress):
+        """Resolve all subspecs of the given GroupSpec.
+
+        This handles subspecs that have data_type_inc (both with and without data_type_def).
+        Containment cycles are detected by checking if the included type is currently in progress.
+        """
+        all_subspecs = list(spec.datasets) + list(spec.groups)
+        for subspec in all_subspecs:
+            if subspec.data_type_inc is not None and not subspec.inc_spec_resolved:
+                if subspec.data_type_inc in in_progress:
+                    # Cycle detected: e.g., DynamicTable contains MeaningsTable, MeaningsTable
+                    # extends DynamicTable. Skip resolution for this subspec to avoid infinite
+                    # recursion. The subspec remains a placeholder.
+                    subspec.resolved = True
+                    continue
+                # Ensure the included type is resolved first
+                self.__resolve_type_and_deps(subspec.data_type_inc, namespace, resolved, in_progress)
+                inc_type_spec = namespace.catalog.get_spec(subspec.data_type_inc)
+                if inc_type_spec is not None:
+                    subspec.resolve_inc_spec(inc_type_spec, namespace)
+            subspec.resolved = True
+
+            # Do NOT recurse into subspecs. We only resolve the direct children of
+            # each type. Nested subspecs (inside container groups) are not resolved here
+            # because resolving typed subspecs adds the included type's fields to the
+            # subspec, which can cause issues with:
+            # 1. Spec caching (the cached spec would contain resolved subspec fields)
+            # 2. Infinite recursion through containment cycles
 
     def __load_namespace(self, namespace, reader, resolve=True):
         ns_name = namespace['name']
@@ -709,8 +720,8 @@ class NamespaceCatalog:
                 ret[ns['name']] = self.__load_namespace(ns, r, resolve)
             self.__included_specs[ns_path_key] = ret
 
-        # if resolve:
-        #     self.resolve_all_specs()
+        if resolve:
+            self.resolve_all_specs()
 
         # warn if there are any ignored namespaces
         if ignored_namespaces:

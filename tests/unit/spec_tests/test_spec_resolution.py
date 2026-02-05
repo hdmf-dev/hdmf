@@ -1731,3 +1731,125 @@ class TestNamespaceCatalogResolution(TestCase):
     #         self.ns_catalog.resolve_all_specs()
 
     #     self.assertEqual(d2.dtype, RefSpec(target_type="H1", reftype="object"))
+
+    def test_containment_cycle_parent_contains_child_subtype(self):
+        """Test containment cycles like DynamicTable/MeaningsTable.
+
+        This tests the pattern where:
+        - Type A (like DynamicTable) contains a subspec of Type B
+        - Type B (like MeaningsTable) extends Type A
+
+        This is NOT a circular hierarchy (A extends B extends A), which is correctly
+        rejected. This is a containment cycle where the parent type contains a slot
+        for a child type that extends the parent.
+
+        The resolution should succeed without infinite recursion.
+        """
+        # Create ParentType with a subspec that includes ChildType
+        # ChildType extends ParentType
+        child_type = GroupSpec(
+            data_type_def="ChildType",
+            data_type_inc="ParentType",
+            doc="Child type that extends ParentType",
+            attributes=[
+                AttributeSpec(name="child_attr", dtype="text", doc="Child-specific attribute")
+            ],
+        )
+
+        parent_type = GroupSpec(
+            data_type_def="ParentType",
+            doc="Parent type containing ChildType subspec",
+            groups=[
+                GroupSpec(
+                    data_type_inc="ChildType",
+                    doc="Slot for ChildType instances",
+                    quantity="*",
+                ),
+            ],
+            attributes=[
+                AttributeSpec(name="parent_attr", dtype="text", doc="Parent attribute")
+            ],
+        )
+
+        # Note: Order matters - ParentType must be registered first for ChildType to extend it
+        ns_path = self.create_test_namespace("test", [parent_type, child_type])
+
+        # Load namespace with resolution - should not cause infinite recursion
+        self.ns_catalog.load_namespaces(ns_path)
+
+        # Check that both specs are resolved
+        parent_spec = self.ns_catalog.get_spec("test", "ParentType")
+        child_spec = self.ns_catalog.get_spec("test", "ChildType")
+
+        self.assertTrue(parent_spec.resolved)
+        self.assertTrue(child_spec.resolved)
+        self.assertTrue(child_spec.inc_spec_resolved)
+
+        # ChildType should have inherited parent_attr from ParentType
+        child_attr_names = [a.name for a in child_spec.attributes]
+        self.assertIn("parent_attr", child_attr_names)
+        self.assertIn("child_attr", child_attr_names)
+
+    def test_containment_cycle_with_grandchild_type(self):
+        """Test containment cycles with a third type extending the child type.
+
+        This tests a more complex pattern where:
+        - ParentType contains a subspec of ChildType
+        - ChildType extends ParentType
+        - GrandchildType extends ChildType
+
+        GrandchildType should get the full inheritance chain from both ChildType
+        and ParentType.
+        """
+        grandchild_type = GroupSpec(
+            data_type_def="GrandchildType",
+            data_type_inc="ChildType",
+            doc="Grandchild type extending ChildType",
+            attributes=[
+                AttributeSpec(name="grandchild_attr", dtype="text", doc="Grandchild attribute")
+            ],
+        )
+
+        child_type = GroupSpec(
+            data_type_def="ChildType",
+            data_type_inc="ParentType",
+            doc="Child type that extends ParentType",
+            attributes=[
+                AttributeSpec(name="child_attr", dtype="text", doc="Child-specific attribute")
+            ],
+        )
+
+        parent_type = GroupSpec(
+            data_type_def="ParentType",
+            doc="Parent type containing ChildType subspec",
+            groups=[
+                GroupSpec(
+                    data_type_inc="ChildType",
+                    doc="Slot for ChildType instances",
+                    quantity="*",
+                ),
+            ],
+            attributes=[
+                AttributeSpec(name="parent_attr", dtype="text", doc="Parent attribute")
+            ],
+        )
+
+        ns_path = self.create_test_namespace("test", [parent_type, child_type, grandchild_type])
+
+        # Load namespace with resolution
+        self.ns_catalog.load_namespaces(ns_path)
+
+        # Check all specs are resolved
+        parent_spec = self.ns_catalog.get_spec("test", "ParentType")
+        child_spec = self.ns_catalog.get_spec("test", "ChildType")
+        grandchild_spec = self.ns_catalog.get_spec("test", "GrandchildType")
+
+        self.assertTrue(parent_spec.resolved)
+        self.assertTrue(child_spec.resolved)
+        self.assertTrue(grandchild_spec.resolved)
+
+        # GrandchildType should have inherited from both ChildType and ParentType
+        grandchild_attr_names = [a.name for a in grandchild_spec.attributes]
+        self.assertIn("parent_attr", grandchild_attr_names)  # from ParentType
+        self.assertIn("child_attr", grandchild_attr_names)   # from ChildType
+        self.assertIn("grandchild_attr", grandchild_attr_names)  # defined in GrandchildType
