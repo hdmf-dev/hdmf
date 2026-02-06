@@ -407,7 +407,7 @@ class NamespaceCatalog:
         source = getargs('source', kwargs)
         return self.__unresolved_spec_dicts.get(source, None)
 
-    def __load_spec_file(self, reader, spec_source, catalog, types_to_load, resolve):
+    def __load_spec_file(self, reader, spec_source, catalog, types_to_load):
         ret = self.__loaded_specs.get(spec_source)
         if ret is not None:
             raise ValueError("spec source '%s' already loaded" % spec_source)
@@ -419,17 +419,9 @@ class NamespaceCatalog:
                 raise ValueError(msg)
             if types_to_load and dt_def not in types_to_load:
                 return
-            # Look up the parent spec if this type extends another
-            parent_spec = None
-            if resolve:
-                dt_inc = spec_dict.get(spec_cls.inc_key())
-                if dt_inc is not None:
-                    parent_spec = catalog.get_spec(dt_inc)
-                    if parent_spec is None:
-                        raise ValueError(f"Cannot resolve include spec '{dt_inc}' for type '{dt_def}'")
+            # Build and register the spec without resolving includes.
+            # Resolution is deferred to resolve_all_specs() which has access to the namespace.
             spec_obj = spec_cls.build_spec(spec_dict)
-            if parent_spec is not None:
-                spec_obj.resolve_inc_spec(parent_spec, None)
             return catalog.auto_register(spec_obj, spec_source)
 
         if ret is None:
@@ -569,7 +561,7 @@ class NamespaceCatalog:
             # each type. The included type is already fully resolved (including its subspecs)
             # before we merge it, so nested subspecs are already resolved.
 
-    def __load_namespace(self, namespace, reader, resolve=True):
+    def __load_namespace(self, namespace, reader):
         ns_name = namespace['name']
         if ns_name in self.__namespaces:  # pragma: no cover
             raise KeyError("namespace '%s' already exists" % ns_name)
@@ -583,7 +575,7 @@ class NamespaceCatalog:
                 types_to_load = set(types_to_load)
             if 'source' in s:
                 # read specs from file
-                self.__load_spec_file(reader, s['source'], catalog, types_to_load, resolve)
+                self.__load_spec_file(reader, s['source'], catalog, types_to_load)
                 self.__included_sources.setdefault(ns_name, list()).append(s['source'])
             elif 'namespace' in s:
                 # load specs from namespace
@@ -740,7 +732,7 @@ class NamespaceCatalog:
 
             # now load specs into namespace
             for ns in to_load:
-                ret[ns['name']] = self.__load_namespace(ns, r, resolve)
+                ret[ns['name']] = self.__load_namespace(ns, r)
             self.__included_specs[ns_path_key] = ret
 
         if resolve:

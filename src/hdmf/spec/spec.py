@@ -1078,7 +1078,6 @@ class GroupSpec(BaseStorageSpec):
             if dataset.name in self.__datasets:
                 # check compatibility between data_type_inc of the existing dataset spec and the included dataset spec
                 if (
-                    namespace is not None and
                     dataset.data_type_inc != self.__datasets[dataset.name].data_type_inc and
                     (dataset.data_type_inc is None or self.__datasets[dataset.name].data_type_inc is None or
                      dataset.data_type_inc not in namespace.get_hierarchy(self.__datasets[dataset.name].data_type_inc)
@@ -1107,7 +1106,6 @@ class GroupSpec(BaseStorageSpec):
             if group.name in self.__groups:
                 # check compatibility between data_type_inc of the existing group spec and the included group spec
                 if (
-                    namespace is not None and
                     group.data_type_inc != self.__groups[group.name].data_type_inc and
                     (group.data_type_inc is None or self.__groups[group.name].data_type_inc is None or
                      group.data_type_inc not in namespace.get_hierarchy(self.__groups[group.name].data_type_inc)
