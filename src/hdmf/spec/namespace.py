@@ -260,9 +260,7 @@ class NamespaceCatalog:
         ret.__loaded_specs = copy(self.__loaded_specs)
         ret.__included_specs = copy(self.__included_specs)
         ret.__included_sources = copy(self.__included_sources)
-        # Handle objects unpickled from cache that may not have this attribute
-        unresolved = getattr(self, '_NamespaceCatalog__unresolved_spec_dicts', dict())
-        ret.__unresolved_spec_dicts = copy(unresolved)
+        ret.__unresolved_spec_dicts = copy(self.__unresolved_spec_dicts)
         return ret
 
     def merge(self, ns_catalog):
