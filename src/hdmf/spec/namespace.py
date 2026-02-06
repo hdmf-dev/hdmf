@@ -3,7 +3,7 @@ import ruamel.yaml as yaml
 import string
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
-from copy import copy
+from copy import copy, deepcopy
 from datetime import datetime
 from warnings import warn
 
@@ -247,6 +247,9 @@ class NamespaceCatalog:
         self.__loaded_specs = dict()
         self.__included_specs = dict()
         self.__included_sources = dict()
+        # cache of raw spec file dicts (as loaded from YAML/HDF5, before resolution)
+        # keyed by source file path
+        self.__unresolved_spec_dicts = dict()
 
     def __copy__(self):
         ret = NamespaceCatalog(self.__group_spec_cls,
@@ -257,6 +260,9 @@ class NamespaceCatalog:
         ret.__loaded_specs = copy(self.__loaded_specs)
         ret.__included_specs = copy(self.__included_specs)
         ret.__included_sources = copy(self.__included_sources)
+        # Handle objects unpickled from cache that may not have this attribute
+        unresolved = getattr(self, '_NamespaceCatalog__unresolved_spec_dicts', dict())
+        ret.__unresolved_spec_dicts = copy(unresolved)
         return ret
 
     def merge(self, ns_catalog):
@@ -304,6 +310,15 @@ class NamespaceCatalog:
             # do not add types that have already been loaded
             # use dict with None values as ordered set because order of specs does matter
             self.__loaded_specs.setdefault(source, dict()).update({dt: None})
+            # Build the unresolved spec dict for caching (if not already present from file loading)
+            if source not in self.__unresolved_spec_dicts:
+                self.__unresolved_spec_dicts[source] = {'groups': [], 'datasets': []}
+            spec = namespace.catalog.get_spec(dt)
+            if spec.parent is None:  # only top-level specs
+                if isinstance(spec, GroupSpec):
+                    self.__unresolved_spec_dicts[source]['groups'].append(spec)
+                elif isinstance(spec, DatasetSpec):
+                    self.__unresolved_spec_dicts[source]['datasets'].append(spec)
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this namespace'},
             returns="the SpecNamespace with the given name", rtype=SpecNamespace)
@@ -382,6 +397,17 @@ class NamespaceCatalog:
             ret = tuple()
         return ret
 
+    @docval({'name': 'source', 'type': str, 'doc': 'the name of the source file'},
+            rtype=dict)
+    def get_spec_source_dict(self, **kwargs):
+        '''
+        Get the unresolved spec file dict for a given source file.
+        This returns the raw spec dict as loaded from YAML/HDF5, before resolution.
+        Returns None if the source is not found.
+        '''
+        source = getargs('source', kwargs)
+        return self.__unresolved_spec_dicts.get(source, None)
+
     def __load_spec_file(self, reader, spec_source, catalog, types_to_load, resolve):
         ret = self.__loaded_specs.get(spec_source)
         if ret is not None:
@@ -402,6 +428,9 @@ class NamespaceCatalog:
         if ret is None:
             ret = dict()  # this is used as an ordered set -- values are all none
             d = reader.read_spec(spec_source)
+            # Cache the raw spec dict before any processing/resolution.
+            # This preserves the original structure for writing/caching.
+            self.__unresolved_spec_dicts[spec_source] = deepcopy(d)
             specs = d.get('datasets', list())
             for spec_dict in specs:
                 self.__convert_spec_cls_keys(GroupSpec, self.__group_spec_cls, spec_dict)
