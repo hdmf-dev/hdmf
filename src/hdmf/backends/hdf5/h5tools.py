@@ -789,10 +789,6 @@ class HDF5IO(HDMFIO):
              'doc': ('Bool to set whether datasets are expandable by setting the maxshape.')})
     def write_builder(self, **kwargs):
         f_builder = popargs('builder', kwargs)
-        link_data, exhaust_dci, export_source = getargs('link_data',
-                                                        'exhaust_dci',
-                                                        'export_source',
-                                                        kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to path '%s' with kwargs=%s"
                           % (f_builder.name, self.source, kwargs))
         for name, gbldr in f_builder.groups.items():
