@@ -159,25 +159,34 @@ class HDF5IO(HDMFIO):
         return file_obj
 
     @classmethod
-    @docval({'name': 'namespace_catalog', 'type': (NamespaceCatalog, TypeMap),
-             'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'},
-            {'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
-            {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
-            {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
-            {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
-            {'name': 'aws_region', 'type': str, 'doc': 'If driver is ros3, then specify the aws region of the url.',
-             'default': None},
-            returns=("dict mapping the names of the loaded namespaces to a dict mapping included namespace names and "
-                     "the included data types"),
-            rtype=dict)
+    @docval(
+        {
+            'name': 'namespace_catalog',
+            'type': (NamespaceCatalog, TypeMap),
+            'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'
+        },
+        {'name': 'path', 'type': (str, Path), 'doc': 'the path to the HDF5 file', 'default': None},
+        {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None},
+        {'name': 'file', 'type': File, 'doc': 'a pre-existing h5py.File object', 'default': None},
+        {'name': 'driver', 'type': str, 'doc': 'driver for h5py to use when opening HDF5 file', 'default': None},
+        {
+            'name': 'aws_region',
+            'type': str,
+            'doc': 'If driver is ros3, then specify the aws region of the url.',
+            'default': None
+        },
+        returns=("dict mapping the names of the loaded namespaces to a dict mapping included namespace names and "
+                    "the included data types"),
+        rtype=dict
+    )
     def load_namespaces(cls, **kwargs):
-        """Load cached namespaces from a file.
+        """Load cached namespaces from a file into the provided NamespaceCatalog or TypeMap.
 
         If `file` is not supplied, then an :py:class:`h5py.File` object will be opened for the given `path`, the
         namespaces will be read, and the File object will be closed. If `file` is supplied, then
         the given File object will be read from and not closed.
 
-        :raises ValueError: if both `path` and `file` are supplied but `path` is not the same as the path of `file`.
+        :raises ValueError: if both `path` and `file` are supplied but `path` is not the same as the path of `file`
         """
         namespace_catalog, path, namespaces, file_obj, driver, aws_region = popargs(
             'namespace_catalog', 'path', 'namespaces', 'file', 'driver', 'aws_region', kwargs)
@@ -188,12 +197,25 @@ class HDF5IO(HDMFIO):
                 return cls.__load_namespaces(namespace_catalog, namespaces, open_file_obj)
         return cls.__load_namespaces(namespace_catalog, namespaces, open_file_obj)
 
+    @docval(
+        {
+            'name': 'namespace_catalog',
+            'type': (NamespaceCatalog, TypeMap),
+            'doc': 'the NamespaceCatalog or TypeMap to load namespaces into'
+        },
+        {'name': 'namespaces', 'type': list, 'doc': 'the namespaces to load', 'default': None}
+    )
+    def load_namespaces_io(self, **kwargs):
+        """Load cached namespaces from this HDF5IO object into the provided NamespaceCatalog or TypeMap."""
+        namespace_catalog, namespaces = getargs('namespace_catalog', 'namespaces', kwargs)
+        if not self.__file:
+            raise UnsupportedOperation("Cannot load namespaces from closed HDF5 file '%s'" % self.source)
+        return self.__load_namespaces(namespace_catalog, namespaces, self.__file)
+
     @classmethod
     def __load_namespaces(cls, namespace_catalog, namespaces, file_obj):
-        d = {}
-
         if not cls.__check_specloc(file_obj):
-            return d
+            return {}
 
         namespace_versions = cls.__get_namespaces(file_obj)
 
@@ -205,11 +227,9 @@ class HDF5IO(HDMFIO):
         for ns in namespaces:
             latest_version = namespace_versions[ns]
             ns_group = spec_group[ns][latest_version]
-            reader = H5SpecReader(ns_group)
-            readers[ns] = reader
+            readers[ns] = H5SpecReader(ns_group)
 
-        d.update(namespace_catalog.load_namespaces(cls.__ns_spec_path, reader=readers))
-
+        d = namespace_catalog.load_namespaces(cls.__ns_spec_path, reader=readers)
         return d
 
     @classmethod
@@ -274,58 +294,6 @@ class HDF5IO(HDMFIO):
 
         return used_version_names
 
-    @classmethod
-    @docval({'name': 'source_filename', 'type': str, 'doc': 'the path to the HDF5 file to copy'},
-            {'name': 'dest_filename', 'type': str, 'doc': 'the name of the destination file'},
-            {'name': 'expand_external', 'type': bool, 'doc': 'expand external links into new objects', 'default': True},
-            {'name': 'expand_refs', 'type': bool, 'doc': 'copy objects which are pointed to by reference',
-             'default': False},
-            {'name': 'expand_soft', 'type': bool, 'doc': 'expand soft links into new objects', 'default': False}
-            )
-    def copy_file(self, **kwargs):
-        """
-        Convenience function to copy an HDF5 file while allowing external links to be resolved.
-
-        .. warning::
-
-            As of HDMF 2.0, this method is no longer supported and may be removed in a future version.
-            Please use the export method or h5py.File.copy method instead.
-
-        .. note::
-
-            The source file will be opened in 'r' mode and the destination file will be opened in 'w' mode
-            using h5py. To avoid possible collisions, care should be taken that, e.g., the source file is
-            not opened already when calling this function.
-
-        """
-
-        warnings.warn("The copy_file class method is no longer supported and may be removed in a future version of "
-                      "HDMF. Please use the export method or h5py.File.copy method instead.",
-                      category=DeprecationWarning,
-                      stacklevel=3)
-
-        source_filename, dest_filename, expand_external, expand_refs, expand_soft = getargs('source_filename',
-                                                                                            'dest_filename',
-                                                                                            'expand_external',
-                                                                                            'expand_refs',
-                                                                                            'expand_soft',
-                                                                                            kwargs)
-        source_file = File(source_filename, 'r')
-        dest_file = File(dest_filename, 'w')
-        for objname in source_file["/"].keys():
-            source_file.copy(source=objname,
-                             dest=dest_file,
-                             name=objname,
-                             expand_external=expand_external,
-                             expand_refs=expand_refs,
-                             expand_soft=expand_soft,
-                             shallow=False,
-                             without_attrs=False,
-                             )
-        for objname in source_file['/'].attrs:
-            dest_file['/'].attrs[objname] = source_file['/'].attrs[objname]
-        source_file.close()
-        dest_file.close()
 
     @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
             {'name': 'cache_spec', 'type': bool,

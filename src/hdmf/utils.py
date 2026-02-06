@@ -630,7 +630,7 @@ def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=No
 
             if module.startswith("builtins"):
                 return ":py:class:`~{name}`".format(name=name)
-            elif module.startswith("h5py") or module.startswith('pandas'):
+            elif module.startswith("h5py") or module.startswith('pandas') or module.startswith('pathlib'):
                 return ":py:class:`~{module}.{name}`".format(name=name, module=module.split('.')[0])
             else:
                 return ":py:class:`~{module}.{name}`".format(name=name, module=module)
@@ -1139,6 +1139,63 @@ class LabelledDict(dict):
     def update(self, other):
         """update is not supported. A TypeError will be raised."""
         raise TypeError('update is not supported for %s' % self.__class__.__name__)
+
+    def _repr_html_(self):
+        """Generate an HTML representation of the LabelledDict.
+
+        This method produces an interactive HTML view similar to what is shown
+        when expanding a field in a Container's HTML representation. Each item
+        in the dict is displayed as an expandable section showing its own
+        HTML representation if available.
+        """
+        # CSS styles matching Container.css_style
+        css_style = """
+        <style>
+            .container-fields {
+                font-family: "Open Sans", Arial, sans-serif;
+            }
+            .container-fields .field-value {
+                color: #00788E;
+            }
+            .container-fields details > summary {
+                cursor: pointer;
+                display: list-item;
+            }
+            .container-fields details > summary:hover {
+                color: #0A6EAA;
+            }
+        </style>
+        """
+
+        html_repr = css_style
+        html_repr += "<div class='container-wrap'>"
+        html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{self.label}</h3></div></div>"
+
+        if len(self) == 0:
+            html_repr += "<div class='container-fields'><i>Empty</i></div>"
+            html_repr += "</div>"
+            return html_repr
+
+        for key, value in self.items():
+            # Get the class name for display
+            class_name = type(value).__name__
+            display_name = f"{key} <span style='font-weight: normal; color: #888;'>({class_name})</span>"
+
+            # Delegate to the item's _repr_html_ if available
+            if hasattr(value, '_repr_html_'):
+                inner_html = value._repr_html_()
+            else: # Edge case, I am not sure when if this can happen
+                inner_html = f"<span class='field-value'>{value}</span>"
+
+            html_repr += (
+                f"<details><summary style='display: list-item; margin-left: 0px;' "
+                f"class='container-fields field-key' title=\"['{key}']\"><b>{display_name}</b></summary>"
+            )
+            html_repr += f"<div style='margin-left: 20px;'>{inner_html}</div>"
+            html_repr += "</details>"
+
+        html_repr += "</div>"
+        return html_repr
 
 
 @docval_macro('array_data')
