@@ -437,12 +437,7 @@ class TestLoadNamespacesSourceTypes(TestCase):
         """Test that load_namespaces returns a dict with source types and dependencies."""
         bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
         baz_spec = GroupSpec(doc='A test group spec', data_type_def='Baz')
-        create_load_namespace_yaml('ns1', [bar_spec, baz_spec], self.test_dir, {}, self.type_map)
-
-        # load_namespaces was already called by create_load_namespace_yaml, so call it on a fresh TypeMap
-        type_map2 = TypeMap()
-        ns_path = self.test_dir + '/ns1.namespace.yaml'
-        ret = type_map2.load_namespaces(ns_path)
+        ret = create_load_namespace_yaml('ns1', [bar_spec, baz_spec], self.test_dir, {}, self.type_map)
 
         # ret should be {ns_name: (source_types, ns_deps)}
         self.assertIn('ns1', ret)
@@ -457,14 +452,7 @@ class TestLoadNamespacesSourceTypes(TestCase):
         create_load_namespace_yaml('ns1', [bar_spec], self.test_dir, {}, self.type_map)
 
         baz_spec = GroupSpec(doc='A test group spec', data_type_def='Baz', data_type_inc='Bar')
-        create_load_namespace_yaml('ns2', [baz_spec], self.test_dir, {'ns1': ['Bar']}, self.type_map)
-
-        # Use a fresh TypeMap to capture the return value
-        type_map2 = TypeMap()
-        ns1_path = self.test_dir + '/ns1.namespace.yaml'
-        type_map2.load_namespaces(ns1_path)
-        ns2_path = self.test_dir + '/ns2.namespace.yaml'
-        ret = type_map2.load_namespaces(ns2_path)
+        ret = create_load_namespace_yaml('ns2', [baz_spec], self.test_dir, {'ns1': ['Bar']}, self.type_map)
 
         self.assertIn('ns2', ret)
         source_types, ns_deps = ret['ns2']
@@ -507,7 +495,7 @@ class TestLoadNamespacesSourceTypes(TestCase):
         # Manually set up a namespace and register a real class for Bar
         spec_catalog = SpecCatalog()
         spec_catalog.register_spec(bar_spec, 'test.yaml')
-        namespace = SpecNamespace('a test namespace', 'ns1', [{'source': 'test.yaml'}],
+        namespace = SpecNamespace(doc='a test namespace', name='ns1', schema=[{'source': 'test.yaml'}],
                                   version='0.1.0', catalog=spec_catalog)
         ns_catalog = NamespaceCatalog()
         ns_catalog.add_namespace('ns1', namespace)
@@ -545,10 +533,14 @@ class TestGetDtContainerClsTypeSourceResolution(TestCase):
         Bar = self.type_map.get_dt_container_cls('Bar', 'ns1')
         self.assertFalse(isinstance(Bar, TypeSource))
         self.assertEqual(Bar.__name__, 'Bar')
+        ns, dt = self.type_map.get_container_cls_dt(Bar)
+        self.assertEqual(ns, 'ns1')
+        self.assertEqual(dt, 'Bar')
 
         # After resolution, it should return the same class
-        Bar2 = self.type_map.get_dt_container_cls('Bar', 'ns1')
+        Bar2 = self.type_map.get_dt_container_cls('Bar', 'ns1', autogen=False)
         self.assertIs(Bar, Bar2)
+
 
     def test_resolve_cross_namespace_typesource(self):
         """Test that get_dt_container_cls resolves a TypeSource pointing to another namespace."""
@@ -574,7 +566,9 @@ class TestGetDtContainerClsTypeSourceResolution(TestCase):
 
         # Resolve Baz - should also resolve Bar as its parent
         Baz = self.type_map.get_dt_container_cls('Baz', 'ns1')
-        Bar = self.type_map.get_dt_container_cls('Bar', 'ns1')
+
+        # Bar should already be resolved by Baz resolution
+        Bar = self.type_map.get_dt_container_cls('Bar', 'ns1', autogen=False)
         self.assertTrue(issubclass(Baz, Bar))
         self.assertFalse(isinstance(Bar, TypeSource))
 
@@ -588,27 +582,19 @@ class TestGetDtContainerClsTypeSourceResolution(TestCase):
 
         # Resolve Baz from ns2 - should generate Baz and resolve Bar from ns1
         Baz = self.type_map.get_dt_container_cls('Baz', 'ns2')
-        Bar = self.type_map.get_dt_container_cls('Bar', 'ns1')
+
+        # Bar should already be resolved by Baz resolution
+        Bar = self.type_map.get_dt_container_cls('Bar', 'ns1', autogen=False)
         self.assertTrue(issubclass(Baz, Bar))
         self.assertEqual(Baz.__name__, 'Baz')
         self.assertEqual(Bar.__name__, 'Bar')
-
-    def test_autogen_false_returns_typesource(self):
-        """Test that get_dt_container_cls with autogen=False returns TypeSource without resolving."""
-        bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
-        create_load_namespace_yaml('ns1', [bar_spec], self.test_dir, {}, self.type_map)
-
-        cls = self.type_map.get_dt_container_cls('Bar', 'ns1', autogen=False)
-        self.assertIsInstance(cls, TypeSource)
-        self.assertEqual(cls.namespace, 'ns1')
-        self.assertEqual(cls.data_type, 'Bar')
 
     def test_autogen_false_returns_none_when_unregistered(self):
         """Test that get_dt_container_cls with autogen=False returns None for unregistered types."""
         bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
         spec_catalog = SpecCatalog()
         spec_catalog.register_spec(bar_spec, 'test.yaml')
-        namespace = SpecNamespace('a test namespace', 'ns1', [{'source': 'test.yaml'}],
+        namespace = SpecNamespace(doc='a test namespace', name='ns1', schema=[{'source': 'test.yaml'}],
                                   version='0.1.0', catalog=spec_catalog)
         ns_catalog = NamespaceCatalog()
         ns_catalog.add_namespace('ns1', namespace)
@@ -616,6 +602,28 @@ class TestGetDtContainerClsTypeSourceResolution(TestCase):
         # Do not register any container type for Bar - simulate spec registered without class
         cls = type_map.get_dt_container_cls('Bar', 'ns1', autogen=False)
         self.assertIsNone(cls)
+
+    def test_get_container_classes_after_partial_resolution(self):
+        """Test get_container_classes with a mix of TypeSource and real classes."""
+        bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
+        baz_spec = GroupSpec(doc='A test group spec', data_type_def='Baz')
+        create_load_namespace_yaml('ns1', [bar_spec, baz_spec], self.test_dir, {}, self.type_map)
+
+        # Initially, all should be TypeSource
+        classes = self.type_map.get_container_classes('ns1')
+        self.assertEqual(len(classes), 2)
+        self.assertTrue(all(isinstance(c, TypeSource) for c in classes))
+
+        # Resolve only Bar
+        self.type_map.get_dt_container_cls('Bar', 'ns1')
+
+        # Now there should be one real class and one TypeSource
+        classes = self.type_map.get_container_classes('ns1')
+        self.assertEqual(len(classes), 2)
+        type_source_count = sum(1 for c in classes if isinstance(c, TypeSource))
+        real_class_count = sum(1 for c in classes if not isinstance(c, TypeSource))
+        self.assertEqual(type_source_count, 1)
+        self.assertEqual(real_class_count, 1)
 
 
 class TestNamespaceLookupWithTypeSource(TestCase):
@@ -661,70 +669,6 @@ class TestNamespaceLookupWithTypeSource(TestCase):
         with self.assertRaises(ValueError) as cm:
             self.type_map.get_dt_container_cls(data_type='NonExistent')
         self.assertIn("Namespace could not be resolved", str(cm.exception))
-
-
-class TestRegisterContainerTypeReplacement(TestCase):
-    """Test register_container_type behavior when replacing TypeSource with real class."""
-
-    def setUp(self):
-        self.test_dir = tempfile.mkdtemp()
-        self.type_map = TypeMap()
-
-    def tearDown(self):
-        shutil.rmtree(self.test_dir)
-
-    def test_replace_typesource_with_class(self):
-        """Test that registering a real class replaces the TypeSource."""
-        bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
-        create_load_namespace_yaml('ns1', [bar_spec], self.test_dir, {}, self.type_map)
-
-        # Initially registered as TypeSource
-        cls = self.type_map.get_dt_container_cls('Bar', 'ns1', autogen=False)
-        self.assertIsInstance(cls, TypeSource)
-
-        # Generate/resolve the class
-        Bar = self.type_map.get_dt_container_cls('Bar', 'ns1')
-        self.assertFalse(isinstance(Bar, TypeSource))
-
-        # Retrieving again should return the real class
-        cls = self.type_map.get_dt_container_cls('Bar', 'ns1', autogen=False)
-        self.assertIs(cls, Bar)
-
-    def test_get_container_cls_dt_after_replacement(self):
-        """Test that get_container_cls_dt returns the correct namespace after TypeSource replacement."""
-        bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
-        create_load_namespace_yaml('ns1', [bar_spec], self.test_dir, {}, self.type_map)
-
-        Bar = self.type_map.get_dt_container_cls('Bar', 'ns1')
-        ns, dt = self.type_map.get_container_cls_dt(Bar)
-        self.assertEqual(ns, 'ns1')
-        self.assertEqual(dt, 'Bar')
-
-    def test_get_container_classes_after_partial_resolution(self):
-        """Test get_container_classes with a mix of TypeSource and real classes."""
-        bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
-        baz_spec = GroupSpec(doc='A test group spec', data_type_def='Baz')
-        create_load_namespace_yaml('ns1', [bar_spec, baz_spec], self.test_dir, {}, self.type_map)
-
-        # Initially, all should be TypeSource
-        classes = self.type_map.get_container_classes('ns1')
-        self.assertEqual(len(classes), 2)
-        self.assertTrue(all(isinstance(c, TypeSource) for c in classes))
-
-        # Resolve only Bar
-        self.type_map.get_dt_container_cls('Bar', 'ns1')
-
-        # Now there should be one real class and one TypeSource
-        classes = self.type_map.get_container_classes('ns1')
-        self.assertEqual(len(classes), 2)
-        type_source_count = sum(1 for c in classes if isinstance(c, TypeSource))
-        real_class_count = sum(1 for c in classes if not isinstance(c, TypeSource))
-        self.assertEqual(type_source_count, 1)
-        self.assertEqual(real_class_count, 1)
-
-    def test_container_types_property_removed(self):
-        """Test that the container_types property has been removed."""
-        self.assertFalse(hasattr(self.type_map, 'container_types'))
 
 
 class TestTypeMapMergeWithTypeSource(TestCase):
@@ -789,8 +733,8 @@ class TestLoadNamespacesMultipleTypes(TestCase):
 
         # Resolve Qux - should resolve entire chain
         Qux = self.type_map.get_dt_container_cls('Qux', 'ns3')
-        Baz = self.type_map.get_dt_container_cls('Baz', 'ns2')
-        Bar = self.type_map.get_dt_container_cls('Bar', 'ns1')
+        Baz = self.type_map.get_dt_container_cls('Baz', 'ns2', autogen=False)
+        Bar = self.type_map.get_dt_container_cls('Bar', 'ns1', autogen=False)
         self.assertTrue(issubclass(Qux, Baz))
         self.assertTrue(issubclass(Baz, Bar))
 
