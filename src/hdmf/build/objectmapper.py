@@ -938,7 +938,48 @@ class ObjectMapper(metaclass=ExtenderMeta):
             return match_shape_inds
 
     def __get_spec_info(self, data, spec_shape, spec_dims, spec_dtype=None):
-        """This will return the dimension labels and shape by matching the data shape to a permissible spec shape."""
+        """
+        Determine the dimension labels and shape for data based on the allowed shapes in the spec.
+
+        This method compares the shape of ``data`` against the allowed shapes defined in
+        ``spec_shape`` and, if possible, selects the best-matching shape and corresponding
+        dimension labels from ``spec_dims``.
+
+        Parameters
+        ----------
+        data
+            The data object whose shape is to be matched against the specification. This may be
+            any array-like object supported by :func:`get_data_shape`.
+        spec_shape
+            The allowed shape definition(s) from the spec. This may be:
+
+            * ``None`` – no shape is defined.
+            * A list/tuple of dimension lengths, where each element is an int or ``None``.
+            * A list of such lists/tuples, representing multiple allowed shapes.
+        spec_dims
+            The dimension labels defined in the spec. This may be:
+
+            * ``None`` – no dimension labels are defined.
+            * A list/tuple of labels corresponding to a single shape in ``spec_shape``.
+            * A list of lists/tuples of labels, each corresponding to an entry in
+              ``spec_shape`` when multiple shapes are allowed.
+        spec_dtype
+            The dtype or list of dtypes defined in the spec. When ``spec_dtype`` is a list,
+            the data is treated as 1D with length equal to ``len(data)`` for the purpose of
+            shape matching. May be ``None`` if no dtype constraint is specified.
+
+        Returns
+        -------
+        tuple
+            A 2-tuple ``(dims, shape)`` where:
+
+            * ``dims`` is either ``None`` or a tuple of selected dimension labels.
+            * ``shape`` is either ``None`` or a tuple of dimension lengths corresponding to
+              the best-matching allowed shape.
+
+            If no matching shape is found, or if both ``spec_shape`` and ``spec_dims`` are
+            ``None``, the method returns ``(None, None)``.
+        """
         if spec_shape is None and spec_dims is None:
             return None, None
         else:
