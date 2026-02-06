@@ -4140,7 +4140,7 @@ class TestExpand(TestCase):
         qux = QuxData(name='my_qux', data=[[1, 2, 3], [4, 5, 6]])
         quxbucket = QuxBucket('bucket1', qux)
 
-        manager = get_qux_buildmanager([[None, None],[None, 3]])
+        manager = get_qux_buildmanager([[None, None], [None, 3]])
 
         with HDF5IO(self.path, manager=manager, mode='w') as io:
             io.write(quxbucket, expandable=True)
