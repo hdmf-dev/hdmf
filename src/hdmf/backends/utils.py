@@ -44,7 +44,7 @@ class WriteStatusTracker(dict):
 
 
 class NamespaceToBuilderHelper(object):
-    """Helper class used in HDF5IO (and possibly elsewhere) to convert a namespace to a builder for I/O"""
+    """Helper class used to convert a namespace to a builder for I/O"""
 
     @classmethod
     @docval({'name': 'ns_catalog', 'type': NamespaceCatalog, 'doc': 'the namespace catalog with the specs'},
@@ -65,16 +65,11 @@ class NamespaceToBuilderHelper(object):
                 builder.include_namespace(inc_ns)
             else:
                 source = elem['source']
-                h5_source = cls.get_source_name(source)
+                # Remove extension from source to create path for writing
+                file_source = os.path.splitext(source)[0]
                 # Use the cached unresolved specs to preserve original structure
                 spec_dict = ns_catalog.get_spec_source_dict(source)
-                for spec in spec_dict.get('datasets', []):
-                    builder.add_spec(h5_source, spec)
-                for spec in spec_dict.get('groups', []):
-                    builder.add_spec(h5_source, spec)
+                specs = spec_dict.get('datasets', []) + spec_dict.get('groups', [])
+                for spec in specs:
+                    builder.add_spec(file_source, spec)
         return builder
-
-    @classmethod
-    @docval({'name': 'source', 'type': str, 'doc': "source path"})
-    def get_source_name(self, source):
-        return os.path.splitext(source)[0]
