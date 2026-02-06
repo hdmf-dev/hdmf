@@ -1,6 +1,5 @@
 import re
 from abc import ABCMeta, abstractmethod
-from copy import copy
 from itertools import chain
 from collections import defaultdict, OrderedDict
 from typing import Any, Optional, Union
@@ -18,29 +17,7 @@ from ..utils import docval, getargs, pystr, get_data_shape
 from ..query import ReferenceResolver
 
 
-__synonyms = DtypeHelper.primary_dtype_synonyms
-
-__additional = {
-    'float': ['double'],
-    'int8': ['short', 'int', 'long'],
-    'short': ['int', 'long'],
-    'int': ['long'],
-    'uint8': ['uint16', 'uint32', 'uint64'],
-    'uint16': ['uint32', 'uint64'],
-    'uint32': ['uint64'],
-    'utf': ['ascii']
-}
-
-# if the spec dtype is a key in __allowable, then all types in __allowable[key] are valid
-__allowable = dict()
-for dt, dt_syn in __synonyms.items():
-    allow = copy(dt_syn)
-    if dt in __additional:
-        for addl in __additional[dt]:
-            allow.extend(__synonyms[addl])
-    for syn in dt_syn:
-        __allowable[syn] = allow
-__allowable['numeric'] = set(chain.from_iterable(__allowable[k] for k in __allowable if 'int' in k or 'float' in k))
+__allowable = DtypeHelper.allowable
 
 
 def check_type(expected, received, string_format=None):

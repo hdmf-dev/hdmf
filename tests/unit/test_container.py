@@ -8,8 +8,8 @@ from hdmf.testing import TestCase
 from hdmf.utils import docval
 from hdmf.common import DynamicTable, VectorData, DynamicTableRegion
 from hdmf.backends.hdf5.h5tools import HDF5IO
-from hdmf.backends.io import HDMFIO
 
+from tests.unit.helpers.io import DoNothingIO
 
 class Subcontainer(Container):
     pass
@@ -25,6 +25,7 @@ class ContainerWithChild(Container):
 
 
 class TestHERDManager(TestCase):
+
     def test_get_and_set_resources(self):
         em = HERDManager()
         er = HERD()
@@ -34,21 +35,6 @@ class TestHERDManager(TestCase):
 
         er_get = em.external_resources
         self.assertEqual(er, er_get)
-
-    def test_link_resources_deprecated(self):
-        em = HERDManager()
-        er = HERD()
-        with self.assertWarns(DeprecationWarning):
-            em.link_resources(herd=er)
-        self.assertEqual(em.external_resources, er)
-
-    def test_get_linked_resources_deprecated(self):
-        em = HERDManager()
-        er = HERD()
-        em.external_resources = er
-        with self.assertWarns(DeprecationWarning):
-            herd = em.get_linked_resources()
-        self.assertEqual(herd, er)
 
 
 class TestContainer(TestCase):
@@ -538,25 +524,7 @@ class TestHTMLRepr(TestCase):
             dataset = io._file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
             obj = self.ContainerWithData(data=dataset, str="hello")
 
-            class OtherIO(HDMFIO):
-
-                @staticmethod
-                def can_read(path):
-                    pass
-
-                def read_builder(self):
-                    pass
-
-                def write_builder(self, **kwargs):
-                    pass
-
-                def open(self):
-                    pass
-
-                def close(self):
-                    pass
-
-            obj.read_io = OtherIO()
+            obj.read_io = DoNothingIO()
 
             expected_html_table = (
                 'class="container-fields"><table class="data-info"><tbody><tr><th style="text-align: '

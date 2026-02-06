@@ -500,6 +500,7 @@ def create_test_type_map(specs, container_classes, mappers=None):
     )
     namespace_catalog = NamespaceCatalog()
     namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+    namespace_catalog.resolve_all_specs()
     type_map = TypeMap(namespace_catalog)
     for type_name, container_cls in container_classes.items():
         type_map.register_container_type(CORE_NAMESPACE, type_name, container_cls)
@@ -626,19 +627,6 @@ class CustomGroupSpec(BaseStorageOverride, GroupSpec):
     @classmethod
     def dataset_spec_cls(cls):
         return CustomDatasetSpec
-
-    @docval(*deepcopy(swap_inc_def(GroupSpec, "CustomGroupSpec")))
-    def add_group(self, **kwargs):
-        spec = CustomGroupSpec(**kwargs)
-        self.set_group(spec)
-        return spec
-
-    @docval(*deepcopy(swap_inc_def(DatasetSpec, "CustomDatasetSpec")))
-    def add_dataset(self, **kwargs):
-        """Add a new specification for a subgroup to this group specification"""
-        spec = CustomDatasetSpec(**kwargs)
-        self.set_dataset(spec)
-        return spec
 
 
 class CustomDatasetSpec(BaseStorageOverride, DatasetSpec):

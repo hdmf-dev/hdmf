@@ -11,7 +11,7 @@ EXP_NAMESPACE = 'hdmf-experimental'
 
 
 from ..spec import NamespaceCatalog  # noqa: E402
-from ..utils import docval, getargs, get_docval  # noqa: E402
+from ..utils import docval, getargs, get_docval, AllowPositional  # noqa: E402
 from ..backends.io import HDMFIO  # noqa: E402
 from ..backends.hdf5 import HDF5IO  # noqa: E402
 from ..validate import ValidatorMap  # noqa: E402
@@ -168,48 +168,24 @@ def get_class(**kwargs):
     return __TYPE_MAP.get_dt_container_cls(data_type, namespace, post_init_method)
 
 
-@docval({'name': 'extensions', 'type': (str, TypeMap, list),
-         'doc': 'a path to a namespace, a TypeMap, or a list consisting paths to namespaces and TypeMaps',
-         'default': None},
-        {
+@docval({
             'name': 'copy', 'type': bool,
             'doc': 'Whether to return a deepcopy of the TypeMap. '
             'If False, a direct reference may be returned (use with caution).',
             'default': True
         },
+        allow_positional=AllowPositional.ERROR,
         returns="the namespaces loaded from the given file", rtype=tuple,
         is_method=False)
 def get_type_map(**kwargs):
     '''
-    Get a BuildManager to use for I/O using the given extensions. If no extensions are provided,
-    return a BuildManager that uses the core namespace
+    Get a BuildManager to use for I/O using the core namespace.
     '''
-    extensions, copy_map = getargs('extensions', 'copy', kwargs)
-    type_map = None
-    if extensions is None:
-        if copy_map:
-            type_map = deepcopy(__TYPE_MAP)
-        else:
-            type_map = __TYPE_MAP
+    copy_map = getargs('copy', kwargs)
+    if copy_map:
+        type_map = deepcopy(__TYPE_MAP)
     else:
-        warnings.warn("The 'extensions' argument is deprecated and will be removed in HDMF 5.0", DeprecationWarning)
-        if isinstance(extensions, TypeMap):
-            type_map = extensions
-        else:
-            type_map = deepcopy(__TYPE_MAP)
-        if isinstance(extensions, list):
-            for ext in extensions:
-                if isinstance(ext, str):
-                    type_map.load_namespaces(ext)
-                elif isinstance(ext, TypeMap):
-                    type_map.merge(ext)
-                else:
-                    msg = 'extensions must be a list of paths to namespace specs or a TypeMaps'
-                    raise ValueError(msg)
-        elif isinstance(extensions, str):
-            type_map.load_namespaces(extensions)
-        elif isinstance(extensions, TypeMap):
-            type_map.merge(extensions)
+        type_map = __TYPE_MAP
     return type_map
 
 

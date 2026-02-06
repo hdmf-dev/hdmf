@@ -207,7 +207,7 @@ The following code demonstrates how to load custom namespaces.
 
 .. code-block:: python
 
-    from hdmf import load_namespaces
+    from hdmf.common import load_namespaces
     namespace_path = 'my_namespace.yaml'
     load_namespaces(namespace_path)
 
