@@ -421,9 +421,17 @@ class NamespaceCatalog:
                 raise ValueError(msg)
             if types_to_load and dt_def not in types_to_load:
                 return
+            # Look up the parent spec if this type extends another
+            parent_spec = None
             if resolve:
-                self.__resolve_includes(spec_cls, spec_dict, catalog)
+                dt_inc = spec_dict.get(spec_cls.inc_key())
+                if dt_inc is not None:
+                    parent_spec = catalog.get_spec(dt_inc)
+                    if parent_spec is None:
+                        raise ValueError(f"Cannot resolve include spec '{dt_inc}' for type '{dt_def}'")
             spec_obj = spec_cls.build_spec(spec_dict)
+            if parent_spec is not None:
+                spec_obj.resolve_inc_spec(parent_spec, None)
             return catalog.auto_register(spec_obj, spec_source)
 
         if ret is None:
@@ -460,24 +468,6 @@ class NamespaceCatalog:
             spec_dict[spec_cls.def_key()] = spec_dict.pop(parent_cls.def_key())
         if parent_cls.inc_key() in spec_dict:
             spec_dict[spec_cls.inc_key()] = spec_dict.pop(parent_cls.inc_key())
-
-    def __resolve_includes(self, spec_cls, spec_dict, catalog):
-        """Replace data type inc strings with the spec definition so the new spec is built with included fields.
-        """
-        dt_def = spec_dict.get(spec_cls.def_key())
-        dt_inc = spec_dict.get(spec_cls.inc_key())
-        if dt_inc is not None and dt_def is not None:
-            parent_spec = catalog.get_spec(dt_inc)
-            if parent_spec is None:
-                msg = "Cannot resolve include spec '%s' for type '%s'" % (dt_inc, dt_def)
-                raise ValueError(msg)
-            # replace the inc key value from string to the inc spec so that the spec can be updated with all of the
-            # attributes, datasets, groups, and links of the inc spec when spec_cls.build_spec(spec_dict) is called
-            spec_dict[spec_cls.inc_key()] = parent_spec
-        for subspec_dict in spec_dict.get('groups', list()):
-            self.__resolve_includes(self.__group_spec_cls, subspec_dict, catalog)
-        for subspec_dict in spec_dict.get('datasets', list()):
-            self.__resolve_includes(self.__dataset_spec_cls, subspec_dict, catalog)
 
     def resolve_all_specs(self) -> None:
         """Resolve all specs in all namespaces in the catalog.

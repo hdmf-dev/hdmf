@@ -445,8 +445,7 @@ _attrbl_args = [
     {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
     {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-    {'name': 'data_type_inc', 'type': ("BaseStorageSpec", str), 'doc': 'the data type this specification extends',
-     'default': None},
+    {'name': 'data_type_inc', 'type': str, 'doc': 'the data type this specification extends', 'default': None},
 ]
 
 
@@ -488,30 +487,21 @@ class BaseStorageSpec(Spec):
         if not linkable:
             self['linkable'] = False
 
-        resolve = False
-
         if data_type_inc is not None:
             if data_type_def == data_type_inc:
                 msg = f"data_type_inc and data_type_def cannot be the same: {data_type_inc}. Ignoring data_type_inc."
                 warn(msg)
-            elif isinstance(data_type_inc, BaseStorageSpec):
-                self[self.inc_key()] = data_type_inc.data_type_def
             else:
                 self[self.inc_key()] = data_type_inc
         if data_type_def is not None:
             self.pop('required', None)
             self[self.def_key()] = data_type_def
 
-            # resolve inherited and overridden fields only if data_type_inc is a spec
-            # NOTE: this does not happen when loading specs from a file
-            if data_type_inc is not None and isinstance(data_type_inc, BaseStorageSpec):
-                resolve = True
-
         # self.attributes / self['attributes']: tuple/list of attributes
         # self.__attributes: dict of all attributes, including attributes from parent (data_type_inc) types
         # self.__new_attributes: set of attribute names that do not exist in the parent type
         # self.__overridden_attributes: set of attribute names that exist in this spec and the parent type
-        # self.__new_attributes and self.__overridden_attributes are only set properly if resolve = True
+        # self.__new_attributes and self.__overridden_attributes are only set properly after resolve_inc_spec is called
         # add all attributes described in this spec
         for attribute in attributes:
             self.set_attribute(attribute)
@@ -519,9 +509,7 @@ class BaseStorageSpec(Spec):
         self.__overridden_attributes = set()
         self.__inc_spec_resolved = False
         self.__resolved = False
-
-        if resolve:
-            self.resolve_inc_spec(data_type_inc, None)
+        self.__data_type_inc_resolved = None
 
     @property
     def default_name(self):
@@ -557,6 +545,7 @@ class BaseStorageSpec(Spec):
         namespace : SpecNamespace
             The namespace containing the specs - this is unused here
         """
+        self.__data_type_inc_resolved = inc_spec
         for inc_spec_attribute in inc_spec.attributes:
             self.__new_attributes.discard(inc_spec_attribute.name)
             if inc_spec_attribute.name in self.__attributes:
@@ -681,6 +670,11 @@ class BaseStorageSpec(Spec):
     def data_type_inc(self):
         ''' The data type this specification inherits '''
         return self.get(self.inc_key())
+
+    @property
+    def data_type_inc_resolved(self):
+        ''' The resolved parent spec, or None if not resolved '''
+        return self.__data_type_inc_resolved
 
     @property
     def data_type_def(self):
@@ -837,8 +831,7 @@ _dataset_args = [
     {'name': 'default_value', 'type': None, 'doc': 'a default value for this dataset', 'default': None},
     {'name': 'value', 'type': None, 'doc': 'a fixed value for this dataset', 'default': None},
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-    {'name': 'data_type_inc', 'type': ("DatasetSpec", str),
-     'doc': 'the data type this specification extends', 'default': None},
+    {'name': 'data_type_inc', 'type': str, 'doc': 'the data type this specification extends', 'default': None},
 ]
 
 
@@ -1026,8 +1019,7 @@ _group_args = [
         'default': 1,
     },
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-    {'name': 'data_type_inc', 'type': ("GroupSpec", str),
-     'doc': 'the data type this specification data_type_inc', 'default': None},
+    {'name': 'data_type_inc', 'type': str, 'doc': 'the data type this specification extends', 'default': None},
 ]
 
 
