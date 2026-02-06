@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from . import register_class, EXP_NAMESPACE
+from . import register_class
 from . import get_type_map
 from ..container import Table, Row, Container, Data, AbstractContainer, HERDManager
 from ..term_set import TermSet
@@ -157,7 +157,7 @@ class ObjectKey(Row):
     __table__ = ObjectKeyTable
 
 
-@register_class('HERD', EXP_NAMESPACE)
+@register_class('HERD')
 class HERD(Container):
     """
     HDMF External Resources Data Structure.

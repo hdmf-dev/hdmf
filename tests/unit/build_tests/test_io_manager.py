@@ -1,11 +1,14 @@
+import shutil
+import tempfile
 from abc import ABCMeta, abstractmethod
 
 from hdmf.build import GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, ContainerConfigurationError
+from hdmf.build.manager import TypeSource
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.spec.spec import ZERO_OR_MANY
 from hdmf.testing import TestCase
 
-from tests.unit.helpers.utils import Foo, FooBucket, CORE_NAMESPACE
+from tests.unit.helpers.utils import Foo, FooBucket, CORE_NAMESPACE, create_load_namespace_yaml
 
 
 class FooMapper(ObjectMapper):
@@ -343,6 +346,43 @@ class TestRetrieveContainerClass(TestBase):
     def test_get_dt_container_cls_no_namespace(self):
         with self.assertRaisesWith(ValueError, "Namespace could not be resolved for data type 'Unknown'."):
             self.type_map.get_dt_container_cls(data_type="Unknown")
+
+
+class TestRetrieveContainerClassWithTypeSource(TestCase):
+    """Test that get_dt_container_cls skips TypeSource entries when resolving namespace."""
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+        self.type_map = TypeMap()
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir)
+
+    def test_get_dt_container_cls_skips_typesource(self):
+        """Test that namespace lookup skips TypeSource entries and finds the real class."""
+        # Create ns1 with type Bar
+        bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
+        create_load_namespace_yaml('ns1', [bar_spec], self.test_dir, {}, self.type_map)
+
+        # Create ns2 that includes Bar from ns1 - this registers a TypeSource for Bar in ns2
+        create_load_namespace_yaml('ns2', [], self.test_dir, {'ns1': ['Bar']}, self.type_map)
+
+        # ns2 should have a TypeSource for Bar (registered before ns1's class is generated)
+        self.assertIsInstance(self.type_map.container_types['ns2']['Bar'], TypeSource)
+
+        # Register actual class for Bar in ns1
+        Bar = self.type_map.get_dt_container_cls('Bar', 'ns1')
+
+        # Lookup Bar without namespace - should skip ns2's TypeSource and find ns1
+        ret = self.type_map.get_dt_container_cls(data_type='Bar')
+        self.assertIs(ret, Bar)
+
+        # Class should be associated with ns1, not ns2
+        ns, _ = self.type_map.get_container_cls_dt(Bar)
+        self.assertEqual(ns, 'ns1')
+
+        # ns2 should still have TypeSource (not resolved to Bar)
+        self.assertIsInstance(self.type_map.container_types['ns2']['Bar'], TypeSource)
 
 
 # TODO:

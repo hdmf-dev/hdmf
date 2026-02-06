@@ -77,3 +77,4 @@ coverage.xml
 
 # Version
 _version.py
+.python-version

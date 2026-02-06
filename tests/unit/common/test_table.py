@@ -16,6 +16,7 @@ from hdmf.common import (
     ElementIdentifiers,
     EnumData,
     DynamicTableRegion,
+    MeaningsTable,
     get_manager,
     SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
@@ -873,6 +874,81 @@ class TestDynamicTable(TestCase):
         self.assertEqual(table['description'].name, 'description')
         self.assertEqual(table['parent'].name, 'parent')
 
+    def test_from_dataframe_with_index(self):
+        df = pd.DataFrame({
+            'foo': [1, 2, 3, 4, 5],
+            'bar': [10.0, 20.0, 30.0, 40.0, 50.0],
+            'baz': ['cat', 'dog', 'bird', 'fish', 'lizard'],
+            'index': [0, 1, 2, 3, 4]
+        })
+
+        obtained_table = DynamicTable.from_dataframe(df, 'test', index_column='index')
+        self.check_table(obtained_table)
+
+    def test_from_dataframe_missing_required_columns(self):
+        df = pd.DataFrame({
+            'col1': [1, 2, 3, 4, 5],
+            'col3': [1, 2, 3, 4, 5],})
+
+        msg = "DataFrame is missing required columns: {'col5', 'col7'}"
+        with self.assertRaises(ValueError, msg=msg):
+            SubTable.from_dataframe(df, 'test')
+
+    def test_build_columns_with_nested_index_error(self):
+        """Test that building columns with nested index > 1 raises an error"""
+        df = pd.DataFrame({'col1': [1, 2, 3, 4, 5],})
+
+        msg = ('Creating nested index columns using this method is not yet supported. '
+               'Use add_column or define the columns using __columns__ instead.')
+        with self.assertRaisesWith(ValueError, msg):
+             DynamicTable.from_dataframe(df, 'test',
+                                         columns=([{'name': 'col1',
+                                                    'description': 'optional column',
+                                                    'index': 2},]))
+
+    def test_build_columns_with_index(self):
+        """Test that building columns with index=True creates a VectorIndex column"""
+        ragged_list = [[1, 2], [3], [4, 5]]
+        df = pd.DataFrame({'col1': ragged_list,})
+
+        table = DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1',
+                                                                   'description': 'optional column',
+                                                                   'index': True},]))
+        self.assertIsInstance(table['col1'], VectorData)
+        self.assertIsInstance(table['col1_index'], VectorIndex)
+        self.assertEqual(table['col1_index'][:], ragged_list)
+
+    def test_build_columns_with_dynamic_table_region(self):
+        """Test that building columns with index=True creates a VectorIndex column"""
+        df = pd.DataFrame({'col1': list()},)
+
+        table = DynamicTable.from_dataframe(df, 'test',
+                                            columns=([{'name': 'col1',
+                                                       'description': 'required region',
+                                                       'required': True,
+                                                       'table': True}]))
+        self.assertIsInstance(table['col1'], DynamicTableRegion)
+
+    def test_build_columns_with_enum(self):
+        """Test that building columns with enum as true creates an Enum column"""
+        # TODO - diffiult to trigger empty enum data, add test if possible
+        df = pd.DataFrame({'col1': [1, 2, 3, 4, 5],})
+        table = DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1',
+                                                                   'description': 'optional enum column',
+                                                                   'enum': True},]))
+        self.assertIsInstance(table['col1'], EnumData)
+
+    def test_from_dataframe_columns_specified_not_provided(self):
+        df = pd.DataFrame({
+            'col1': [1, 2, 3, 4, 5],
+            'col3': [1, 2, 3, 4, 5],})
+
+        msg = "cols specified but not provided: {'col2'}"
+        with self.assertRaises(ValueError, msg=msg):
+            DynamicTable.from_dataframe(df, 'test', columns=([{'name': 'col1', 'description': 'optional column'},
+                                                              {'name': 'col2', 'description': 'optional column'},
+                                                              {'name': 'col3', 'description': 'optional column'},]))
+
     def test_missing_columns(self):
         table = self.with_spec()
         with self.assertRaises(ValueError):
@@ -946,6 +1022,8 @@ Fields:
 
     def test_repr_html(self):
         table = self.with_spec()
+        for _ in range(5):
+            table.add_row(foo='a', bar='b', baz='c')
         html = table._repr_html_()
 
         assert html == (
@@ -966,11 +1044,30 @@ Fields:
             'class=\'container-header\'><div class=\'xr-obj-type\'><h3>with_spec (DynamicTable)</h3></div></div><div '
             'style="margin-left: 0px;" class="container-fields"><span class="field-key" title="">description: '
             '</span><span class="field-value">a test table</span></div><details><summary style="display: list-item; '
+            'margin-left: 0px;" class="container-fields field-key"><b>columns</b></summary>'
+            '<details><summary style="display: list-item; margin-left: 20px;" '
+            'class="container-fields field-key" title="[\'foo\']"><b>foo</b></summary>'
+            '<div style="margin-left: 40px;" class="container-fields">'
+            '<span class="field-value">foo column</span></div></details>'
+            '<details><summary style="display: list-item; margin-left: 20px;" '
+            'class="container-fields field-key" title="[\'bar\']"><b>bar</b></summary>'
+            '<div style="margin-left: 40px;" class="container-fields">'
+            '<span class="field-value">bar column</span></div></details>'
+            '<details><summary style="display: list-item; margin-left: 20px;" '
+            'class="container-fields field-key" title="[\'baz\']"><b>baz</b></summary>'
+            '<div style="margin-left: 40px;" class="container-fields">'
+            '<span class="field-value">baz column</span></div></details>'
+            '</details>'
+            '<details><summary style="display: list-item; '
             'margin-left: 0px;" class="container-fields field-key" title=""><b>table</b></summary><table border="1" '
             'class="dataframe">\n  <thead>\n    <tr style="text-align: right;">\n      <th></th>\n      '
             '<th>foo</th>\n      <th>bar</th>\n      <th>baz</th>\n    </tr>\n    <tr>\n      <th>id</th>\n      '
-            '<th></th>\n      <th></th>\n      <th></th>\n    </tr>\n  </thead>\n  <tbody>\n  '
-            '</tbody>\n</table></details></div>'
+            '<th></th>\n      <th></th>\n      <th></th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      '
+            '<th>0</th>\n      <td>a</td>\n      <td>b</td>\n      <td>c</td>\n    </tr>\n    <tr>\n      '
+            '<th>1</th>\n      <td>a</td>\n      <td>b</td>\n      <td>c</td>\n    </tr>\n    <tr>\n      '
+            '<th>2</th>\n      <td>a</td>\n      <td>b</td>\n      <td>c</td>\n    </tr>\n    <tr>\n      '
+            '<th>3</th>\n      <td>a</td>\n      <td>b</td>\n      <td>c</td>\n    </tr>\n  '
+            '</tbody>\n</table><p>... and 1 more row(s).</p></details></div>'
         )
 
 
@@ -1113,6 +1210,14 @@ Fields:
         container = Container('test_container')
         table = self.with_columns_and_data()
         self.assertFalse(table == container)
+
+    def test_copy(self):
+        table = self.with_columns_and_data()
+        table2 = table.copy()
+        self.assertTrue(table == table2)
+        self.assertIsNot(table, table2)
+        for colname in table.colnames:
+            self.assertTrue(getattr(table, colname) == getattr(table2, colname))
 
 
 class TestDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
@@ -1313,6 +1418,34 @@ class TestDynamicTableRegion(TestCase):
         with self.assertRaises(IndexError):
             dtr.table = table
 
+    def test_create_region_with_valid_slice_range(self):
+        table = self.with_columns_and_data()
+        region = table.create_region(name='region', region=slice(0, 2), description='test region')
+        self.assertEqual(region.data, [0, 1])
+
+    def test_create_region_with_invalid_slice_range(self):
+        table = self.with_columns_and_data()
+        msg = 'region slice slice(-1, 2, None) is out of range for this DynamicTable of length 5'
+        with self.assertRaisesWith(IndexError, msg):
+            table.create_region(name='region2', region=slice(-1, 2), description='test region')
+
+    def test_create_region_with_none_slice(self):
+        table = self.with_columns_and_data()
+        region = table.create_region(name='region2', region=slice(0, None), description='test region')
+        self.assertEqual(region.data, [0, 1, 2, 3, 4])
+
+    def test_create_region_with_negative_index(self):
+        table = self.with_columns_and_data()
+
+        msg = 'The index -1 is out of range for this DynamicTable of length 5'
+        with self.assertRaisesWith(IndexError, msg):
+            table.create_region(name='region', region=[-1, 0], description='test region')
+
+    def test_create_region_with_out_of_range_index(self):
+        table = self.with_columns_and_data()
+        msg = 'The index 10 is out of range for this DynamicTable of length 5'
+        with self.assertRaisesWith(IndexError, msg):
+            table.create_region(name='region', region=[0, 10], description='test region')
 
 class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
 
@@ -2491,6 +2624,38 @@ class TestVectorIndex(TestCase):
         self.assertListEqual(foo_ind[0], ['a', 'b'])
         self.assertListEqual(foo_ind[1], ['c'])
 
+    def test_get_with_boolean(self):
+        """Test VectorIndex.get with boolean argument"""
+        data = VectorData(name='data', description='desc', data=['a', 'b', 'c', 'd', 'e'])
+        index = VectorIndex(name='index', data=[2, 3, 5], target=data)
+        result = index.get([True, False, True])
+
+        self.assertEqual(result, [['a', 'b',], ['d', 'e']])
+        self.assertEqual(len(result), 2)
+
+    def test_get_with_boolean_array(self):
+        """Test VectorIndex.get with boolean np.array argument"""
+        data = VectorData(name='data', description='desc', data=['a', 'b', 'c', 'd', 'e'])
+        index = VectorIndex(name='index', data=[2, 3, 5], target=data)
+        result = index.get(np.array([True, False, True]))
+
+        self.assertEqual(result, [['a', 'b',], ['d', 'e']])
+        self.assertEqual(len(result), 2)
+
+    def test_get_target_data_single_index(self):
+        """Test get_target_data returns the VectorData for a single ragged array."""
+        foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3])
+        self.assertIs(foo_ind.get_target_data(), foo)
+
+    def test_get_target_data_double_index(self):
+        """Test get_target_data traverses nested VectorIndex to return the final VectorData."""
+        foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c', 'd'])
+        foo_ind = VectorIndex(name='foo_index', target=foo, data=[2, 3, 4])
+        foo_ind_ind = VectorIndex(name='foo_index_index', target=foo_ind, data=[2, 3])
+        self.assertIs(foo_ind_ind.get_target_data(), foo)
+        self.assertIs(foo_ind.get_target_data(), foo)
+
 
 class TestDoubleIndex(TestCase):
 
@@ -2637,6 +2802,14 @@ class TestDynamicTableAddEnum(TestCase):
                                          ['c', 'c']]},
                            index=pd.Series(name='id', data=[0, 1, 2]))
         pd.testing.assert_frame_equal(exp, rec)
+
+    def test_add_column_table_and_enum_error(self):
+        """Test that adding a column with both table and enum raises an error."""
+        table = DynamicTable(name='table0', description='an example table')
+
+        msg = "column 'col1' cannot be both a table region and come from an enumerable set of elements"
+        with self.assertRaisesWith(ValueError, msg):
+            table.add_column(name='col1', description='test', table=True, enum=True)
 
 
 class TestDynamicTableInitIndexRoundTrip(H5RoundTripMixin, TestCase):
@@ -3006,3 +3179,237 @@ class TestDynamicTableSubclassColumns(TestCase):
                          {'name': 'col3', 'description': '...'}, {'name': 'col4', 'description': '...'})
 )
         self.assertEqual(self.foo2.__columns__, self.foo3.__columns__)
+
+
+class TestMeaningsTable(TestCase):
+    """Test the MeaningsTable class."""
+
+    def test_constructor_default_name(self):
+        """Test that name is automatically set based on target."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        mt = MeaningsTable(target=target)
+        self.assertEqual(mt.name, 'stimulus_type_meanings')
+        self.assertEqual(mt.target, target)
+
+    def test_constructor_default_description(self):
+        """Test that description is automatically set based on target."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        mt = MeaningsTable(target=target)
+        self.assertEqual(mt.description, "Meanings for values in 'stimulus_type'")
+
+    def test_name_auto_generated(self):
+        """Test that name is automatically generated."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        # Name should always be auto-generated based on target
+        mt = MeaningsTable(target=target)
+        self.assertEqual(mt.name, 'stimulus_type_meanings')
+
+    def test_constructor_custom_description(self):
+        """Test that custom description can be set."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        mt = MeaningsTable(target=target, description='custom description')
+        self.assertEqual(mt.description, 'custom description')
+
+    def test_add_row(self):
+        """Test adding rows to MeaningsTable."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        mt = MeaningsTable(target=target)
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        self.assertEqual(len(mt), 2)
+        self.assertEqual(mt['value'].data, ['a', 'b'])
+        self.assertEqual(mt['meaning'].data, ['stimulus A', 'stimulus B'])
+
+    def test_required_columns(self):
+        """Test that MeaningsTable has required value and meaning columns."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        mt = MeaningsTable(target=target)
+        self.assertIn('value', mt.colnames)
+        self.assertIn('meaning', mt.colnames)
+
+
+class TestDynamicTableMeaningsTables(TestCase):
+    """Test DynamicTable with MeaningsTables."""
+
+    def setUp(self):
+        self.table = DynamicTable(name='test_table', description='a test table')
+        self.table.add_column(name='stimulus_type', description='stimulus type')
+        self.table.add_row(stimulus_type='a')
+        self.table.add_row(stimulus_type='b')
+
+    def test_add_meanings_table(self):
+        """Test adding a MeaningsTable to a DynamicTable."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        self.table.add_meanings_table(mt)
+        self.assertEqual(len(self.table.meanings_tables), 1)
+        self.assertIn('stimulus_type_meanings', self.table.meanings_tables)
+
+    def test_get_meanings_table(self):
+        """Test getting a MeaningsTable from a DynamicTable."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        self.table.add_meanings_table(mt)
+        retrieved = self.table.get_meanings_table('stimulus_type_meanings')
+        self.assertEqual(retrieved, mt)
+
+    def test_get_meanings_for_column(self):
+        """Test getting a MeaningsTable by column name."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        self.table.add_meanings_table(mt)
+        retrieved = self.table.get_meanings_for_column('stimulus_type')
+        self.assertEqual(retrieved, mt)
+
+    def test_get_meanings_for_column_not_found(self):
+        """Test error when no MeaningsTable exists for a column."""
+        with self.assertRaises(KeyError):
+            self.table.get_meanings_for_column('stimulus_type')
+
+    def test_get_meanings_table_not_found(self):
+        """Test error when MeaningsTable not found."""
+        with self.assertRaises(KeyError):
+            self.table.get_meanings_table('nonexistent')
+
+    def test_add_meanings_table_invalid_target(self):
+        """Test error when MeaningsTable target is not a column in the table."""
+        other_col = VectorData(name='other_col', description='not in table', data=['x', 'y'])
+        mt = MeaningsTable(target=other_col)
+        mt.add_row(value='x', meaning='X meaning')
+        with self.assertRaisesRegex(ValueError, "not a column in DynamicTable"):
+            self.table.add_meanings_table(mt)
+
+    def test_add_meanings_table_duplicate(self):
+        """Test error when adding duplicate MeaningsTable."""
+        mt1 = MeaningsTable(target=self.table['stimulus_type'])
+        mt1.add_row(value='a', meaning='stimulus A')
+        self.table.add_meanings_table(mt1)
+        mt2 = MeaningsTable(target=self.table['stimulus_type'])
+        mt2.add_row(value='b', meaning='stimulus B')
+        with self.assertRaises(ValueError):
+            self.table.add_meanings_table(mt2)
+
+    def test_meanings_tables_parent(self):
+        """Test that MeaningsTable parent is set to DynamicTable."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        self.table.add_meanings_table(mt)
+        self.assertEqual(mt.parent, self.table)
+
+    def test_vectordata_get_meanings(self):
+        """Test getting MeaningsTable from a VectorData column."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        self.table.add_meanings_table(mt)
+        retrieved = self.table['stimulus_type'].get_meanings()
+        self.assertEqual(retrieved, mt)
+
+    def test_vectordata_get_meanings_no_table(self):
+        """Test get_meanings returns None when VectorData has no parent."""
+        col = VectorData(name='test_col', description='test', data=['a', 'b'])
+        self.assertIsNone(col.get_meanings())
+
+    def test_vectordata_get_meanings_no_meanings_table(self):
+        """Test get_meanings returns None when no MeaningsTable exists for the column."""
+        result = self.table['stimulus_type'].get_meanings()
+        self.assertIsNone(result)
+
+    def test_constructor_with_meanings_tables(self):
+        """Test constructing DynamicTable with meanings_tables argument."""
+        col = VectorData(name='stimulus_type', description='stimulus type', data=['a', 'b'])
+        mt = MeaningsTable(target=col)
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        table = DynamicTable(
+            name='test_table',
+            description='a test table',
+            columns=[col],
+            meanings_tables=[mt]
+        )
+        self.assertEqual(len(table.meanings_tables), 1)
+        self.assertIn('stimulus_type_meanings', table.meanings_tables)
+
+    def test_meanings_tables_setter(self):
+        """Test setting meanings_tables after construction."""
+        mt = MeaningsTable(target=self.table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        # Set via property setter
+        self.table.meanings_tables = [mt]
+        self.assertEqual(len(self.table.meanings_tables), 1)
+        self.assertIn('stimulus_type_meanings', self.table.meanings_tables)
+        self.assertEqual(mt.parent, self.table)
+
+    def test_meanings_tables_setter_multiple(self):
+        """Test setting multiple meanings_tables after construction."""
+        self.table.add_column(name='response_type', description='response type', data=['x', 'y'])
+
+        mt1 = MeaningsTable(target=self.table['stimulus_type'])
+        mt1.add_row(value='a', meaning='stimulus A')
+
+        mt2 = MeaningsTable(target=self.table['response_type'])
+        mt2.add_row(value='x', meaning='response X')
+
+        # Set multiple via property setter
+        self.table.meanings_tables = [mt1, mt2]
+        self.assertEqual(len(self.table.meanings_tables), 2)
+        self.assertIn('stimulus_type_meanings', self.table.meanings_tables)
+        self.assertIn('response_type_meanings', self.table.meanings_tables)
+
+
+class TestMeaningsTableRoundTrip(H5RoundTripMixin, TestCase):
+    """Test roundtrip of DynamicTable with MeaningsTable."""
+
+    def setUpContainer(self):
+        table = DynamicTable(name='test_table', description='a test table')
+        table.add_column(name='stimulus_type', description='stimulus type')
+        table.add_row(stimulus_type='a')
+        table.add_row(stimulus_type='b')
+        table.add_row(stimulus_type='c')
+
+        mt = MeaningsTable(target=table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        mt.add_row(value='c', meaning='stimulus C')
+        table.add_meanings_table(mt)
+
+        return table
+
+    def test_roundtrip_meanings_table_data(self):
+        """Test that MeaningsTable data is preserved after roundtrip."""
+        read_container = self.roundtripContainer()
+        mt = read_container.get_meanings_table('stimulus_type_meanings')
+        self.assertEqual(len(mt), 3)
+        self.assertEqual(list(mt['value'].data), ['a', 'b', 'c'])
+        self.assertEqual(list(mt['meaning'].data), ['stimulus A', 'stimulus B', 'stimulus C'])
+
+
+class TestMultipleMeaningsTablesRoundTrip(H5RoundTripMixin, TestCase):
+    """Test roundtrip of DynamicTable with multiple MeaningsTables."""
+
+    def setUpContainer(self):
+        table = DynamicTable(name='test_table', description='a test table')
+        table.add_column(name='stimulus_type', description='stimulus type')
+        table.add_column(name='response_type', description='response type')
+        table.add_row(stimulus_type='a', response_type='x')
+        table.add_row(stimulus_type='b', response_type='y')
+
+        mt1 = MeaningsTable(target=table['stimulus_type'])
+        mt1.add_row(value='a', meaning='stimulus A')
+        mt1.add_row(value='b', meaning='stimulus B')
+        table.add_meanings_table(mt1)
+
+        mt2 = MeaningsTable(target=table['response_type'])
+        mt2.add_row(value='x', meaning='response X')
+        mt2.add_row(value='y', meaning='response Y')
+        table.add_meanings_table(mt2)
+
+        return table
+
+    def test_roundtrip_multiple_meanings_tables(self):
+        """Test that multiple MeaningsTables are preserved after roundtrip."""
+        read_container = self.roundtripContainer()
+        self.assertEqual(len(read_container.meanings_tables), 2)
+        self.assertIn('stimulus_type_meanings', read_container.meanings_tables)
+        self.assertIn('response_type_meanings', read_container.meanings_tables)

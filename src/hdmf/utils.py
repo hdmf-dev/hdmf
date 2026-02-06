@@ -17,11 +17,18 @@ __macros = {
 }
 
 try:
-    # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
-    import zarr
-    __macros['array_data'].append(zarr.Array)
+    from zarr import Array as ZarrArray
+    ZARR_INSTALLED = True
 except ImportError:
-    pass
+    ZARR_INSTALLED = False
+
+
+def is_zarr_array(value):
+    return ZARR_INSTALLED and isinstance(value, ZarrArray)
+
+if ZARR_INSTALLED:
+    # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
+    __macros['array_data'].append(ZarrArray)
 
 
 # code to signify how to handle positional arguments in docval
@@ -189,6 +196,15 @@ def __fmt_str_quotes(x):
     return str(x)
 
 
+def __shape_error_message(argname, valshape, allowable_shapes):
+    if isinstance(allowable_shapes, (list, tuple)) and all(isinstance(e, (list, tuple)) for e in allowable_shapes):
+        allowable_shapes_str = " or ".join(map(str, allowable_shapes))
+    else:
+        allowable_shapes_str = str(allowable_shapes)
+    allowable_shapes_str = allowable_shapes_str.replace("None", "*")
+    return f"incorrect shape for {argname}: got {valshape}, and expected {allowable_shapes_str}"
+
+
 def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False,  # noqa: C901
                  allow_positional=AllowPositional.ALLOWED):
     """
@@ -305,8 +321,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                         argval = getattr(argval, argname)
                         valshape = get_data_shape(argval)
                     if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
-                        fmt_val = (argname, valshape, arg['shape'])
-                        value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
+                        value_errors.append(__shape_error_message(argname, valshape, arg['shape']))
                 if 'enum' in arg:
                     err = __check_enum(argval, arg)
                     if err:
@@ -362,8 +377,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                     argval = getattr(argval, argname)
                     valshape = get_data_shape(argval)
                 if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
-                    fmt_val = (argname, valshape, arg['shape'])
-                    value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
+                    value_errors.append(__shape_error_message(argname, valshape, arg['shape']))
             if 'enum' in arg and argval is not None:
                 err = __check_enum(argval, arg)
                 if err:
@@ -616,7 +630,7 @@ def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=No
 
             if module.startswith("builtins"):
                 return ":py:class:`~{name}`".format(name=name)
-            elif module.startswith("h5py") or module.startswith('pandas'):
+            elif module.startswith("h5py") or module.startswith('pandas') or module.startswith('pathlib'):
                 return ":py:class:`~{module}.{name}`".format(name=name, module=module.split('.')[0])
             else:
                 return ":py:class:`~{module}.{name}`".format(name=name, module=module)
@@ -953,7 +967,7 @@ def generate_array_html_repr(array_info_dict, array, dataset_type=None):
     # Heuristic for displaying data
     array_is_small = array_size_bytes < 1024 * 0.1 # 10 % a kilobyte to display the array
     if array_is_small:
-        repr_html += "<br>" + str(np.asarray(array))
+        repr_html += "<br>" + str(array[()])
 
     return repr_html
 
@@ -1125,6 +1139,63 @@ class LabelledDict(dict):
     def update(self, other):
         """update is not supported. A TypeError will be raised."""
         raise TypeError('update is not supported for %s' % self.__class__.__name__)
+
+    def _repr_html_(self):
+        """Generate an HTML representation of the LabelledDict.
+
+        This method produces an interactive HTML view similar to what is shown
+        when expanding a field in a Container's HTML representation. Each item
+        in the dict is displayed as an expandable section showing its own
+        HTML representation if available.
+        """
+        # CSS styles matching Container.css_style
+        css_style = """
+        <style>
+            .container-fields {
+                font-family: "Open Sans", Arial, sans-serif;
+            }
+            .container-fields .field-value {
+                color: #00788E;
+            }
+            .container-fields details > summary {
+                cursor: pointer;
+                display: list-item;
+            }
+            .container-fields details > summary:hover {
+                color: #0A6EAA;
+            }
+        </style>
+        """
+
+        html_repr = css_style
+        html_repr += "<div class='container-wrap'>"
+        html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{self.label}</h3></div></div>"
+
+        if len(self) == 0:
+            html_repr += "<div class='container-fields'><i>Empty</i></div>"
+            html_repr += "</div>"
+            return html_repr
+
+        for key, value in self.items():
+            # Get the class name for display
+            class_name = type(value).__name__
+            display_name = f"{key} <span style='font-weight: normal; color: #888;'>({class_name})</span>"
+
+            # Delegate to the item's _repr_html_ if available
+            if hasattr(value, '_repr_html_'):
+                inner_html = value._repr_html_()
+            else: # Edge case, I am not sure when if this can happen
+                inner_html = f"<span class='field-value'>{value}</span>"
+
+            html_repr += (
+                f"<details><summary style='display: list-item; margin-left: 0px;' "
+                f"class='container-fields field-key' title=\"['{key}']\"><b>{display_name}</b></summary>"
+            )
+            html_repr += f"<div style='margin-left: 20px;'>{inner_html}</div>"
+            html_repr += "</details>"
+
+        html_repr += "</div>"
+        return html_repr
 
 
 @docval_macro('array_data')

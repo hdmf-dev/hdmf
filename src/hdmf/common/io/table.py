@@ -12,6 +12,10 @@ class DynamicTableMap(ObjectMapper):
         super().__init__(spec)
         vector_data_spec = spec.get_data_type('VectorData')
         self.map_spec('columns', vector_data_spec)
+        # Map meanings_tables to the MeaningsTable spec within the 'meanings_tables' group
+        meanings_tables_group = spec.get_group('meanings_tables')
+        meanings_table_spec = meanings_tables_group.get_data_type('MeaningsTable')
+        self.map_spec('meanings_tables', meanings_table_spec)
 
     @ObjectMapper.object_attr('colnames')
     def attr_columns(self, container, manager):

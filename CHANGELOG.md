@@ -1,22 +1,94 @@
 # HDMF Changelog
 
-## HDMF 4.1.1 (Upcoming)
+## HDMF 5.0.0 (Upcoming)
+
+### Added
+- Added support for HDMF Common Schema 1.9.0.
+  - Introduced new data type `MeaningsTable` and changes to `DynamicTable` to support included `MeaningsTable` objects. @rly [#1376](https://github.com/hdmf-dev/hdmf/pull/1376)
+  - Promoted `HERD` from the hdmf-experimental namespace to the HDMF Common namespace. @rly [#1387](https://github.com/hdmf-dev/hdmf/pull/1387)
+
+### Fixed
+- Fixed a broken test and refactored `VectorIndex.get`. @rly, @mavaylon1 [#1293](https://github.com/hdmf-dev/hdmf/pull/1293)
+
+
+## HDMF 4.3.1 (January 28, 2026)
+
+### Added
+- Added `_repr_html_` method to `LabelledDict` for interactive HTML display in notebooks. @h-mayorquin [#1381](https://github.com/hdmf-dev/hdmf/pull/1381)
+
+### Changed
+- Restricted `pandas` version to <3 until support for pandas v3 is added. @rly [#1385](https://github.com/hdmf-dev/hdmf/pull/1385)
+
+### Fixed
+- Fixed issue with with testing and deployment of releases. @rly [#1383](https://github.com/hdmf-dev/hdmf/pull/1383)
+
+
+## HDMF 4.3.0 (January 22, 2026)
+
+### Added
+- Added support for Python 3.14. @bendichter [#1366](https://github.com/hdmf-dev/hdmf/issues/1366)
+
+### Changed
+- Added a collapsible "columns" section to the `DynamicTable` HTML representation that displays column descriptions, making it easier to inspect column metadata in notebooks. @h-mayorquin [#1369](https://github.com/hdmf-dev/hdmf/pull/1369)
+- Added ability to create specs with circular dependencies, e.g., Type A contains Type B, and Type B extends Type A, or Type A contains a reference to Type A (self-reference). @rly [#1374](https://github.com/hdmf-dev/hdmf/pull/1374)
+
+### Fixed
+- Fixed issue where a container was assigned to an incorrect namespace. @rly [#1373](https://github.com/hdmf-dev/hdmf/pull/1373)
+
+
+## HDMF 4.2.0 (December 18, 2025)
+
+### Added
+- Added an argument `copy` to `get_type_map` to control whether a copy of the type map is returned or not.
+  If `copy=False`, the returned type map will be a direct reference to the global type map. @rly
+  [#1352](https://github.com/hdmf-dev/hdmf/pull/1352)
+
+### Changed
+- Changed HTML representation to display the `data_type` for nested containers, showing the type in parentheses next to the name (e.g., `MyTimeSeries (TimeSeries)`). @h-mayorquin [#1355](https://github.com/hdmf-dev/hdmf/pull/1355)
+- Changed how to call `BuildManager.build`, `TypeMap.build`, and `ObjectMapper.build` when exporting. The `export` argument is no longer accepted by `TypeMap.build` and `ObjectMapper.build`; `BuildManager.build` still accepts the `export` argument but now uses it to set an internal flag instead of passing it through the call chain. @rly [#1358](https://github.com/hdmf-dev/hdmf/pull/1358)
+- Changed HTML representation of `MultiContainerInterface` to flatten the grouping attribute when only
+  one grouping is defined (`len(__clsconf__) == 1`), removing the redundant nesting level since users
+  can access children directly via `container["name"]`. @h-mayorquin [#1354](https://github.com/hdmf-dev/hdmf/pull/1354)
+
+### Fixed
+- Fixed bug when validating string datasets in NWB Zarr files. @stephprince [#1348](https://github.com/hdmf-dev/hdmf/pull/1348)
+- Fixed a performance regression that affected calling setters of HDMF Common data types. @rly [#1352](https://github.com/hdmf-dev/hdmf/pull/1352)
+- Updated GitHub Actions runners to not use the deprecated macos-13 runner. @rly [#1363](https://github.com/hdmf-dev/hdmf/pull/1363)
+
+
+## HDMF 4.1.2 (November 7, 2025)
+
+### Fixed
+- Fixed bug when converting string datasets that are Zarr arrays. @oruebel @rly [#1171](https://github.com/hdmf-dev/hdmf/pull/1171)
+- Fixed unclear shape validation error message. @bendichter @rly [#787](https://github.com/hdmf-dev/hdmf/pull/787)
+- Fixed testing of sphinx gallery examples with optional dependencies. @rly [#1343](https://github.com/hdmf-dev/hdmf/pull/1343)
+
+
+## HDMF 4.1.1 (October 22, 2025)
 
 ### Fixed
 - Fixed copying of `TypeMap` and `TypeConfigurator`. Previously, the same global `TypeConfigurator` instance was used in all copies of a `TypeMap`. @rly [#1302](https://github.com/hdmf-dev/hdmf/pull/1302)
 - Fixed `get_data_shape` to use `Data.data.shape` instead of `Data.shape`, which may be overridden by subclasses. @rly [#1311](https://github.com/hdmf-dev/hdmf/pull/1311)
+<<<<<<< validate_dtr
 - Added a check when setting or adding data to a `DynamicTableRegion` or setting the `table` attribute of a `DynamicTableRegion`
   that the data values are in bounds of the linked table. This can be turned off for
   `DynamicTableRegion.__init__` using the keyword argument `validate_data=False`. @rly [#1168](https://github.com/hdmf-dev/hdmf/pull/1168)
+=======
+- Fixed HTML representation of datasets when reading from LINDI. @bendichter [#1335](https://github.com/hdmf-dev/hdmf/pull/1335)
+- Fixed bug where compound datatypes were disregarding custom data I/O options with the zarr backend. @pauladkisson [#1297](https://github.com/hdmf-dev/hdmf/pull/1297)
+>>>>>>> dev
 
 ### Added
 - Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
 - Added checks when loading a namespace for link specification conflicts between extension and core schemas. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309)
 - Added GitHub Actions workflow that tests compatibility with NWB extensions from the NWB extensions catalog. @rly [#1319](https://github.com/hdmf-dev/hdmf/pull/1319)
+- Added unit tests for hdmf.common module to improve code coverage. @stephprince [#1330](https://github.com/hdmf-dev/hdmf/pull/1330)
 
 ### Changed
 - Changed error for attempting to overwrite an existing specification into a warning that any specification redefinitions will be ignored. @stephprince [#1309](https://github.com/hdmf-dev/hdmf/pull/1309)
 - Deprecated the experimental `HERDManager.link_resources` and `HERDManager.link_external_resources` and added the property `HERDManager.external_resources` to support downstream API function overloading. @mavaylon1, @rly [#1292](https://github.com/hdmf-dev/hdmf/pull/1292)
+- Deprecated calling `get_type_map` with the `extensions` argument. Call `load_namespaces` on the returned `TypeMap`
+  instead. @rly [#1302](https://github.com/hdmf-dev/hdmf/pull/1302)
 
 
 ## HDMF 4.1.0 (May 28, 2025)
