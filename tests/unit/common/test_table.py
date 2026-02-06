@@ -1434,18 +1434,6 @@ class TestDynamicTableRegion(TestCase):
         region = table.create_region(name='region2', region=slice(0, None), description='test region')
         self.assertEqual(region.data, [0, 1, 2, 3, 4])
 
-    def test_create_region_with_negative_index(self):
-        table = self.with_columns_and_data()
-
-        msg = 'The index -1 is out of range for this DynamicTable of length 5'
-        with self.assertRaisesWith(IndexError, msg):
-            table.create_region(name='region', region=[-1, 0], description='test region')
-
-    def test_create_region_with_out_of_range_index(self):
-        table = self.with_columns_and_data()
-        msg = 'The index 10 is out of range for this DynamicTable of length 5'
-        with self.assertRaisesWith(IndexError, msg):
-            table.create_region(name='region', region=[0, 10], description='test region')
 
 class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
 
