@@ -6,6 +6,9 @@
 - Added support for HDMF Common Schema 1.9.0.
   - Introduced new data type `MeaningsTable` and changes to `DynamicTable` to support included `MeaningsTable` objects. @rly [#1376](https://github.com/hdmf-dev/hdmf/pull/1376)
   - Promoted `HERD` from the hdmf-experimental namespace to the HDMF Common namespace. @rly [#1387](https://github.com/hdmf-dev/hdmf/pull/1387)
+- Added a check when setting or adding data to a `DynamicTableRegion` or setting the `table` attribute of a `DynamicTableRegion`
+  that the data values are in bounds of the linked table. This can be turned off for
+  `DynamicTableRegion.__init__` using the keyword argument `validate_data=False`. @rly [#1168](https://github.com/hdmf-dev/hdmf/pull/1168)
 
 ### Fixed
 - Fixed a broken test and refactored `VectorIndex.get`. @rly, @mavaylon1 [#1293](https://github.com/hdmf-dev/hdmf/pull/1293)
@@ -69,14 +72,8 @@
 ### Fixed
 - Fixed copying of `TypeMap` and `TypeConfigurator`. Previously, the same global `TypeConfigurator` instance was used in all copies of a `TypeMap`. @rly [#1302](https://github.com/hdmf-dev/hdmf/pull/1302)
 - Fixed `get_data_shape` to use `Data.data.shape` instead of `Data.shape`, which may be overridden by subclasses. @rly [#1311](https://github.com/hdmf-dev/hdmf/pull/1311)
-<<<<<<< validate_dtr
-- Added a check when setting or adding data to a `DynamicTableRegion` or setting the `table` attribute of a `DynamicTableRegion`
-  that the data values are in bounds of the linked table. This can be turned off for
-  `DynamicTableRegion.__init__` using the keyword argument `validate_data=False`. @rly [#1168](https://github.com/hdmf-dev/hdmf/pull/1168)
-=======
 - Fixed HTML representation of datasets when reading from LINDI. @bendichter [#1335](https://github.com/hdmf-dev/hdmf/pull/1335)
 - Fixed bug where compound datatypes were disregarding custom data I/O options with the zarr backend. @pauladkisson [#1297](https://github.com/hdmf-dev/hdmf/pull/1297)
->>>>>>> dev
 
 ### Added
 - Added a check for a compound datatype that is not defined in the schema or spec. This is currently not supported. @mavaylon1 [#1276](https://github.com/hdmf-dev/hdmf/pull/1276)
