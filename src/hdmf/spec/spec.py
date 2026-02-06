@@ -501,12 +501,13 @@ class BaseStorageSpec(Spec):
         # self.__attributes: dict of all attributes, including attributes from parent (data_type_inc) types
         # self.__new_attributes: set of attribute names that do not exist in the parent type
         # self.__overridden_attributes: set of attribute names that exist in this spec and the parent type
-        # self.__new_attributes and self.__overridden_attributes are only set properly if resolve = True
+        # self.__new_attributes and self.__overridden_attributes are only set properly after resolve_inc_spec is called
         # add all attributes described in this spec
         for attribute in attributes:
             self.set_attribute(attribute)
         self.__new_attributes = set(self.__attributes.keys())
         self.__overridden_attributes = set()
+        self.__data_type_inc_resolved = None
         self.__inc_spec_resolved = False
         self.__resolved = False
 
@@ -544,6 +545,7 @@ class BaseStorageSpec(Spec):
         namespace : SpecNamespace
             The namespace containing the specs - this is unused here
         """
+        self.__data_type_inc_resolved = inc_spec
         for inc_spec_attribute in inc_spec.attributes:
             self.__new_attributes.discard(inc_spec_attribute.name)
             if inc_spec_attribute.name in self.__attributes:
@@ -668,6 +670,11 @@ class BaseStorageSpec(Spec):
     def data_type_inc(self):
         ''' The data type this specification inherits '''
         return self.get(self.inc_key())
+
+    @property
+    def data_type_inc_resolved(self):
+        ''' The resolved parent spec, or None if not resolved '''
+        return self.__data_type_inc_resolved
 
     @property
     def data_type_def(self):
@@ -824,8 +831,7 @@ _dataset_args = [
     {'name': 'default_value', 'type': None, 'doc': 'a default value for this dataset', 'default': None},
     {'name': 'value', 'type': None, 'doc': 'a fixed value for this dataset', 'default': None},
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-    {'name': 'data_type_inc', 'type': str,
-     'doc': 'the data type this specification extends', 'default': None},
+    {'name': 'data_type_inc', 'type': str, 'doc': 'the data type this specification extends', 'default': None},
 ]
 
 
@@ -872,7 +878,6 @@ class DatasetSpec(BaseStorageSpec):
             if self.quantity not in valid_quant_vals:
                 raise ValueError("quantity %s invalid for spec with fixed name. Valid values are: %s" %
                                  (self.quantity, str(valid_quant_vals)))
-
 
     def resolve_inc_spec(self, inc_spec: 'DatasetSpec', namespace: 'SpecNamespace'):
         """Add fields and attributes from the inc_spec to this spec.
@@ -1014,8 +1019,7 @@ _group_args = [
         'default': 1,
     },
     {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-    {'name': 'data_type_inc', 'type': str,
-     'doc': 'the data type this specification data_type_inc', 'default': None},
+    {'name': 'data_type_inc', 'type': str, 'doc': 'the data type this specification extends', 'default': None},
 ]
 
 

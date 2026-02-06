@@ -3,7 +3,7 @@
 ## HDMF 5.0.0 (Upcoming)
 
 ### Changed
-- New spec resolution system: Instead of resolving includes during spec loading, resolution now happens after all specs are loaded via `NamespaceCatalog.resolve_all_specs()`. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
+- New spec resolution system: Instead of resolving includes during spec loading, resolution now happens after all specs are loaded via `NamespaceCatalog.resolve_all_specs()`. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312), [#1392](https://github.com/hdmf-dev/hdmf/pull/1392)
   - New methods: `BaseStorageSpec.resolve_inc_spec()` replaces the old `BaseStorageSpec.resolve_spec()` method
   - Resolution tracking: New properties `BaseStorageSpec.resolved` and `BaseStorageSpec.inc_spec_resolved` track resolution state
   - Cross-namespace resolution: The system can now resolve specs that include types from different namespaces
@@ -17,6 +17,7 @@
 - Removed deprecated `Data.set_data_io` usage and `HERDManager` methods. @rly [#1328](https://github.com/hdmf-dev/hdmf/pull/1328)
 - Removed deprecated `HDF5IO.copy_file` method. Use the `HDF5IO.export` or the `h5py.File.copy` method instead. @stephprince [#1332](https://github.com/hdmf-dev/hdmf/pull/1332)
 - Removed deprecated `extensions` kwarg for `get_type_map` function. @stephprince [#1332](https://github.com/hdmf-dev/hdmf/pull/1332)
+- Removed unused and unnecessary `NamespaceToBuilderHelper.get_source_path` method. @rly [#1392](https://github.com/hdmf-dev/hdmf/pull/1392)
 
 ### Added
 - Added support for HDMF Common Schema 1.9.0.
