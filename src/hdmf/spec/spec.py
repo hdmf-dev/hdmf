@@ -507,9 +507,9 @@ class BaseStorageSpec(Spec):
             self.set_attribute(attribute)
         self.__new_attributes = set(self.__attributes.keys())
         self.__overridden_attributes = set()
+        self.__data_type_inc_resolved = None
         self.__inc_spec_resolved = False
         self.__resolved = False
-        self.__data_type_inc_resolved = None
 
     @property
     def default_name(self):

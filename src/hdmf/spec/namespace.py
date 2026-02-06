@@ -523,7 +523,7 @@ class NamespaceCatalog:
         if spec.data_type_inc is not None:
             self.__resolve_type_and_deps(spec.data_type_inc, namespace, resolved, in_progress)
 
-        # 2. Resolve this type's inc_spec if not already done (e.g., via resolve_inc_spec in __init__)
+        # 2. Resolve this type's inc_spec if not already done
         if spec.data_type_inc is not None and not spec.inc_spec_resolved:
             parent_spec = namespace.catalog.get_spec(spec.data_type_inc)
             if parent_spec is None:
@@ -565,12 +565,9 @@ class NamespaceCatalog:
                 subspec.resolve_inc_spec(inc_type_spec, namespace)
             subspec.resolved = True
 
-            # Do NOT recurse into subspecs. We only resolve the direct children of
-            # each type. Nested subspecs (inside container groups) are not resolved here
-            # because resolving typed subspecs adds the included type's fields to the
-            # subspec, which can cause issues with:
-            # 1. Spec caching (the cached spec would contain resolved subspec fields)
-            # 2. Infinite recursion through containment cycles
+            # No need to recurse into subspecs. We only resolve the direct children of
+            # each type. The included type is already fully resolved (including its subspecs)
+            # before we merge it, so nested subspecs are already resolved.
 
     def __load_namespace(self, namespace, reader, resolve=True):
         ns_name = namespace['name']
