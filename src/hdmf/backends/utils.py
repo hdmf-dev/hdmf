@@ -68,11 +68,13 @@ class NamespaceToBuilderHelper(object):
                 h5_source = cls.get_source_name(source)
                 # Use the cached unresolved spec dict to preserve original structure
                 spec_dict = ns_catalog.get_spec_source_dict(source)
-                for dataset_dict in spec_dict.get('datasets', []):
-                    spec = DatasetSpec.build_spec(dataset_dict)
+                for item in spec_dict.get('datasets', []):
+                    # item is a dict if loaded from file, or a DatasetSpec if added programmatically
+                    spec = item if isinstance(item, DatasetSpec) else DatasetSpec.build_spec(item)
                     builder.add_spec(h5_source, spec)
-                for group_dict in spec_dict.get('groups', []):
-                    spec = GroupSpec.build_spec(group_dict)
+                for item in spec_dict.get('groups', []):
+                    # item is a dict if loaded from file, or a GroupSpec if added programmatically
+                    spec = item if isinstance(item, GroupSpec) else GroupSpec.build_spec(item)
                     builder.add_spec(h5_source, spec)
         return builder
 
