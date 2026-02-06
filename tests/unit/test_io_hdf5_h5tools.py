@@ -4160,7 +4160,7 @@ class TestExpand(TestCase):
 
         with HDF5IO(self.path, manager=manager, mode='r+') as io:
             read_quxbucket = io.read()
-            read_quxbucket.qux_data.append([7,8,9])
+            read_quxbucket.qux_data.append([7, 8, 9])
 
             expected = np.array([[1, 2, 3],
                                  [4, 5, 6],
