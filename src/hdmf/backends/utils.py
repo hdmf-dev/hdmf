@@ -1,6 +1,6 @@
 """Module with utility functions and classes used for implementation of I/O backends"""
 import os
-from ..spec import NamespaceCatalog, GroupSpec, DatasetSpec, NamespaceBuilder
+from ..spec import NamespaceCatalog, NamespaceBuilder
 from ..utils import docval,  popargs
 
 
@@ -68,13 +68,17 @@ class NamespaceToBuilderHelper(object):
                 h5_source = cls.get_source_name(source)
                 # Use the cached unresolved spec dict to preserve original structure
                 spec_dict = ns_catalog.get_spec_source_dict(source)
+                # Use namespace-specific spec classes (e.g., NWBDatasetSpec/NWBGroupSpec)
+                # to correctly handle namespace-specific keys like neurodata_type_def
+                dataset_spec_cls = ns_catalog.dataset_spec_cls
+                group_spec_cls = ns_catalog.group_spec_cls
                 for item in spec_dict.get('datasets', []):
-                    # item is a dict if loaded from file, or a DatasetSpec if added programmatically
-                    spec = item if isinstance(item, DatasetSpec) else DatasetSpec.build_spec(item)
+                    # item is a spec object if added programmatically, or a dict if loaded from file
+                    spec = item if isinstance(item, dataset_spec_cls) else dataset_spec_cls.build_spec(item)
                     builder.add_spec(h5_source, spec)
                 for item in spec_dict.get('groups', []):
-                    # item is a dict if loaded from file, or a GroupSpec if added programmatically
-                    spec = item if isinstance(item, GroupSpec) else GroupSpec.build_spec(item)
+                    # item is a spec object if added programmatically, or a dict if loaded from file
+                    spec = item if isinstance(item, group_spec_cls) else group_spec_cls.build_spec(item)
                     builder.add_spec(h5_source, spec)
         return builder
 
