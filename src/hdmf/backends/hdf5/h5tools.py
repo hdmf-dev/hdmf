@@ -789,17 +789,13 @@ class HDF5IO(HDMFIO):
              'doc': ('Bool to set whether datasets are expandable by setting the maxshape.')})
     def write_builder(self, **kwargs):
         f_builder = popargs('builder', kwargs)
-        link_data, exhaust_dci, export_source = getargs('link_data',
-                                                        'exhaust_dci',
-                                                        'export_source',
-                                                        kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to path '%s' with kwargs=%s"
                           % (f_builder.name, self.source, kwargs))
-        for name, gbldr in f_builder.groups.items():
+        for gbldr in f_builder.groups.values():
             self.write_group(self.__file, gbldr, **kwargs)
-        for name, dbldr in f_builder.datasets.items():
+        for dbldr in f_builder.datasets.values():
             self.write_dataset(self.__file, dbldr, **kwargs)
-        for name, lbldr in f_builder.links.items():
+        for lbldr in f_builder.links.values():
             self.write_link(self.__file, lbldr, export_source=kwargs.get("export_source"))
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
