@@ -4147,7 +4147,7 @@ class TestExpand(TestCase):
 
         with HDF5IO(self.path, manager=manager, mode='r') as io:
             read_quxbucket = io.read()
-            self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None,3))
+            self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None, 3))
 
     def test_expand_set_shape(self):
         qux = QuxData(name='my_qux', data=[[1, 2, 3], [4, 5, 6]])
