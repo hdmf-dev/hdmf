@@ -368,7 +368,7 @@ class TestRetrieveContainerClassWithTypeSource(TestCase):
         create_load_namespace_yaml('ns2', [], self.test_dir, {'ns1': ['Bar']}, self.type_map)
 
         # ns2 should have a TypeSource for Bar (registered before ns1's class is generated)
-        self.assertIsInstance(self.type_map.container_types['ns2']['Bar'], TypeSource)
+        self.assertIsInstance(self.type_map.get_dt_container_cls('Bar', 'ns2', autogen=False), TypeSource)
 
         # Register actual class for Bar in ns1
         Bar = self.type_map.get_dt_container_cls('Bar', 'ns1')
@@ -382,7 +382,7 @@ class TestRetrieveContainerClassWithTypeSource(TestCase):
         self.assertEqual(ns, 'ns1')
 
         # ns2 should still have TypeSource (not resolved to Bar)
-        self.assertIsInstance(self.type_map.container_types['ns2']['Bar'], TypeSource)
+        self.assertIsInstance(self.type_map.get_dt_container_cls('Bar', 'ns2', autogen=False), TypeSource)
 
 
 # TODO:

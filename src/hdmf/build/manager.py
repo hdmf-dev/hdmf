@@ -504,7 +504,7 @@ class TypeMap:
             # for both source types and dependent types, check if a container class exists.
             # if not, register a TypeSource instead. do not autogenerate classes here.
             # classes can be registered via register_container_type, and as classes are needed, they will be loaded
-            # from __container_types if available or generated.
+            # from __ns_dt_to_container_cls if available or generated.
 
             # register container types for each source type in the new namespace first
             for dt in source_types:
