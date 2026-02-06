@@ -401,8 +401,9 @@ class NamespaceCatalog:
             rtype=dict)
     def get_spec_source_dict(self, **kwargs):
         '''
-        Get the unresolved spec file dict for a given source file.
-        This returns the raw spec dict as loaded from YAML/HDF5, before resolution.
+        Get the unresolved specs for a given source file.
+        Returns a dict with 'datasets' and 'groups' keys containing lists of
+        unresolved Spec objects (before resolution of inherited fields).
         Returns None if the source is not found.
         '''
         source = getargs('source', kwargs)
@@ -428,19 +429,26 @@ class NamespaceCatalog:
         if ret is None:
             ret = dict()  # this is used as an ordered set -- values are all none
             d = reader.read_spec(spec_source)
-            # Cache the raw spec dict before any processing/resolution.
-            # This preserves the original structure for writing/caching.
-            self.__unresolved_spec_dicts[spec_source] = deepcopy(d)
+            # Cache unresolved Spec objects for writing/caching.
+            # Build specs from dicts after key conversion but before resolution.
+            unresolved_cache = {'datasets': [], 'groups': []}
             specs = d.get('datasets', list())
             for spec_dict in specs:
                 self.__convert_spec_cls_keys(GroupSpec, self.__group_spec_cls, spec_dict)
+                # Build unresolved spec before __reg_spec potentially resolves includes
+                unresolved_spec = self.__dataset_spec_cls.build_spec(deepcopy(spec_dict))
+                unresolved_cache['datasets'].append(unresolved_spec)
                 temp_dict = {k: None for k in __reg_spec(self.__dataset_spec_cls, spec_dict)}
                 ret.update(temp_dict)
             specs = d.get('groups', list())
             for spec_dict in specs:
                 self.__convert_spec_cls_keys(GroupSpec, self.__group_spec_cls, spec_dict)
+                # Build unresolved spec before __reg_spec potentially resolves includes
+                unresolved_spec = self.__group_spec_cls.build_spec(deepcopy(spec_dict))
+                unresolved_cache['groups'].append(unresolved_spec)
                 temp_dict = {k: None for k in __reg_spec(self.__group_spec_cls, spec_dict)}
                 ret.update(temp_dict)
+            self.__unresolved_spec_dicts[spec_source] = unresolved_cache
             self.__loaded_specs[spec_source] = ret
         return ret
 

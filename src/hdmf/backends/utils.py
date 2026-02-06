@@ -66,19 +66,11 @@ class NamespaceToBuilderHelper(object):
             else:
                 source = elem['source']
                 h5_source = cls.get_source_name(source)
-                # Use the cached unresolved spec dict to preserve original structure
+                # Use the cached unresolved specs to preserve original structure
                 spec_dict = ns_catalog.get_spec_source_dict(source)
-                # Use namespace-specific spec classes (e.g., NWBDatasetSpec/NWBGroupSpec)
-                # to correctly handle namespace-specific keys like neurodata_type_def
-                dataset_spec_cls = ns_catalog.dataset_spec_cls
-                group_spec_cls = ns_catalog.group_spec_cls
-                for item in spec_dict.get('datasets', []):
-                    # item is a spec object if added programmatically, or a dict if loaded from file
-                    spec = item if isinstance(item, dataset_spec_cls) else dataset_spec_cls.build_spec(item)
+                for spec in spec_dict.get('datasets', []):
                     builder.add_spec(h5_source, spec)
-                for item in spec_dict.get('groups', []):
-                    # item is a spec object if added programmatically, or a dict if loaded from file
-                    spec = item if isinstance(item, group_spec_cls) else group_spec_cls.build_spec(item)
+                for spec in spec_dict.get('groups', []):
                     builder.add_spec(h5_source, spec)
         return builder
 
