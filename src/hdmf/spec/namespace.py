@@ -3,7 +3,7 @@ import ruamel.yaml as yaml
 import string
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
-from copy import copy, deepcopy
+from copy import copy
 from datetime import datetime
 from warnings import warn
 
@@ -428,21 +428,20 @@ class NamespaceCatalog:
             ret = dict()  # this is used as an ordered set -- values are all none
             d = reader.read_spec(spec_source)
             # Cache unresolved Spec objects for writing/caching.
-            # Build specs from dicts after key conversion but before resolution.
+            # We build specs twice: once for the unresolved cache (written to file) and once
+            # for the catalog (which gets resolved in place by resolve_all_specs).
             unresolved_cache = {'datasets': [], 'groups': []}
             specs = d.get('datasets', list())
             for spec_dict in specs:
                 self.__convert_spec_cls_keys(GroupSpec, self.__group_spec_cls, spec_dict)
-                # Build unresolved spec before __reg_spec potentially resolves includes
-                unresolved_spec = self.__dataset_spec_cls.build_spec(deepcopy(spec_dict))
+                unresolved_spec = self.__dataset_spec_cls.build_spec(spec_dict)
                 unresolved_cache['datasets'].append(unresolved_spec)
                 temp_dict = {k: None for k in __reg_spec(self.__dataset_spec_cls, spec_dict)}
                 ret.update(temp_dict)
             specs = d.get('groups', list())
             for spec_dict in specs:
                 self.__convert_spec_cls_keys(GroupSpec, self.__group_spec_cls, spec_dict)
-                # Build unresolved spec before __reg_spec potentially resolves includes
-                unresolved_spec = self.__group_spec_cls.build_spec(deepcopy(spec_dict))
+                unresolved_spec = self.__group_spec_cls.build_spec(spec_dict)
                 unresolved_cache['groups'].append(unresolved_spec)
                 temp_dict = {k: None for k in __reg_spec(self.__group_spec_cls, spec_dict)}
                 ret.update(temp_dict)
