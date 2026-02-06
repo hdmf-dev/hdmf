@@ -56,7 +56,7 @@ class SpecCatalog:
         self.__spec_source_files[type_name] = source_file
 
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the Spec for'},
-            returns="the specification for writing the given object type to HDF5 ", rtype='Spec')
+            returns="the specification for writing the given object type to HDF5 ", rtype=BaseStorageSpec)
     def get_spec(self, **kwargs):
         '''
         Get the Spec object for the given type
@@ -129,6 +129,8 @@ class SpecCatalog:
             hierarchy = list()
             parent = data_type
             while parent is not None:
+                if parent in hierarchy:
+                    raise ValueError(f"Circular reference detected in type hierarchy for {data_type}")
                 hierarchy.append(parent)
                 parent = self.__parent_types.get(parent)
             # store the computed hierarchy for data_type and all types in between it and
