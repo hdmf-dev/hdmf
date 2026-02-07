@@ -33,7 +33,7 @@ classifiers = [
 dependencies = [
     "h5py>=3.6.0",
     "jsonschema>=3.2.0",
-    'numpy>=1.21.2',
+    'numpy>=1.22.0',
     "pandas>=1.4.0,<3",
     "ruamel.yaml>=0.16",
 ]
@@ -82,7 +82,7 @@ all = ["hdmf[tqdm,zarr,sparse,termset,test,docs]"]
 min-reqs = [
     "h5py==3.6.0",
     "jsonschema==3.2.0",
-    "numpy==1.21.2",
+    "numpy==1.22.0",
     "pandas==1.4.0",
     "ruamel.yaml==0.16.0",
     "scipy==1.7.2",
