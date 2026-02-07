@@ -1493,8 +1493,6 @@ class DynamicTableRegion(VectorData):
         'table',
     )
 
-    MAX_ROWS_TO_VALIDATE_INIT = int(1e3)
-
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this VectorData'},
             {'name': 'data', 'type': ('array_data', 'data'),
              'doc': 'a dataset where the first dimension is a concatenation of multiple vectors'},
@@ -1516,11 +1514,11 @@ class DynamicTableRegion(VectorData):
             self.fields['table'] = table
 
     def _validate_index_in_range(self, data, table):
-        """If the length of data is small, and if data contains an index that is out of bounds, then raise an error.
+        """If data contains an index that is out of bounds, then raise an error.
         If the object is being constructed from a file, raise a warning instead to ensure invalid data can still be
         read.
         """
-        if table and len(data) <= self.MAX_ROWS_TO_VALIDATE_INIT:
+        if table:
             if isinstance(data, (list, tuple)):
                 data_arr = np.array(data)
             else:
@@ -1543,8 +1541,8 @@ class DynamicTableRegion(VectorData):
         """
         Set the table this DynamicTableRegion should be pointing to.
 
-        If the length of the data is small, this will validate all data elements in this DynamicTableRegion to
-        ensure they are within bounds.
+        This will validate all data elements in this DynamicTableRegion to ensure they are within bounds if
+        validate_data was set to True.
 
         :param table: The DynamicTable this DynamicTableRegion should be pointing to
 
@@ -1704,10 +1702,15 @@ class DynamicTableRegion(VectorData):
         return super()._validate_on_set_parent()
 
     def _validate_new_data_element(self, arg):
-        """Validate that the new index is within bounds of the table. Raises an IndexError if not."""
-        if self.table and (arg >= len(self.table) or arg < 0):
-            raise IndexError(f"DynamicTableRegion index {arg} is out of bounds for "
-                             f"{type(self.table)} '{self.table.name}'.")
+        """Validate that the new index is within bounds of the table. Raises an IndexError if not.
+
+        Validation only occurs if validate_data was set to True (the default).
+        """
+        # Default to True if _validate_data is not set (for backwards compatibility)
+        if getattr(self, '_validate_data', True):
+            if self.table and (arg >= len(self.table) or arg < 0):
+                raise IndexError(f"DynamicTableRegion index {arg} is out of bounds for "
+                                 f"{type(self.table)} '{self.table.name}'.")
 
 
 def _uint_precision(elements):
