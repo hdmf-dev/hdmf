@@ -13,6 +13,7 @@
 - Deprecated unused `BaseStorageSpec.get_data_type_spec` and `BaseStorageSpec.get_namespace_spec`. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 
 ### Removed
+- Dropped support for Python 3.9. The minimum supported version is now Python 3.10. @rly [#xxx](https://github.com/hdmf-dev/hdmf/pull/xxx)
 - Removed unused and undocumented `hdmf.monitor` module. @rly [#1327](https://github.com/hdmf-dev/hdmf/pull/1327)
 - Removed deprecated `Data.set_data_io` usage and `HERDManager` methods. @rly [#1328](https://github.com/hdmf-dev/hdmf/pull/1328)
 - Removed deprecated `HDF5IO.copy_file` method. Use the `HDF5IO.export` or the `h5py.File.copy` method instead. @stephprince [#1332](https://github.com/hdmf-dev/hdmf/pull/1332)
