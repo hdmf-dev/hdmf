@@ -1,7 +1,6 @@
 from abc import ABCMeta, abstractmethod
 import os
 from pathlib import Path
-from typing import Union, Optional
 
 from ..build import BuildManager, GroupBuilder, TypeMap
 from ..container import Container, HERDManager
@@ -193,10 +192,10 @@ class HDMFIO(metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def load_namespaces(cls,
-        namespace_catalog: Union[NamespaceCatalog, TypeMap],
-        path: Optional[Union[str, Path]] = None,
-        namespaces: Optional[list[str]] = None,
-        io: Optional['HDMFIO'] = None,
+        namespace_catalog: NamespaceCatalog | TypeMap,
+        path: str | Path | None = None,
+        namespaces: list[str] | None = None,
+        io: 'HDMFIO | None' = None,
         **kwargs
     ) -> dict:
         """Load the namespaces from the file at the given path into the provided NamespaceCatalog or TypeMap.
@@ -213,8 +212,8 @@ class HDMFIO(metaclass=ABCMeta):
 
     @abstractmethod
     def load_namespaces_io(self,
-        namespace_catalog: Union[NamespaceCatalog, TypeMap],
-        namespaces: Optional[list[str]] = None,
+        namespace_catalog: NamespaceCatalog | TypeMap,
+        namespaces: list[str] | None = None,
     ) -> dict:
         """Load the namespaces from this HDMFIO object into the provided NamespaceCatalog or TypeMap.
 
