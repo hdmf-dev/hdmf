@@ -434,17 +434,20 @@ class TestLoadNamespacesSourceTypes(TestCase):
         shutil.rmtree(self.test_dir)
 
     def test_load_namespaces_returns_source_types(self):
-        """Test that load_namespaces returns a dict with source types and dependencies."""
+        """Test that load_namespaces returns a dict with dependencies and stores source types."""
         bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
         baz_spec = GroupSpec(doc='A test group spec', data_type_def='Baz')
         ret = create_load_namespace_yaml('ns1', [bar_spec, baz_spec], self.test_dir, {}, self.type_map)
 
-        # ret should be {ns_name: (source_types, ns_deps)}
+        # ret should be {ns_name: ns_deps}
         self.assertIn('ns1', ret)
-        source_types, ns_deps = ret['ns1']
+        ns_deps = ret['ns1']
+        self.assertEqual(ns_deps, {})
+
+        # source types should be accessible via get_source_types
+        source_types = self.type_map.namespace_catalog.get_source_types('ns1')
         self.assertIn('Bar', source_types)
         self.assertIn('Baz', source_types)
-        self.assertEqual(ns_deps, {})
 
     def test_load_namespaces_returns_dependent_types(self):
         """Test that load_namespaces returns dependency info for namespaces with includes."""
@@ -455,10 +458,13 @@ class TestLoadNamespacesSourceTypes(TestCase):
         ret = create_load_namespace_yaml('ns2', [baz_spec], self.test_dir, {'ns1': ['Bar']}, self.type_map)
 
         self.assertIn('ns2', ret)
-        source_types, ns_deps = ret['ns2']
-        self.assertIn('Baz', source_types)
+        ns_deps = ret['ns2']
         self.assertIn('ns1', ns_deps)
         self.assertIn('Bar', ns_deps['ns1'])
+
+        # source types should be accessible via get_source_types
+        source_types = self.type_map.namespace_catalog.get_source_types('ns2')
+        self.assertIn('Baz', source_types)
 
     def test_load_namespaces_registers_source_typesource(self):
         """Test that source types are registered as TypeSource after load_namespaces."""

@@ -347,10 +347,10 @@ class TestCustomSpecClasses(TestCase):
 
         # test that the source types are correct for test ns
         expected_source_types = ('TestData', 'TestContainer', 'TestTable')
-        self.assertTupleEqual(loaded_types['test'][0], expected_source_types)
+        self.assertTupleEqual(self.ns_catalog.get_source_types('test'), expected_source_types)
         # test that the dependencies are correct, including dependencies of the dependencies
         expected = set(['Data', 'Container', 'DynamicTable', 'ElementIdentifiers', 'VectorData', 'MeaningsTable'])
-        self.assertSetEqual(set(loaded_types['test'][1]['hdmf-common']), expected)
+        self.assertSetEqual(set(loaded_types['test']['hdmf-common']), expected)
 
         # test that the types are loaded
         types = self.ns_catalog.get_types('test.base.yaml')
@@ -390,12 +390,12 @@ class TestCustomSpecClasses(TestCase):
 
         # test that the source types are correct for test-ext ns
         expected_source_types = ('TestExtData', 'TestExtContainer', 'TestExtTable')
-        self.assertTupleEqual(loaded_ext_types['test-ext'][0], expected_source_types)
+        self.assertTupleEqual(self.ns_catalog.get_source_types('test-ext'), expected_source_types)
 
         # test that the dependencies are correct, including dependencies of the dependencies
         expected_deps = set(['TestData', 'TestContainer', 'TestTable', 'Container', 'Data', 'DynamicTable',
                              'ElementIdentifiers', 'VectorData', 'MeaningsTable'])
-        self.assertSetEqual(set(loaded_ext_types['test-ext'][1]['test']), expected_deps)
+        self.assertSetEqual(set(loaded_ext_types['test-ext']['test']), expected_deps)
 
     def test_load_namespaces_bad_path(self):
         namespace_path = 'test.namespace.yaml'

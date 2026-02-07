@@ -507,13 +507,14 @@ class TypeMap:
         load_namespaces here has the advantage of being able to keep track of type dependencies across namespaces.
         '''
         types = self.__ns_catalog.load_namespaces(**kwargs)
-        for new_ns, (source_types, ns_deps) in types.items():
+        for new_ns, ns_deps in types.items():
             # for both source types and dependent types, check if a container class exists.
             # if not, register a TypeSource instead. do not autogenerate classes here.
             # classes can be registered via register_container_type, and as classes are needed, they will be loaded
             # from __ns_dt_to_container_cls if available or generated.
 
             # register container types for each source type in the new namespace first
+            source_types = self.__ns_catalog.get_source_types(new_ns)
             for dt in source_types:
                 container_cls = self.__ns_dt_to_container_cls.get(new_ns, {}).get(dt)
                 if container_cls is None:

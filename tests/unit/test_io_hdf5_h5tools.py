@@ -2217,7 +2217,9 @@ class TestLoadNamespaces(TestCase):
         ns_catalog = NamespaceCatalog()
         d = HDF5IO.load_namespaces(ns_catalog, self.path)
         # test_core has no dependencies
-        self.assertEqual(d, {'test_core': (('Foo', 'FooBucket', 'FooFile'), {})})
+        self.assertEqual(d, {'test_core': {}})
+        # source types should be stored on the catalog
+        self.assertTupleEqual(ns_catalog.get_source_types('test_core'), ('Foo', 'FooBucket', 'FooFile'))
 
     def test_load_namespaces_no_path_no_file(self):
         """Test that loading namespaces without a path or file raises an error."""
@@ -2239,7 +2241,7 @@ class TestLoadNamespaces(TestCase):
         d = HDF5IO.load_namespaces(ns_catalog, file=file_obj)
 
         self.assertTrue(file_obj.__bool__())  # check file object is still open
-        self.assertEqual(d, {'test_core': (('Foo', 'FooBucket', 'FooFile'), {})})
+        self.assertEqual(d, {'test_core': {}})
 
         file_obj.close()
 
@@ -2249,7 +2251,7 @@ class TestLoadNamespaces(TestCase):
             ns_catalog = NamespaceCatalog()
             d = HDF5IO.load_namespaces(ns_catalog, path=self.path, file=file_obj)
             self.assertTrue(file_obj.__bool__())  # check file object is still open
-            self.assertEqual(d, {'test_core': (('Foo', 'FooBucket', 'FooFile'), {})})
+            self.assertEqual(d, {'test_core': {}})
 
     def test_load_namespaces_file_path_mismatched(self):
         """Test that loading namespaces given an h5py.File and path that are mismatched raises an error."""
@@ -2265,7 +2267,7 @@ class TestLoadNamespaces(TestCase):
         pathlib_path = Path(self.path)
         ns_catalog = NamespaceCatalog()
         d = HDF5IO.load_namespaces(ns_catalog, pathlib_path)
-        self.assertEqual(d, {'test_core': (('Foo', 'FooBucket', 'FooFile'), {})})
+        self.assertEqual(d, {'test_core': {}})
 
     def test_load_namespaces_with_dependencies(self):
         """Test loading namespaces where one includes another."""
@@ -2296,9 +2298,10 @@ class TestLoadNamespaces(TestCase):
         ns_catalog = NamespaceCatalog()
         d = HDF5IO.load_namespaces(ns_catalog, self.path)
         self.assertEqual(d, {
-            'test_core': (('Foo', 'FooBucket', 'FooFile'), {}),
-            'test_core2': ((), {'test_core': ('Foo', 'FooBucket', 'FooFile')}),
+            'test_core': {},
+            'test_core2': {'test_core': ('Foo', 'FooBucket', 'FooFile')},
         })
+        self.assertTupleEqual(ns_catalog.get_source_types('test_core'), ('Foo', 'FooBucket', 'FooFile'))
 
     def test_load_namespaces_no_specloc(self):
         """Test loading namespaces where the file does not contain a SPEC_LOC_ATTR."""
@@ -2348,11 +2351,12 @@ class TestLoadNamespaces(TestCase):
 
         # test that the source types are correct
         expected = ('Foo', 'FooBucket', 'FooFile', 'BigFoo', 'BiggerFoo')
-        self.assertTupleEqual(namespace_types['test_core'][0], expected)
+        self.assertTupleEqual(ns_catalog.get_source_types('test_core'), expected)
+        self.assertTupleEqual(ns_catalog.get_source_types('test-ext'), ('FooExt',))
 
         # test that the dependencies are correct
         expected = ('Foo',)
-        self.assertTupleEqual(namespace_types['test-ext'][1]['test_core'], expected)
+        self.assertTupleEqual(namespace_types['test-ext']['test_core'], expected)
         # test that the types are loaded
         types = ns_catalog.get_types('test-ext.extensions')
         expected = ('FooExt',)

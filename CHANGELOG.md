@@ -3,7 +3,7 @@
 ## HDMF 5.0.0 (Upcoming)
 
 ### Changed
-- Refactored `TypeMap.load_namespaces` to register `TypeSource` placeholders for both source types and dependent types, enabling lazy class generation. `NamespaceCatalog.load_namespaces` now returns source types alongside dependencies. Removed `TypeMap.container_types` property. Converted `TypeSource` to a frozen dataclass. @rly [#1372](https://github.com/hdmf-dev/hdmf/pull/1372)
+- Refactored `TypeMap.load_namespaces` to register `TypeSource` placeholders for both source types and dependent types, enabling lazy class generation. Added `NamespaceCatalog.get_source_types` to get source types loaded for a namespace. Removed `TypeMap.container_types` property. Converted `TypeSource` to a frozen dataclass. @rly [#1372](https://github.com/hdmf-dev/hdmf/pull/1372)
 - New spec resolution system: Instead of resolving includes during spec loading, resolution now happens after all specs are loaded via `NamespaceCatalog.resolve_all_specs()`. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312), [#1392](https://github.com/hdmf-dev/hdmf/pull/1392)
   - New methods: `BaseStorageSpec.resolve_inc_spec()` replaces the old `BaseStorageSpec.resolve_spec()` method
   - Resolution tracking: New properties `BaseStorageSpec.resolved` and `BaseStorageSpec.inc_spec_resolved` track resolution state
