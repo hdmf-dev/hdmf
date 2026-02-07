@@ -31,10 +31,10 @@ classifiers = [
 ]
 # make sure to update min-reqs dependencies below when these lower bounds change
 dependencies = [
-    "h5py>=3.2.0",
+    "h5py>=3.6.0",
     "jsonschema>=3.2.0",
-    'numpy>=1.21.0',
-    "pandas>=1.3.0,<3",
+    'numpy>=1.21.2',
+    "pandas>=1.3.3,<3",
     "ruamel.yaml>=0.16",
 ]
 dynamic = ["version"]
@@ -47,7 +47,7 @@ zarr = [
     "numcodecs<0.16.0",  # numcodecs 0.16.0 is not compatible with zarr<3
     "hdmf-zarr>=0.12.0",
 ]
-sparse = ["scipy>=1.7"]
+sparse = ["scipy>=1.7.2"]
 termset = [
     "linkml-runtime>=1.5.5",
     "schemasheets>=0.4.0rc1",
@@ -80,12 +80,12 @@ all = ["hdmf[tqdm,zarr,sparse,termset,test,docs]"]
 
 # minimum requirements of project dependencies for testing (see .github/workflows/run_all_tests.yml)
 min-reqs = [
-    "h5py==3.2.0",
+    "h5py==3.6.0",
     "jsonschema==3.2.0",
-    "numpy==1.21.0",
-    "pandas==1.3.0",
+    "numpy==1.21.2",
+    "pandas==1.3.3",
     "ruamel.yaml==0.16.0",
-    "scipy==1.7.0",
+    "scipy==1.7.2",
     "tqdm==4.41.0",
     "zarr==2.12.0",
 ]
