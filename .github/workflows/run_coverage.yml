@@ -51,12 +51,12 @@ jobs:
       - name: Install package
         if: ${{ ! matrix.opt_req }}
         run: |
-          python -m pip install ".[test]"
+          python -m pip install --group test .
 
       - name: Install package with optional dependencies
         if: ${{ matrix.opt_req }}
         run: |
-          python -m pip install ".[test,tqdm,sparse,zarr,termset]"
+          python -m pip install --group test ".[tqdm,sparse,zarr,termset]"
 
       - name: Run tests and generate coverage report
         run: |
