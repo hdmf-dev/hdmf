@@ -1418,6 +1418,18 @@ class TestDynamicTableRegion(TestCase):
         with self.assertRaises(IndexError):
             dtr.table = table
 
+    def test_extend_out_of_bounds(self):
+        table = self.with_columns_and_data()
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1], description='desc', table=table)
+        with self.assertRaises(IndexError):
+            dtr.extend([2, 10, 20])
+
+    def test_extend_out_of_bounds_no_validate(self):
+        table = self.with_columns_and_data()
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1], description='desc', table=table, validate_data=False)
+        dtr.extend([10, 20])  # should not raise an error
+        self.assertEqual(list(dtr.data), [0, 1, 10, 20])
+
     def test_create_region_with_valid_slice_range(self):
         table = self.with_columns_and_data()
         region = table.create_region(name='region', region=slice(0, 2), description='test region')

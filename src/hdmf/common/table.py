@@ -1513,23 +1513,44 @@ class DynamicTableRegion(VectorData):
         if table is not None:  # set the table attribute using fields to avoid another validation in the setter
             self.fields['table'] = table
 
+    def _check_indices_in_bounds(self, data, table):
+        """Check if data contains indices that are out of bounds.
+
+        Args:
+            data: Single index or array of indices to check
+            table: The DynamicTable to check bounds against
+
+        Returns:
+            Error message string if validation fails, None if validation passes or table is None
+        """
+        if not table:
+            return None
+
+        # Convert to numpy array for efficient checking
+        if isinstance(data, (list, tuple)):
+            data_arr = np.array(data)
+        elif np.isscalar(data):
+            data_arr = np.array([data])
+        else:
+            data_arr = data[:]
+
+        # Find indices that are out of bounds
+        violators = np.where((data_arr >= len(table)) | (data_arr < 0))[0]
+        if violators.size > 0:
+            return (
+                f"DynamicTableRegion values {data_arr[violators]} are out of bounds for "
+                f"{type(table)} '{table.name}'."
+            )
+        return None
+
     def _validate_index_in_range(self, data, table):
         """If data contains an index that is out of bounds, then raise an error.
         If the object is being constructed from a file, raise a warning instead to ensure invalid data can still be
         read.
         """
-        if table:
-            if isinstance(data, (list, tuple)):
-                data_arr = np.array(data)
-            else:
-                data_arr = data[:]
-            violators = np.where((data_arr >= len(table)) | (data_arr < 0))[0]
-            if violators.size > 0:
-                error_msg = (
-                    f"DynamicTableRegion values {data_arr[violators]} are out of bounds for "
-                    f"{type(table)} '{table.name}'."
-                )
-                self._error_on_new_warn_on_construct(error_msg, error_cls=IndexError)
+        error_msg = self._check_indices_in_bounds(data, table)
+        if error_msg:
+            self._error_on_new_warn_on_construct(error_msg, error_cls=IndexError)
 
     @property
     def table(self):
@@ -1558,6 +1579,16 @@ class DynamicTableRegion(VectorData):
         self.fields['table'] = table
         if self._validate_data:
             self._validate_index_in_range(self.data, table)
+
+    def extend(self, arg):
+        """Add all elements of the iterable arg to the end of this DynamicTableRegion.
+
+        This override uses efficient batch validation instead of validating element-by-element.
+        """
+        # Use the parent Data class extend which calls _validate_new_data for batch validation
+        # Skip VectorData.extend which would fall back to element-by-element add_row
+        from hdmf.container import Data
+        Data.extend(self, arg)
 
     def __getitem__(self, arg):
         return self.get(arg)
@@ -1701,16 +1732,25 @@ class DynamicTableRegion(VectorData):
             warn(msg, stacklevel=2)
         return super()._validate_on_set_parent()
 
+    def _validate_new_data(self, data):
+        """Validate a batch of indices before adding to this DynamicTableRegion.
+
+        Validation only occurs if validate_data was set to True (the default).
+        """
+        if self._validate_data:
+            error_msg = self._check_indices_in_bounds(data, self.table)
+            if error_msg:
+                raise IndexError(error_msg)
+
     def _validate_new_data_element(self, arg):
         """Validate that the new index is within bounds of the table. Raises an IndexError if not.
 
         Validation only occurs if validate_data was set to True (the default).
         """
-        # Default to True if _validate_data is not set (for backwards compatibility)
-        if getattr(self, '_validate_data', True):
-            if self.table and (arg >= len(self.table) or arg < 0):
-                raise IndexError(f"DynamicTableRegion index {arg} is out of bounds for "
-                                 f"{type(self.table)} '{self.table.name}'.")
+        if self._validate_data:
+            error_msg = self._check_indices_in_bounds(arg, self.table)
+            if error_msg:
+                raise IndexError(error_msg)
 
 
 def _uint_precision(elements):
