@@ -389,13 +389,16 @@ class TypeSource:
     This placeholder/proxy class represents a lazy reference to a data type from a namespace. This approach
     ensures that classes are only generated when actually needed, not at namespace load time, and it avoids
     circular dependency issues.
+
     - During TypeMap.load_namespaces, when loading namespace dependencies, if a container class doesn't exist yet
-    for a specified type or a dependent type, a TypeSource is registered instead of the actual class.
+      for a specified type or a dependent type, a TypeSource is registered instead of the actual class.
     - During TypeMap.get_dt_container_cls, when __get_container_cls encounters a TypeSource, it resolves it by:
+
       - Calling get_dt_container_cls on the source namespace/type (which may auto-generate the class)
       - Replacing the TypeSource with the actual class via register_container_type
+
     - When searching for a type across namespaces, TypeSource entries are skipped to avoid returning the wrong
-    namespace.
+      namespace.
 
     This class should by used only by TypeMap.
     TODO: After docval is removed, make this class an inner class of TypeMap.
