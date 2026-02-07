@@ -19,6 +19,7 @@
 - Removed deprecated `HDF5IO.copy_file` method. Use the `HDF5IO.export` or the `h5py.File.copy` method instead. @stephprince [#1332](https://github.com/hdmf-dev/hdmf/pull/1332)
 - Removed deprecated `extensions` kwarg for `get_type_map` function. @stephprince [#1332](https://github.com/hdmf-dev/hdmf/pull/1332)
 - Removed unused and unnecessary `NamespaceToBuilderHelper.get_source_path` method. @rly [#1392](https://github.com/hdmf-dev/hdmf/pull/1392)
+- Deprecated `TypeMap.copy_mappers` method. Use `TypeMap.merge` instead with the argument `ns_catalog=False` to copy only mappers without namespaces. @rly [#1372](https://github.com/hdmf-dev/hdmf/pull/1372)
 
 ### Added
 - Added support for HDMF Common Schema 1.9.0.
