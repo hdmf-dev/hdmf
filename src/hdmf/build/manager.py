@@ -4,6 +4,7 @@ from copy import copy
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Optional, Union
+import warnings
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGeneratorManager, CustomClassGenerator, MCIClassGenerator
@@ -455,11 +456,14 @@ class TypeMap:
         return ret
 
     def __deepcopy__(self, memo):
-        # XXX: From @nicain: All of a sudden legacy tests started
-        #      needing this argument in deepcopy. Doesn't hurt anything, though.
         return self.__copy__()
 
     def copy_mappers(self, type_map):
+        warnings.warn(
+            "copy_mappers is deprecated and will be removed in a future version. "
+            "Use merge instead with the argument ns_catalog=False to copy only mappers without namespaces.",
+            DeprecationWarning,
+        )
         for namespace in self.__ns_catalog.namespaces:
             if namespace not in type_map.__ns_dt_to_container_cls:
                 continue
