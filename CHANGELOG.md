@@ -11,6 +11,7 @@
 - If `dims` are not provided in a `DatasetSpec` or `AttributeSpec`, but `shape` is provided, `dims` will be set to a list of dummy dimension names, e.g., "dim_0", "dim_1", etc. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
 - Deprecated `BaseStorageSpec.add_attribute`, `GroupSpec.add_group`, `GroupSpec.add_dataset`, and `GroupSpec.add_link`. Use `set_attribute`, `set_group`, `set_dataset`, and `set_link` instead. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 - Deprecated unused `BaseStorageSpec.get_data_type_spec` and `BaseStorageSpec.get_namespace_spec`. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
+- Moved `test`, `docs`, and `min-reqs` from `[project.optional-dependencies]` to `[dependency-groups]` (PEP 735). `min-reqs` was renamed to `test-min-deps`. @rly [#1395](https://github.com/hdmf-dev/hdmf/pull/1395)
 
 ### Removed
 - Removed unused and undocumented `hdmf.monitor` module. @rly [#1327](https://github.com/hdmf-dev/hdmf/pull/1327)

@@ -9,6 +9,10 @@ build:
   os: ubuntu-24.04
   tools:
     python: '3.13'  # TODO: Update to 3.14 when linkml and its deps support 3.14
+  jobs:
+    install:
+      - python -m pip install --upgrade pip
+      - python -m pip install --group docs ".[tqdm,sparse,zarr,termset]"
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
@@ -20,11 +24,6 @@ sphinx:
 
 # Optionally build your docs in additional formats such as PDF and ePub
 formats: all
-
-# Optionally set the version of Python and requirements required to build your docs
-python:
-  install:
-    - path: .[docs,tqdm,sparse,zarr,termset] # path to the package relative to the root
 
 # Optionally include all submodules
 submodules:
