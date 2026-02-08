@@ -80,9 +80,9 @@ class TestRos3(TestCase):
         self.manager = BuildManager(type_map)
 
     def tearDown(self):
-        if os.path.exists(self.ns_filename):
+        if hasattr(self, 'ns_filename') and os.path.exists(self.ns_filename):
             os.remove(self.ns_filename)
-        if os.path.exists(self.ext_filename):
+        if hasattr(self, 'ext_filename') and os.path.exists(self.ext_filename):
             os.remove(self.ext_filename)
 
     def test_basic_read(self):
