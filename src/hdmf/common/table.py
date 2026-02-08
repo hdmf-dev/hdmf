@@ -5,7 +5,7 @@ the storage and use of dynamic data tables as part of the hdmf-common schema
 
 import re
 from collections import OrderedDict
-from typing import NamedTuple, Union
+from typing import NamedTuple
 from warnings import warn
 
 import numpy as np
@@ -1301,7 +1301,7 @@ class DynamicTable(Container):
         """
         link_type = NamedTuple('DynamicTableLink',
                                [('source_table', DynamicTable),
-                                ('source_column', Union[DynamicTableRegion, VectorIndex]),
+                                ('source_column', DynamicTableRegion | VectorIndex),
                                 ('target_table', DynamicTable)])
         curr_tables = [self, ]  # Set of tables
         other_tables = getargs('other_tables', kwargs)
