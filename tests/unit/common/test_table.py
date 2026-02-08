@@ -1390,6 +1390,46 @@ class TestDynamicTableRegion(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             dynamic_table_region.get(0, df=False, index=False)
 
+    def test_init_out_of_bounds(self):
+        table = self.with_columns_and_data()
+        with self.assertRaises(IndexError):
+            DynamicTableRegion(name='dtr', data=[0, 1, 2, 2, 5], description='desc', table=table)
+
+    def test_init_out_of_bounds_no_validate(self):
+        table = self.with_columns_and_data()
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1, 5], description='desc', table=table, validate_data=False)
+        self.assertEqual(dtr.data, [0, 1, 5])  # no exception raised
+
+    def test_add_row_out_of_bounds(self):
+        table = self.with_columns_and_data()
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1, 2, 2], description='desc', table=table)
+        with self.assertRaises(IndexError):
+            dtr.add_row(5)
+
+    def test_add_row_out_of_bounds_no_validate(self):
+        table = self.with_columns_and_data()
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1], description='desc', table=table, validate_data=False)
+        dtr.add_row(5)  # should not raise an error
+        self.assertEqual(list(dtr.data), [0, 1, 5])
+
+    def test_set_table_out_of_bounds(self):
+        table = self.with_columns_and_data()
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1, 5], description='desc')
+        with self.assertRaises(IndexError):
+            dtr.table = table
+
+    def test_extend_out_of_bounds(self):
+        table = self.with_columns_and_data()
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1], description='desc', table=table)
+        with self.assertRaises(IndexError):
+            dtr.extend([2, 10, 20])
+
+    def test_extend_out_of_bounds_no_validate(self):
+        table = self.with_columns_and_data()
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1], description='desc', table=table, validate_data=False)
+        dtr.extend([10, 20])  # should not raise an error
+        self.assertEqual(list(dtr.data), [0, 1, 10, 20])
+
     def test_create_region_with_valid_slice_range(self):
         table = self.with_columns_and_data()
         region = table.create_region(name='region', region=slice(0, 2), description='test region')
@@ -1406,18 +1446,6 @@ class TestDynamicTableRegion(TestCase):
         region = table.create_region(name='region2', region=slice(0, None), description='test region')
         self.assertEqual(region.data, [0, 1, 2, 3, 4])
 
-    def test_create_region_with_negative_index(self):
-        table = self.with_columns_and_data()
-
-        msg = 'The index -1 is out of range for this DynamicTable of length 5'
-        with self.assertRaisesWith(IndexError, msg):
-            table.create_region(name='region', region=[-1, 0], description='test region')
-
-    def test_create_region_with_out_of_range_index(self):
-        table = self.with_columns_and_data()
-        msg = 'The index 10 is out of range for this DynamicTable of length 5'
-        with self.assertRaisesWith(IndexError, msg):
-            table.create_region(name='region', region=[0, 10], description='test region')
 
 class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
 
