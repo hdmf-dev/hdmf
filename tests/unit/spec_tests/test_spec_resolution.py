@@ -9,7 +9,6 @@ import os
 from pathlib import Path
 import tempfile
 import json
-from typing import Union
 import ruamel.yaml as yaml
 import shutil
 
@@ -1109,7 +1108,7 @@ class TestNamespaceCatalogResolution(TestCase):
         self,
         name: str,
         specs: list[BaseStorageSpec],
-        dependencies: Union[list[str], None] = None,
+        dependencies: list[str] | None = None,
     ) -> str:
         """Helper to create a test namespace with given specs."""
         # Create specs file

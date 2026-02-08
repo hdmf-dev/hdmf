@@ -2,7 +2,7 @@ from abc import ABCMeta
 from collections import OrderedDict
 from copy import copy
 from itertools import chain
-from typing import Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from warnings import warn
 
 from ..utils import docval, getargs, popargs, get_docval
@@ -111,7 +111,7 @@ class DtypeHelper:
         return new in DtypeHelper.allowable[orig]
 
 
-def _is_sub_dtype(new: Union[str, "RefSpec"], orig: Union[str, "RefSpec"]):
+def _is_sub_dtype(new: "str | RefSpec", orig: "str | RefSpec"):
     if isinstance(orig, RefSpec) != isinstance(new, RefSpec):
         return False
 
@@ -125,8 +125,8 @@ def _is_sub_dtype(new: Union[str, "RefSpec"], orig: Union[str, "RefSpec"]):
 
 
 def _resolve_inc_spec_dtype(
-        spec: Union['AttributeSpec', 'DatasetSpec'],
-        inc_spec: Union['AttributeSpec', 'DatasetSpec']
+        spec: "AttributeSpec | DatasetSpec",
+        inc_spec: "AttributeSpec | DatasetSpec"
     ):
     if inc_spec.dtype is None:
         # nothing to include/check
@@ -172,8 +172,8 @@ def _resolve_inc_spec_dtype(
     spec['dtype'] = list(inc_spec_order.values())
 
 def _resolve_inc_spec_shape(
-        spec: Union['AttributeSpec', 'DatasetSpec'],
-        inc_spec: Union['AttributeSpec', 'DatasetSpec']
+        spec: "AttributeSpec | DatasetSpec",
+        inc_spec: "AttributeSpec | DatasetSpec"
     ):
     if inc_spec.shape is None:
         # nothing to include/check
@@ -191,8 +191,8 @@ def _resolve_inc_spec_shape(
     # TODO: make sure the new shape is a subset of the included shape
 
 def _resolve_inc_spec_dims(
-        spec: Union['AttributeSpec', 'DatasetSpec'],
-        inc_spec: Union['AttributeSpec', 'DatasetSpec']
+        spec: "AttributeSpec | DatasetSpec",
+        inc_spec: "AttributeSpec | DatasetSpec"
     ):
     # NOTE: In theory, the shape check above and shape & dims consistency check will catch all issues with dims
     # before this function is called
@@ -213,8 +213,8 @@ def _resolve_inc_spec_dims(
 
 
 def _resolve_inc_spec_value(
-        spec: Union['AttributeSpec', 'DatasetSpec'],
-        inc_spec: Union['AttributeSpec', 'DatasetSpec']
+        spec: "AttributeSpec | DatasetSpec",
+        inc_spec: "AttributeSpec | DatasetSpec"
     ):
     # handle both default_value and value
     if spec.default_value is None and inc_spec.default_value is not None:

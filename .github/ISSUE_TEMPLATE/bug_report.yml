@@ -56,7 +56,6 @@ body:
         - "3.12"
         - "3.11"
         - "3.10"
-        - "3.9"
         - "other version (specify below)"
     validations:
       required: true

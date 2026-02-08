@@ -1,7 +1,6 @@
 import types
 from collections import OrderedDict
 from copy import deepcopy
-from typing import Type, Optional
 from uuid import uuid4
 from warnings import warn
 import os
@@ -863,10 +862,10 @@ class Container(AbstractContainer):
     def set_data_io(
         self,
         dataset_name: str,
-        data_io_class: Type[DataIO],
+        data_io_class: type[DataIO],
         data_io_kwargs: dict,
-        data_chunk_iterator_class: Optional[Type[AbstractDataChunkIterator]] = None,
-        data_chunk_iterator_kwargs: Optional[dict] = None,
+        data_chunk_iterator_class: type[AbstractDataChunkIterator] | None = None,
+        data_chunk_iterator_kwargs: dict | None = None,
     ):
         """
         Apply DataIO object to a dataset field of the Container.
@@ -875,11 +874,11 @@ class Container(AbstractContainer):
         ----------
         dataset_name: str
             Name of dataset to wrap in DataIO
-        data_io_class: Type[DataIO]
+        data_io_class: type[DataIO]
             Class to use for DataIO, e.g. H5DataIO or ZarrDataIO
         data_io_kwargs: dict
             keyword arguments passed to the constructor of the DataIO class.
-        data_chunk_iterator_class: Type[AbstractDataChunkIterator]
+        data_chunk_iterator_class: type[AbstractDataChunkIterator]
             Class to use for DataChunkIterator. If None, no DataChunkIterator is used.
         data_chunk_iterator_kwargs: dict
             keyword arguments passed to the constructor of the DataChunkIterator class.
@@ -926,9 +925,9 @@ class Data(AbstractContainer):
 
     def set_data_io(
         self,
-        data_io_class: Type[DataIO],
+        data_io_class: type[DataIO],
         data_io_kwargs: dict,
-        data_chunk_iterator_class: Optional[Type[AbstractDataChunkIterator]] = None,
+        data_chunk_iterator_class: type[AbstractDataChunkIterator] | None = None,
         data_chunk_iterator_kwargs: dict = None,
     ) -> None:
         """
@@ -936,11 +935,11 @@ class Data(AbstractContainer):
 
         Parameters
         ----------
-        data_io_class: Type[DataIO]
+        data_io_class: type[DataIO]
             The DataIO to apply to the data held by this Data.
         data_io_kwargs: dict
             The keyword arguments to pass to the DataIO.
-        data_chunk_iterator_class: Type[AbstractDataChunkIterator]
+        data_chunk_iterator_class: type[AbstractDataChunkIterator]
             The DataChunkIterator to use for the DataIO. If None, no DataChunkIterator is used.
         data_chunk_iterator_kwargs: dict
             The keyword arguments to pass to the DataChunkIterator.
