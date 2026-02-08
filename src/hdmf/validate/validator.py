@@ -2,7 +2,7 @@ import re
 from abc import ABCMeta, abstractmethod
 from itertools import chain
 from collections import defaultdict, OrderedDict
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 
@@ -108,7 +108,7 @@ def _get_type_compound_dtype(data: Any, builder_dtype: list) -> tuple[list, list
     return dtypes, string_formats
 
 
-def _get_type_from_dtype_attr(data: Any, builder_dtype: Optional[list]) -> tuple[Union[str, np.dtype], Optional[str]]:
+def _get_type_from_dtype_attr(data: Any, builder_dtype: list | None) -> tuple[str | np.dtype, str | None]:
     """Helper function to get type from data with dtype attribute (h5py.Dataset, zarr.Array, etc.)."""
     # Handle variable-length data with vlen metadata (HDF5 style)
     if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
