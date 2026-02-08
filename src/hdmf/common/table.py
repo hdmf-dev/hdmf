@@ -1580,6 +1580,18 @@ class DynamicTableRegion(VectorData):
         if self._validate_data:
             self._validate_index_in_range(self.data, table)
 
+    @property
+    def validate_data(self):
+        """Whether to validate that data is in bounds of the linked table"""
+        return self._validate_data
+
+    @validate_data.setter
+    @docval({'name': 'val', 'type': bool, 'doc': 'whether to validate data is in bounds of the linked table'})
+    def validate_data(self, **kwargs):
+        """Set whether to validate data is in bounds of the linked table."""
+        val = getargs('val', kwargs)
+        self._validate_data = val
+
     def extend(self, arg):
         """Add all elements of the iterable arg to the end of this DynamicTableRegion.
 

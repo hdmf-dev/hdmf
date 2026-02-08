@@ -1446,6 +1446,37 @@ class TestDynamicTableRegion(TestCase):
         region = table.create_region(name='region2', region=slice(0, None), description='test region')
         self.assertEqual(region.data, [0, 1, 2, 3, 4])
 
+    def test_validate_data_getter(self):
+        """Test that the validate_data property getter returns the correct value."""
+        table = self.with_columns_and_data()
+        # Test default value (True)
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1], description='desc', table=table)
+        self.assertTrue(dtr.validate_data)
+
+        # Test explicit True
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1], description='desc', table=table, validate_data=True)
+        self.assertTrue(dtr.validate_data)
+
+        # Test explicit False
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1], description='desc', table=table, validate_data=False)
+        self.assertFalse(dtr.validate_data)
+
+    def test_validate_data_setter(self):
+        """Test that the validate_data property setter correctly updates the value."""
+        table = self.with_columns_and_data()
+        dtr = DynamicTableRegion(name='dtr', data=[0, 1], description='desc', table=table, validate_data=True)
+
+        # Verify initial state
+        self.assertTrue(dtr.validate_data)
+
+        # Change to False
+        dtr.validate_data = False
+        self.assertFalse(dtr.validate_data)
+
+        # Change back to True
+        dtr.validate_data = True
+        self.assertTrue(dtr.validate_data)
+
 
 class DynamicTableRegionRoundTrip(H5RoundTripMixin, TestCase):
 
