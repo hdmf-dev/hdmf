@@ -217,7 +217,7 @@ class HDMFIO(metaclass=ABCMeta):
     ) -> dict:
         """Load the namespaces from this HDMFIO object into the provided NamespaceCatalog or TypeMap.
 
-        Similar to `load_namespaces`, but uses the already opened HDMFIO object.
+        Similar to ``load_namespaces``, but uses the already opened HDMFIO object.
         This method should be implemented by subclasses to load the namespaces that are relevant for the backend.
 
         :param namespace_catalog: The NamespaceCatalog (or TypeMap) to load the namespaces into.

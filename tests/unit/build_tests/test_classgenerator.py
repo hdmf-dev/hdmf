@@ -5,6 +5,7 @@ from warnings import warn
 
 from hdmf.build import TypeMap, CustomClassGenerator
 from hdmf.build.classgenerator import ClassGeneratorManager, MCIClassGenerator
+from hdmf.build.manager import TypeSource
 from hdmf.container import Container, Data, MultiContainerInterface, AbstractContainer
 from hdmf.spec import (
     GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec, RefSpec
@@ -887,8 +888,9 @@ class TestGetClassObjectReferences(TestCase):
             incl_types={},
             type_map=self.type_map
         )
-        # no types should be resolved to start
-        assert self.type_map.get_container_classes('ndx-test') == []
+        # the type map should contain only TypeSource entries at this point
+        assert len(self.type_map.get_container_classes('ndx-test')) == 2
+        assert all([isinstance(c, TypeSource) for c in self.type_map.get_container_classes('ndx-test')])
 
         self.type_map.get_dt_container_cls('Moo', 'ndx-test')
         # now, Moo and Qux should be resolved
@@ -920,8 +922,9 @@ class TestGetClassObjectReferences(TestCase):
             incl_types={},
             type_map=self.type_map
         )
-        # no types should be resolved to start
-        assert self.type_map.get_container_classes('ndx-test') == []
+        # the type map should contain only TypeSource entries at this point
+        assert len(self.type_map.get_container_classes('ndx-test')) == 2
+        assert all([isinstance(c, TypeSource) for c in self.type_map.get_container_classes('ndx-test')])
 
         self.type_map.get_dt_container_cls('Woo', 'ndx-test')
         # now, Woo and Qux should be resolved
@@ -962,8 +965,9 @@ class TestGetClassObjectReferences(TestCase):
             incl_types={},
             type_map=self.type_map
         )
-        # no types should be resolved to start
-        assert self.type_map.get_container_classes('ndx-test') == []
+        # the type map should contain only TypeSource entries at this point
+        assert len(self.type_map.get_container_classes('ndx-test')) == 3
+        assert all([isinstance(c, TypeSource) for c in self.type_map.get_container_classes('ndx-test')])
 
         self.type_map.get_dt_container_cls('Goo', 'ndx-test')
         # now, Goo, Spam, and Qux should be resolved
@@ -1007,8 +1011,9 @@ class TestGetClassObjectReferences(TestCase):
             incl_types={},
             type_map=self.type_map
         )
-        # no types should be resolved to start
-        assert self.type_map.get_container_classes('ndx-test') == []
+        # the type map should contain only TypeSource entries at this point
+        assert len(self.type_map.get_container_classes('ndx-test')) == 3
+        assert all([isinstance(c, TypeSource) for c in self.type_map.get_container_classes('ndx-test')])
 
         self.type_map.get_dt_container_cls('Boo', 'ndx-test')
         # now, Boo, Bam, and Qux should be resolved

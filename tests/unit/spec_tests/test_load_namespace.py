@@ -343,11 +343,14 @@ class TestCustomSpecClasses(TestCase):
 
     def test_load_namespaces(self):
         namespace_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test.namespace.yaml')
-        namespace_deps = self.ns_catalog.load_namespaces(namespace_path)
+        loaded_types = self.ns_catalog.load_namespaces(namespace_path)
 
+        # test that the source types are correct for test ns
+        expected_source_types = ('TestData', 'TestContainer', 'TestTable')
+        self.assertTupleEqual(self.ns_catalog.get_source_types('test'), expected_source_types)
         # test that the dependencies are correct, including dependencies of the dependencies
         expected = set(['Data', 'Container', 'DynamicTable', 'ElementIdentifiers', 'VectorData', 'MeaningsTable'])
-        self.assertSetEqual(set(namespace_deps['test']['hdmf-common']), expected)
+        self.assertSetEqual(set(loaded_types['test']['hdmf-common']), expected)
 
         # test that the types are loaded
         types = self.ns_catalog.get_types('test.base.yaml')
@@ -383,12 +386,16 @@ class TestCustomSpecClasses(TestCase):
         self.ns_catalog.load_namespaces(namespace_path)
 
         ext_namespace_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test-ext.namespace.yaml')
-        ext_namespace_deps = self.ns_catalog.load_namespaces(ext_namespace_path)
+        loaded_ext_types = self.ns_catalog.load_namespaces(ext_namespace_path)
+
+        # test that the source types are correct for test-ext ns
+        expected_source_types = ('TestExtData', 'TestExtContainer', 'TestExtTable')
+        self.assertTupleEqual(self.ns_catalog.get_source_types('test-ext'), expected_source_types)
 
         # test that the dependencies are correct, including dependencies of the dependencies
         expected_deps = set(['TestData', 'TestContainer', 'TestTable', 'Container', 'Data', 'DynamicTable',
                              'ElementIdentifiers', 'VectorData', 'MeaningsTable'])
-        self.assertSetEqual(set(ext_namespace_deps['test-ext']['test']), expected_deps)
+        self.assertSetEqual(set(loaded_ext_types['test-ext']['test']), expected_deps)
 
     def test_load_namespaces_bad_path(self):
         namespace_path = 'test.namespace.yaml'

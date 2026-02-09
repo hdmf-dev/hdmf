@@ -247,6 +247,8 @@ class NamespaceCatalog:
         self.__loaded_specs = dict()
         self.__included_specs = dict()
         self.__included_sources = dict()
+        # maps namespace name -> tuple of source data type names defined in that namespace
+        self.__source_types = dict()
         # cache of raw spec file dicts (as loaded from YAML/HDF5, before resolution)
         # keyed by source file path
         self.__unresolved_spec_dicts = dict()
@@ -260,6 +262,7 @@ class NamespaceCatalog:
         ret.__loaded_specs = copy(self.__loaded_specs)
         ret.__included_specs = copy(self.__included_specs)
         ret.__included_sources = copy(self.__included_sources)
+        ret.__source_types = copy(self.__source_types)
         ret.__unresolved_spec_dicts = copy(self.__unresolved_spec_dicts)
         return ret
 
@@ -294,6 +297,14 @@ class NamespaceCatalog:
     def core_namespaces(self):
         """The core namespaces used in this NamespaceCatalog"""
         return self.__core_namespaces
+
+    def get_source_types(self, ns_name):
+        """Get the source types for a namespace.
+
+        Returns a tuple of data type names that were loaded from source files
+        for the given namespace.
+        """
+        return self.__source_types.get(ns_name, ())
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of this namespace'},
             {'name': 'namespace', 'type': SpecNamespace, 'doc': 'the SpecNamespace object'})
@@ -565,6 +576,7 @@ class NamespaceCatalog:
         if ns_name in self.__namespaces:  # pragma: no cover
             raise KeyError("namespace '%s' already exists" % ns_name)
         catalog = SpecCatalog()
+        source_types = list()
         included_types = dict()
         for s in namespace['schema']:
             # types_key may be different in each spec namespace, so check both the __spec_namespace_cls types key
@@ -574,7 +586,8 @@ class NamespaceCatalog:
                 types_to_load = set(types_to_load)
             if 'source' in s:
                 # read specs from file
-                self.__load_spec_file(reader, s['source'], catalog, types_to_load)
+                loaded_types = self.__load_spec_file(reader, s['source'], catalog, types_to_load)
+                source_types.extend(loaded_types.keys())
                 self.__included_sources.setdefault(ns_name, list()).append(s['source'])
             elif 'namespace' in s:
                 # load specs from namespace
@@ -600,7 +613,7 @@ class NamespaceCatalog:
             self._check_namespace_conflicts(extension_ns_name=ns_name,
                                             extension_ns_source=s.get('source'),
                                             catalog=catalog)
-
+        self.__source_types[ns_name] = tuple(source_types)
         return included_types
 
     def __register_type(self, ndt, inc_ns, catalog, registered_types, in_progress_registrations=None):
@@ -709,7 +722,7 @@ class NamespaceCatalog:
 
         # determine which namespaces to load and which to ignore
         ignored_namespaces = list()
-        ret = dict()
+        ret = dict()  # maps namespace name to dict of dependent namespaces
         for r in ordered_readers:
             # continue to next reader if spec is already included
             ns_path_key = os.path.join(r.source, os.path.basename(namespace_path))
