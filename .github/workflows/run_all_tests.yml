@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.9-minimum                , test-tox-env: pytest-py39-minimum              , python-ver: "3.9" , os: ubuntu-latest }
+          - { name: linux-python3.10-minimum               , test-tox-env: pytest-py310-minimum             , python-ver: "3.10", os: ubuntu-latest }
           - { name: linux-python3.10-upgraded              , test-tox-env: pytest-py310-upgraded            , python-ver: "3.10", os: ubuntu-latest }
           - { name: linux-python3.11-upgraded              , test-tox-env: pytest-py311-upgraded            , python-ver: "3.11", os: ubuntu-latest }
           - { name: linux-python3.12-upgraded              , test-tox-env: pytest-py312-upgraded            , python-ver: "3.12", os: ubuntu-latest }
@@ -33,7 +33,7 @@ jobs:
           - { name: linux-python3.14-upgraded              , test-tox-env: pytest-py314-upgraded            , python-ver: "3.14", os: ubuntu-latest }
           - { name: linux-python3.14-upgraded-optional     , test-tox-env: pytest-py314-upgraded-optional   , python-ver: "3.14", os: ubuntu-latest }
           - { name: linux-python3.14-prerelease-optional   , test-tox-env: pytest-py314-prerelease-optional , python-ver: "3.14", os: ubuntu-latest }
-          - { name: windows-python3.9-minimum              , test-tox-env: pytest-py39-minimum              , python-ver: "3.9" , os: windows-latest }
+          - { name: windows-python3.10-minimum             , test-tox-env: pytest-py310-minimum             , python-ver: "3.10", os: windows-latest }
           - { name: windows-python3.10-upgraded            , test-tox-env: pytest-py310-upgraded            , python-ver: "3.10", os: windows-latest }
           - { name: windows-python3.11-upgraded            , test-tox-env: pytest-py311-upgraded            , python-ver: "3.11", os: windows-latest }
           - { name: windows-python3.12-upgraded            , test-tox-env: pytest-py312-upgraded            , python-ver: "3.12", os: windows-latest }
@@ -41,7 +41,7 @@ jobs:
           - { name: windows-python3.14-upgraded            , test-tox-env: pytest-py314-upgraded            , python-ver: "3.14", os: windows-latest }
           - { name: windows-python3.14-upgraded-optional   , test-tox-env: pytest-py314-upgraded-optional   , python-ver: "3.14", os: windows-latest }
           - { name: windows-python3.14-prerelease-optional , test-tox-env: pytest-py314-prerelease-optional , python-ver: "3.14", os: windows-latest }
-          - { name: macos-python3.9-minimum                , test-tox-env: pytest-py39-minimum              , python-ver: "3.9" , os: macos-15-intel }
+          - { name: macos-python3.10-minimum               , test-tox-env: pytest-py310-minimum             , python-ver: "3.10", os: macos-15-intel }
           - { name: macos-python3.10-upgraded              , test-tox-env: pytest-py310-upgraded            , python-ver: "3.10", os: macos-latest }
           - { name: macos-python3.11-upgraded              , test-tox-env: pytest-py311-upgraded            , python-ver: "3.11", os: macos-latest }
           - { name: macos-python3.12-upgraded              , test-tox-env: pytest-py312-upgraded            , python-ver: "3.12", os: macos-latest }
@@ -101,13 +101,13 @@ jobs:
       matrix:
         include:
           # TODO: Update to 3.14 when linkml and its deps support 3.14
-          - { name: linux-gallery-python3.9-minimum                , test-tox-env: gallery-py39-minimum              , python-ver: "3.9" , os: ubuntu-latest }
+          - { name: linux-gallery-python3.10-minimum               , test-tox-env: gallery-py310-minimum             , python-ver: "3.10", os: ubuntu-latest }
           - { name: linux-gallery-python3.13-upgraded-optional     , test-tox-env: gallery-py313-upgraded-optional   , python-ver: "3.13", os: ubuntu-latest }
           - { name: linux-gallery-python3.13-prerelease-optional   , test-tox-env: gallery-py313-prerelease-optional , python-ver: "3.13", os: ubuntu-latest }
-          - { name: windows-gallery-python3.9-minimum              , test-tox-env: gallery-py39-minimum              , python-ver: "3.9" , os: windows-latest }
+          - { name: windows-gallery-python3.10-minimum             , test-tox-env: gallery-py310-minimum             , python-ver: "3.10", os: windows-latest }
           - { name: windows-gallery-python3.13-upgraded-optional   , test-tox-env: gallery-py313-upgraded-optional   , python-ver: "3.13", os: windows-latest }
           - { name: windows-gallery-python3.13-prerelease-optional , test-tox-env: gallery-py313-prerelease-optional , python-ver: "3.13", os: windows-latest }
-          - { name: macos-gallery-python3.9-minimum                , test-tox-env: gallery-py39-minimum              , python-ver: "3.9" , os: macos-15-intel }
+          - { name: macos-gallery-python3.10-minimum               , test-tox-env: gallery-py310-minimum             , python-ver: "3.10", os: macos-15-intel }
           - { name: macos-gallery-python3.13-upgraded-optional     , test-tox-env: gallery-py313-upgraded-optional   , python-ver: "3.13", os: macos-latest }
           - { name: macos-gallery-python3.13-prerelease-optional   , test-tox-env: gallery-py313-prerelease-optional , python-ver: "3.13", os: macos-latest }
     steps:

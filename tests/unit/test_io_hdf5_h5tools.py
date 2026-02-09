@@ -18,7 +18,6 @@ import numpy.testing as npt
 
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.hdf5.h5tools import HDF5IO, SPEC_LOC_ATTR, H5PY_3
-from hdmf.backends.io import HDMFIO
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
@@ -38,6 +37,7 @@ from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmana
                               CORE_NAMESPACE, get_temp_filepath, CacheSpecTestHelper,
                               CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace,
                               QuxData, QuxBucket, get_qux_buildmanager)
+from tests.unit.helpers.io import DoNothingIO
 
 try:
     import zarr
@@ -1357,46 +1357,6 @@ class HDF5IOMultiFileTest(TestCase):
             except OSError:
                 pass
 
-    def test_copy_file_with_external_links(self):
-        # Create the first file
-        foo1 = Foo('foo1', [0, 1, 2, 3, 4], "I am foo1", 17, 3.14)
-        bucket1 = FooBucket('bucket1', [foo1])
-        foofile1 = FooFile(buckets=[bucket1])
-
-        # Write the first file
-        self.io[0].write(foofile1)
-
-        # Create the second file
-        read_foofile1 = self.io[0].read()
-        foo2 = Foo('foo2', read_foofile1.buckets['bucket1'].foos['foo1'].my_data, "I am foo2", 34, 6.28)
-        bucket2 = FooBucket('bucket2', [foo2])
-        foofile2 = FooFile(buckets=[bucket2])
-        # Write the second file
-        self.io[1].write(foofile2)
-        self.io[1].close()
-        self.io[0].close()  # Don't forget to close the first file too
-
-        # Copy the file
-        self.io[2].close()
-
-        with self.assertWarns(DeprecationWarning):
-            HDF5IO.copy_file(source_filename=self.paths[1],
-                             dest_filename=self.paths[2],
-                             expand_external=True,
-                             expand_soft=False,
-                             expand_refs=False)
-
-        # Test that everything is working as expected
-        # Confirm that our original data file is correct
-        f1 = File(self.paths[0], 'r')
-        self.assertIsInstance(f1.get('/buckets/bucket1/foo_holder/foo1/my_data', getlink=True), HardLink)
-        # Confirm that we successfully created and External Link in our second file
-        f2 = File(self.paths[1], 'r')
-        self.assertIsInstance(f2.get('/buckets/bucket2/foo_holder/foo2/my_data', getlink=True), ExternalLink)
-        # Confirm that we successfully resolved the External Link when we copied our second file
-        f3 = File(self.paths[2], 'r')
-        self.assertIsInstance(f3.get('/buckets/bucket2/foo_holder/foo2/my_data', getlink=True), HardLink)
-
 
 class TestCloseLinks(TestCase):
 
@@ -2280,7 +2240,10 @@ class TestLoadNamespaces(TestCase):
         """Test that loading namespaces given a path is OK and returns the correct dictionary."""
         ns_catalog = NamespaceCatalog()
         d = HDF5IO.load_namespaces(ns_catalog, self.path)
-        self.assertEqual(d, {'test_core': {}})  # test_core has no dependencies
+        # test_core has no dependencies
+        self.assertEqual(d, {'test_core': {}})
+        # source types should be stored on the catalog
+        self.assertTupleEqual(ns_catalog.get_source_types('test_core'), ('Foo', 'FooBucket', 'FooFile'))
 
     def test_load_namespaces_no_path_no_file(self):
         """Test that loading namespaces without a path or file raises an error."""
@@ -2328,7 +2291,7 @@ class TestLoadNamespaces(TestCase):
         pathlib_path = Path(self.path)
         ns_catalog = NamespaceCatalog()
         d = HDF5IO.load_namespaces(ns_catalog, pathlib_path)
-        self.assertEqual(d, {'test_core': {}})  # test_core has no dependencies
+        self.assertEqual(d, {'test_core': {}})
 
     def test_load_namespaces_with_dependencies(self):
         """Test loading namespaces where one includes another."""
@@ -2358,7 +2321,11 @@ class TestLoadNamespaces(TestCase):
 
         ns_catalog = NamespaceCatalog()
         d = HDF5IO.load_namespaces(ns_catalog, self.path)
-        self.assertEqual(d, {'test_core': {}, 'test_core2': {'test_core': ('Foo', 'FooBucket', 'FooFile')}})
+        self.assertEqual(d, {
+            'test_core': {},
+            'test_core2': {'test_core': ('Foo', 'FooBucket', 'FooFile')},
+        })
+        self.assertTupleEqual(ns_catalog.get_source_types('test_core'), ('Foo', 'FooBucket', 'FooFile'))
 
     def test_load_namespaces_no_specloc(self):
         """Test loading namespaces where the file does not contain a SPEC_LOC_ATTR."""
@@ -2404,12 +2371,16 @@ class TestLoadNamespaces(TestCase):
 
         # load the namespace from file
         ns_catalog = NamespaceCatalog(CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
-        namespace_deps = HDF5IO.load_namespaces(ns_catalog, self.path)
+        namespace_types = HDF5IO.load_namespaces(ns_catalog, self.path)
+
+        # test that the source types are correct
+        expected = ('Foo', 'FooBucket', 'FooFile', 'BigFoo', 'BiggerFoo')
+        self.assertTupleEqual(ns_catalog.get_source_types('test_core'), expected)
+        self.assertTupleEqual(ns_catalog.get_source_types('test-ext'), ('FooExt',))
 
         # test that the dependencies are correct
         expected = ('Foo',)
-        self.assertTupleEqual((namespace_deps['test-ext']['test_core']), expected)
-
+        self.assertTupleEqual(namespace_types['test-ext']['test_core'], expected)
         # test that the types are loaded
         types = ns_catalog.get_types('test-ext.extensions')
         expected = ('FooExt',)
@@ -3549,25 +3520,7 @@ class TestExport(TestCase):
         with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        class OtherIO(HDMFIO):
-
-            @staticmethod
-            def can_read(path):
-                pass
-
-            def read_builder(self):
-                pass
-
-            def write_builder(self, **kwargs):
-                pass
-
-            def open(self):
-                pass
-
-            def close(self):
-                pass
-
-        with OtherIO() as read_io:
+        with DoNothingIO() as read_io:
             with HDF5IO(self.paths[1], mode='w') as export_io:
                 msg = 'When a container is provided, src_io must have a non-None manager (BuildManager) property.'
                 with self.assertRaisesWith(ValueError, msg):
@@ -3582,30 +3535,9 @@ class TestExport(TestCase):
         with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
             write_io.write(foofile)
 
-        class OtherIO(HDMFIO):
-
-            @staticmethod
-            def can_read(path):
-                pass
-
-            def __init__(self, manager):
-                super().__init__(manager=manager)
-
-            def read_builder(self):
-                pass
-
-            def write_builder(self, **kwargs):
-                pass
-
-            def open(self):
-                pass
-
-            def close(self):
-                pass
-
-        with OtherIO(manager=get_foo_buildmanager()) as read_io:
+        with DoNothingIO(manager=get_foo_buildmanager()) as read_io:
             with HDF5IO(self.paths[1], mode='w') as export_io:
-                msg = "Cannot export from non-HDF5 backend OtherIO to HDF5 with write argument link_data=True."
+                msg = "Cannot export from non-HDF5 backend DoNothingIO to HDF5 with write argument link_data=True."
                 with self.assertRaisesWith(UnsupportedOperation, msg):
                     export_io.export(src_io=read_io, container=foofile)
 
@@ -4054,17 +3986,6 @@ class TestContainerSetDataIO(TestCase):
         """Attempt to set a DataIO for a dataset that is missing."""
         with self.assertRaisesWith(ValueError, "data2 is None and cannot be wrapped in a DataIO class"):
             self.obj.set_data_io("data2", H5DataIO, data_io_kwargs=dict(chunks=True))
-
-    def test_set_data_io_old_api(self):
-        """Test that using the kwargs still works but throws a warning."""
-        msg = (
-            "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a dictionary to"
-            " the `data_io_kwargs` parameter instead."
-        )
-        with self.assertWarnsWith(DeprecationWarning, msg):
-            self.obj.set_data_io("data1", H5DataIO, chunks=True)
-        self.assertIsInstance(self.obj.data1, H5DataIO)
-        self.assertTrue(self.obj.data1.io_settings["chunks"])
 
     def test_set_data_io_h5py_dataset(self):
         file = File(self.file_path, 'w')

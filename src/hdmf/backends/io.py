@@ -2,10 +2,11 @@ from abc import ABCMeta, abstractmethod
 import os
 from pathlib import Path
 
-from ..build import BuildManager, GroupBuilder
+from ..build import BuildManager, GroupBuilder, TypeMap
 from ..container import Container, HERDManager
 from .errors import UnsupportedOperation
 from ..utils import docval, getargs, popargs, get_basic_array_info, generate_array_html_repr
+from ..spec import  NamespaceCatalog
 from warnings import warn
 
 
@@ -186,6 +187,44 @@ class HDMFIO(metaclass=ABCMeta):
     @abstractmethod
     def close(self):
         ''' Close this HDMFIO object to further reading/writing'''
+        pass
+
+    @classmethod
+    @abstractmethod
+    def load_namespaces(cls,
+        namespace_catalog: NamespaceCatalog | TypeMap,
+        path: str | Path | None = None,
+        namespaces: list[str] | None = None,
+        io: 'HDMFIO | None' = None,
+        **kwargs
+    ) -> dict:
+        """Load the namespaces from the file at the given path into the provided NamespaceCatalog or TypeMap.
+
+        This method should be implemented by subclasses to load the namespaces that are relevant for the backend.
+
+        :param namespace_catalog: The NamespaceCatalog (or TypeMap) to load the namespaces into.
+        :param path: The path to the file from which to load the namespaces.
+        :param namespaces: A list of namespace names to load. If None, all namespaces will be loaded.
+        :param kwargs: Additional keyword arguments that may be needed for the specific backend.
+        :return: A dictionary mapping namespace names to their dependencies.
+        """
+        pass
+
+    @abstractmethod
+    def load_namespaces_io(self,
+        namespace_catalog: NamespaceCatalog | TypeMap,
+        namespaces: list[str] | None = None,
+    ) -> dict:
+        """Load the namespaces from this HDMFIO object into the provided NamespaceCatalog or TypeMap.
+
+        Similar to ``load_namespaces``, but uses the already opened HDMFIO object.
+        This method should be implemented by subclasses to load the namespaces that are relevant for the backend.
+
+        :param namespace_catalog: The NamespaceCatalog (or TypeMap) to load the namespaces into.
+        :param namespaces: A list of namespace names to load. If None, all namespaces will be loaded.
+        :return: A dictionary mapping namespace names to their dependencies.
+        """
+        # NOTE: this function is separated from load_namespaces for developer clarity
         pass
 
     @staticmethod

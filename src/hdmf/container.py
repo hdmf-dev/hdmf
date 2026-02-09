@@ -1,7 +1,6 @@
 import types
 from collections import OrderedDict
 from copy import deepcopy
-from typing import Type, Optional
 from uuid import uuid4
 from warnings import warn
 import os
@@ -36,27 +35,6 @@ class HERDManager:
     """
     When this class is used as a mixin for a Container, it enables setting and getting an instance of HERD.
     """
-
-    @docval({'name': 'herd', 'type': 'HERD',
-             'doc': 'The external resources to be used for the container.'},)
-    def link_resources(self, **kwargs):
-        """
-        Method to attach an instance of HERD in order to auto-add terms/references to data.
-        """
-        msg = (
-            "link_resources is deprecated and will be removed in HDMF 5.0. "
-            "Use the external_resources property instead."
-        )
-        warn(msg, DeprecationWarning, stacklevel=2)
-        self.external_resources = kwargs['herd']
-
-    def get_linked_resources(self):
-        msg = (
-            "get_linked_resources is deprecated and will be removed in HDMF 5.0. "
-            "Use the external_resources property instead."
-        )
-        warn(msg, DeprecationWarning, stacklevel=2)
-        return self.external_resources
 
     @property
     def external_resources(self):
@@ -573,6 +551,19 @@ class AbstractContainer(metaclass=ExtenderMeta):
         """
         pass
 
+    def _error_on_new_warn_on_construct(self, error_msg: str, error_cls: type = ValueError):
+        """Raise a ValueError when a check is violated on instance creation.
+        To ensure backwards compatibility, this method throws a warning
+        instead of raising an error when reading from a file, ensuring that
+        files with invalid data can be read. If error_msg is set to None
+        the function will simply return without further action.
+        """
+        if error_msg is None:
+            return
+        if not self._in_construct_mode:
+            raise error_cls(error_msg)
+        warn(error_msg)
+
 
 class Container(AbstractContainer):
     """A container that can contain other containers and has special functionality for printing."""
@@ -871,10 +862,10 @@ class Container(AbstractContainer):
     def set_data_io(
         self,
         dataset_name: str,
-        data_io_class: Type[DataIO],
-        data_io_kwargs: dict = None,
-        data_chunk_iterator_class: Optional[Type[AbstractDataChunkIterator]] = None,
-        data_chunk_iterator_kwargs: dict = None, **kwargs
+        data_io_class: type[DataIO],
+        data_io_kwargs: dict,
+        data_chunk_iterator_class: type[AbstractDataChunkIterator] | None = None,
+        data_chunk_iterator_kwargs: dict | None = None,
     ):
         """
         Apply DataIO object to a dataset field of the Container.
@@ -883,31 +874,20 @@ class Container(AbstractContainer):
         ----------
         dataset_name: str
             Name of dataset to wrap in DataIO
-        data_io_class: Type[DataIO]
+        data_io_class: type[DataIO]
             Class to use for DataIO, e.g. H5DataIO or ZarrDataIO
         data_io_kwargs: dict
             keyword arguments passed to the constructor of the DataIO class.
-        data_chunk_iterator_class: Type[AbstractDataChunkIterator]
+        data_chunk_iterator_class: type[AbstractDataChunkIterator]
             Class to use for DataChunkIterator. If None, no DataChunkIterator is used.
         data_chunk_iterator_kwargs: dict
             keyword arguments passed to the constructor of the DataChunkIterator class.
-        **kwargs:
-            DEPRECATED. Use data_io_kwargs instead.
-            kwargs are passed to the constructor of the DataIO class.
 
         Notes
         -----
         If data_chunk_iterator_class is not None, the data is wrapped in the DataChunkIterator before being wrapped in
         the DataIO. This allows for rewriting the backend configuration of hdf5 datasets.
         """
-        if kwargs or (data_io_kwargs is None):
-            warn(
-                "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a "
-                "dictionary to the `data_io_kwargs` parameter instead.",
-                DeprecationWarning,
-                stacklevel=2
-            )
-            data_io_kwargs = kwargs
         data = self.fields.get(dataset_name)
         data_chunk_iterator_kwargs = data_chunk_iterator_kwargs or dict()
         if data is None:
@@ -945,9 +925,9 @@ class Data(AbstractContainer):
 
     def set_data_io(
         self,
-        data_io_class: Type[DataIO],
+        data_io_class: type[DataIO],
         data_io_kwargs: dict,
-        data_chunk_iterator_class: Optional[Type[AbstractDataChunkIterator]] = None,
+        data_chunk_iterator_class: type[AbstractDataChunkIterator] | None = None,
         data_chunk_iterator_kwargs: dict = None,
     ) -> None:
         """
@@ -955,11 +935,11 @@ class Data(AbstractContainer):
 
         Parameters
         ----------
-        data_io_class: Type[DataIO]
+        data_io_class: type[DataIO]
             The DataIO to apply to the data held by this Data.
         data_io_kwargs: dict
             The keyword arguments to pass to the DataIO.
-        data_chunk_iterator_class: Type[AbstractDataChunkIterator]
+        data_chunk_iterator_class: type[AbstractDataChunkIterator]
             The DataChunkIterator to use for the DataIO. If None, no DataChunkIterator is used.
         data_chunk_iterator_kwargs: dict
             The keyword arguments to pass to the DataChunkIterator.

@@ -564,6 +564,7 @@ def create_test_type_map(specs, container_classes, mappers=None):
     )
     namespace_catalog = NamespaceCatalog()
     namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+    namespace_catalog.resolve_all_specs()
     type_map = TypeMap(namespace_catalog)
     for type_name, container_cls in container_classes.items():
         type_map.register_container_type(CORE_NAMESPACE, type_name, container_cls)
@@ -574,7 +575,13 @@ def create_test_type_map(specs, container_classes, mappers=None):
     return type_map
 
 
-def create_load_namespace_yaml(namespace_name, specs, output_dir, incl_types, type_map):
+def create_load_namespace_yaml(
+    namespace_name: str,
+    specs: list[GroupSpec | DatasetSpec],
+    output_dir: str,
+    incl_types: dict[str, list[str] | None],
+    type_map: TypeMap,
+) -> dict:
     """
     Create a TypeMap with the specs loaded from YAML files and dependencies resolved.
 
@@ -584,6 +591,7 @@ def create_load_namespace_yaml(namespace_name, specs, output_dir, incl_types, ty
 
     :param namespace_name: Name of the new namespace.
     :param specs: List of specs of new data types to add.
+    :param output_dir: Directory to write the namespace and spec YAML files to.
     :param incl_types: Dict mapping included namespace name to list of data types to include or None to include all.
     :param type_map: The type map to load the namespace into.
     """
@@ -607,7 +615,7 @@ def create_load_namespace_yaml(namespace_name, specs, output_dir, incl_types, ty
 
     ns_builder.export(ns_filename, outdir=output_dir)
     ns_path = os.path.join(output_dir, ns_filename)
-    type_map.load_namespaces(ns_path)
+    return type_map.load_namespaces(ns_path)
 
 
 # ##### custom spec classes #####
@@ -690,19 +698,6 @@ class CustomGroupSpec(BaseStorageOverride, GroupSpec):
     @classmethod
     def dataset_spec_cls(cls):
         return CustomDatasetSpec
-
-    @docval(*deepcopy(swap_inc_def(GroupSpec, "CustomGroupSpec")))
-    def add_group(self, **kwargs):
-        spec = CustomGroupSpec(**kwargs)
-        self.set_group(spec)
-        return spec
-
-    @docval(*deepcopy(swap_inc_def(DatasetSpec, "CustomDatasetSpec")))
-    def add_dataset(self, **kwargs):
-        """Add a new specification for a subgroup to this group specification"""
-        spec = CustomDatasetSpec(**kwargs)
-        self.set_dataset(spec)
-        return spec
 
 
 class CustomDatasetSpec(BaseStorageOverride, DatasetSpec):
