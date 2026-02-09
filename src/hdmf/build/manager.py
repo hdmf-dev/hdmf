@@ -400,7 +400,7 @@ class TypeSource:
     - When searching for a type across namespaces, TypeSource entries are skipped to avoid returning the wrong
       namespace.
 
-    This class should by used only by TypeMap.
+    This class should be used only by TypeMap.
     TODO: After docval is removed, make this class an inner class of TypeMap.
     """
 
@@ -478,7 +478,15 @@ class TypeMap:
                 if container_cls in type_map.__mapper_cls:
                     self.register_map(container_cls, type_map.__mapper_cls[container_cls])
 
-    def merge(self, type_map, ns_catalog=False):
+    def merge(self, type_map: "TypeMap", ns_catalog: bool = False):
+        """Merge the given TypeMap into this one.
+
+        This is used to copy the namespaces, mappers, and generators from one TypeMap to another. This is necessary
+        when creating a new TypeMap that includes the same namespaces and mappers as an existing TypeMap, but may have
+        different generators or other customizations. By default, namespaces are not merged to allow for cases where
+        only mappers and generators should be copied without merging namespaces. To also merge namespaces, set
+        ns_catalog=True.
+        """
         if ns_catalog:
             self.namespace_catalog.merge(type_map.namespace_catalog)
         for namespace in type_map.__ns_dt_to_container_cls:
