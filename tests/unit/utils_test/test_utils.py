@@ -22,10 +22,10 @@ class TestGetDataShape(TestCase):
             res = get_data_shape(dset)
             self.assertTupleEqual(res, (3, 2))
 
-            # test that maxshape takes priority
+            # test that shape takes priority over maxshape for objects that have both
             dset = f.create_dataset('shape_maxshape', shape=(3, 2), maxshape=(None, 100))
             res = get_data_shape(dset)
-            self.assertTupleEqual(res, (None, 100))
+            self.assertTupleEqual(res, (3, 2))
 
         os.remove(path)
 
