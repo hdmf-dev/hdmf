@@ -1,3 +1,4 @@
+import os
 import shutil
 import tempfile
 from abc import ABCMeta, abstractmethod
@@ -515,6 +516,28 @@ class TestLoadNamespacesSourceTypes(TestCase):
         bar_cls = type_map.get_dt_container_cls('Bar', 'ns1', autogen=False)
         self.assertIs(bar_cls, Foo)
 
+    def test_load_namespaces_preserves_resolved_source_type_on_reload(self):
+        """Test that calling load_namespaces again preserves an already-resolved source type class.
+
+        When load_namespaces is called a second time with the same path, the NamespaceCatalog returns
+        cached results, so TypeMap re-processes the source types. An already-resolved class should not
+        be overwritten with a new TypeSource.
+        """
+        bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
+        create_load_namespace_yaml('ns1', [bar_spec], self.test_dir, {}, self.type_map)
+
+        # Resolve Bar to a real class
+        Bar = self.type_map.get_dt_container_cls('Bar', 'ns1')
+        self.assertFalse(isinstance(Bar, TypeSource))
+
+        # Call load_namespaces again — ns_catalog returns cached result, TypeMap re-processes source types
+        ns_path = os.path.join(self.test_dir, 'ns1.namespace.yaml')
+        self.type_map.load_namespaces(ns_path)
+
+        # Bar should still be the resolved class (not overwritten with a TypeSource)
+        bar_cls = self.type_map.get_dt_container_cls('Bar', 'ns1', autogen=False)
+        self.assertIs(bar_cls, Bar)
+
 
 class TestGetDtContainerClsTypeSourceResolution(TestCase):
     """Test get_dt_container_cls resolution of TypeSource entries."""
@@ -594,6 +617,22 @@ class TestGetDtContainerClsTypeSourceResolution(TestCase):
         self.assertTrue(issubclass(Baz, Bar))
         self.assertEqual(Baz.__name__, 'Baz')
         self.assertEqual(Bar.__name__, 'Bar')
+
+    def test_generate_class_raises_when_parent_not_extendermeta(self):
+        """Test that generating a child class raises ValueError if the parent class is not ExtenderMeta."""
+        bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
+        baz_spec = GroupSpec(doc='A test group spec', data_type_def='Baz', data_type_inc='Bar')
+        create_load_namespace_yaml('ns1', [bar_spec, baz_spec], self.test_dir, {}, self.type_map)
+
+        # Register a non-ExtenderMeta class for Bar
+        class NotExtenderMetaClass:
+            pass
+        self.type_map.register_container_type('ns1', 'Bar', NotExtenderMetaClass)
+
+        # Generating Baz (which inherits from Bar) should fail because Bar's class is not ExtenderMeta
+        with self.assertRaises(ValueError) as cm:
+            self.type_map.get_dt_container_cls('Baz', 'ns1')
+        self.assertIn("not of type ExtenderMeta", str(cm.exception))
 
     def test_autogen_false_returns_none_when_unregistered(self):
         """Test that get_dt_container_cls with autogen=False returns None for unregistered types."""

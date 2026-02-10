@@ -566,11 +566,13 @@ class TypeMap:
                 # but the same type_name should point to the same non-TypeSource class
                 if data_type in dt_to_container_cls:
                     cls = dt_to_container_cls[data_type]
-                    if not isinstance(cls, TypeSource) or cls.namespace == ns_key:
-                        # either the class is an actual container class (not a TypeSource) or it is a TypeSource
-                        # that points to this namespace (the container class has not yet been registered/generated)
-                        namespace = ns_key
-                        break
+                    # load_namespaces always loads dependencies first, so the source namespace
+                    # is always encountered before any importing namespace during iteration.
+                    # A cross-namespace TypeSource (cls.namespace != ns_key) should never be
+                    # the first match.
+                    assert not isinstance(cls, TypeSource) or cls.namespace == ns_key  # pragma: no branch
+                    namespace = ns_key
+                    break
         if namespace is None:
             raise ValueError(f"Namespace could not be resolved for data type '{data_type}'.")
 
