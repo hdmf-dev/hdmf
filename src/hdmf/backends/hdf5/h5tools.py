@@ -311,7 +311,7 @@ class HDF5IO(HDMFIO):
              'doc': 'A HERD object to populate with references.',
              'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('Bool to set whether datasets are expandable by setting the maxshape.')})
+             'doc': 'If True (default), all datasets will be created as expandable by setting the maxshape.'})
     def write(self, **kwargs):
         """Write the container to an HDF5 file."""
         if self.__mode == 'r':
@@ -754,7 +754,7 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('Bool to set whether datasets are expandable by setting the maxshape.')})
+             'doc': 'If True (default), all datasets will be created as expandable by setting the maxshape.'})
     def write_builder(self, **kwargs):
         f_builder = popargs('builder', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to path '%s' with kwargs=%s"
@@ -931,7 +931,7 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('Bool to set whether datasets are expandable by setting the maxshape.')},
+             'doc': 'If True (default), all datasets will be created as expandable by setting the maxshape.'},
             returns='the Group that was created', rtype=Group)
     def write_group(self, **kwargs):
         parent, builder = popargs('parent', 'builder', kwargs)
@@ -945,18 +945,18 @@ class HDF5IO(HDMFIO):
         # write all groups
         subgroups = builder.groups
         if subgroups:
-            for subgroup_name, sub_builder in subgroups.items():
+            for sub_builder in subgroups.values():
                 # do not create an empty group without attributes or links
                 self.write_group(group, sub_builder, **kwargs)
         # write all datasets
         datasets = builder.datasets
         if datasets:
-            for dset_name, sub_builder in datasets.items():
+            for sub_builder in datasets.values():
                 self.write_dataset(group, sub_builder, **kwargs)
         # write all links
         links = builder.links
         if links:
-            for link_name, sub_builder in links.items():
+            for sub_builder in links.values():
                 self.write_link(group, sub_builder, export_source=kwargs.get("export_source"))
         attributes = builder.attributes
         self.set_attributes(group, attributes)
@@ -1033,7 +1033,7 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('Bool to set whether datasets are expandable by setting the maxshape.')},
+             'doc': 'If True (default), all datasets will be created as expandable by setting the maxshape.'},
             returns='the Dataset that was created', rtype=Dataset)
     def write_dataset(self, **kwargs):  # noqa: C901
         """ Write a dataset to HDF5
