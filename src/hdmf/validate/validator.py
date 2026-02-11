@@ -89,6 +89,19 @@ def get_string_format(data):
         pass
     return None
 
+def has_timezone(datetime_string):
+    """Return True if ISO datetime string contains timezone info."""
+    s= pystr(datetime_string)
+
+    if s.endswith("Z"):
+        return True
+    
+    # Check for +HH:MM or -HH:MM at the end
+    if "+" in s[-6:] or "-" in s[-6:]:
+        return True
+    
+    return False
+
 
 class EmptyArrayError(Exception):
     pass
@@ -360,6 +373,14 @@ class AttributeValidator(Validator):
             else:
                 try:
                     dtype, string_format = get_type(value)
+                    if string_format == "isodatetime":
+                        if not has_timezone(value):
+                            ret.append(
+                                Error(
+                                    self.get_spec_loc(spec),
+                                    message= "Datetime is missing required timezone information."
+                                )
+                            )
                     if not check_type(spec.dtype, dtype, string_format):
                         ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
                 except EmptyArrayError:
@@ -422,6 +443,15 @@ class DatasetValidator(BaseStorageValidator):
         if self.spec.dtype is not None:
             try:
                 dtype, string_format = get_type(data, builder.dtype)
+                if string_format == "isodatetime":
+                    if not has_timezone(data):
+                        ret.append(
+                            Error(
+                                self.get_spec_loc(self.spec),
+                                message="Datetime is missing required timezone information.",
+                                location=self.get_builder_loc(builder)
+                            )
+                        )
                 if not check_type(self.spec.dtype, dtype, string_format):
                     if isinstance(self.spec.dtype, RefSpec):
                         expected = f'{self.spec.dtype.reftype} reference'
