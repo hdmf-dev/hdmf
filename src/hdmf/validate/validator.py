@@ -95,11 +95,11 @@ def has_timezone(datetime_string):
 
     if s.endswith("Z"):
         return True
-    
+
     # Check for +HH:MM or -HH:MM at the end
     if "+" in s[-6:] or "-" in s[-6:]:
         return True
-    
+
     return False
 
 
