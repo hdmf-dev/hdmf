@@ -329,7 +329,9 @@ class DatasetBuilder(BaseBuilder):
             {'name': 'attributes', 'type': dict,
              'doc': 'A dictionary of attributes to create in this dataset.', 'default': dict()},
             {'name': 'spec_shapes', 'type': tuple,
-             'doc': 'The shape(s) defined in the spec.', 'default': None},
+             'doc': ('The shape(s) defined in the spec that matches the shape of this dataset. Currently this is '
+                     'supplied only on build.'),
+             'default': None},
             {'name': 'dimension_labels', 'type': tuple,
              'doc': ('A list of labels for each dimension of this dataset from the spec. Currently this is '
                      'supplied only on build.'),
