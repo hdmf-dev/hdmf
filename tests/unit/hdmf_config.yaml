@@ -1,0 +1,14 @@
+namespaces:
+  hdmf-common:
+    version: 3.12.2
+    data_types:
+      VectorData:
+        description:
+          termset: example_test_term_set.yaml
+      VectorIndex:
+        data: ...
+  foo_namespace:
+    version: ...
+    data_types:
+      ExtensionContainer:
+        description:

@@ -98,6 +98,19 @@ class GroupSpecTests(TestCase):
         spec.set_dataset(self.datasets[0])
         self.assertIs(spec, self.datasets[0].parent)
 
+    def test_add_dataset(self):
+        group = GroupSpec(
+            doc='A test group',
+            name='root'
+        )
+        with self.assertWarns(DeprecationWarning):
+            group.add_dataset(
+                doc='A test dataset',
+                dtype='int',
+                name='dataset'
+            )
+        self.assertIsInstance(group.get_dataset('dataset'), DatasetSpec)
+
     def test_set_link(self):
         group = GroupSpec(
             doc='A test group',
@@ -117,11 +130,12 @@ class GroupSpecTests(TestCase):
             doc='A test group',
             name='root'
         )
-        group.add_link(
-            'A test link',
-            'LinkTarget',
-            name='link_name'
-        )
+        with self.assertWarns(DeprecationWarning):
+            group.add_link(
+                doc='A test link',
+                target_type='LinkTarget',
+                name='link_name'
+            )
         self.assertIsInstance(group.get_link('link_name'), LinkSpec)
 
     def test_set_group(self):
@@ -141,65 +155,12 @@ class GroupSpecTests(TestCase):
             doc='A test group',
             name='root'
         )
-        group.add_group(
-            'A test group',
-            name='subgroup'
-        )
+        with self.assertWarns(DeprecationWarning):
+            group.add_group(
+                'A test group',
+                name='subgroup'
+            )
         self.assertIsInstance(group.get_group('subgroup'), GroupSpec)
-
-    def test_type_extension(self):
-        spec = GroupSpec('A test group',
-                         name='parent_type',
-                         datasets=self.datasets,
-                         attributes=self.attributes,
-                         linkable=False,
-                         data_type_def='EphysData')
-        dset1_attributes_ext = [
-            AttributeSpec('dset1_extra_attribute', 'an extra attribute for the first dataset', 'text')
-        ]
-        ext_datasets = [
-            DatasetSpec('my first dataset extension',
-                        'int',
-                        name='dataset1',
-                        attributes=dset1_attributes_ext,
-                        linkable=True),
-        ]
-        ext_attributes = [
-            AttributeSpec('ext_extra_attribute', 'an extra attribute for the group', 'text'),
-        ]
-        ext = GroupSpec('A test group extension',
-                        name='child_type',
-                        datasets=ext_datasets,
-                        attributes=ext_attributes,
-                        linkable=False,
-                        data_type_inc=spec,
-                        data_type_def='SpikeData')
-        ext_dset1 = ext.get_dataset('dataset1')
-        ext_dset1_attrs = ext_dset1.attributes
-        self.assertDictEqual(ext_dset1_attrs[0], dset1_attributes_ext[0])
-        self.assertDictEqual(ext_dset1_attrs[1], self.dset1_attributes[0])
-        self.assertDictEqual(ext_dset1_attrs[2], self.dset1_attributes[1])
-        self.assertEqual(ext.data_type_def, 'SpikeData')
-        self.assertEqual(ext.data_type_inc, 'EphysData')
-
-        ext_dset2 = ext.get_dataset('dataset2')
-        self.maxDiff = None
-        # this will suffice for now,  assertDictEqual doesn't do deep equality checks
-        self.assertEqual(str(ext_dset2), str(self.datasets[1]))
-        self.assertAttributesEqual(ext_dset2, self.datasets[1])
-
-        res_attrs = ext.attributes
-        self.assertDictEqual(res_attrs[0], ext_attributes[0])
-        self.assertDictEqual(res_attrs[1], self.attributes[0])
-        self.assertDictEqual(res_attrs[2], self.attributes[1])
-
-        # test that inherited specs are tracked appropriate
-        for d in self.datasets:
-            with self.subTest(dataset=d.name):
-                self.assertTrue(ext.is_inherited_spec(d))
-                self.assertFalse(spec.is_inherited_spec(d))
-
-        json.dumps(spec)
 
     def assertDatasetsEqual(self, spec1, spec2):
         spec1_dsets = spec1.datasets
@@ -226,7 +187,8 @@ class GroupSpecTests(TestCase):
                          datasets=self.datasets,
                          linkable=False)
         for attrspec in self.attributes:
-            spec.add_attribute(**attrspec)
+            with self.assertWarns(DeprecationWarning):
+                spec.add_attribute(**attrspec)
         self.assertListEqual(spec['attributes'], self.attributes)
         self.assertListEqual(spec['datasets'], self.datasets)
         self.assertNotIn('data_type_def', spec)
@@ -308,11 +270,23 @@ class GroupSpecTests(TestCase):
 
     def test_get_data_type_spec(self):
         expected = AttributeSpec('data_type', 'the data type of this object', 'text', value='MyType')
-        self.assertDictEqual(GroupSpec.get_data_type_spec('MyType'), expected)
+        with self.assertWarns(DeprecationWarning):
+            self.assertDictEqual(GroupSpec.get_data_type_spec('MyType'), expected)
 
     def test_get_namespace_spec(self):
         expected = AttributeSpec('namespace', 'the namespace for the data type of this object', 'text', required=False)
-        self.assertDictEqual(GroupSpec.get_namespace_spec(), expected)
+        with self.assertWarns(DeprecationWarning):
+            self.assertDictEqual(GroupSpec.get_namespace_spec(), expected)
+
+    def test_build_warn_extra_args(self):
+        spec_dict = {
+            'name': 'group1',
+            'doc': 'test group',
+            'required': True,
+        }
+        msg = "Unexpected keys ['required'] in spec {'name': 'group1', 'doc': 'test group', 'required': True}"
+        with self.assertWarnsWith(UserWarning, msg):
+            GroupSpec.build_spec(spec_dict)
 
 
 class TestNotAllowedConfig(TestCase):
@@ -321,88 +295,18 @@ class TestNotAllowedConfig(TestCase):
         msg = ("Cannot create Group or Dataset spec with no name without specifying 'data_type_def' "
                "and/or 'data_type_inc'.")
         with self.assertRaisesWith(ValueError, msg):
-            GroupSpec('A test group')
+            GroupSpec(doc='A test group')
 
     def test_name_with_multiple(self):
         msg = ("Cannot give specific name to something that can exist multiple times: name='MyGroup', quantity='*'")
         with self.assertRaisesWith(ValueError, msg):
-            GroupSpec('A test group', name='MyGroup', quantity='*')
+            GroupSpec(doc='A test group', name='MyGroup', quantity='*')
 
+    def test_same_data_type_def_inc(self):
+        msg = ("data_type_inc and data_type_def cannot be the same: MyType. Ignoring data_type_inc.")
+        with self.assertWarnsWith(UserWarning, msg):
+            GroupSpec(doc='A test group', data_type_def='MyType', data_type_inc='MyType')
 
-class TestResolveAttrs(TestCase):
-
-    def setUp(self):
-        self.def_group_spec = GroupSpec(
-            doc='A test group',
-            name='root',
-            data_type_def='MyGroup',
-            attributes=[AttributeSpec('attribute1', 'my first attribute', 'text'),
-                        AttributeSpec('attribute2', 'my second attribute', 'text')]
-        )
-        self.inc_group_spec = GroupSpec(
-            doc='A test group',
-            name='root',
-            data_type_inc='MyGroup',
-            attributes=[AttributeSpec('attribute2', 'my second attribute', 'text', value='fixed'),
-                        AttributeSpec('attribute3', 'my third attribute', 'text', value='fixed')]
-        )
-        self.inc_group_spec.resolve_spec(self.def_group_spec)
-
-    def test_resolved(self):
-        self.assertTupleEqual(self.inc_group_spec.attributes, (
-            AttributeSpec('attribute2', 'my second attribute', 'text', value='fixed'),
-            AttributeSpec('attribute3', 'my third attribute', 'text', value='fixed'),
-            AttributeSpec('attribute1', 'my first attribute', 'text')
-        ))
-
-        self.assertEqual(self.inc_group_spec.get_attribute('attribute1'),
-                         AttributeSpec('attribute1', 'my first attribute', 'text'))
-        self.assertEqual(self.inc_group_spec.get_attribute('attribute2'),
-                         AttributeSpec('attribute2', 'my second attribute', 'text', value='fixed'))
-        self.assertEqual(self.inc_group_spec.get_attribute('attribute3'),
-                         AttributeSpec('attribute3', 'my third attribute', 'text', value='fixed'))
-
-        self.assertTrue(self.inc_group_spec.resolved)
-
-    def test_is_inherited_spec(self):
-        self.assertFalse(self.def_group_spec.is_inherited_spec('attribute1'))
-        self.assertFalse(self.def_group_spec.is_inherited_spec('attribute2'))
-        self.assertTrue(self.inc_group_spec.is_inherited_spec(
-            AttributeSpec('attribute1', 'my first attribute', 'text')
-        ))
-        self.assertTrue(self.inc_group_spec.is_inherited_spec('attribute1'))
-        self.assertTrue(self.inc_group_spec.is_inherited_spec('attribute2'))
-        self.assertFalse(self.inc_group_spec.is_inherited_spec('attribute3'))
-        self.assertFalse(self.inc_group_spec.is_inherited_spec('attribute4'))
-
-    def test_is_overridden_spec(self):
-        self.assertFalse(self.def_group_spec.is_overridden_spec('attribute1'))
-        self.assertFalse(self.def_group_spec.is_overridden_spec('attribute2'))
-        self.assertFalse(self.inc_group_spec.is_overridden_spec(
-            AttributeSpec('attribute1', 'my first attribute', 'text')
-        ))
-        self.assertFalse(self.inc_group_spec.is_overridden_spec('attribute1'))
-        self.assertTrue(self.inc_group_spec.is_overridden_spec('attribute2'))
-        self.assertFalse(self.inc_group_spec.is_overridden_spec('attribute3'))
-        self.assertFalse(self.inc_group_spec.is_overridden_spec('attribute4'))
-
-    def test_is_inherited_attribute(self):
-        self.assertFalse(self.def_group_spec.is_inherited_attribute('attribute1'))
-        self.assertFalse(self.def_group_spec.is_inherited_attribute('attribute2'))
-        self.assertTrue(self.inc_group_spec.is_inherited_attribute('attribute1'))
-        self.assertTrue(self.inc_group_spec.is_inherited_attribute('attribute2'))
-        self.assertFalse(self.inc_group_spec.is_inherited_attribute('attribute3'))
-        with self.assertRaisesWith(ValueError, "Attribute 'attribute4' not found"):
-            self.inc_group_spec.is_inherited_attribute('attribute4')
-
-    def test_is_overridden_attribute(self):
-        self.assertFalse(self.def_group_spec.is_overridden_attribute('attribute1'))
-        self.assertFalse(self.def_group_spec.is_overridden_attribute('attribute2'))
-        self.assertFalse(self.inc_group_spec.is_overridden_attribute('attribute1'))
-        self.assertTrue(self.inc_group_spec.is_overridden_attribute('attribute2'))
-        self.assertFalse(self.inc_group_spec.is_overridden_attribute('attribute3'))
-        with self.assertRaisesWith(ValueError, "Attribute 'attribute4' not found"):
-            self.inc_group_spec.is_overridden_attribute('attribute4')
 
 
 class GroupSpecWithLinksTest(TestCase):
@@ -419,58 +323,6 @@ class GroupSpecWithLinksTest(TestCase):
         self.assertIs(spec, links[0].parent)
         self.assertIs(spec, links[1].parent)
         json.dumps(spec)
-
-    def test_extension_no_overwrite(self):
-        link0 = LinkSpec(doc='Link 0', target_type='TargetType0')  # test unnamed
-        link1 = LinkSpec(doc='Link 1', target_type='TargetType1', name='MyType1')  # test named
-        link2 = LinkSpec(doc='Link 2', target_type='TargetType2', quantity='*')  # test named, multiple
-        links = [link0, link1, link2]
-        parent_spec = GroupSpec(
-            doc='A test group',
-            name='parent',
-            links=links,
-            data_type_def='ParentType'
-        )
-        child_spec = GroupSpec(
-            doc='A test group',
-            name='child',
-            data_type_inc=parent_spec,
-            data_type_def='ChildType'
-        )
-
-        for link in links:
-            with self.subTest(link_target_type=link.target_type):
-                self.assertTrue(child_spec.is_inherited_spec(link))
-                self.assertFalse(child_spec.is_overridden_spec(link))
-
-    def test_extension_overwrite(self):
-        link0 = LinkSpec(doc='Link 0', target_type='TargetType0', name='MyType0')
-        link1 = LinkSpec(doc='Link 1', target_type='TargetType1', name='MyType1')
-        # NOTE overwriting unnamed LinkSpec is not allowed
-        # NOTE overwriting spec with quantity that could be >1 is not allowed
-        links = [link0, link1]
-        parent_spec = GroupSpec(
-            doc='A test group',
-            name='parent',
-            links=links,
-            data_type_def='ParentType'
-        )
-
-        link0_overwrite = LinkSpec(doc='New link 0', target_type='TargetType0', name='MyType0')
-        link1_overwrite = LinkSpec(doc='New link 1', target_type='TargetType1Child', name='MyType1')
-        overwritten_links = [link0_overwrite, link1_overwrite]
-        child_spec = GroupSpec(
-            doc='A test group',
-            name='child',
-            links=overwritten_links,
-            data_type_inc=parent_spec,
-            data_type_def='ChildType'
-        )
-
-        for link in overwritten_links:
-            with self.subTest(link_target_type=link.target_type):
-                self.assertTrue(child_spec.is_inherited_spec(link))
-                self.assertTrue(child_spec.is_overridden_spec(link))
 
 
 class SpecWithDupsTest(TestCase):

@@ -5,6 +5,7 @@ from .utils import docval
 import warnings
 import numpy as np
 from .data_utils import append_data, extend_data
+from ruamel.yaml import YAML
 
 
 class TermSet:
@@ -32,8 +33,11 @@ class TermSet:
         try:
             from linkml_runtime.utils.schemaview import SchemaView
         except ImportError:
-            msg = "Install linkml_runtime"
-            raise ValueError(msg)
+            msg = (
+                "There is an issue with importing linkml_runtime. Please make sure a "
+                "compatible version of linkml_runtime is installed."
+            )
+            raise ImportError(msg)
 
         self.term_schema_path = term_schema_path
         self.schemasheets_folder = schemasheets_folder
@@ -162,12 +166,15 @@ class TermSet:
         This method returns a path to the new schema to be viewed via SchemaView.
         """
         try:
-            import yaml
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
-        except ImportError:   # pragma: no cover
-            msg = "Install schemasheets."
-            raise ValueError(msg)
+        except ImportError as e:   # pragma: no cover
+            msg = (
+                "There is an issue with importing schemasheets. Please make sure a compatible "
+                "version of schemascheets is installed."
+            )
+            raise ImportError(msg) from e
+
         schema_maker = SchemaMaker()
         tsv_file_paths = glob.glob(self.schemasheets_folder + "/*.tsv")
         schema = schema_maker.create_schema(tsv_file_paths)
@@ -175,6 +182,7 @@ class TermSet:
         schemasheet_schema_path = os.path.join(self.schemasheets_folder, f"{schema_dict['name']}.yaml")
 
         with open(schemasheet_schema_path, "w") as f:
+            yaml=YAML(typ='safe')
             yaml.dump(schema_dict, f)
 
         return schemasheet_schema_path
@@ -192,8 +200,11 @@ class TermSet:
                 warnings.filterwarnings("ignore", category=DeprecationWarning)
                 from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
         except ImportError:   # pragma: no cover
-            msg = 'Install oaklib.'
-            raise ValueError(msg)
+            msg = (
+                "There is an issue with importing oaklib. Please make sure a compatible "
+                "version of oaklib is installed."
+            )
+            raise ImportError(msg)
         expander = ValueSetExpander()
         # TODO: linkml should raise a warning if the schema does not have dynamic enums
         enum = list(self.view.all_enums())
@@ -214,19 +225,26 @@ class TermSetWrapper:
             {'name': 'value',
              'type': (list, np.ndarray, dict, str, tuple),
              'doc': 'The target item that is wrapped, either data or attribute.'},
+            {'name': 'field', 'type': str, 'default': None,
+             'doc': 'The field within a compound array.'}
             )
     def __init__(self, **kwargs):
         self.__value = kwargs['value']
         self.__termset = kwargs['termset']
+        self.__field = kwargs['field']
         self.__validate()
 
     def __validate(self):
-        # check if list, tuple, array
-        if isinstance(self.__value, (list, np.ndarray, tuple)): # TODO: Future ticket on DataIO support
-            values = self.__value
-        # create list if none of those -> mostly for attributes
+        if self.__field is not None:
+            values = self.__value[self.__field]
         else:
-            values = [self.__value]
+            # check if list, tuple, array
+            if isinstance(self.__value, (list, np.ndarray, tuple)):
+                values = self.__value
+            # create list if none of those -> mostly for scalar attributes
+            else:
+                values = [self.__value]
+
         # iteratively validate
         bad_values = []
         for term in values:
@@ -240,6 +258,10 @@ class TermSetWrapper:
     @property
     def value(self):
         return self.__value
+
+    @property
+    def field(self):
+        return self.__field
 
     @property
     def termset(self):
@@ -262,13 +284,6 @@ class TermSetWrapper:
         """
         return self.__value[val]
 
-    # uncomment when DataChunkIterator objects can be wrapped by TermSet
-    # def __next__(self):
-    #     """
-    #     Return the next item of a wrapped iterator.
-    #     """
-    #     return self.__value.__next__()
-    #
     def __len__(self):
         return len(self.__value)
 
@@ -278,29 +293,133 @@ class TermSetWrapper:
         """
         return self.__value.__iter__()
 
+    def __multi_validation(self, data):
+        """
+        append_data includes numpy arrays. This is not the same as list append.
+        Numpy array append is essentially list extend. Now if a user appends an array (for compound data), we need to
+        support validating arrays with multiple items. This method is an internal bulk validation
+        check for numpy arrays and extend.
+        """
+        bad_values = []
+        for item in data:
+            if not self.termset.validate(term=item):
+                bad_values.append(item)
+        return bad_values
+
     def append(self, arg):
         """
         This append resolves the wrapper to use the append of the container using
         the wrapper.
         """
-        if self.termset.validate(term=arg):
-            self.__value = append_data(self.__value, arg)
+        if isinstance(arg, np.ndarray):
+            if self.__field is not None: # compound array
+                values = arg[self.__field]
+            else:
+                msg = "Array needs to be a structured array with compound dtype. If this does not apply, use extend."
+                raise ValueError(msg)
         else:
-            msg = ('"%s" is not in the term set.' % arg)
+            values = [arg]
+
+        bad_values = self.__multi_validation(values)
+
+        if len(bad_values)!=0:
+            msg = ('"%s" is not in the term set.' % ', '.join([str(value) for value in bad_values]))
             raise ValueError(msg)
+
+        self.__value = append_data(self.__value, arg)
 
     def extend(self, arg):
         """
         This append resolves the wrapper to use the extend of the container using
         the wrapper.
         """
-        bad_data = []
-        for item in arg:
-            if not self.termset.validate(term=item):
-                bad_data.append(item)
+        if isinstance(arg, np.ndarray):
+            if self.__field is not None: # compound array
+                values = arg[self.__field]
+            else:
+                values = arg
+        else:
+            values = arg
+
+        bad_data = self.__multi_validation(values)
 
         if len(bad_data)==0:
             self.__value = extend_data(self.__value, arg)
         else:
             msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
             raise ValueError(msg)
+
+class TypeConfigurator:
+    """
+    This class allows users to toggle on/off a global configuration for defined data types.
+    When toggled on, every instance of a configuration file supported data type will be validated
+    according to the corresponding TermSet.
+    """
+    @docval({'name': 'paths', 'type': list, 'doc': 'Paths to configuration files.', 'default': None})
+    def __init__(self, **kwargs):
+        self.config = None
+        self.paths = []
+        if kwargs["paths"]:
+            for p in kwargs["paths"]:
+                self.load_type_config(p)
+
+    @docval({'name': 'data_type', 'type': str,
+             'doc': 'The desired data type within the configuration file.'},
+            {'name': 'namespace', 'type': str,
+             'doc': 'The namespace for the data type.'})
+    def get_config(self, data_type, namespace):
+        """
+        Return the config for that data type in the given namespace.
+        """
+        try:
+            namespace_config = self.config['namespaces'][namespace]
+        except KeyError:
+            msg = 'The namespace %s was not found within the configuration.' % namespace
+            raise ValueError(msg)
+
+        try:
+            type_config = namespace_config['data_types'][data_type]
+            return type_config
+        except KeyError:
+            msg = '%s was not found within the configuration for that namespace.' % data_type
+            raise ValueError(msg)
+
+    @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'})
+    def load_type_config(self, config_path):
+        """
+        Load the configuration file for validation on the fields defined for the objects within the file.
+        """
+        with open(config_path, 'r') as config:
+            yaml = YAML(typ='safe')
+            termset_config = yaml.load(config)
+            if self.config is None: # set the initial config/load after config has been unloaded
+                self.config = termset_config
+                if len(self.paths) == 0: # for loading after an unloaded config
+                    self.paths.append(config_path)
+            else: # append/replace to the existing config
+                if config_path in self.paths:
+                    msg = 'This configuration file path already exists within the configurator.'
+                    raise ValueError(msg)
+                else:
+                    for namespace in termset_config['namespaces']:
+                        if namespace not in self.config['namespaces']: # append namespace config if not present
+                            self.config['namespaces'][namespace] = termset_config['namespaces'][namespace]
+                        else: # check for any needed overrides within existing namespace configs
+                            for data_type in termset_config['namespaces'][namespace]['data_types']:
+                                # NOTE: these two branches effectively do the same thing, but are split for clarity.
+                                if data_type in self.config['namespaces'][namespace]['data_types']:
+                                    replace_config = termset_config['namespaces'][namespace]['data_types'][data_type]
+                                    self.config['namespaces'][namespace]['data_types'][data_type] = replace_config
+                                else: # append to config
+                                    new_config = termset_config['namespaces'][namespace]['data_types'][data_type]
+                                    self.config['namespaces'][namespace]['data_types'][data_type] = new_config
+
+                    # append path to self.paths
+                    self.paths.append(config_path)
+
+    def unload_type_config(self):
+        """
+        Remove validation with all loaded termset configuration files. Effectively reset this instance.
+        """
+        self.config = None
+        self.paths = []

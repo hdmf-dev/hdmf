@@ -9,6 +9,7 @@ from hdmf.utils import docval
 from hdmf.common import DynamicTable, VectorData, DynamicTableRegion
 from hdmf.backends.hdf5.h5tools import HDF5IO
 
+from tests.unit.helpers.io import DoNothingIO
 
 class Subcontainer(Container):
     pass
@@ -24,12 +25,15 @@ class ContainerWithChild(Container):
 
 
 class TestHERDManager(TestCase):
-    def test_link_and_get_resources(self):
+
+    def test_get_and_set_resources(self):
         em = HERDManager()
         er = HERD()
 
-        em.link_resources(er)
-        er_get = em.get_linked_resources()
+        em.external_resources = er
+        self.assertEqual(em.external_resources, er)
+
+        er_get = em.external_resources
         self.assertEqual(er, er_get)
 
 
@@ -57,6 +61,11 @@ class TestContainer(TestCase):
         self.assertEqual(child_obj.object_id, child_object_id)
         self.assertFalse(child_obj._in_construct_mode)
         self.assertTrue(child_obj.modified)
+
+    def test_get_data_type(self):
+        obj = Container('obj1')
+        dt = obj.data_type
+        self.assertEqual(dt, 'Container')
 
     def test_new_object_id_none(self):
         """Test that passing object_id=None to __new__ is OK and results in a non-None object ID being assigned.
@@ -174,6 +183,17 @@ class TestContainer(TestCase):
     def test_slash_restriction(self):
         self.assertRaises(ValueError, Container, 'bad/name')
 
+        # check no error raised in construct mode
+        child_obj = Container.__new__(Container, in_construct_mode=True)
+        child_obj.__init__('bad/name')
+
+    def test_colon_restriction(self):
+        self.assertRaises(ValueError, Container, 'bad:name')
+
+        # check no error raised in construct mode
+        child_obj = Container.__new__(Container, in_construct_mode=True)
+        child_obj.__init__('bad:name')
+
     def test_set_modified_parent(self):
         """Test that set modified properly sets parent modified
         """
@@ -195,18 +215,6 @@ class TestContainer(TestCase):
         species = DynamicTable(name='species', description='My species', columns=[col1])
         obj = species.all_objects
         self.assertEqual(sorted(list(obj.keys())), sorted([species.object_id, species.id.object_id, col1.object_id]))
-
-    def test_add_child(self):
-        """Test that add child creates deprecation warning and also properly sets child's parent and modified
-        """
-        parent_obj = Container('obj1')
-        child_obj = Container('obj2')
-        parent_obj.set_modified(False)
-        with self.assertWarnsWith(DeprecationWarning, 'add_child is deprecated. Set the parent attribute instead.'):
-            parent_obj.add_child(child_obj)
-        self.assertIs(child_obj.parent, parent_obj)
-        self.assertTrue(parent_obj.modified)
-        self.assertIs(parent_obj.children[0], child_obj)
 
     def test_parent_set_link_warning(self):
         col1 = VectorData(
@@ -418,6 +426,23 @@ class TestHTMLRepr(TestCase):
             self.data = kwargs['data']
             self.str = kwargs['str']
 
+    class ContainerWithData(Container):
+
+        __fields__ = (
+            "data",
+            "str"
+        )
+
+        @docval(
+            {'name': "data", "doc": 'data', 'type': 'array_data', "default": None},
+            {'name': "str", "doc": 'str', 'type': str, "default": None},
+
+        )
+        def __init__(self, **kwargs):
+            super().__init__('test name')
+            self.data = kwargs['data']
+            self.str = kwargs['str']
+
     def test_repr_html_(self):
         child_obj1 = Container('test child 1')
         obj1 = self.ContainerWithChildAndData(child=child_obj1, data=[1, 2, 3], str="hello")
@@ -439,7 +464,8 @@ class TestHTMLRepr(TestCase):
             'class=\'container-header\'><div class=\'xr-obj-type\'><h3>test name ('
             'ContainerWithChildAndData)</h3></div></div><details><summary style="display: list-item; margin-left: '
             '0px;" class="container-fields field-key" '
-            'title=".child"><b>child</b></summary></details><details><summary style="display: list-item; margin-left: '
+            'title=".child"><b>child <span style=\'font-weight: normal; color: #888;\'>(Container)</span></b>'
+            '</summary></details><details><summary style="display: list-item; margin-left: '
             '0px;" class="container-fields field-key" title=".data"><b>data</b></summary><div style="margin-left: '
             '20px;" class="container-fields"><span class="field-key" title=".data[0]">0: </span><span '
             'class="field-value">1</span></div><div style="margin-left: 20px;" class="container-fields"><span '
@@ -449,6 +475,119 @@ class TestHTMLRepr(TestCase):
             'class="container-fields"><span class="field-key" title=".str">str: </span><span '
             'class="field-value">hello</span></div></div>'
         )
+
+    def test_repr_html_array(self):
+        obj = self.ContainerWithData(data=np.array([1, 2, 3, 4], dtype=np.int64), str="hello")
+        expected_html_table = (
+            'class="container-fields">NumPy array<br><table class="data-info"><tbody><tr><th style="text-align: '
+            'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Shape'
+            '</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">Array size</th><td '
+            'style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]'
+        )
+        self.assertIn(expected_html_table, obj._repr_html_())
+
+    def test_repr_html_array_large_arrays_not_displayed(self):
+        obj = self.ContainerWithData(data=np.arange(200, dtype=np.int64), str="hello")
+        expected_html_table = (
+            'class="container-fields">NumPy array<br><table class="data-info"><tbody><tr><th style="text-align: '
+            'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Shape'
+            '</th><td style="text-align: left">(200,)</td></tr><tr><th style="text-align: left">Array size</th><td '
+            'style="text-align: left">1.56 KiB</td></tr></tbody></table></div></details>'
+        )
+        self.assertIn(expected_html_table, obj._repr_html_())
+
+    def test_repr_html_hdf5_dataset(self):
+        with HDF5IO('array_data.h5', mode='w') as io:
+            dataset = io._file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+            obj = self.ContainerWithData(data=dataset, str="hello")
+            obj.read_io = io
+
+            expected_html_table = (
+                'class="container-fields">HDF5 dataset<br><table class="data-info"><tbody><tr><th style="text-align: '
+                'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">'
+                'Shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">Array size'
+                '</th><td style="text-align: left">32.00 bytes</td></tr><tr><th style="text-align: left">Chunk shape'
+                '</th><td style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression</th><td '
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression opts</th><td '
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">Uncompressed size (bytes)'
+                '</th><td style="text-align: left">32</td></tr><tr><th style="text-align: left">Compressed size '
+                '(bytes)</th><td style="text-align: left">32</td></tr><tr><th style="text-align: left">Compression '
+                'ratio</th><td style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4]'
+            )
+
+            self.assertIn(expected_html_table, obj._repr_html_())
+
+        os.remove('array_data.h5')
+
+    def test_repr_html_hdmf_io(self):
+        with HDF5IO('array_data.h5', mode='w') as io:
+            dataset = io._file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+            obj = self.ContainerWithData(data=dataset, str="hello")
+
+            obj.read_io = DoNothingIO()
+
+            expected_html_table = (
+                'class="container-fields"><table class="data-info"><tbody><tr><th style="text-align: '
+                'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">'
+                'Shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">Array size'
+                '</th><td style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]'
+            )
+
+            self.assertIn(expected_html_table, obj._repr_html_())
+
+        os.remove('array_data.h5')
+
+    def test_repr_html_lindi_dataset(self):
+        """Test HTML repr for datasets without get_storage_size method (e.g., LINDI datasets)."""
+        from unittest.mock import PropertyMock, patch
+        import h5py
+
+        # Create a regular HDF5 dataset using h5py
+        with h5py.File('array_data.h5', 'w') as f:
+            f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4, 5, 6, 7, 8], dtype=np.int64))
+
+        # Read the dataset and mock the id to simulate LINDI behavior
+        with h5py.File('array_data.h5', 'r') as f:
+            dataset = f['my_dataset']
+            original_id = dataset.id
+
+            # Create a wrapper that has all attributes except get_storage_size
+            class MockDatasetId:
+                """Mock DatasetID that raises AttributeError for get_storage_size."""
+                def __getattr__(self, name):
+                    if name == 'get_storage_size':
+                        raise AttributeError(f"'{type(self).__name__}' object has no attribute 'get_storage_size'")
+                    return getattr(original_id, name)
+
+            mock_id = MockDatasetId()
+
+            # Patch the dataset's id property
+            with patch.object(type(dataset), 'id', new_callable=PropertyMock) as mock_id_prop:
+                mock_id_prop.return_value = mock_id
+
+                # Test the generate_dataset_html method directly
+                result_html = HDF5IO.generate_dataset_html(dataset)
+
+                # Expected HTML should include basic fields
+                expected_fields = [
+                    'Data type',
+                    'Shape',
+                    'Array size',
+                ]
+
+                for field in expected_fields:
+                    self.assertIn(field, result_html)
+
+                # The HTML should be generated without errors even though the dataset
+                # doesn't have get_storage_size method (like LINDI datasets)
+                self.assertIsInstance(result_html, str)
+
+                # Should NOT include compressed size or compression ratio since get_storage_size is not available
+                self.assertNotIn('Compressed size (bytes)', result_html)
+                self.assertNotIn('Compression ratio', result_html)
+
+        # Cleanup
+        os.remove('array_data.h5')
 
 
 class TestData(TestCase):
@@ -519,7 +658,7 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(EmptyFields.get_fields_conf(), tuple())
 
         props = TestAbstractContainerFieldsConf.find_all_properties(EmptyFields)
-        expected = ['all_objects', 'children', 'container_source', 'fields', 'modified',
+        expected = ['all_objects', 'children', 'container_source', 'data_type', 'fields', 'modified',
                     'name', 'object_id', 'parent', 'read_io']
         self.assertListEqual(props, expected)
 
@@ -540,8 +679,8 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(NamedFields.get_fields_conf(), expected)
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFields)
-        expected = ['all_objects', 'children', 'container_source', 'field1', 'field2',
-                    'fields', 'modified', 'name', 'object_id',
+        expected = ['all_objects', 'children', 'container_source', 'data_type',
+                    'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
                     'parent', 'read_io']
         self.assertListEqual(props, expected)
 
@@ -622,8 +761,8 @@ class TestAbstractContainerFieldsConf(TestCase):
         self.assertTupleEqual(NamedFieldsChild.get_fields_conf(), expected)
 
         props = TestAbstractContainerFieldsConf.find_all_properties(NamedFieldsChild)
-        expected = ['all_objects', 'children', 'container_source', 'field1', 'field2',
-                    'fields', 'modified', 'name', 'object_id',
+        expected = ['all_objects', 'children', 'container_source', 'data_type',
+                    'field1', 'field2', 'fields', 'modified', 'name', 'object_id',
                     'parent', 'read_io']
         self.assertListEqual(props, expected)
 

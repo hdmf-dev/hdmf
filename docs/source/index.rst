@@ -45,6 +45,7 @@ If you use HDMF in your research, please use the following citation:
    building_api
    export
    validation
+   spec_language_support
 
 .. toctree::
    :hidden:
@@ -61,7 +62,6 @@ If you use HDMF in your research, please use the following citation:
    :caption: For Maintainers
 
    make_a_release
-   update_requirements
 
 .. toctree::
    :hidden:

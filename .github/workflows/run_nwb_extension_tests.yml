@@ -1,0 +1,151 @@
+# NWB Extension Testing Workflow
+# ==============================
+#
+# This workflow runs tests for NWB extensions to ensure compatibility when changes are made to HDMF core functionality.
+#
+# When it runs
+# ------------
+#
+# - Daily at 6 AM UTC (1 AM ET) via scheduled cron job
+# - Manual trigger via workflow_dispatch
+#
+# How it works
+# ------------
+#
+# The workflow automatically discovers and tests all NWB extensions from the official catalog at https://nwb-extensions.github.io
+# using the script at https://raw.githubusercontent.com/nwb-extensions/extensions-dashboard/refs/heads/main/scripts/generate_extensions_matrix.py
+#
+# If the catalog is unavailable, it falls back to testing a predefined list of commonly used extensions.
+#
+# Extensions marked as inactive or problematic (like ndx-icephys-meta) are not added to the test matrix. This list
+# can be updated in the remote script if needed.
+#
+# It then tests each extension in parallel using a matrix strategy. Each test includes:
+# 1. Cloning the extension repository
+# 2. Installing the extension
+# 3. Testing basic import functionality
+# 4. Running the extension's tests
+#
+# Note that some extension repositories may not be in a state that allows successful installation or testing.
+#
+# Testing
+# -------
+#
+# To generate the extensions matrix for local testing:
+#
+#   # Download the script
+#   curl -o generate_extensions_matrix.py https://raw.githubusercontent.com/nwb-extensions/extensions-dashboard/refs/heads/main/scripts/generate_extensions_matrix.py
+#
+#   # GitHub Actions format (default)
+#   python generate_extensions_matrix.py
+#
+#   # JSON format for inspection
+#   python generate_extensions_matrix.py --output-format json
+
+name: Run NWB Extension Tests
+on:
+  schedule:
+    - cron: '0 6 * * *'  # once per day at 1 AM ET, offset from other daily workflows
+  workflow_dispatch:
+
+jobs:
+  generate-extension-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyyaml requests
+
+      - name: Download extension matrix script
+        run: |
+          curl -o generate_extensions_matrix.py https://raw.githubusercontent.com/nwb-extensions/extensions-dashboard/refs/heads/main/scripts/generate_extensions_matrix.py
+
+      - name: Generate extension matrix from catalog
+        id: generate-matrix
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python generate_extensions_matrix.py
+
+
+  run-nwb-extension-tests:
+    needs: generate-extension-matrix
+    runs-on: ubuntu-latest
+    name: run-nwb-extension-tests - ${{ matrix.extension.name }}
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.extension.name }}
+      cancel-in-progress: true
+    strategy:
+      matrix: ${{ fromJson(needs.generate-extension-matrix.outputs.matrix) }}
+      fail-fast: false  # Continue testing other extensions even if one fails
+    steps:
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0  # tags are required to determine the version
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'  # Use 3.11 for better compatibility with extensions
+
+      - name: Update pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install NWB extension from PyPI with current branch of HDMF - ${{ matrix.extension.name }}
+        run: |
+          echo "Repository: ${{ matrix.extension.repository }}"
+
+          # Clone the extension repository
+          git clone --depth 1 ${{ matrix.extension.repository }} extension_repo
+          cd extension_repo
+
+          # Try to install the extension
+          echo "Installing extension ${{ matrix.extension.name }}..."
+          python -m pip install -r requirements-dev.txt || true  # Continue even if this fails
+          python -m pip install -r requirements.txt || true  # Continue even if this fails
+          python -m pip install ".[test]"
+
+          # Install the latest pynwb and current branch of hdmf to ensure compatibility
+          cd ..
+          python -m pip uninstall -y hdmf pynwb  # uninstall the other version of hdmf and pynwb
+          python -m pip install pynwb  # install latest pynwb which will install hdmf from PyPI
+          python -m pip uninstall -y hdmf  # uninstall the PyPI version of hdmf
+          python -m pip install .  # reinstall current branch of hdmf
+          python -m pip list
+          python -m pip check
+
+      - name: Run tests for NWB extension - ${{ matrix.extension.name }}
+        run: |
+          cd extension_repo
+
+          # Test basic import functionality
+          extension_import_name=$(echo "${{ matrix.extension.name }}" | sed 's/-/_/g')
+          python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')"
+
+          # Install test dependencies in case they were not already installed
+          python -m pip install pytest pytest-cov
+
+          # Try different test running approaches
+          test_files=$(find . -name "*test*.py")
+          if command -v pytest &> /dev/null && [ -n "$test_files" ]; then
+            echo "Running tests with pytest..."
+            python -m pytest -v
+          else
+            echo "Running tests with python -m unittest..."
+            python -m unittest discover -s . -p "*test*.py" -v
+          fi
+
+          echo "Completed testing ${{ matrix.extension.name }}"

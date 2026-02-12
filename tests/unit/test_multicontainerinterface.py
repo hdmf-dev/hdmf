@@ -198,7 +198,10 @@ class TestBasic(TestCase):
         """Test that adding a container to the attribute dict correctly adds the container."""
         obj1 = Container('obj1')
         foo = Foo(obj1)
-        msg = "'obj1' already exists in Foo 'Foo'"
+        msg = (f"Cannot add <class 'hdmf.container.Container'> 'obj1' at 0x{id(obj1)} to dict attribute "
+               "'containers' in <class 'tests.unit.test_multicontainerinterface.Foo'> 'Foo'. "
+               f"<class 'hdmf.container.Container'> 'obj1' at 0x{id(obj1)} already exists in 'containers' "
+               "and has the same name.")
         with self.assertRaisesWith(ValueError, msg):
             foo.add_container(obj1)
 
@@ -348,11 +351,11 @@ class TestBasic(TestCase):
                 'class=\'container-header\'><div '
                 'class=\'xr-obj-type\'><h3>FooSingle</h3></div></div><details><summary style="display: list-item; '
                 'margin-left: 0px;" class="container-fields field-key" '
-                'title=".containers"><b>containers</b></summary><details><summary style="display: list-item; '
-                'margin-left: 20px;" class="container-fields field-key" title=".containers['
-                '\'obj1\']"><b>obj1</b></summary></details><details><summary style="display: list-item; margin-left: '
-                '20px;" class="container-fields field-key" title=".containers['
-                '\'obj2\']"><b>obj2</b></summary></details></details></div>'
+                'title="[\'obj1\']"><b>obj1 <span style=\'font-weight: normal; color: #888;\'>(Container)</span></b>'
+                '</summary></details><details><summary style="display: list-item; '
+                'margin-left: 0px;" class="container-fields field-key" '
+                'title="[\'obj2\']"><b>obj2 <span style=\'font-weight: normal; color: #888;\'>(Container)</span></b>'
+                '</summary></details></div>'
             )
         )
 
@@ -567,3 +570,83 @@ class TestBadClsConf(TestCase):
                         'create': 'create_container',
                     }
                 ]
+
+
+class TestPreserveGetitem(TestCase):
+    """Test that MCI does not override __getitem__ when a parent class defines it."""
+
+    def test_getitem_not_overridden_when_parent_defines_it(self):
+        """Test that __getitem__ is not overridden when a non-MCI parent class defines it."""
+
+        class ParentWithGetitem(Container):
+            """A container class that defines its own __getitem__."""
+
+            def __getitem__(self, key):
+                return f"parent_getitem:{key}"
+
+        class ChildMCI(ParentWithGetitem, MultiContainerInterface):
+            """A child class that extends both ParentWithGetitem and MCI."""
+
+            __clsconf__ = {
+                'attr': 'containers',
+                'add': 'add_container',
+                'type': Container,
+            }
+
+        # Create an instance and verify __getitem__ uses the parent's implementation
+        child = ChildMCI(name='test')
+        result = child['test_key']
+        self.assertEqual(result, "parent_getitem:test_key")
+
+        # Verify the add method from MCI still works
+        obj1 = Container('obj1')
+        child.add_container(obj1)
+        self.assertIn('obj1', child.containers)
+
+    def test_getitem_set_when_no_parent_defines_it(self):
+        """Test that __getitem__ is set by MCI when no parent class defines it."""
+
+        class SimpleMCI(MultiContainerInterface):
+            """A simple MCI with single __clsconf__."""
+
+            __clsconf__ = {
+                'attr': 'containers',
+                'add': 'add_container',
+                'type': Container,
+            }
+
+        # Create an instance and add a container
+        mci = SimpleMCI(name='test')
+        obj1 = Container('obj1')
+        mci.add_container(obj1)
+
+        # Verify __getitem__ uses MCI's implementation
+        result = mci['obj1']
+        self.assertIs(result, obj1)
+
+    def test_getitem_not_overridden_in_subclass_chain(self):
+        """Test that __getitem__ is preserved through a chain of subclasses."""
+
+        class GrandparentWithGetitem(Container):
+            """A grandparent class that defines __getitem__."""
+
+            def __getitem__(self, key):
+                return f"grandparent:{key}"
+
+        class ParentNoGetitem(GrandparentWithGetitem):
+            """A parent class that does not define __getitem__."""
+            pass
+
+        class ChildMCI(ParentNoGetitem, MultiContainerInterface):
+            """A child class that extends ParentNoGetitem and MCI."""
+
+            __clsconf__ = {
+                'attr': 'containers',
+                'add': 'add_container',
+                'type': Container,
+            }
+
+        # Create an instance and verify __getitem__ uses the grandparent's implementation
+        child = ChildMCI(name='test')
+        result = child['test_key']
+        self.assertEqual(result, "grandparent:test_key")

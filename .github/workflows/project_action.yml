@@ -12,15 +12,15 @@ jobs:
     steps:
       - name: GitHub App token
         id: generate_token
-        uses: tibdex/github-app-token@v2
+        uses: actions/create-github-app-token@v2
         with:
-          app_id: ${{ secrets.APP_ID }}
-          private_key: ${{ secrets.APP_PEM }}
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PEM }}
 
       - name: Add to Developer Board
         env:
           TOKEN: ${{ steps.generate_token.outputs.token }}
-        uses: actions/add-to-project@v0.5.0
+        uses: actions/add-to-project@v1.0.2
         with:
           project-url: https://github.com/orgs/hdmf-dev/projects/7
           github-token: ${{ env.TOKEN }}
@@ -28,7 +28,7 @@ jobs:
       - name: Add to Community Board
         env:
           TOKEN: ${{ steps.generate_token.outputs.token }}
-        uses: actions/add-to-project@v0.5.0
+        uses: actions/add-to-project@v1.0.2
         with:
           project-url: https://github.com/orgs/hdmf-dev/projects/8
           github-token: ${{ env.TOKEN }}

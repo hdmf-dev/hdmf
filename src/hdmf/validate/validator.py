@@ -1,14 +1,14 @@
 import re
 from abc import ABCMeta, abstractmethod
-from copy import copy
 from itertools import chain
 from collections import defaultdict, OrderedDict
+from typing import Any
 
 import numpy as np
 
 from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
 from .errors import ExpectedArrayError, IncorrectQuantityError
-from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
+from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
 from ..spec import SpecNamespace
@@ -17,29 +17,7 @@ from ..utils import docval, getargs, pystr, get_data_shape
 from ..query import ReferenceResolver
 
 
-__synonyms = DtypeHelper.primary_dtype_synonyms
-
-__additional = {
-    'float': ['double'],
-    'int8': ['short', 'int', 'long'],
-    'short': ['int', 'long'],
-    'int': ['long'],
-    'uint8': ['uint16', 'uint32', 'uint64'],
-    'uint16': ['uint32', 'uint64'],
-    'uint32': ['uint64'],
-    'utf': ['ascii']
-}
-
-# if the spec dtype is a key in __allowable, then all types in __allowable[key] are valid
-__allowable = dict()
-for dt, dt_syn in __synonyms.items():
-    allow = copy(dt_syn)
-    if dt in __additional:
-        for addl in __additional[dt]:
-            allow.extend(__synonyms[addl])
-    for syn in dt_syn:
-        __allowable[syn] = allow
-__allowable['numeric'] = set(chain.from_iterable(__allowable[k] for k in __allowable if 'int' in k or 'float' in k))
+__allowable = DtypeHelper.allowable
 
 
 def check_type(expected, received, string_format=None):
@@ -116,6 +94,42 @@ class EmptyArrayError(Exception):
     pass
 
 
+def _get_type_compound_dtype(data: Any, builder_dtype: list) -> tuple[list, list]:
+    """Helper function to get type information for compound dtypes."""
+    dtypes = []
+    string_formats = []
+    for i in range(len(builder_dtype)):
+        if len(np.shape(data)) == 0:
+            dtype, string_format = get_type(data[()][i])
+        else:
+            dtype, string_format = get_type(data[0][i])
+        dtypes.append(dtype)
+        string_formats.append(string_format)
+    return dtypes, string_formats
+
+
+def _get_type_from_dtype_attr(data: Any, builder_dtype: list | None) -> tuple[str | np.dtype, str | None]:
+    """Helper function to get type from data with dtype attribute (h5py.Dataset, zarr.Array, etc.)."""
+    # Handle variable-length data with vlen metadata (HDF5 style)
+    if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
+        if len(data) > 0:
+            return get_type(data[0], builder_dtype)
+        # Empty string array
+        if data.dtype.metadata["vlen"] is str:
+            return "utf", None
+        # Undetermined variable length data type
+        raise EmptyArrayError()  # pragma: no cover
+
+    # Handle object dtype (zarr style variable-length strings)
+    if data.dtype.kind == 'O':
+        if len(data) > 0:
+            return get_type(data[0], builder_dtype)
+        return "utf", None
+
+    # Standard data type (not compound or vlen)
+    return data.dtype, None
+
+
 def get_type(data, builder_dtype=None):
     """Return a tuple of (the string representation of the type, the format of the string data) for the given data."""
     # String data
@@ -124,9 +138,6 @@ def get_type(data, builder_dtype=None):
     # Bytes data
     elif isinstance(data, bytes):
         return 'ascii', get_string_format(data)
-    # RegionBuilder data
-    elif isinstance(data, RegionBuilder):
-        return 'region', None
     # ReferenceBuilder data
     elif isinstance(data, ReferenceBuilder):
         return 'object', None
@@ -134,49 +145,28 @@ def get_type(data, builder_dtype=None):
     elif isinstance(data, ReferenceResolver):
         return data.dtype, None
     # Numpy nd-array data
-    elif isinstance(data, np.ndarray):
+    elif isinstance(data, np.ndarray) and len(data.dtype) <= 1:
         if data.size > 0:
             return get_type(data[0], builder_dtype)
-        else:
-            raise EmptyArrayError()
+        raise EmptyArrayError()
     # Numpy bool data
     elif isinstance(data, np.bool_):
         return 'bool', None
     if not hasattr(data, '__len__'):
         return type(data).__name__, None
-    # Case for h5py.Dataset and other I/O specific array types
-    else:
-        # Compound dtype
-        if builder_dtype and isinstance(builder_dtype, list):
-            dtypes = []
-            string_formats = []
-            for i in range(len(builder_dtype)):
-                dtype, string_format = get_type(data[0][i])
-                dtypes.append(dtype)
-                string_formats.append(string_format)
-            return dtypes, string_formats
-        # Object has 'dtype' attribute, e.g., an h5py.Dataset
-        if hasattr(data, 'dtype'):
-            if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
-                # Try to determine dtype from the first array element
-                if len(data) > 0:
-                    return get_type(data[0], builder_dtype)
-                # Empty array
-                else:
-                    # Empty string array
-                    if data.dtype.metadata["vlen"] == str:
-                        return "utf", None
-                    # Undetermined variable length data type.
-                    else:                        # pragma: no cover
-                        raise EmptyArrayError()  # pragma: no cover
-            # Standard data type (i.e., not compound or vlen)
-            else:
-                return data.dtype, None
-        # If all else has failed, try to determine the datatype from the first element of the array
-        if len(data) > 0:
-            return get_type(data[0], builder_dtype)
-        else:
-            raise EmptyArrayError()
+    # Case for h5py.Dataset, zarr.Array, and other I/O specific array types
+    # Compound dtype
+    if builder_dtype and isinstance(builder_dtype, list):
+        return _get_type_compound_dtype(data, builder_dtype)
+
+    # Object has 'dtype' attribute, e.g., h5py.Dataset or zarr.Array
+    if hasattr(data, 'dtype'):
+        return _get_type_from_dtype_attr(data, builder_dtype)
+
+    # If all else has failed, try to determine the datatype from the first element of the array
+    if len(data) > 0:
+        return get_type(data[0], builder_dtype)
+    raise EmptyArrayError()
 
 
 def check_shape(expected, received):
@@ -433,12 +423,18 @@ class DatasetValidator(BaseStorageValidator):
             try:
                 dtype, string_format = get_type(data, builder.dtype)
                 if not check_type(self.spec.dtype, dtype, string_format):
-                    ret.append(DtypeError(self.get_spec_loc(self.spec), self.spec.dtype, dtype,
+                    if isinstance(self.spec.dtype, RefSpec):
+                        expected = f'{self.spec.dtype.reftype} reference'
+                    else:
+                        expected = self.spec.dtype
+                    ret.append(DtypeError(self.get_spec_loc(self.spec), expected, dtype,
                                           location=self.get_builder_loc(builder)))
             except EmptyArrayError:
                 # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                 pass
-        if isinstance(builder.dtype, list):
+        if isinstance(builder.dtype, list) and len(np.shape(builder.data)) == 0:
+            shape = ()  # scalar compound dataset
+        elif isinstance(builder.dtype, list):
             shape = (len(builder.data), )  # only 1D datasets with compound types are supported
         else:
             shape = get_data_shape(data)
@@ -466,9 +462,9 @@ class GroupValidator(BaseStorageValidator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},  # noqa: C901
+    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
-    def validate(self, **kwargs):  # noqa: C901
+    def validate(self, **kwargs):
         builder = getargs('builder', kwargs)
         errors = super().validate(builder)
         errors.extend(self.__validate_children(builder))

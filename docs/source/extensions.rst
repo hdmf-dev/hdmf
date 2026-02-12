@@ -46,7 +46,7 @@ Specifying datasets is done with :py:class:`~hdmf.spec.spec.DatasetSpec`.
 Using datasets to specify tables
 ++++++++++++++++++++++++++++++++
 
-Tables can be specified using :py:class:`~hdmf.spec.spec.DtypeSpec`. To specify a table, provide a
+Row-based tables can be specified using :py:class:`~hdmf.spec.spec.DtypeSpec`. To specify a table, provide a
 list of :py:class:`~hdmf.spec.spec.DtypeSpec` objects to the *dtype* argument.
 
 .. code-block:: python
@@ -158,36 +158,34 @@ Create a new namespace with extensions
     from hdmf.spec import GroupSpec, NamespaceBuilder
 
     # create a builder for the namespace
-    ns_builder = NamespaceBuilder("Extension for use in my laboratory", "mylab", ...)
+    ns_builder = NamespaceBuilder(
+        doc="Extension for use in my laboratory",
+        name="mylab",
+        version="0.1.0",
+        ...
+    )
+
+    # include an existing namespace - this will include all specifications in that namespace
+    ns_builder.include_namespace('collab_ns')
 
     # create extensions
-    ext1 = GroupSpec('A custom SpikeEventSeries interface',
+    ext1 = GroupSpec(doc='A custom SpikeEventSeries interface',
                         attributes=[...]
                         datasets=[...],
                         groups=[...],
                         data_type_inc='SpikeEventSeries',
                         data_type_def='MyExtendedSpikeEventSeries')
 
-    ext2 = GroupSpec('A custom EventDetection interface',
+    ext2 = GroupSpec(doc='A custom EventDetection interface',
                         attributes=[...]
                         datasets=[...],
                         groups=[...],
                         data_type_inc='EventDetection',
                         data_type_def='MyExtendedEventDetection')
 
-
-    # add the extension
-    ext_source = 'mylab.specs.yaml'
-    ns_builder.add_spec(ext_source, ext1)
-    ns_builder.add_spec(ext_source, ext2)
-
-    # include an existing namespace - this will include all specifications in that namespace
-    ns_builder.include_namespace('collab_ns')
-
-    # save the namespace and extensions
-    ns_path = 'mylab.namespace.yaml'
-    ns_builder.export(ns_path)
-
+    output_dir = './spec' # path to folder to store generated YAML schemas.
+    new_data_types = [ext1, ext2]
+    export_spec(ns_builder, new_data_types, output_dir)
 
 .. tip::
 
@@ -209,7 +207,7 @@ The following code demonstrates how to load custom namespaces.
 
 .. code-block:: python
 
-    from hdmf import load_namespaces
+    from hdmf.common import load_namespaces
     namespace_path = 'my_namespace.yaml'
     load_namespaces(namespace_path)
 
@@ -251,13 +249,28 @@ that represents it.
 If you do not have an :py:class:`~hdmf.container.Container` subclass to associate with your extension specification,
 a dynamically created class is created by default.
 
-To use the dynamic class, you will need to retrieve the class object using the function :py:func:`~hdmf.common.get_class`.
+To use a dynamic class, retrieve the class object using :py:func:~hdmf.common.get_class, which takes the name of
+the data type and its associated namespace as arguments. This function creates the class ``__init__`` method,
+initializing instance variables for each attribute defined in the specification. It also automatically generates
+corresponding getters and setters for those attributes by populating the ``__fields__`` dict.
+
+The source code for the class is not written to disk and so you cannot easily inspect or modify the class code.
+However, you are able to provide a method to be executed after
+``__init__`` as an argument for :py:func:~hdmf.common.get_class.
+
 Once you have retrieved the class object, you can use it just like you would a statically defined class.
 
 .. code-block:: python
 
     from hdmf.common import get_class
-    MyExtensionContainer = get_class('my_namespace', 'MyExtension')
+
+    def post_init_method(self, **kwargs):
+            attr1 = kwargs['attr1']
+            if attr1<10:
+                msg = "attr1 should be >=10"
+                warn(msg)
+
+    MyExtensionContainer = get_class('MyExtensionContainer', 'my_namespace', post_init_method=post_init_method)
     my_ext_inst = MyExtensionContainer(...)
 
 
@@ -294,20 +307,18 @@ If your :py:class:`~hdmf.container.Container` extension requires custom mapping 
 
     register_map(MyExtensionContainer, MyExtensionMapper)
 
-.. tip::
 
-    ObjectMappers allow you to customize how objects in the spec are mapped to attributes of your Container in
-    Python. This is useful, e.g., in cases where you want to customize the default mapping.
-    For an overview of the concepts of containers, spec, builders, object mappers in HDMF see also
-    :ref:`software-architecture`
+ObjectMappers allow you to customize how objects in the spec are mapped to attributes of your Container in
+Python. This is useful, e.g., in cases where you want to customize the default mapping.
+For an overview of the concepts of containers, spec, builders, object mappers in HDMF see also
+:ref:`software-architecture`
 
 
 .. _documenting-extensions:
 
-Documenting Extensions
-----------------------
-
-Coming soon!
+NWB
+---
+To see how to extend the NWB format and how to best document extensions, refer to NWB Overview: https://nwb-overview.readthedocs.io/en/latest/extensions_tutorial/6_documenting_extension.html
 
 Further Reading
 ---------------

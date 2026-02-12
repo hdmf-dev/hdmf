@@ -65,8 +65,11 @@ for this tutorial, which provides a concise example of how a term set schema loo
     For more information how to properly format the schema to support LinkML Dynamic Enumerations, please
     refer to https://linkml.io/linkml/schemas/enums.html#dynamic-enums.
 """
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_termset.png'
+
 from hdmf.common import DynamicTable, VectorData
 import os
+import numpy as np
 
 try:
     import linkml_runtime  # noqa: F401
@@ -128,6 +131,19 @@ data = VectorData(
     description='...',
     data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
     )
+
+######################################################
+# Validate Compound Data with TermSetWrapper
+# ----------------------------------------------------
+# :py:class:`~hdmf.term_set.TermSetWrapper` can be wrapped around compound data.
+# The user will set the field within the compound data type that is to be validated
+# with the termset.
+c_data = np.array([('Homo sapiens', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+data = VectorData(
+    name='species',
+    description='...',
+    data=TermSetWrapper(value=c_data, termset=terms, field='species')
+)
 
 ######################################################
 # Validate Attributes with TermSetWrapper

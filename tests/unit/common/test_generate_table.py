@@ -16,6 +16,13 @@ from tests.unit.helpers.utils import CORE_NAMESPACE
 class TestDynamicDynamicTable(TestCase):
 
     def setUp(self):
+
+        self.dtr_spec = DatasetSpec(
+            data_type_def='CustomDTR',
+            data_type_inc='DynamicTableRegion',
+            doc='a test DynamicTableRegion column',  # this is overridden where it is used
+        )
+
         self.dt_spec = GroupSpec(
             'A test extension that contains a dynamic table',
             data_type_def='TestTable',
@@ -99,7 +106,13 @@ class TestDynamicDynamicTable(TestCase):
                     doc='a test column',
                     dtype='float',
                     quantity='?',
-                )
+                ),
+                DatasetSpec(
+                    data_type_inc='CustomDTR',
+                    name='optional_custom_dtr_col',
+                    doc='a test DynamicTableRegion column',
+                    quantity='?'
+                ),
             ]
         )
 
@@ -107,6 +120,7 @@ class TestDynamicDynamicTable(TestCase):
         writer = YAMLSpecWriter(outdir='.')
 
         self.spec_catalog = SpecCatalog()
+        self.spec_catalog.register_spec(self.dtr_spec, 'test.yaml')
         self.spec_catalog.register_spec(self.dt_spec, 'test.yaml')
         self.spec_catalog.register_spec(self.dt_spec2, 'test.yaml')
         self.namespace = SpecNamespace(
@@ -124,7 +138,7 @@ class TestDynamicDynamicTable(TestCase):
         self.test_dir = tempfile.mkdtemp()
         spec_fpath = os.path.join(self.test_dir, 'test.yaml')
         namespace_fpath = os.path.join(self.test_dir, 'test-namespace.yaml')
-        writer.write_spec(dict(groups=[self.dt_spec, self.dt_spec2]), spec_fpath)
+        writer.write_spec(dict(datasets=[self.dtr_spec], groups=[self.dt_spec, self.dt_spec2]), spec_fpath)
         writer.write_namespace(self.namespace, namespace_fpath)
         self.namespace_catalog = NamespaceCatalog()
         hdmf_typemap = get_type_map()
@@ -133,6 +147,7 @@ class TestDynamicDynamicTable(TestCase):
         self.type_map.load_namespaces(namespace_fpath)
         self.manager = BuildManager(self.type_map)
 
+        self.CustomDTR = self.type_map.get_dt_container_cls('CustomDTR', CORE_NAMESPACE)
         self.TestTable = self.type_map.get_dt_container_cls('TestTable', CORE_NAMESPACE)
         self.TestDTRTable = self.type_map.get_dt_container_cls('TestDTRTable', CORE_NAMESPACE)
 
@@ -228,6 +243,22 @@ class TestDynamicDynamicTable(TestCase):
             self.TestDTRTable(name='test_dtr_table', description='my table',
                               target_tables={'optional_col3': test_table})
 
+    def test_custom_dtr_class(self):
+        test_table = self.TestTable(name='test_table', description='my test table')
+        test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], optional_col2=.5)
+        test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0], optional_col2=.5)
+
+        test_dtr_table = self.TestDTRTable(name='test_dtr_table', description='my table',
+                                           target_tables={'optional_custom_dtr_col': test_table})
+
+        self.assertIsInstance(test_dtr_table['optional_custom_dtr_col'], self.CustomDTR)
+        self.assertEqual(test_dtr_table['optional_custom_dtr_col'].description, "a test DynamicTableRegion column")
+        self.assertIs(test_dtr_table['optional_custom_dtr_col'].table, test_table)
+
+        test_dtr_table.add_row(ref_col=0, indexed_ref_col=[0, 1], optional_custom_dtr_col=0)
+        test_dtr_table.add_row(ref_col=0, indexed_ref_col=[0, 1], optional_custom_dtr_col=1)
+        self.assertEqual(test_dtr_table['optional_custom_dtr_col'].data, [0, 1])
+
     def test_attribute(self):
         test_table = self.TestTable(name='test_table', description='my test table')
         assert test_table.my_col is not None
@@ -266,3 +297,17 @@ class TestDynamicDynamicTable(TestCase):
             for err in errors:
                 raise Exception(err)
         self.reader.close()
+
+    def test_add_custom_dtr_column(self):
+        test_table = self.TestTable(name='test_table', description='my test table')
+        test_table.add_column(
+            name='custom_dtr_column',
+            description='this is a custom DynamicTableRegion column',
+            col_cls=self.CustomDTR,
+        )
+        self.assertIsInstance(test_table['custom_dtr_column'], self.CustomDTR)
+        self.assertEqual(test_table['custom_dtr_column'].description, 'this is a custom DynamicTableRegion column')
+
+        test_table.add_row(my_col=3.0, indexed_col=[1.0, 3.0], custom_dtr_column=0)
+        test_table.add_row(my_col=4.0, indexed_col=[2.0, 4.0], custom_dtr_column=1)
+        self.assertEqual(test_table['custom_dtr_column'].data, [0, 1])
