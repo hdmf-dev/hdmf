@@ -3,7 +3,6 @@ import math
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable, Callable
 from warnings import warn
-from typing import Tuple
 from itertools import product, chain
 
 try:
@@ -337,7 +336,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             default=None,
         )
     )
-    def _get_default_chunk_shape(self, **kwargs) -> Tuple[int, ...]:
+    def _get_default_chunk_shape(self, **kwargs) -> tuple[int, ...]:
         """
         Select chunk shape with size in MB less than the threshold of chunk_mb.
 
@@ -368,7 +367,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             default=None,
         )
     )
-    def _get_default_buffer_shape(self, **kwargs) -> Tuple[int, ...]:
+    def _get_default_buffer_shape(self, **kwargs) -> tuple[int, ...]:
         """
         Select buffer shape with size in GB less than the threshold of buffer_gb.
 
@@ -417,13 +416,13 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 self.progress_bar.write("\n")
             raise StopIteration
 
-    def __reduce__(self) -> Tuple[Callable, Iterable]:
+    def __reduce__(self) -> tuple[Callable, Iterable]:
         instance_constructor = self._from_dict
         initialization_args = (self._to_dict(),)
         return (instance_constructor, initialization_args)
 
     @abstractmethod
-    def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
+    def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         """
         Retrieve the data specified by the selection using minimal I/O.
 
@@ -432,7 +431,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
         :param selection: tuple of slices, each indicating the selection indexed with respect to maxshape for that axis.
             Each axis of tuple is a slice of the full shape from which to pull data into the buffer.
-        :type selection: Tuple[slice]
+        :type selection: tuple[slice]
 
         :returns: Array of data specified by selection
         :rtype: numpy.ndarray
@@ -440,7 +439,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
 
     @abstractmethod
-    def _get_maxshape(self) -> Tuple[int, ...]:
+    def _get_maxshape(self) -> tuple[int, ...]:
         """Retrieve the maximum bounds of the data shape using minimal I/O."""
         raise NotImplementedError("The setter for the maxshape property has not been built for this DataChunkIterator!")
 
@@ -462,14 +461,14 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             "The `._from_dict()` method for pickling has not been defined for this DataChunkIterator!"
         )
 
-    def recommended_chunk_shape(self) -> Tuple[int, ...]:
+    def recommended_chunk_shape(self) -> tuple[int, ...]:
         return self.chunk_shape
 
-    def recommended_data_shape(self) -> Tuple[int, ...]:
+    def recommended_data_shape(self) -> tuple[int, ...]:
         return self.maxshape
 
     @property
-    def maxshape(self) -> Tuple[int, ...]:
+    def maxshape(self) -> tuple[int, ...]:
         return self._maxshape
     @property
     def dtype(self) -> np.dtype:

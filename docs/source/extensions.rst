@@ -207,7 +207,7 @@ The following code demonstrates how to load custom namespaces.
 
 .. code-block:: python
 
-    from hdmf import load_namespaces
+    from hdmf.common import load_namespaces
     namespace_path = 'my_namespace.yaml'
     load_namespaces(namespace_path)
 
@@ -308,10 +308,10 @@ If your :py:class:`~hdmf.container.Container` extension requires custom mapping 
     register_map(MyExtensionContainer, MyExtensionMapper)
 
 
-    ObjectMappers allow you to customize how objects in the spec are mapped to attributes of your Container in
-    Python. This is useful, e.g., in cases where you want to customize the default mapping.
-    For an overview of the concepts of containers, spec, builders, object mappers in HDMF see also
-    :ref:`software-architecture`
+ObjectMappers allow you to customize how objects in the spec are mapped to attributes of your Container in
+Python. This is useful, e.g., in cases where you want to customize the default mapping.
+For an overview of the concepts of containers, spec, builders, object mappers in HDMF see also
+:ref:`software-architecture`
 
 
 .. _documenting-extensions:

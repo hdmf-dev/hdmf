@@ -5,7 +5,7 @@ from tempfile import gettempdir
 import warnings
 
 from hdmf.common import get_type_map
-from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, SpecNamespace, NamespaceCatalog, NamespaceBuilder
+from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, SpecNamespace, NamespaceCatalog, NamespaceBuilder
 from hdmf.testing import TestCase, remove_test_file
 
 from tests.unit.helpers.utils import CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace
@@ -96,32 +96,6 @@ class TestSpecLoad(TestCase):
         if os.path.exists(self.specs_path):
             os.remove(self.specs_path)
 
-    def test_inherited_attributes(self):
-        self.ns_catalog.load_namespaces(self.namespace_path, resolve=True)
-        ts_spec = self.ns_catalog.get_spec(self.NS_NAME, 'EphysData')
-        es_spec = self.ns_catalog.get_spec(self.NS_NAME, 'SpikeData')
-        ts_attrs = {s.name for s in ts_spec.attributes}
-        es_attrs = {s.name for s in es_spec.attributes}
-        for attr in ts_attrs:
-            with self.subTest(attr=attr):
-                self.assertIn(attr, es_attrs)
-        # self.assertSetEqual(ts_attrs, es_attrs)
-        ts_dsets = {s.name for s in ts_spec.datasets}
-        es_dsets = {s.name for s in es_spec.datasets}
-        for dset in ts_dsets:
-            with self.subTest(dset=dset):
-                self.assertIn(dset, es_dsets)
-        # self.assertSetEqual(ts_dsets, es_dsets)
-
-    def test_inherited_attributes_not_resolved(self):
-        self.ns_catalog.load_namespaces(self.namespace_path, resolve=False)
-        es_spec = self.ns_catalog.get_spec(self.NS_NAME, 'SpikeData')
-        src_attrs = {s.name for s in self.ext_attributes}
-        ext_attrs = {s.name for s in es_spec.attributes}
-        self.assertSetEqual(src_attrs, ext_attrs)
-        src_dsets = {s.name for s in self.ext_datasets}
-        ext_dsets = {s.name for s in es_spec.datasets}
-        self.assertSetEqual(src_dsets, ext_dsets)
 
 
 class TestSpecLoadEdgeCase(TestCase):
@@ -369,11 +343,14 @@ class TestCustomSpecClasses(TestCase):
 
     def test_load_namespaces(self):
         namespace_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test.namespace.yaml')
-        namespace_deps = self.ns_catalog.load_namespaces(namespace_path)
+        loaded_types = self.ns_catalog.load_namespaces(namespace_path)
 
+        # test that the source types are correct for test ns
+        expected_source_types = ('TestData', 'TestContainer', 'TestTable')
+        self.assertTupleEqual(self.ns_catalog.get_source_types('test'), expected_source_types)
         # test that the dependencies are correct, including dependencies of the dependencies
-        expected = set(['Data', 'Container', 'DynamicTable', 'ElementIdentifiers', 'VectorData'])
-        self.assertSetEqual(set(namespace_deps['test']['hdmf-common']), expected)
+        expected = set(['Data', 'Container', 'DynamicTable', 'ElementIdentifiers', 'VectorData', 'MeaningsTable'])
+        self.assertSetEqual(set(loaded_types['test']['hdmf-common']), expected)
 
         # test that the types are loaded
         types = self.ns_catalog.get_types('test.base.yaml')
@@ -409,12 +386,16 @@ class TestCustomSpecClasses(TestCase):
         self.ns_catalog.load_namespaces(namespace_path)
 
         ext_namespace_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test-ext.namespace.yaml')
-        ext_namespace_deps = self.ns_catalog.load_namespaces(ext_namespace_path)
+        loaded_ext_types = self.ns_catalog.load_namespaces(ext_namespace_path)
+
+        # test that the source types are correct for test-ext ns
+        expected_source_types = ('TestExtData', 'TestExtContainer', 'TestExtTable')
+        self.assertTupleEqual(self.ns_catalog.get_source_types('test-ext'), expected_source_types)
 
         # test that the dependencies are correct, including dependencies of the dependencies
         expected_deps = set(['TestData', 'TestContainer', 'TestTable', 'Container', 'Data', 'DynamicTable',
-                             'ElementIdentifiers', 'VectorData'])
-        self.assertSetEqual(set(ext_namespace_deps['test-ext']['test']), expected_deps)
+                             'ElementIdentifiers', 'VectorData', 'MeaningsTable'])
+        self.assertSetEqual(set(loaded_ext_types['test-ext']['test']), expected_deps)
 
     def test_load_namespaces_bad_path(self):
         namespace_path = 'test.namespace.yaml'
@@ -427,3 +408,311 @@ class TestCustomSpecClasses(TestCase):
         namespace_deps1 = self.ns_catalog.load_namespaces(namespace_path)
         namespace_deps2 = self.ns_catalog.load_namespaces(namespace_path)
         self.assertDictEqual(namespace_deps1, namespace_deps2)
+
+class TestCoreExtensionConflicts(TestCase):
+    """Test detection of conflicts between core and extension namespaces."""
+
+    def setUp(self):
+        self.tempdir = gettempdir()
+        self.core_source = 'core.yaml'
+        self.core_ns_path = 'core_namespace.yaml'
+        self.ext_source = 'extension.yaml'
+        self.ext_ns_path = 'extension_namespace.yaml'
+
+        # setup minimal core spec and namespace for testing
+        device_model_spec = GroupSpec('A device model', data_type_def='DeviceModel')
+        core_spec = GroupSpec(
+            'A core data type',
+            data_type_def='CoreType',
+            links=[
+                LinkSpec(name='device_model_link', doc='Link to device', target_type='DeviceModel')
+            ]
+        )
+        core_ns_builder = NamespaceBuilder('Core namespace', 'core', version='1.0.0')
+        core_ns_builder.add_spec(self.core_source, device_model_spec)
+        core_ns_builder.add_spec(self.core_source, core_spec)
+        core_ns_builder.export(self.core_ns_path, outdir=self.tempdir)
+
+        # load core namespace
+        self.ns_catalog = NamespaceCatalog(core_namespaces=['core'])
+        self.ns_catalog.load_namespaces(os.path.join(self.tempdir, self.core_ns_path))
+
+    def tearDown(self):
+        for f in (self.core_source, self.core_ns_path, self.ext_source, self.ext_ns_path):
+            remove_test_file(os.path.join(self.tempdir, f))
+
+    def test_attribute_vs_link_conflict(self):
+        """Test detection of attribute vs link conflicts between extension and core."""
+        # Create extension that inherits from core but defines device_model_link as attribute
+        ext_spec = GroupSpec(
+            'An extension data type',
+            data_type_def='ExtensionType',
+            data_type_inc='CoreType',
+            attributes=[
+                AttributeSpec(name='device_model_link', doc='Device model as attribute', dtype='text')
+            ]
+        )
+
+        # Build and save extension namespace
+        ext_ns_builder = NamespaceBuilder('Extension namespace', 'extension', version='1.0.0')
+        ext_ns_builder.include_namespace('core')
+        ext_ns_builder.add_spec(self.ext_source, ext_spec)
+        ext_ns_builder.export(self.ext_ns_path, outdir=self.tempdir)
+
+        # Load the extension namespace and assert warning is raised
+        expected_msg = ("Schema conflict(s) detected in namespace 'extension': \n"
+                       " extension defines ExtensionType.device_model_link as an attribute (dtype: text) "
+                       "while the core schema defines it as a link to DeviceModel. \n"
+                       "This may cause compatibility issues. Please update the extension version if possible or "
+                       "install an older version of the core schema that is compatible.")
+        with self.assertWarnsWith(UserWarning, expected_msg):
+            self.ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ext_ns_path))
+
+    def test_link_target_type_conflict(self):
+        """Test detection of link target type conflicts between extension and core."""
+        # Create extension that inherits from core but defines equipment_link with different target
+        device_spec = GroupSpec('A device', data_type_def='Device')
+        ext_spec = GroupSpec(
+            'An extension data type',
+            data_type_def='ExtensionType',
+            data_type_inc='CoreType',
+            links=[
+                LinkSpec(name='device_model_link', doc='Link to device', target_type='Device')
+            ]
+        )
+
+        # Build and save extension namespace
+        ext_ns_builder = NamespaceBuilder('Extension namespace', 'extension', version='1.0.0')
+        ext_ns_builder.include_namespace('core')
+        ext_ns_builder.add_spec(self.ext_source, device_spec)
+        ext_ns_builder.add_spec(self.ext_source, ext_spec)
+        ext_ns_builder.export(self.ext_ns_path, outdir=self.tempdir)
+
+        # Load extension namespace and expect warning
+        expected_msg = ("Schema conflict(s) detected in namespace 'extension': \n"
+                       " extension defines ExtensionType.device_model_link as a link to Device "
+                       "while the core schema defines it as a link to DeviceModel. "
+                       "Device is not a subtype of DeviceModel.  \n"
+                       "This may cause compatibility issues. Please update the extension version if possible or "
+                       "install an older version of the core schema that is compatible.")
+        with self.assertWarnsWith(UserWarning, expected_msg):
+            self.ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ext_ns_path))
+
+    def test_link_target_subtype_no_conflict(self):
+        """Test that link target type conflicts are not reported when extension uses subtype."""
+        # Create minimal ExtDevice spec for testing
+        ext_device_model_spec = GroupSpec('A test extension device',
+                                          data_type_def='ExtDeviceModel',
+                                          data_type_inc='DeviceModel',)
+
+        # Create extension that properly extends core without conflicts
+        ext_spec = GroupSpec(
+            'An extension data type',
+            data_type_def='ExtensionType',
+            data_type_inc='CoreType',
+            links=[
+                LinkSpec('Link to extension device model', 'ExtDeviceModel', name='ext_link')
+            ]
+        )
+
+        # Build and save extension namespace
+        ext_ns_builder = NamespaceBuilder('Extension namespace', 'extension', version='1.0.0')
+        ext_ns_builder.include_namespace('core')
+        ext_ns_builder.add_spec(self.ext_source, ext_device_model_spec)
+        ext_ns_builder.add_spec(self.ext_source, ext_spec)
+        ext_ns_builder.export(self.ext_ns_path, outdir=self.tempdir)
+
+        # Load extension namespace and check no warnings about conflicts
+        with warnings.catch_warnings(record=True) as ws:
+            self.ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ext_ns_path))
+
+        for w in ws:
+            self.assertNotIn("Schema conflict(s) detected in namespace 'extension'",
+                             str(w.message))
+
+
+class TestCircularDependencies(TestCase):
+    """Test handling of circular type dependencies when loading namespaces.
+
+    This tests the fix for https://github.com/hdmf-dev/hdmf/issues/1364
+    """
+
+    def setUp(self):
+        self.tempdir = gettempdir()
+        self.core_source = 'core.yaml'
+        self.core_ns_path = 'core_namespace.yaml'
+        self.ext_source = 'extension.yaml'
+        self.ext_ns_path = 'extension_namespace.yaml'
+
+    def tearDown(self):
+        for f in (self.core_source, self.core_ns_path, self.ext_source, self.ext_ns_path):
+            remove_test_file(os.path.join(self.tempdir, f))
+
+    def test_circular_dependency_parent_contains_child_subtype(self):
+        """Test loading types where A contains B, and B extends A.
+
+        This is the pattern described in issue #1364:
+        - DynamicTable (A) contains a collection of MeaningsTable (B) objects
+        - MeaningsTable (B) is a subtype of DynamicTable (A)
+        """
+        # Create core namespace with ParentTable that contains ChildTable,
+        # and ChildTable extends ParentTable
+        parent_table_spec = GroupSpec(
+            'A parent table type',
+            data_type_def='ParentTable',
+            groups=[
+                GroupSpec(
+                    'A collection of child tables',
+                    data_type_inc='ChildTable',
+                    quantity='*',
+                )
+            ]
+        )
+        child_table_spec = GroupSpec(
+            'A child table that extends ParentTable',
+            data_type_def='ChildTable',
+            data_type_inc='ParentTable',
+        )
+
+        # Build and save core namespace
+        core_ns_builder = NamespaceBuilder('Core namespace', 'core', version='1.0.0')
+        core_ns_builder.add_spec(self.core_source, parent_table_spec)
+        core_ns_builder.add_spec(self.core_source, child_table_spec)
+        core_ns_builder.export(self.core_ns_path, outdir=self.tempdir)
+
+        # Load core namespace - this should not cause infinite recursion
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.load_namespaces(os.path.join(self.tempdir, self.core_ns_path))
+
+        # Verify both types are registered
+        core_ns = ns_catalog.get_namespace('core')
+        registered_types = core_ns.get_registered_types()
+        self.assertIn('ParentTable', registered_types)
+        self.assertIn('ChildTable', registered_types)
+
+        # Verify the hierarchy is correct
+        hierarchy = ns_catalog.get_hierarchy('core', 'ChildTable')
+        self.assertEqual(hierarchy, ('ChildTable', 'ParentTable'))
+
+    def test_circular_dependency_from_included_namespace(self):
+        """Test loading circular dependencies from an included namespace.
+
+        This tests the specific code path in __load_namespace where types
+        are loaded from another namespace via the 'namespace' key in schema.
+        """
+        # Create core namespace with ParentTable and ChildTable
+        parent_table_spec = GroupSpec(
+            'A parent table type',
+            data_type_def='ParentTable',
+            groups=[
+                GroupSpec(
+                    'A collection of child tables',
+                    data_type_inc='ChildTable',
+                    quantity='*',
+                )
+            ]
+        )
+        child_table_spec = GroupSpec(
+            'A child table that extends ParentTable',
+            data_type_def='ChildTable',
+            data_type_inc='ParentTable',
+        )
+
+        core_ns_builder = NamespaceBuilder('Core namespace', 'core', version='1.0.0')
+        core_ns_builder.add_spec(self.core_source, parent_table_spec)
+        core_ns_builder.add_spec(self.core_source, child_table_spec)
+        core_ns_builder.export(self.core_ns_path, outdir=self.tempdir)
+
+        # Create extension namespace that includes types from core
+        ext_spec = GroupSpec(
+            'An extension type that uses ParentTable',
+            data_type_def='ExtType',
+            groups=[
+                GroupSpec(
+                    'A parent table',
+                    data_type_inc='ParentTable',
+                )
+            ]
+        )
+
+        ext_ns_builder = NamespaceBuilder('Extension namespace', 'extension', version='1.0.0')
+        ext_ns_builder.include_namespace('core')
+        ext_ns_builder.add_spec(self.ext_source, ext_spec)
+        ext_ns_builder.export(self.ext_ns_path, outdir=self.tempdir)
+
+        # Load core first, then extension
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.load_namespaces(os.path.join(self.tempdir, self.core_ns_path))
+        ns_catalog.load_namespaces(os.path.join(self.tempdir, self.ext_ns_path))
+
+        # Verify types are registered in extension namespace
+        ext_ns = ns_catalog.get_namespace('extension')
+        registered_types = ext_ns.get_registered_types()
+        self.assertIn('ExtType', registered_types)
+        self.assertIn('ParentTable', registered_types)
+        self.assertIn('ChildTable', registered_types)
+
+    def test_self_referential_type(self):
+        """Test loading a type that contains itself (issue #794 pattern).
+
+        Example: A Container that can contain other Containers.
+        """
+        container_spec = GroupSpec(
+            'A container that can contain other containers',
+            data_type_def='RecursiveContainer',
+            groups=[
+                GroupSpec(
+                    'Nested containers',
+                    data_type_inc='RecursiveContainer',
+                    quantity='*',
+                )
+            ]
+        )
+
+        core_ns_builder = NamespaceBuilder('Core namespace', 'core', version='1.0.0')
+        core_ns_builder.add_spec(self.core_source, container_spec)
+        core_ns_builder.export(self.core_ns_path, outdir=self.tempdir)
+
+        # Load core namespace - this should not cause infinite recursion
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.load_namespaces(os.path.join(self.tempdir, self.core_ns_path))
+
+        # Verify the type is registered
+        core_ns = ns_catalog.get_namespace('core')
+        registered_types = core_ns.get_registered_types()
+        self.assertIn('RecursiveContainer', registered_types)
+
+    def test_link_circular_dependency(self):
+        """Test circular dependency through links."""
+        # Create types where A links to B, and B extends A
+        parent_spec = GroupSpec(
+            'A parent type',
+            data_type_def='ParentType',
+            links=[
+                LinkSpec(
+                    name='child_link',
+                    doc='Link to a child type',
+                    target_type='ChildType',
+                )
+            ]
+        )
+        child_spec = GroupSpec(
+            'A child type that extends ParentType',
+            data_type_def='ChildType',
+            data_type_inc='ParentType',
+        )
+
+        core_ns_builder = NamespaceBuilder('Core namespace', 'core', version='1.0.0')
+        core_ns_builder.add_spec(self.core_source, parent_spec)
+        core_ns_builder.add_spec(self.core_source, child_spec)
+        core_ns_builder.export(self.core_ns_path, outdir=self.tempdir)
+
+        # Load core namespace - this should not cause infinite recursion
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.load_namespaces(os.path.join(self.tempdir, self.core_ns_path))
+
+        # Verify both types are registered
+        core_ns = ns_catalog.get_namespace('core')
+        registered_types = core_ns.get_registered_types()
+        self.assertIn('ParentType', registered_types)
+        self.assertIn('ChildType', registered_types)

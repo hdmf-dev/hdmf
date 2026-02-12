@@ -1,9 +1,8 @@
 import datetime
 import os
 
-from hdmf.spec.namespace import SpecNamespace, NamespaceCatalog
-from hdmf.spec.spec import GroupSpec
-from hdmf.spec.write import NamespaceBuilder, YAMLSpecWriter, export_spec
+from hdmf.spec import SpecNamespace, NamespaceCatalog, GroupSpec, DatasetSpec, NamespaceBuilder, export_spec
+from hdmf.spec.write import YAMLSpecWriter
 from hdmf.testing import TestCase
 
 
@@ -33,14 +32,10 @@ class TestSpec(TestCase):
 
         ext2 = GroupSpec('An extension of a DataSeries interface',
                          attributes=[],
-                         datasets=[],
+                         datasets=[DatasetSpec(doc='test', dtype='float', name='testdata')],
                          groups=[],
                          data_type_inc='MyDataSeries',
                          data_type_def='MyExtendedMyDataSeries')
-
-        ext2.add_dataset(doc='test',
-                         dtype='float',
-                         name='testdata')
 
         self.data_types = [ext1, ext2]
 
@@ -78,7 +73,7 @@ class TestSpec(TestCase):
     source: mylab.extensions.yaml
     title: Extensions for my lab
   version: 0.0.1
-""" % self.date.isoformat()  # noqa: E122
+""" % self.date.isoformat()
             nsstr = file.read()
             self.assertEqual(nsstr, match_str)
 
@@ -429,7 +424,7 @@ class TestExportSpec(TestSpec):
   schema:
   - source: mylab.extensions.yaml
   version: 0.0.1
-""" % self.date.isoformat()  # noqa: E122
+""" % self.date.isoformat()
             nsstr = file.read()
             self.assertEqual(nsstr, match_str)
 

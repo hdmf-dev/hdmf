@@ -1,7 +1,6 @@
 import types
 from collections import OrderedDict
 from copy import deepcopy
-from typing import Type, Optional
 from uuid import uuid4
 from warnings import warn
 import os
@@ -15,6 +14,7 @@ from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, p
                     get_basic_array_info, generate_array_html_repr)
 
 from .term_set import TermSet, TermSetWrapper
+
 
 def _set_exp(cls):
     """Set a class as being experimental"""
@@ -33,19 +33,18 @@ def _exp_warn_msg(cls):
 
 class HERDManager:
     """
-    This class manages whether to set/attach an instance of HERD to the subclass.
+    When this class is used as a mixin for a Container, it enables setting and getting an instance of HERD.
     """
 
-    @docval({'name': 'herd', 'type': 'HERD',
-             'doc': 'The external resources to be used for the container.'},)
-    def link_resources(self, **kwargs):
-        """
-        Method to attach an instance of HERD in order to auto-add terms/references to data.
-        """
-        self._herd = kwargs['herd']
-
-    def get_linked_resources(self):
+    @property
+    def external_resources(self):
         return self._herd if hasattr(self, "_herd") else None
+
+    @external_resources.setter
+    def external_resources(self, herd):
+        if hasattr(self, "_herd"):
+            warn("Reassigning external_resources may lead to unexpected behavior.")
+        self._herd = herd
 
 
 class AbstractContainer(metaclass=ExtenderMeta):
@@ -95,7 +94,7 @@ class AbstractContainer(metaclass=ExtenderMeta):
         # TODO: refactor this so that it does not call get_type_map every time an attribute is set
         # and there is non circular import
         from hdmf.common import get_type_map # circular import
-        return get_type_map()
+        return get_type_map(copy=False)
 
     @property
     def data_type(self):
@@ -552,6 +551,19 @@ class AbstractContainer(metaclass=ExtenderMeta):
         """
         pass
 
+    def _error_on_new_warn_on_construct(self, error_msg: str, error_cls: type = ValueError):
+        """Raise a ValueError when a check is violated on instance creation.
+        To ensure backwards compatibility, this method throws a warning
+        instead of raising an error when reading from a file, ensuring that
+        files with invalid data can be read. If error_msg is set to None
+        the function will simply return without further action.
+        """
+        if error_msg is None:
+            return
+        if not self._in_construct_mode:
+            raise error_cls(error_msg)
+        warn(error_msg)
+
 
 class Container(AbstractContainer):
     """A container that can contain other containers and has special functionality for printing."""
@@ -701,6 +713,8 @@ class Container(AbstractContainer):
         """Generates HTML for a single field.
 
         This function can be overwritten by a child class to implement customized html representations.
+
+
         """
 
         if isinstance(value, (int, float, str, bool)):
@@ -726,10 +740,15 @@ class Container(AbstractContainer):
         else:
             html_content = f'<span class="field-key">{value}</span>'
 
+        display_name = str(key)
+        if isinstance(value, AbstractContainer):   # Excludes things like LabelledDict, ndarray, etc
+            class_name = type(value).__name__
+            class_name_str = f" <span style='font-weight: normal; color: #888;'>({class_name})</span>"
+            display_name += class_name_str
 
         html_repr = (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
-            f'class="container-fields field-key" title="{access_code}"><b>{key}</b></summary>'
+            f'class="container-fields field-key" title="{access_code}"><b>{display_name}</b></summary>'
         )
         html_repr += html_content
         html_repr += "</details>"
@@ -843,10 +862,10 @@ class Container(AbstractContainer):
     def set_data_io(
         self,
         dataset_name: str,
-        data_io_class: Type[DataIO],
-        data_io_kwargs: dict = None,
-        data_chunk_iterator_class: Optional[Type[AbstractDataChunkIterator]] = None,
-        data_chunk_iterator_kwargs: dict = None, **kwargs
+        data_io_class: type[DataIO],
+        data_io_kwargs: dict,
+        data_chunk_iterator_class: type[AbstractDataChunkIterator] | None = None,
+        data_chunk_iterator_kwargs: dict | None = None,
     ):
         """
         Apply DataIO object to a dataset field of the Container.
@@ -855,31 +874,20 @@ class Container(AbstractContainer):
         ----------
         dataset_name: str
             Name of dataset to wrap in DataIO
-        data_io_class: Type[DataIO]
+        data_io_class: type[DataIO]
             Class to use for DataIO, e.g. H5DataIO or ZarrDataIO
         data_io_kwargs: dict
             keyword arguments passed to the constructor of the DataIO class.
-        data_chunk_iterator_class: Type[AbstractDataChunkIterator]
+        data_chunk_iterator_class: type[AbstractDataChunkIterator]
             Class to use for DataChunkIterator. If None, no DataChunkIterator is used.
         data_chunk_iterator_kwargs: dict
             keyword arguments passed to the constructor of the DataChunkIterator class.
-        **kwargs:
-            DEPRECATED. Use data_io_kwargs instead.
-            kwargs are passed to the constructor of the DataIO class.
 
         Notes
         -----
         If data_chunk_iterator_class is not None, the data is wrapped in the DataChunkIterator before being wrapped in
         the DataIO. This allows for rewriting the backend configuration of hdf5 datasets.
         """
-        if kwargs or (data_io_kwargs is None):
-            warn(
-                "Use of **kwargs in Container.set_data_io() is deprecated. Please pass the DataIO kwargs as a "
-                "dictionary to the `data_io_kwargs` parameter instead.",
-                DeprecationWarning,
-                stacklevel=2
-            )
-            data_io_kwargs = kwargs
         data = self.fields.get(dataset_name)
         data_chunk_iterator_kwargs = data_chunk_iterator_kwargs or dict()
         if data is None:
@@ -917,9 +925,9 @@ class Data(AbstractContainer):
 
     def set_data_io(
         self,
-        data_io_class: Type[DataIO],
+        data_io_class: type[DataIO],
         data_io_kwargs: dict,
-        data_chunk_iterator_class: Optional[Type[AbstractDataChunkIterator]] = None,
+        data_chunk_iterator_class: type[AbstractDataChunkIterator] | None = None,
         data_chunk_iterator_kwargs: dict = None,
     ) -> None:
         """
@@ -927,11 +935,11 @@ class Data(AbstractContainer):
 
         Parameters
         ----------
-        data_io_class: Type[DataIO]
+        data_io_class: type[DataIO]
             The DataIO to apply to the data held by this Data.
         data_io_kwargs: dict
             The keyword arguments to pass to the DataIO.
-        data_chunk_iterator_class: Type[AbstractDataChunkIterator]
+        data_chunk_iterator_class: type[AbstractDataChunkIterator]
             The DataChunkIterator to use for the DataIO. If None, no DataChunkIterator is used.
         data_chunk_iterator_kwargs: dict
             The keyword arguments to pass to the DataChunkIterator.
@@ -1255,7 +1263,17 @@ class MultiContainerInterface(Container):
             cls.__build_conf_methods(conf_dict, conf_index, multi)
 
         # make __getitem__ (square bracket access) only if one conf type is defined
-        if len(clsconf) == 1:
+        # and the class (or a non-MCI parent) does not already define its own __getitem__
+        has_getitem = '__getitem__' in cls.__dict__
+        if not has_getitem:
+            # check if any parent class (excluding MCI) defines __getitem__
+            for parent in cls.__mro__[1:]:
+                if parent is MultiContainerInterface:
+                    continue
+                if '__getitem__' in parent.__dict__:
+                    has_getitem = True
+                    break
+        if len(clsconf) == 1 and not has_getitem:
             attr = clsconf[0].get('attr')
             container_type = clsconf[0].get('type')
             setattr(cls, '__getitem__', cls.__make_getitem(attr, container_type))
@@ -1317,6 +1335,38 @@ class MultiContainerInterface(Container):
         get = conf_dict.get('get')
         if get is not None:
             setattr(cls, get, cls.__make_get(get, attr, container_type))
+
+    def _generate_field_html(self, key, value, level, access_code):
+        """Override to flatten single grouping attribute in MultiContainerInterface.
+
+        When a MultiContainerInterface has only one grouping attribute (len(__clsconf__) == 1)
+        and the value is a LabelledDict, the grouping attribute wrapper is redundant since
+        users can access children directly via container["name"] instead of container.attr["name"].
+        This method removes that extra nesting level in the HTML representation.
+
+        Examples of classes that get flattened:
+        - ProcessingModule: flattens "data_interfaces"
+        - Position: flattens "spatial_series"
+        - LFP: flattens "electrical_series"
+        - ImageSegmentation: flattens "plane_segmentations"
+        """
+        # Normalize to list since __clsconf__ can be a dict or a list (e.g. LFP in pynwb uses a list with 1 element)
+        clsconf = self.__clsconf__
+        if isinstance(clsconf, dict):
+            clsconf = [clsconf]
+
+        if len(clsconf) == 1 and isinstance(value, LabelledDict):
+            html_repr = ""
+            for child_name, child_container in value.items():
+                # Strip ".attr_name" from access_code and use direct ["child"] access
+                # e.g. ".spatial_series" becomes "", then we build "['SpatialSeries1']"
+                # This works because __getitem__ is defined for single clsconf (see line __build_class for details)
+                parent_access_code = access_code.rsplit('.', 1)[0]
+                child_access_code = f"{parent_access_code}['{child_name}']"
+                html_repr += super()._generate_field_html(child_name, child_container, level, child_access_code)
+            return html_repr
+
+        return super()._generate_field_html(key, value, level, access_code)
 
 
 class Row(object, metaclass=ExtenderMeta):

@@ -1,6 +1,7 @@
 import pandas as pd
 import unittest
-from hdmf.common import DynamicTable, VectorData
+from hdmf.common import DynamicTable, VectorData, get_type_map
+from hdmf.common import CORE_NAMESPACE as HDMF_COMMON_NAMESPACE
 from hdmf import TermSet, TermSetWrapper
 from hdmf.common.resources import HERD, Key
 from hdmf import Data, Container, HERDManager
@@ -309,7 +310,7 @@ class TestHERD(TestCase):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
-        em.link_resources(er)
+        em.external_resources = er
 
         # create children and add parent
         col1 = VectorData(
@@ -332,7 +333,7 @@ class TestHERD(TestCase):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()
         em = HERDManagerContainer()
-        em.link_resources(er)
+        em.external_resources = er
 
         # create children and add parent
         col1 = VectorData(
@@ -1408,3 +1409,12 @@ class TestHERDGetKey(TestCase):
         msg = "No key found with that container."
         with self.assertRaisesWith(ValueError, msg):
             _ = self.er.get_key(key_name='key2', container=container1, file=file)
+
+
+class TestHERDNamespace(TestCase):
+    """Test that HERD is registered in the hdmf-common namespace."""
+
+    def test_herd_in_common_namespace(self):
+        tm = get_type_map()
+        dt = tm.namespace_catalog.get_spec(HDMF_COMMON_NAMESPACE, 'HERD')
+        self.assertIsNotNone(dt)
