@@ -311,7 +311,8 @@ class HDF5IO(HDMFIO):
              'doc': 'A HERD object to populate with references.',
              'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': 'If True (default), all datasets will be created as expandable by setting the maxshape.'})
+             'doc': ('If True (default), datasets will be created as expandable by setting the maxshape '
+                     'based on the matching shape defined in the spec.')})
     def write(self, **kwargs):
         """Write the container to an HDF5 file."""
         if self.__mode == 'r':
@@ -754,7 +755,8 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': 'If True (default), all datasets will be created as expandable by setting the maxshape.'})
+             'doc': ('If True (default), datasets will be created as expandable by setting the maxshape '
+                     'based on the matching shape defined in the spec.')})
     def write_builder(self, **kwargs):
         f_builder = popargs('builder', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to path '%s' with kwargs=%s"
@@ -931,7 +933,8 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': 'If True (default), all datasets will be created as expandable by setting the maxshape.'},
+             'doc': ('If True (default), datasets will be created as expandable by setting the maxshape '
+                     'based on the matching shape defined in the spec.')},
             returns='the Group that was created', rtype=Group)
     def write_group(self, **kwargs):
         parent, builder = popargs('parent', 'builder', kwargs)
@@ -1033,7 +1036,8 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': 'If True (default), all datasets will be created as expandable by setting the maxshape.'},
+             'doc': ('If True (default), datasets will be created as expandable by setting the maxshape '
+                     'based on the matching shape defined in the spec.')},
             returns='the Dataset that was created', rtype=Dataset)
     def write_dataset(self, **kwargs):  # noqa: C901
         """ Write a dataset to HDF5
@@ -1173,7 +1177,6 @@ class HDF5IO(HDMFIO):
             else:
                 dset = self.__list_fill__(parent, name, data, matched_spec_shape, expandable, options)
         # Write a dataset containing references, i.e., object reference.
-
         # NOTE: we can ignore options['io_settings'] for scalar data
         elif self.__is_ref(options['dtype']):
             _dtype = self.__dtypes.get(options['dtype'])
