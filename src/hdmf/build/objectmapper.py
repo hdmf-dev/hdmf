@@ -892,7 +892,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             spec = ext
         return dtype, shape, dims, spec
 
-    def __get_matched_dimension(self, data_shape, spec_shape, spec_dtype=None):
+    def __get_matched_dimension(self, data_shape, spec_shape):
         """
         Determine which allowed shapes match the given data shape.
 
@@ -900,40 +900,31 @@ class ObjectMapper(metaclass=ExtenderMeta):
         ----------
         data_shape : tuple or list of int
             The shape of the data being validated.
-        spec_shape : sequence
-            A sequence of allowed shapes for the dataset. When the first element is a
-            list (or other sequence), this is interpreted as a list of alternative
-            shapes, where each element is itself a shape specification. Each shape
-            specification is a sequence of dimension lengths or ``None``, where
-            ``None`` means any length is allowed for that dimension.
-        spec_dtype : any, optional
-            The expected data type for the dataset. This parameter is currently not
-            used in the matching logic but is accepted for interface consistency.
+        spec_shape : list of list
+            A list of alternative shapes, where each element is itself a shape
+            specification (a list of dimension lengths or ``None``, where ``None``
+            means any length is allowed for that dimension).
 
         Returns
         -------
-        list of int or None
+        list of int
             A list of indices into ``spec_shape`` whose shape specifications match
-            ``data_shape``. Returns an empty list if no shapes match. Returns
-            ``None`` if ``spec_shape`` is not a list of alternative shapes (i.e.,
-            when ``spec_shape[0]`` is not a list-like shape specification).
+            ``data_shape``. Returns an empty list if no shapes match.
         """
-        # if shape is a list of allowed shapes, find the index of the shape that matches the data
-        if isinstance(spec_shape[0], list):
-            match_shape_inds = list()
-            for i, s in enumerate(spec_shape):
-                # skip this shape if it has a different number of dimensions from the data
-                if len(s) != len(data_shape):
-                    continue
-                # check each dimension. None means any length is allowed
-                match = True
-                for j, d in enumerate(data_shape):
-                    if s[j] is not None and s[j] != d:
-                        match = False
-                        break
-                if match:
-                    match_shape_inds.append(i)
-            return match_shape_inds
+        match_shape_inds = list()
+        for i, s in enumerate(spec_shape):
+            # skip this shape if it has a different number of dimensions from the data
+            if len(s) != len(data_shape):
+                continue
+            # check each dimension. None means any length is allowed
+            match = True
+            for j, d in enumerate(data_shape):
+                if s[j] is not None and s[j] != d:
+                    match = False
+                    break
+            if match:
+                match_shape_inds.append(i)
+        return match_shape_inds
 
     def __get_spec_info(self, data, spec_shape, spec_dims, spec_dtype=None):
         """
@@ -975,10 +966,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
             * ``shape`` is either ``None`` or a tuple of dimension lengths corresponding to
               the best-matching allowed shape.
 
-            If no matching shape is found, or if both ``spec_shape`` and ``spec_dims`` are
-            ``None``, the method returns ``(None, None)``.
+            If no matching shape is found, or if ``spec_shape`` is ``None``, the method
+            returns ``(None, None)``.
         """
-        if spec_shape is None and spec_dims is None:
+        if spec_shape is None:
             return None, None
         else:
             if spec_dtype is not None and isinstance(spec_dtype, list):
@@ -987,7 +978,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 data_shape = get_data_shape(data)
 
             if isinstance(spec_shape[0], list):
-                match_shape_inds = self.__get_matched_dimension(data_shape, spec_shape, spec_dtype)
+                match_shape_inds = self.__get_matched_dimension(data_shape, spec_shape)
                 if len(match_shape_inds) == 0:
                     # no matches found
                     msg = "Shape of data does not match any allowed shapes in spec '%s'" % self.spec.path

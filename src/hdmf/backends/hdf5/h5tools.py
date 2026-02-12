@@ -1139,7 +1139,13 @@ class HDF5IO(HDMFIO):
                 except Exception as exc:
                     msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                     raise Exception(msg) from exc
-                dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
+                io_settings = options['io_settings']
+                if expandable:
+                    # Don't override existing settings
+                    if 'maxshape' not in io_settings:
+                        if matched_spec_shape is not None:
+                            io_settings['maxshape'] = matched_spec_shape
+                dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **io_settings)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
                                   "object references. attributes: %s"
@@ -1191,7 +1197,13 @@ class HDF5IO(HDMFIO):
             # Write an array dataset of references
             else:
                 # Write array of object references
-                dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
+                io_settings = options['io_settings']
+                if expandable:
+                    # Don't override existing settings
+                    if 'maxshape' not in io_settings:
+                        if matched_spec_shape is not None:
+                            io_settings['maxshape'] = matched_spec_shape
+                dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **io_settings)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
                                   "object references. attributes: %s"
