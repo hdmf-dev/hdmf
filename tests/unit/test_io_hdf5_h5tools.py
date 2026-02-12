@@ -4031,6 +4031,23 @@ class TestDataSetDataIO(TestCase):
         assert isinstance(self.data.data, H5DataIO)
         assert self.data.data.io_settings["chunks"]
 
+    def test_set_data_io_h5py_dataset(self):
+        file = File(self.file_path, 'w')
+        data = file.create_dataset('data', data=[1, 2, 3, 4, 5], chunks=(3,))
+        class MyData(Data):
+            pass
+
+        my_data = MyData("my_data", data)
+        my_data.set_data_io(
+            H5DataIO,
+            data_io_kwargs=dict(chunks=(2,)),
+            data_chunk_iterator_class=DataChunkIterator,
+        )
+
+        self.assertIsInstance(my_data.data, H5DataIO)
+        self.assertEqual(my_data.data.io_settings["chunks"], (2,))
+        file.close()
+
 
 class TestExpand(TestCase):
     def setUp(self):
@@ -4053,7 +4070,7 @@ class TestExpand(TestCase):
         with HDF5IO(self.path, manager=self.manager, mode='r') as io:
             read_foofile = io.read()
             self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
-                                     read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
             self.assertEqual(get_data_shape(read_foofile.buckets['bucket1'].foos['foo1'].my_data),
                             (5,))
 
