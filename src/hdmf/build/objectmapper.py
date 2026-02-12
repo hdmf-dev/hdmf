@@ -612,7 +612,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
     def get_attr_value(self, **kwargs):
         ''' Get the value of the attribute corresponding to this spec from the given container '''
         spec, container, manager = getargs('spec', 'container', 'manager', kwargs)
-
         attr_name = self.get_attribute(spec)
         if attr_name is None:
             return None
@@ -788,10 +787,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     msg = "'container' must be of type Data with DatasetSpec"
                     raise ValueError(msg)
                 spec_dtype, spec_shape, spec_dims, spec = self.__check_dset_spec(self.spec, spec_ext)
-                dimension_labels, matched_shape = self.__get_spec_info(container.data,
-                                                                       spec_shape,
-                                                                       spec_dims,
-                                                                       spec_dtype)
+                dimension_labels, matched_shape = self.__get_spec_info(
+                    container.data, spec_shape, spec_dims, spec_dtype
+                )
                 if isinstance(spec_dtype, RefSpec):
                     self.logger.debug("Building %s '%s' as a dataset of references (source: %s)"
                                       % (container.__class__.__name__, container.name, repr(source)))
@@ -802,7 +800,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         parent=parent,
                         source=source,
                         dtype=spec_dtype.reftype,
-                        spec_shapes=matched_shape,
+                        matched_spec_shapes=matched_shape,
                         dimension_labels=dimension_labels,
                     )
                     manager.queue_ref(self.__set_dataset_to_refs(builder, spec_dtype, spec_shape, container, manager))
@@ -817,7 +815,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         parent=parent,
                         source=source,
                         dtype=spec_dtype,
-                        spec_shapes=matched_shape,
+                        matched_spec_shapes=matched_shape,
                         dimension_labels=dimension_labels,
                     )
                     manager.queue_ref(self.__set_compound_dataset_to_refs(builder, spec, spec_dtype, container,
@@ -836,7 +834,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             parent=parent,
                             source=source,
                             dtype="object",
-                            spec_shapes=matched_shape,
+                            matched_spec_shapes=matched_shape,
                             dimension_labels=dimension_labels,
                         )
                         manager.queue_ref(self.__set_untyped_dataset_to_refs(builder, container, manager))
@@ -862,7 +860,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             parent=parent,
                             source=source,
                             dtype=dtype,
-                            spec_shapes=matched_shape,
+                            matched_spec_shapes=matched_shape,
                             dimension_labels=dimension_labels,
                         )
 
@@ -953,13 +951,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
         spec_shape
             The allowed shape definition(s) from the spec. This may be:
 
-            * ``None`` – no shape is defined.
+            * ``None`` - no shape is defined.
             * A list/tuple of dimension lengths, where each element is an int or ``None``.
             * A list of such lists/tuples, representing multiple allowed shapes.
         spec_dims
             The dimension labels defined in the spec. This may be:
 
-            * ``None`` – no dimension labels are defined.
+            * ``None`` - no dimension labels are defined.
             * A list/tuple of labels corresponding to a single shape in ``spec_shape``.
             * A list of lists/tuples of labels, each corresponding to an entry in
               ``spec_shape`` when multiple shapes are allowed.
@@ -1254,18 +1252,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     self.logger.debug("        Adding untyped dataset for spec name %s and adding attributes"
                                       % repr(spec.name))
 
-                    dimension_labels, matched_shape = self.__get_spec_info(data,
-                                                                           spec.shape,
-                                                                           spec.dims,
-                                                                           dtype)
+                    dimension_labels, matched_shape = self.__get_spec_info(
+                        data, spec.shape, spec.dims, dtype
+                    )
 
-                    sub_builder = DatasetBuilder(spec.name,
-                                                 data,
-                                                 parent=builder,
-                                                 source=source,
-                                                 dtype=dtype,
-                                                 spec_shapes=matched_shape,
-                                                 dimension_labels=dimension_labels)
+                    sub_builder = DatasetBuilder(
+                        spec.name,
+                        data,
+                        parent=builder,
+                        source=source,
+                        dtype=dtype,
+                        matched_spec_shapes=matched_shape,
+                        dimension_labels=dimension_labels
+                    )
                     builder.set_dataset(sub_builder)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager)
             else:
