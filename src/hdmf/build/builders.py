@@ -328,8 +328,8 @@ class DatasetBuilder(BaseBuilder):
              'doc': 'The datatype of this dataset.', 'default': None},
             {'name': 'attributes', 'type': dict,
              'doc': 'A dictionary of attributes to create in this dataset.', 'default': dict()},
-            {'name': 'matched_spec_shapes', 'type': tuple,
-             'doc': ('The shape(s) defined in the spec that matches the shape of this dataset. Currently this is '
+            {'name': 'matched_spec_shape', 'type': tuple,
+             'doc': ('The shape defined in the spec that matches the shape of this dataset. Currently this is '
                      'supplied only on build.'),
              'default': None},
             {'name': 'dimension_labels', 'type': tuple,
@@ -343,8 +343,8 @@ class DatasetBuilder(BaseBuilder):
             {'name': 'source', 'type': str, 'doc': 'The source of the data in this builder.', 'default': None})
     def __init__(self, **kwargs):
         """ Create a Builder object for a dataset """
-        name, data, dtype, attributes, matched_spec_shapes, dimension_labels = getargs(
-            'name', 'data', 'dtype', 'attributes', 'matched_spec_shapes', 'dimension_labels', kwargs
+        name, data, dtype, attributes, matched_spec_shape, dimension_labels = getargs(
+            'name', 'data', 'dtype', 'attributes', 'matched_spec_shape', 'dimension_labels', kwargs
         )
         maxshape, chunks, parent, source = getargs('maxshape', 'chunks', 'parent', 'source', kwargs)
         super().__init__(name, attributes, parent, source)
@@ -352,7 +352,7 @@ class DatasetBuilder(BaseBuilder):
         self['attributes'] = _copy.copy(attributes)
         self.__dimension_labels = dimension_labels
         self.__chunks = chunks
-        self.__matched_spec_shapes = matched_spec_shapes
+        self.__matched_spec_shape = matched_spec_shape
         self.__maxshape = maxshape
         if isinstance(data, BaseBuilder):
             if dtype is None:
@@ -361,9 +361,9 @@ class DatasetBuilder(BaseBuilder):
         self.__name = name
 
     @property
-    def matched_spec_shapes(self):
-        """The shapes defined in the spec that match the shape of this dataset."""
-        return self.__matched_spec_shapes
+    def matched_spec_shape(self):
+        """The shape defined in the spec that matches the shape of this dataset."""
+        return self.__matched_spec_shape
 
     @property
     def data(self):

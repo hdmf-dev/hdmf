@@ -1053,7 +1053,7 @@ class HDF5IO(HDMFIO):
             return None
         name = builder.name
         data = builder.data
-        matched_spec_shape = builder.matched_spec_shapes
+        matched_spec_shape = builder.matched_spec_shape
         dataio = None
         options = dict()  # dict with additional
         if isinstance(data, H5DataIO):

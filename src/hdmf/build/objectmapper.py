@@ -800,7 +800,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         parent=parent,
                         source=source,
                         dtype=spec_dtype.reftype,
-                        matched_spec_shapes=matched_shape,
+                        matched_spec_shape=matched_shape,
                         dimension_labels=dimension_labels,
                     )
                     manager.queue_ref(self.__set_dataset_to_refs(builder, spec_dtype, spec_shape, container, manager))
@@ -815,7 +815,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         parent=parent,
                         source=source,
                         dtype=spec_dtype,
-                        matched_spec_shapes=matched_shape,
+                        matched_spec_shape=matched_shape,
                         dimension_labels=dimension_labels,
                     )
                     manager.queue_ref(self.__set_compound_dataset_to_refs(builder, spec, spec_dtype, container,
@@ -834,7 +834,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             parent=parent,
                             source=source,
                             dtype="object",
-                            matched_spec_shapes=matched_shape,
+                            matched_spec_shape=matched_shape,
                             dimension_labels=dimension_labels,
                         )
                         manager.queue_ref(self.__set_untyped_dataset_to_refs(builder, container, manager))
@@ -860,7 +860,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             parent=parent,
                             source=source,
                             dtype=dtype,
-                            matched_spec_shapes=matched_shape,
+                            matched_spec_shape=matched_shape,
                             dimension_labels=dimension_labels,
                         )
 
@@ -1253,7 +1253,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         parent=builder,
                         source=source,
                         dtype=dtype,
-                        matched_spec_shapes=matched_shape,
+                        matched_spec_shape=matched_shape,
                         dimension_labels=dimension_labels
                     )
                     builder.set_dataset(sub_builder)
