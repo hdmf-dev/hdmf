@@ -373,12 +373,12 @@ class AttributeValidator(Validator):
             else:
                 try:
                     dtype, string_format = get_type(value)
-                    if string_format == "isodatetime":
+                    if spec.dtype == "isodatetime" and string_format == "isodatetime":
                         if not has_timezone(value):
                             ret.append(
                                 Error(
                                     self.get_spec_loc(spec),
-                                    message= "Datetime is missing required timezone information."
+                                    "Datetime is missing required timezone information."
                                 )
                             )
                     if not check_type(spec.dtype, dtype, string_format):
@@ -443,12 +443,12 @@ class DatasetValidator(BaseStorageValidator):
         if self.spec.dtype is not None:
             try:
                 dtype, string_format = get_type(data, builder.dtype)
-                if string_format == "isodatetime":
+                if self.spec.dtype == "isodatetime" and string_format == "isodatetime":
                     if not has_timezone(data):
                         ret.append(
                             Error(
                                 self.get_spec_loc(self.spec),
-                                message="Datetime is missing required timezone information.",
+                                "Datetime is missing required timezone information.",
                                 location=self.get_builder_loc(builder)
                             )
                         )

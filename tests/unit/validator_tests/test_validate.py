@@ -15,6 +15,7 @@ from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, 
                                   IncorrectQuantityError, IllegalLinkError, ShapeError)
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.utils import ZARR_INSTALLED, StrDataset
+from hdmf.validate.errors import Error
 
 CORE_NAMESPACE = 'test_core'
 
@@ -1723,3 +1724,44 @@ class TestVlenStringData(ValidatorTestBase):
         self.assertEqual(len(results), 1)
         self.assertIsInstance(results[0], DtypeError)
         self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
+
+class TestISODateTimeTimezone(ValidatorTestBase):
+    """Test that isodatetime dtype requires timezone information."""
+
+    def getSpecs(self):
+        return (
+            GroupSpec(
+                doc='Test group for isodatetime',
+                data_type_def='DateTimeTest',
+                attributes=[
+                    AttributeSpec(
+                        name='dt',
+                        doc='datetime attribute',
+                        dtype='isodatetime'
+                    )
+                ]
+            ),
+        )
+
+    def test_isodatetime_with_timezone(self):
+        builder = GroupBuilder(
+            name='test_group',
+            attributes={
+                'data_type': 'DateTimeTest',
+                'dt': '2026-02-12T10:30:00+02:00'
+            }
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def test_isodatetime_without_timezone(self):
+        builder = GroupBuilder(
+            name='test_group',
+            attributes={
+                'data_type': 'DateTimeTest',
+                'dt': '2026-02-12T10:30:00'
+            }
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], Error)
