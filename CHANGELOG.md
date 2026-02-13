@@ -13,6 +13,7 @@
 - Deprecated `BaseStorageSpec.add_attribute`, `GroupSpec.add_group`, `GroupSpec.add_dataset`, and `GroupSpec.add_link`. Use `set_attribute`, `set_group`, `set_dataset`, and `set_link` instead. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 - Deprecated unused `BaseStorageSpec.get_data_type_spec` and `BaseStorageSpec.get_namespace_spec`. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 - Moved `test`, `docs`, and `min-reqs` from `[project.optional-dependencies]` to `[dependency-groups]` (PEP 735). `min-reqs` was renamed to `test-min-deps`. @rly [#1395](https://github.com/hdmf-dev/hdmf/pull/1395)
+- Changed `get_data_shape` to check `shape` before `maxshape`, so that objects with both attributes (e.g., h5py datasets) return their actual shape rather than their maximum shape. @rly [#1180](https://github.com/hdmf-dev/hdmf/pull/1180)
 
 ### Removed
 - Dropped support for Python 3.9. The minimum supported version is now Python 3.10. @rly [#xxx](https://github.com/hdmf-dev/hdmf/pull/xxx)
@@ -25,6 +26,7 @@
 - Deprecated `TypeMap.copy_mappers` method. Use `TypeMap.merge` instead with the argument `ns_catalog=False` to copy only mappers without namespaces. @rly [#1372](https://github.com/hdmf-dev/hdmf/pull/1372)
 
 ### Added
+- Added `expandable` parameter to `HDF5IO.write` (default `True`) that makes all non-scalar datasets expandable by setting `maxshape` based on the matching shape defined in the spec. Pass `expandable=False` to disable this behavior. @rly [#1180](https://github.com/hdmf-dev/hdmf/pull/1180)
 - Added support for HDMF Common Schema 1.9.0.
   - Introduced a new data type `MeaningsTable` and changes to `DynamicTable` to support included `MeaningsTable` objects. @rly [#1376](https://github.com/hdmf-dev/hdmf/pull/1376)
   - Promoted `HERD` from the hdmf-experimental namespace to the HDMF Common namespace. @rly [#1387](https://github.com/hdmf-dev/hdmf/pull/1387)
