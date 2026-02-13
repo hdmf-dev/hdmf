@@ -39,6 +39,7 @@
 ### Fixed
 - Fixed `VectorData.extend()` silently corrupting 1D numpy arrays by reshaping them into 2D matrices. Replaced `np.vstack` with `np.concatenate` in `extend_data`. @h-mayorquin [#1405](https://github.com/hdmf-dev/hdmf/pull/1405)
 - Fixed a broken test and refactored `VectorIndex.get`. @rly, @mavaylon1 [#1293](https://github.com/hdmf-dev/hdmf/pull/1293)
+- Fixed missing timezone validation for `isodatetime` values in `AttributeSpec` and `DatasetSpec`. @sejalpunwatkar [#1399](https://github.com/hdmf-dev/hdmf/pull/1399)
 
 
 ## HDMF 4.3.1 (January 28, 2026)
