@@ -63,6 +63,15 @@ class DatasetSpecTests(TestCase):
         )
         self.assertEqual(spec.shape, (None, ))
 
+    def test_empty_shape(self):
+        with self.assertRaisesWith(ValueError, "'shape' must not be empty"):
+            DatasetSpec(
+                doc='my first dataset',
+                dtype='int',
+                name='dataset1',
+                shape=[],
+            )
+
     def test_colliding_shape_and_dims(self):
         with self.assertRaises(ValueError):
             DatasetSpec(
