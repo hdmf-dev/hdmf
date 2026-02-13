@@ -1063,6 +1063,16 @@ class HDF5IO(HDMFIO):
             data = data.data
         else:
             options['io_settings'] = {}
+
+        # Set maxshape to make a non-scalar dataset expandable but do not override existing settings
+        if (
+            expandable
+            and 'maxshape' not in options['io_settings']
+            and np.ndim(data) != 0
+            and matched_spec_shape is not None
+        ):
+            options['io_settings']['maxshape'] = matched_spec_shape
+
         attributes = builder.attributes
         options['dtype'] = builder.dtype
         dset = None
@@ -1144,11 +1154,6 @@ class HDF5IO(HDMFIO):
                     msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                     raise Exception(msg) from exc
                 io_settings = options['io_settings']
-                if expandable:
-                    # Don't override existing settings
-                    if 'maxshape' not in io_settings:
-                        if matched_spec_shape is not None:
-                            io_settings['maxshape'] = matched_spec_shape
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **io_settings)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
@@ -1172,10 +1177,10 @@ class HDF5IO(HDMFIO):
 
                 return
             # If the compound data type contains only regular data (i.e., no references) then we can write it as usual
-            elif len(np.shape(data)) == 0:
+            elif np.ndim(data) == 0:
                 dset = self.__scalar_fill__(parent, name, data, options)
             else:
-                dset = self.__list_fill__(parent, name, data, matched_spec_shape, expandable, options)
+                dset = self.__list_fill__(parent, name, data, options)
         # Write a dataset containing references, i.e., object reference.
         # NOTE: we can ignore options['io_settings'] for scalar data
         elif self.__is_ref(options['dtype']):
@@ -1201,11 +1206,6 @@ class HDF5IO(HDMFIO):
             else:
                 # Write array of object references
                 io_settings = options['io_settings']
-                if expandable:
-                    # Don't override existing settings
-                    if 'maxshape' not in io_settings:
-                        if matched_spec_shape is not None:
-                            io_settings['maxshape'] = matched_spec_shape
                 dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **io_settings)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
@@ -1239,7 +1239,7 @@ class HDF5IO(HDMFIO):
                 self.__dci_queue.append(dataset=dset, data=data)
             # Write a regular in memory array (e.g., numpy array, list etc.)
             elif hasattr(data, '__len__'):
-                dset = self.__list_fill__(parent, name, data, matched_spec_shape, expandable, options)
+                dset = self.__list_fill__(parent, name, data, options)
             # Write a regular scalar dataset
             else:
                 dset = self.__scalar_fill__(parent, name, data, options)
@@ -1367,7 +1367,7 @@ class HDF5IO(HDMFIO):
         return dset
 
     @classmethod
-    def __list_fill__(cls, parent, name, data, matched_spec_shape, expandable, options=None):
+    def __list_fill__(cls, parent, name, data, options=None):
         # define the io settings and data type if necessary
         io_settings = {}
         dtype = None
@@ -1389,11 +1389,6 @@ class HDF5IO(HDMFIO):
             data_shape = (len(data),)
         else:
             data_shape = get_data_shape(data)
-        if expandable:
-            # Don't override existing settings
-            if 'maxshape' not in io_settings:
-                if matched_spec_shape is not None:
-                    io_settings['maxshape'] = matched_spec_shape
 
         # Create the dataset
         try:
