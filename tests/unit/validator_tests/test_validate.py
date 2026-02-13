@@ -1765,3 +1765,52 @@ class TestISODateTimeTimezone(ValidatorTestBase):
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], Error)
+
+class TestISODateTimeDatasetTimezone(ValidatorTestBase):
+    """Test that isodatetime dtype in DatasetSpec requires timezone information."""
+
+    def getSpecs(self):
+        return (
+            GroupSpec(
+                doc='Test group for isodatetime dataset',
+                data_type_def='DateTimeDatasetTest',
+                datasets=[
+                    DatasetSpec(
+                        name='dt',
+                        doc='datetime dataset',
+                        dtype='isodatetime'
+                    )
+                ]
+            ),
+        )
+
+    def test_dataset_isodatetime_with_timezone(self):
+        builder = GroupBuilder(
+            name='test_group',
+            attributes={'data_type': 'DateTimeDatasetTest'},
+            datasets=[
+                DatasetBuilder(
+                    name='dt',
+                    data='2026-02-12T10:30:00+02:00'
+                )
+            ]
+        )
+
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def test_dataset_isodatetime_without_timezone(self):
+        builder = GroupBuilder(
+            name='test_group',
+            attributes={'data_type': 'DateTimeDatasetTest'},
+            datasets=[
+                DatasetBuilder(
+                    name='dt',
+                    data='2026-02-12T10:30:00'
+                )
+            ]
+        )
+
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], Error)
