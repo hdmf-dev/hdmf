@@ -329,6 +329,43 @@ class TestCatchDupNS(TestCase):
             self.assertTrue(str(w.message) != msg)
             warnings.warn(str(w.message), w.category)
 
+class TestMergeNoDuplicateSpecs(TestCase):
+    """Test that merging namespace catalogs does not create duplicate entries in the unresolved spec cache."""
+
+    def test_merge_no_duplicate_unresolved_specs(self):
+        """After merging, get_spec_source_dict should not return duplicate specs for shared source files."""
+        hdmf_typemap = get_type_map()
+
+        # Create a new catalog and merge the hdmf type map into it
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.merge(hdmf_typemap.namespace_catalog)
+
+        # hdmf-common's base.yaml defines: Data (dataset), Container (group), SimpleMultiContainer (group).
+        # hdmf-experimental imports these types but should NOT cause duplicates in the unresolved cache.
+        spec_dict = ns_catalog.get_spec_source_dict('base.yaml')
+        self.assertIsNotNone(spec_dict)
+        dataset_defs = [s.data_type_def for s in spec_dict.get('datasets', [])]
+        group_defs = [s.data_type_def for s in spec_dict.get('groups', [])]
+        self.assertEqual(dataset_defs, ['Data'])
+        self.assertEqual(group_defs, ['Container', 'SimpleMultiContainer'])
+
+    def test_convert_namespace_no_warnings_after_merge(self):
+        """convert_namespace should not produce warnings about different specifications after merge."""
+        from hdmf.backends.utils import NamespaceToBuilderHelper
+
+        hdmf_typemap = get_type_map()
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.merge(hdmf_typemap.namespace_catalog)
+
+        with warnings.catch_warnings(record=True) as ws:
+            warnings.simplefilter('always')
+            for ns_name in ns_catalog.namespaces:
+                NamespaceToBuilderHelper.convert_namespace(ns_catalog, ns_name)
+
+        spec_warnings = [w for w in ws if 'different specification' in str(w.message)]
+        self.assertEqual(spec_warnings, [], f"Unexpected spec warnings: {[str(w.message) for w in spec_warnings]}")
+
+
 class TestCustomSpecClasses(TestCase):
 
     def setUp(self):  # noqa: C901
