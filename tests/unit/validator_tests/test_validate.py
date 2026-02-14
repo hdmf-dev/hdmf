@@ -1848,7 +1848,7 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                )
             ]
         )
-   
+
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], Error)
@@ -1897,7 +1897,7 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                DatasetBuilder(name='dt', data=[])
            ]
         )
-    
+
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
 

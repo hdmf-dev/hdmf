@@ -106,7 +106,7 @@ def has_timezone(data):
 
     if s.endswith("Z"):
         return True
-    
+
     # Timezone offsets only valid if there is a time component
     if "T" not in s:
         return False
