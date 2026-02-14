@@ -1781,7 +1781,7 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                         dtype='isodatetime'
                     )
                 ]
-            ),
+            )
         )
 
     def test_dataset_isodatetime_with_timezone(self):
@@ -1815,17 +1815,125 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], Error)
 
-    def test_dataset_isodatetime_with_Z_timezone(self):
+    def test_dataset_isodatetime_array_mixed_timezone(self):
         builder = GroupBuilder(
             name='test_group',
             attributes={'data_type': 'DateTimeDatasetTest'},
             datasets=[
                 DatasetBuilder(
                     name='dt',
-                    data='2026-02-12T10:30:00Z'
+                    data=[
+                        '2026-02-12T10:30:00+02:00',
+                        '2026-02-12T12:00:00'
+                    ]
+                )
+            ]
+        )
+
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], Error)
+
+    def test_dataset_isodatetime_array_all_without_timezone(self):
+        builder = GroupBuilder(
+            name='test_group',
+            attributes={'data_type': 'DateTimeDatasetTest'},
+            datasets=[
+               DatasetBuilder(
+                   name='dt',
+                   data=[
+                       '2026-02-12T10:30:00',
+                       '2026-02-12T12:00:00'
+                   ]
+               )
+            ]
+        )
+   
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], Error)
+
+    def test_dataset_isodatetime_array_all_with_timezone(self):
+        builder = GroupBuilder(
+           name='test_group',
+           attributes={'data_type': 'DateTimeDatasetTest'},
+           datasets=[
+               DatasetBuilder(
+                   name='dt',
+                   data=[
+                    '2026-02-12T10:30:00+02:00',
+                    '2026-02-12T12:00:00+02:00'
+                   ]
+               )
+            ]
+        )
+
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def test_dataset_isodatetime_with_datetime_objects(self):
+        builder = GroupBuilder(
+           name='test_group',
+           attributes={'data_type': 'DateTimeDatasetTest'},
+           datasets=[
+               DatasetBuilder(
+                   name='dt',
+                   data=[
+                       datetime(2026, 2, 12, 10, 30),
+                       datetime(2026, 2, 12, 12, 0)
+                   ]
                 )
             ]
         )
 
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
+
+    def test_dataset_isodatetime_empty_array(self):
+        builder = GroupBuilder(
+           name='test_group',
+           attributes={'data_type': 'DateTimeDatasetTest'},
+           datasets=[
+               DatasetBuilder(name='dt', data=[])
+           ]
+        )
+    
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def test_dataset_isodatetime_numpy_array(self):
+        builder = GroupBuilder(
+           name='test_group',
+           attributes={'data_type': 'DateTimeDatasetTest'},
+           datasets=[
+               DatasetBuilder(
+                   name='dt',
+                   data=np.array([
+                       '2026-02-12T10:30:00+02:00',
+                       '2026-02-12T12:00:00+02:00'
+                   ])
+                )
+            ]
+        )
+
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def test_dataset_isodatetime_numpy_array_mixed_timezone(self):
+         builder = GroupBuilder(
+             name='test_group',
+             attributes={'data_type': 'DateTimeDatasetTest'},
+             datasets=[
+                 DatasetBuilder(
+                     name='dt',
+                     data=np.array([
+                         '2026-02-12T10:30:00+02:00',
+                         '2026-02-12T12:00:00'
+                     ])
+                 )
+             ]
+         )
+
+         result = self.vmap.validate(builder)
+         self.assertEqual(len(result), 1)
+         self.assertIsInstance(result[0], Error)

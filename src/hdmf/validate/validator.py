@@ -89,15 +89,30 @@ def get_string_format(data):
         pass
     return None
 
-def has_timezone(datetime_string):
-    """Return True if ISO datetime string contains timezone info."""
-    s= pystr(datetime_string)
+def has_timezone(data):
+    """Return True if ISO datetime string contains timezone info.
+
+    Handles scalar strings or single-element arrays/lists. Returns False
+    for strings without a time component.
+    """
+    # If input is array-like, validate only first element
+    if isinstance(data, (list, tuple)):
+        data = data[0]
+    elif hasattr(data, "shape") and len(data) == 1:
+        data = data.item()
+
+    s = pystr(data)
+
 
     if s.endswith("Z"):
         return True
+    
+    # Timezone offsets only valid if there is a time component
+    if "T" not in s:
+        return False
 
-    # Check for +HH:MM or -HH:MM at the end
-    if "+" in s[-6:] or "-" in s[-6:]:
+     # Check for valid timezone offset: +HH:MM or -HH:MM at the end
+    if re.search(r"[+-][0-9]{2}:[0-9]{2}$", s):
         return True
 
     return False
@@ -373,14 +388,28 @@ class AttributeValidator(Validator):
             else:
                 try:
                     dtype, string_format = get_type(value)
-                    if spec.dtype == "isodatetime" and string_format == "isodatetime":
+                    # value may be a scalar or an array of datetime strings; check elements safely
+                    if isinstance(value, (list, tuple, np.ndarray)):
+                            # iterate over elements and report once if any element lacks timezone information
+                            iterator = value.flat if isinstance(value, np.ndarray) else iter(value)
+                            for v in iterator:
+                                if isinstance(v, str) and not has_timezone(v):
+                                    ret.append(
+                                        Error(
+                                            self.get_spec_loc(spec),
+                                            "Datetime is missing required timezone information."
+                                        )
+                                    )
+                                    break
+                    elif isinstance(value, str):
                         if not has_timezone(value):
-                            ret.append(
-                                Error(
-                                    self.get_spec_loc(spec),
-                                    "Datetime is missing required timezone information."
+                                ret.append(
+                                    Error(
+                                        self.get_spec_loc(spec),
+                                        "Datetime is missing required timezone information."
+                                    )
                                 )
-                            )
+
                     if not check_type(spec.dtype, dtype, string_format):
                         ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
                 except EmptyArrayError:
@@ -444,13 +473,28 @@ class DatasetValidator(BaseStorageValidator):
             try:
                 dtype, string_format = get_type(data, builder.dtype)
                 if self.spec.dtype == "isodatetime" and string_format == "isodatetime":
-                    if not has_timezone(data):
-                        ret.append(
-                            Error(
-                                self.get_spec_loc(self.spec),
-                                "Datetime is missing required timezone information.",
-                                location=self.get_builder_loc(builder)
-                            )
+                    if isinstance(data, (list, tuple, np.ndarray)):
+                        # iterate through elements safely
+                        iterator = data.flat if isinstance(data, np.ndarray) else iter(data)
+                        for v in iterator:
+                            # only check string elements
+                            if isinstance(v, str) and not has_timezone(v):
+                                ret.append(
+                                    Error(
+                                        self.get_spec_loc(self.spec),
+                                        "Datetime is missing required timezone information.",
+                                        location=self.get_builder_loc(builder)
+                                        )
+                                )
+                                break
+                    elif isinstance(data, str):
+                        if not has_timezone(data):
+                            ret.append(
+                                Error(
+                                    self.get_spec_loc(self.spec),
+                                    "Datetime is missing required timezone information.",
+                                    location=self.get_builder_loc(builder)
+                                )
                         )
                 if not check_type(self.spec.dtype, dtype, string_format):
                     if isinstance(self.spec.dtype, RefSpec):
