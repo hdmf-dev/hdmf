@@ -1781,7 +1781,7 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                         dtype='isodatetime'
                     )
                 ]
-            )
+            ),
         )
 
     def test_dataset_isodatetime_with_timezone(self):
