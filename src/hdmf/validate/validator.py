@@ -390,7 +390,7 @@ class AttributeValidator(Validator):
                     dtype, string_format = get_type(value)
                     # value may be a scalar or an array of datetime strings; check elements safely
                     if spec.dtype == "isodatetime"and isinstance(value, (str, list, tuple, np.ndarray)):
-                          
+
                           if isinstance(value, (list, tuple, np.ndarray)):
                             iterator = value.flat if isinstance(value, np.ndarray) else iter(value)
                             for v in iterator:
