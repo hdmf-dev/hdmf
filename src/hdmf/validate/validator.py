@@ -390,6 +390,7 @@ class AttributeValidator(Validator):
                     dtype, string_format = get_type(value)
                     # value may be a scalar or an array of datetime strings; check elements safely
                     if spec.dtype == "isodatetime"and isinstance(value, (str, list, tuple, np.ndarray)):
+                          
                           if isinstance(value, (list, tuple, np.ndarray)):
                             iterator = value.flat if isinstance(value, np.ndarray) else iter(value)
                             for v in iterator:
@@ -401,13 +402,14 @@ class AttributeValidator(Validator):
                                         )
                                     )
                                     break
+
                           elif isinstance(value, str):
                               if not has_timezone(value):
                                   ret.append(
                                       Error(
-                                        self.get_spec_loc(spec),
-                                        "Datetime is missing required timezone information."
-                                    )
+                                          self.get_spec_loc(spec),
+                                          "Datetime is missing required timezone information."
+                                      )
                                   )
 
                     if not check_type(spec.dtype, dtype, string_format):
