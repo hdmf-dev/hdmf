@@ -402,7 +402,7 @@ class AttributeValidator(Validator):
                                     )
                                     break
 
-                          elif isinstance(value, str):
+                        elif isinstance(value, str):
                               if not has_timezone(value):
                                   ret.append(
                                       Error(
