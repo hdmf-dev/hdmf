@@ -399,7 +399,7 @@ class AttributeValidator(Validator):
                                 iterator = [value.item()] if value.ndim == 0 else value.flat
                             else:
                                 iterator = value  # This handles standard lists/tuples
-                            
+
                             for v in iterator:
                                 if isinstance(v, str) and not has_timezone(v):
                                     ret.append(
