@@ -1950,8 +1950,8 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                             datetime(2026, 2, 12, 12, 0)
                         ])
                     )
-            ] 
+            ]
         )
-        
+
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
