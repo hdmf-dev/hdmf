@@ -175,7 +175,10 @@ def get_type(data, builder_dtype=None):
     # Numpy nd-array data
     elif isinstance(data, np.ndarray) and len(data.dtype) <= 1:
         if data.size > 0:
-            return get_type(data[0], builder_dtype)
+            if data.ndim == 0:
+                return get_type(data.item(), builder_dtype)
+            else:
+                return get_type(data[0], builder_dtype)
         raise EmptyArrayError()
     # Numpy bool data
     elif isinstance(data, np.bool_):
@@ -477,6 +480,7 @@ class DatasetValidator(BaseStorageValidator):
                     if isinstance(data, (list, tuple, np.ndarray)):
                         # iterate through elements safely
                         iterator = data.flat if isinstance(data, np.ndarray) else iter(data)
+
                         for v in iterator:
                             # only check string elements
                             if isinstance(v, str) and not has_timezone(v):
