@@ -1937,3 +1937,21 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
          result = self.vmap.validate(builder)
          self.assertEqual(len(result), 1)
          self.assertIsInstance(result[0], Error)
+
+    def test_dataset_isodatetime_numpy_array_with_datetime_objects(self):
+        builder = GroupBuilder(
+            name='test_group',
+            attributes={'data_type': 'DateTimeDatasetTest'},
+            datasets=[
+                    DatasetBuilder(
+                        name='dt',
+                        data=np.array([
+                            datetime(2026, 2, 12, 10, 30),
+                            datetime(2026, 2, 12, 12, 0)
+                        ])
+                    )
+            ] 
+        )
+        
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
