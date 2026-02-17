@@ -1971,3 +1971,13 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], Error)
+
+    def test_dataset_isodatetime_numpy_scalar_no_timezone(self):
+        builder = GroupBuilder(
+            name='test_group',
+            attributes={'data_type': 'DateTimeDatasetTest'},
+            datasets=[DatasetBuilder(name='dt', data=np.array('2026-02-12T10:30:00'))] # No brackets = 0-D
+        )
+
+        result = self.vmap.validate(builder)
+        self.assertTrue(any("timezone" in str(e).lower() for e in result))
