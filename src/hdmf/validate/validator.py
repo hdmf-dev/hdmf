@@ -147,7 +147,6 @@ def _get_type_from_dtype_attr(data: Any, builder_dtype: list | None) -> tuple[st
             return "utf", None
         # Undetermined variable length data type
         raise EmptyArrayError()  # pragma: no cover
-
     # Handle object dtype (zarr style variable-length strings)
     if data.dtype.kind == 'O':
         if len(data) > 0:
