@@ -2016,5 +2016,3 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
 
         result = self.vmap.validate(builder)
         self.assertTrue(any("timezone" in str(e).lower() for e in result))
-
-
