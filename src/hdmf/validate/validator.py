@@ -394,8 +394,12 @@ class AttributeValidator(Validator):
                     # value may be a scalar or an array of datetime strings; check elements safely
                     if spec.dtype == "isodatetime"and isinstance(value, (str, list, tuple, np.ndarray)):
                         if isinstance(value, (list, tuple, np.ndarray)):
-                            # .flat works for 1D+ arrays; .item() is needed for 0D (scalars)
-                            iterator = [value.item()] if value.ndim == 0 else value.flat
+                            # FIX: Check if it's numpy BEFORE calling .ndim
+                            if isinstance(value, np.ndarray):
+                                iterator = [value.item()] if value.ndim == 0 else value.flat
+                            else:
+                                iterator = value  # This handles standard lists/tuples
+                            
                             for v in iterator:
                                 if isinstance(v, str) and not has_timezone(v):
                                     ret.append(

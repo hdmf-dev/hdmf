@@ -1972,12 +1972,49 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], Error)
 
-    def test_dataset_isodatetime_numpy_scalar_no_timezone(self):
+    def test_dataset_isodatetime_list_without_timezone(self):
+        ds_builder = DatasetBuilder(
+            name='dt',
+            data=['2026-02-12T10:30:00', '2026-02-12T11:30:00']
+        )
+        
         builder = GroupBuilder(
             name='test_group',
             attributes={'data_type': 'DateTimeDatasetTest'},
-            datasets=[DatasetBuilder(name='dt', data=np.array('2026-02-12T10:30:00'))] # No brackets = 0-D
+            datasets=[ds_builder]
         )
 
         result = self.vmap.validate(builder)
         self.assertTrue(any("timezone" in str(e).lower() for e in result))
+
+    def test_dataset_isodatetime_numpy_scalar_no_timezone(self):
+        builder = GroupBuilder(
+            name='dt', 
+            attributes={'data_type': 'DateTimeDatasetTest'},
+            datasets=[DatasetBuilder(name='dt', data=np.array('2026-02-12T10:30:00'))]
+        )
+        
+        result = self.vmap.validate(builder)
+        self.assertTrue(any("timezone" in str(e).lower() for e in result))
+
+    def test_dataset_isodatetime_list_no_timezone(self):
+        builder = GroupBuilder(
+            name='dt', 
+            attributes={'data_type': 'DateTimeDatasetTest'},
+            datasets=[DatasetBuilder(name='dt', data=['2026-02-12T10:30:00'])]
+        )
+
+        result = self.vmap.validate(builder)
+        self.assertTrue(any("timezone" in str(e).lower() for e in result))
+
+    def test_dataset_isodatetime_raw_string_no_timezone(self):
+        builder = GroupBuilder(
+            name='dt', 
+            attributes={'data_type': 'DateTimeDatasetTest'},
+            datasets=[DatasetBuilder(name='dt', data='2026-02-12T10:30:00')]
+        )
+
+        result = self.vmap.validate(builder)
+        self.assertTrue(any("timezone" in str(e).lower() for e in result))
+
+    
