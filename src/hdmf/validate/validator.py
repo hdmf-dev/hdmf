@@ -117,10 +117,8 @@ def has_timezone(data):
 
     return False
 
-
 class EmptyArrayError(Exception):
     pass
-
 
 def _get_type_compound_dtype(data: Any, builder_dtype: list) -> tuple[list, list]:
     """Helper function to get type information for compound dtypes."""
