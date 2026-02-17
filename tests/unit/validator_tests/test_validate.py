@@ -1955,3 +1955,19 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
 
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
+
+    def test_dataset_isodatetime_numpy_scalar_without_timezone(self):
+        builder = GroupBuilder(
+            name='test_group',
+            attributes={'data_type': 'DateTimeDatasetTest'},
+            datasets=[
+                DatasetBuilder(
+                    name='dt',
+                    data=np.array('2026-02-12T10:30:00')
+                )
+            ]
+        )
+
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], Error)
