@@ -358,7 +358,7 @@ class AttributeValidator(Validator):
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-    
+
     def _validate_isodatetime_timezone(self, value, spec, ret):
         """Helper to validate timezone presence in isodatetime fields."""
         if isinstance(value, (list, tuple, np.ndarray)):
@@ -375,7 +375,7 @@ class AttributeValidator(Validator):
             if not has_timezone(value):
                 ret.append(Error(self.get_spec_loc(spec),
                                  "Datetime is missing required timezone information."))
-    
+
     @docval({'name': 'value', 'type': None, 'doc': 'the value to validate'},
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):
@@ -497,7 +497,7 @@ class DatasetValidator(BaseStorageValidator):
                 dtype, string_format = get_type(data, builder.dtype)
                 if self.spec.dtype == "isodatetime" and string_format == "isodatetime":
                     self._validate_isodatetime_timezone(data, builder, ret)
-                            
+
                 if not check_type(self.spec.dtype, dtype, string_format):
                     if isinstance(self.spec.dtype, RefSpec):
                         expected = f'{self.spec.dtype.reftype} reference'
