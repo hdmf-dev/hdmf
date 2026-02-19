@@ -1795,7 +1795,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                 )
             ]
         )
-
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
 
@@ -1810,7 +1809,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                 )
             ]
         )
-
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], Error)
@@ -1829,7 +1827,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                 )
             ]
         )
-
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], Error)
@@ -1848,7 +1845,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                )
             ]
         )
-
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], Error)
@@ -1867,7 +1863,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                )
             ]
         )
-
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
 
@@ -1885,7 +1880,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                 )
             ]
         )
-
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
 
@@ -1897,7 +1891,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                DatasetBuilder(name='dt', data=[])
            ]
         )
-
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
 
@@ -1915,7 +1908,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                 )
             ]
         )
-
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
 
@@ -1933,7 +1925,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                  )
              ]
          )
-
          result = self.vmap.validate(builder)
          self.assertEqual(len(result), 1)
          self.assertIsInstance(result[0], Error)
@@ -1952,7 +1943,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                     )
             ]
         )
-
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 0)
 
@@ -1967,7 +1957,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
                 )
             ]
         )
-
         result = self.vmap.validate(builder)
         self.assertEqual(len(result), 1)
         self.assertIsInstance(result[0], Error)
@@ -1983,7 +1972,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
             attributes={'data_type': 'DateTimeDatasetTest'},
             datasets=[ds_builder]
         )
-
         result = self.vmap.validate(builder)
         self.assertTrue(any("timezone" in str(e).lower() for e in result))
 
@@ -1993,7 +1981,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
             attributes={'data_type': 'DateTimeDatasetTest'},
             datasets=[DatasetBuilder(name='dt', data=np.array('2026-02-12T10:30:00'))]
         )
-
         result = self.vmap.validate(builder)
         self.assertTrue(any("timezone" in str(e).lower() for e in result))
 
@@ -2003,7 +1990,6 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
             attributes={'data_type': 'DateTimeDatasetTest'},
             datasets=[DatasetBuilder(name='dt', data=['2026-02-12T10:30:00'])]
         )
-
         result = self.vmap.validate(builder)
         self.assertTrue(any("timezone" in str(e).lower() for e in result))
 
@@ -2013,6 +1999,46 @@ class TestISODateTimeDatasetTimezone(ValidatorTestBase):
             attributes={'data_type': 'DateTimeDatasetTest'},
             datasets=[DatasetBuilder(name='dt', data='2026-02-12T10:30:00')]
         )
-
         result = self.vmap.validate(builder)
         self.assertTrue(any("timezone" in str(e).lower() for e in result))
+
+    def test_dataset_isodatetime_numpy_single_element(self):
+        """Specifically hits the 'len(data) == 1' and 'data.item()' branch."""
+        builder = GroupBuilder(
+            name='test_group',
+            attributes={'data_type': 'DateTimeDatasetTest'},
+            datasets=[
+                DatasetBuilder(
+                    name='dt',
+                    data=np.array(['2026-02-12T10:30:00+02:00'])
+                )
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def test_isodatetime_timezone_z_suffix(self):
+        """Covers the 'endswith("Z")' True branch."""
+        builder = GroupBuilder(
+            name='test_group',
+            attributes={'data_type': 'DateTimeDatasetTest'},
+            datasets=[
+                DatasetBuilder(name='dt', data='2026-02-12T10:30:00Z')
+            ]
+        )
+        result = self.vmap.validate(builder)
+        self.assertEqual(len(result), 0)
+
+    def test_isodatetime_no_time_component_fails(self):
+        """Covers the '"T" not in s' branch."""
+        builder = GroupBuilder(
+            name='test_group',
+            attributes={'data_type': 'DateTimeDatasetTest'},
+            datasets=[
+                DatasetBuilder(name='dt', data='2026-02-12')
+            ]
+        )
+        result = self.vmap.validate(builder)
+        # Should fail because it has no 'T' and therefore no timezone
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], Error)
