@@ -570,10 +570,11 @@ class TestDynamicTable(TestCase):
         expected = [np.array([1, 2, 3]), np.array([1, 2, 3, 4])]
         data = np.array(expected, dtype=object)
         table.add_column(name='qux', description='qux column', data=data, index=True)
-        # The flattened data should remain a numpy array, not a Python list
+        # The underlying VectorData should remain a numpy array, not a Python list
         expected_data = np.array([1, 2, 3, 1, 2, 3, 4])
-        self.assertIsInstance(table['qux'].data, np.ndarray)
-        np.testing.assert_array_equal(table['qux'].data, expected_data)
+        vector_data = table['qux'].target
+        self.assertIsInstance(vector_data.data, np.ndarray)
+        np.testing.assert_array_equal(vector_data.data, expected_data)
         self.assertListEqual(table.qux_index.data, [3, 7])
 
     def test_add_column_auto_multi_index_int(self):
