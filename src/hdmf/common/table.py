@@ -28,9 +28,10 @@ def _flatten_one_ragged_level(data):
     all_entries_are_numpy_arrays = all(isinstance(value, np.ndarray) for value in data)
     if all_entries_are_numpy_arrays:
         first_array = data[0]
-        all_arrays_have_nonzero_dimension = first_array.ndim > 0
+        # Check whether all arrays have the same nonzero number of dimensions
+        first_array_has_nonzero_dimension = first_array.ndim > 0
         all_arrays_have_same_dimension = all(value.ndim == first_array.ndim for value in data)
-        if all_arrays_have_nonzero_dimension and all_arrays_have_same_dimension:
+        if first_array_has_nonzero_dimension and all_arrays_have_same_dimension:
             all_arrays_have_same_trailing_shape = (
                 first_array.ndim == 1 or all(value.shape[1:] == first_array.shape[1:] for value in data)
             )
