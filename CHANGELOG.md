@@ -13,6 +13,7 @@
 - Deprecated `BaseStorageSpec.add_attribute`, `GroupSpec.add_group`, `GroupSpec.add_dataset`, and `GroupSpec.add_link`. Use `set_attribute`, `set_group`, `set_dataset`, and `set_link` instead. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 - Deprecated unused `BaseStorageSpec.get_data_type_spec` and `BaseStorageSpec.get_namespace_spec`. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 - Moved `test`, `docs`, and `min-reqs` from `[project.optional-dependencies]` to `[dependency-groups]` (PEP 735). `min-reqs` was renamed to `test-min-deps`. @rly [#1395](https://github.com/hdmf-dev/hdmf/pull/1395)
+- Added Python version markers to dependency lower bounds (`h5py`, `numpy`, `pandas`) and `test-min-deps` pins, and declared `[tool.uv] conflicts` to make the project compatible with uv. @h-mayorquin [#1408](https://github.com/hdmf-dev/hdmf/pull/1408)
 - Changed `get_data_shape` to check `shape` before `maxshape`, so that objects with both attributes (e.g., h5py datasets) return their actual shape rather than their maximum shape. @rly [#1180](https://github.com/hdmf-dev/hdmf/pull/1180)
 
 ### Removed
