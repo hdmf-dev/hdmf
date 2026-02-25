@@ -557,12 +557,12 @@ class TestDynamicTable(TestCase):
         self.assertListEqual(table['qux'][:], expected + [[10, 11, 12], ])
         self.assertListEqual(table.qux_index.data, [3, 7, 10])
 
-    def test_add_column_auto_index_bool_with_numpy_object_array(self):
-        """Regression: auto-index flattening preserves semantics when data is a numpy object array.
+    def test_add_column_auto_index_bool_with_numpy_arrays(self):
+        """Regression: add_column with index=True preserves numpy array storage.
 
-        numpy object arrays (dtype=object) are a common input for ragged columns. This ensures that the
-        np.concatenate fast path in _flatten_one_ragged_level produces the same cell values and
-        VectorIndex boundaries as the original itertools.chain path.
+        When ragged column data is provided as numpy arrays, the underlying VectorData should
+        store an ndarray rather than a Python list. This avoids unnecessary memory allocations
+        during writing.
         """
         table = self.with_spec()
         table.add_row(foo=5, bar=50.0, baz='lizard')
@@ -570,8 +570,10 @@ class TestDynamicTable(TestCase):
         expected = [np.array([1, 2, 3]), np.array([1, 2, 3, 4])]
         data = np.array(expected, dtype=object)
         table.add_column(name='qux', description='qux column', data=data, index=True)
-        np.testing.assert_array_equal(table['qux'][:][0], expected[0])
-        np.testing.assert_array_equal(table['qux'][:][1], expected[1])
+        # The flattened data should remain a numpy array, not a Python list
+        expected_data = np.array([1, 2, 3, 1, 2, 3, 4])
+        self.assertIsInstance(table['qux'].data, np.ndarray)
+        np.testing.assert_array_equal(table['qux'].data, expected_data)
         self.assertListEqual(table.qux_index.data, [3, 7])
 
     def test_add_column_auto_multi_index_int(self):
