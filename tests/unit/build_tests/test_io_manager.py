@@ -812,6 +812,54 @@ class TestLoadNamespacesMultipleTypes(TestCase):
         self.assertSetEqual(class_names, {'Bar', 'Baz', 'Qux'})
 
 
+class TestBuildStampsCoreNamespaceWithExtensionLoaded(TestCase):
+    """Regression test for namespace contamination when extensions include_namespace("core").
+
+    Reproduces the real-world bug: loading an extension that calls include_namespace("core")
+    re-registers every core type (e.g. NWBFile) under the extension namespace. Without the fix,
+    building a core type stamps the extension's namespace on the builder instead of "core".
+    See issue #1391.
+    """
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+        self.type_map = TypeMap()
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir)
+
+    def test_build_core_type_keeps_core_namespace_after_extension_loads(self):
+        """Loading an extension with include_namespace("core") must not change the namespace of core types."""
+        # Define "core" namespace with NWBFile, like pynwb core
+        nwbfile_spec = GroupSpec(doc='The root NWB file type', data_type_def='NWBFile')
+        create_load_namespace_yaml(
+            namespace_name='core',
+            specs=[nwbfile_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map,
+        )
+        NWBFile = self.type_map.get_dt_container_cls(data_type='NWBFile', namespace='core')
+
+        # Load an extension that does include_namespace("core"), like ndx-events or ndx-hed
+        events_spec = GroupSpec(doc='An events type', data_type_def='EventsTable', data_type_inc='NWBFile')
+        create_load_namespace_yaml(
+            namespace_name='ndx-events',
+            specs=[events_spec],
+            output_dir=self.test_dir,
+            incl_types={'core': None},  # None means include_namespace("core"), i.e. all core types
+            type_map=self.type_map,
+        )
+
+        # Build an NWBFile (core type) and verify the builder carries namespace="core"
+        builder = self.type_map.build(
+            container=NWBFile(name='root'),
+            manager=BuildManager(self.type_map),
+            source='test.nwb',
+        )
+        self.assertEqual(builder.attributes['namespace'], 'core')
+
+
 # TODO:
 class TestWildCardNamedSpecs(TestCase):
     pass

@@ -37,6 +37,7 @@
 - Added abstract methods `HDMFIO.load_namespaces` and `HDMFIO.load_namespaces_io`. @rly [#1299](https://github.com/hdmf-dev/hdmf/pull/1299)
 
 ### Fixed
+- Fixed `register_container_type` overwriting the reverse class-to-namespace map when an extension calls `include_namespace("core")`, which caused core types to be stamped with the extension's namespace. @h-mayorquin [#1407](https://github.com/hdmf-dev/hdmf/pull/1407)
 - Fixed a broken test and refactored `VectorIndex.get`. @rly, @mavaylon1 [#1293](https://github.com/hdmf-dev/hdmf/pull/1293)
 
 

@@ -832,7 +832,13 @@ class TypeMap:
             # NOTE: Removing previous_cls from container_cls_to_ns_dt but previous_cls may still
             # exist in ns_dt_to_container_cls if it was a TypeSource registered for multiple namespaces.
             self.__container_cls_to_ns_dt.pop(previous_cls, None)
-        self.__container_cls_to_ns_dt[container_cls] = (namespace, data_type)
+        # Keep the first registration: base namespaces are always loaded before extensions
+        # (guaranteed by the topological sort in NamespaceCatalog._order_deps), so the first
+        # entry is the defining namespace. When an extension calls include_namespace("core"),
+        # every core type gets re-registered under the extension namespace; without this guard,
+        # the reverse map would point core types like NWBFile to the extension instead of "core".
+        if container_cls not in self.__container_cls_to_ns_dt:
+            self.__container_cls_to_ns_dt[container_cls] = (namespace, data_type)
         if not isinstance(container_cls, TypeSource):
             setattr(container_cls, spec.type_key(), data_type)
             setattr(container_cls, 'namespace', namespace)
