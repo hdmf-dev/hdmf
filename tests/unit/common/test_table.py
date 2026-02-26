@@ -258,7 +258,21 @@ class TestDynamicTable(TestCase):
         )
         compound_vector_data.extend(c_data2)
 
-        np.testing.assert_array_equal(compound_vector_data.data, np.vstack((c_data, c_data2)))
+        expected = np.array([('Homo sapiens', 24), ('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        np.testing.assert_array_equal(compound_vector_data.data, expected)
+
+    def test_1d_ndarray_extend(self):
+        """Test that extending a 1D numpy array produces a flat 1D result, not 2D."""
+        vector_data = VectorData(
+            name='scores',
+            description='scalar column',
+            data=np.array([1.0, 2.0])
+        )
+        vector_data.extend(np.array([3.0, 4.0]))
+
+        expected = np.array([1.0, 2.0, 3.0, 4.0])
+        np.testing.assert_array_equal(vector_data.data, expected)
+        self.assertEqual(vector_data.data.ndim, 1)
 
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_wrapped_array_append(self):
@@ -286,7 +300,8 @@ class TestDynamicTable(TestCase):
         )
         vector_data.extend(data2)
 
-        np.testing.assert_array_equal(vector_data.data.data, np.vstack((data, data2)))
+        expected = np.array(['Homo sapiens', 'Mus musculus'])
+        np.testing.assert_array_equal(vector_data.data.data, expected)
 
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_wrapped_compound_data_append(self):
@@ -314,7 +329,8 @@ class TestDynamicTable(TestCase):
         )
         compound_vector_data.extend(c_data2)
 
-        np.testing.assert_array_equal(compound_vector_data.data.data, np.vstack((c_data, c_data2)))
+        expected = np.array([('Homo sapiens', 24), ('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        np.testing.assert_array_equal(compound_vector_data.data.data, expected)
 
     def test_constructor_bad_columns(self):
         columns = ['bad_column']

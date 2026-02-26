@@ -64,7 +64,7 @@ def extend_data(data, arg):
         data.extend(arg)
         return data
     elif isinstance(data, np.ndarray):
-        return np.vstack((data, arg))
+        return np.concatenate((data, arg))
     elif isinstance(data, h5py.Dataset):
         shape = list(data.shape)
         shape[0] += len(arg)
