@@ -1725,8 +1725,8 @@ class TestVlenStringData(ValidatorTestBase):
         self.assertIsInstance(results[0], DtypeError)
         self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
 
-class TestISODateTimeTimezone(ValidatorTestBase):
-    """Test that isodatetime dtype requires timezone information."""
+class TestISODateTimeAttributeTimezone(ValidatorTestBase):
+    """Test that an AttributeSpec with isodatetime dtype requires timezone information."""
 
     def getSpecs(self):
         return (
@@ -1767,7 +1767,7 @@ class TestISODateTimeTimezone(ValidatorTestBase):
         self.assertIsInstance(result[0], Error)
 
 class TestISODateTimeDatasetTimezone(ValidatorTestBase):
-    """Test that isodatetime dtype in DatasetSpec requires timezone information."""
+    """Test that a DatasetSpec with isodatetime spec requires timezone information."""
 
     def getSpecs(self):
         return (

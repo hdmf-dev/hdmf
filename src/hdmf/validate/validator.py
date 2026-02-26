@@ -359,63 +359,56 @@ class AttributeValidator(Validator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def _validate_isodatetime_timezone(self, value, spec, ret):
-        """Helper to validate timezone presence in isodatetime fields."""
-        if isinstance(value, (list, tuple, np.ndarray)):
-            if isinstance(value, np.ndarray):
-                iterator = [value.item()] if value.ndim == 0 else value.flat
-            else:
-                iterator = value
-            for v in iterator:
-                if isinstance(v, str) and not has_timezone(v):
-                    ret.append(Error(self.get_spec_loc(spec),
-                                     "Datetime is missing required timezone information."))
-                    break
-        elif isinstance(value, str):
-            if not has_timezone(value):
-                ret.append(Error(self.get_spec_loc(spec),
-                                 "Datetime is missing required timezone information."))
-
     @docval({'name': 'value', 'type': None, 'doc': 'the value to validate'},
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):
         value = getargs('value', kwargs)
         ret = list()
         spec = self.spec
-        if spec.dtype == "isodatetime":
-            self._validate_isodatetime_timezone(value, spec, ret)
-        else:
-            if spec.dtype is None:
-                ret.append(Error(self.get_spec_loc(spec)))
-            elif isinstance(spec.dtype, RefSpec):
-                if not isinstance(value, BaseBuilder):
-                    expected = '%s reference' % spec.dtype.reftype
-                    try:
-                        value_type, _ = get_type(value)
-                        ret.append(DtypeError(self.get_spec_loc(spec), expected, value_type))
-                    except EmptyArrayError:
-                        pass
-                else:
-                    target_spec = self.vmap.namespace.catalog.get_spec(spec.dtype.target_type)
-                    data_type = value.attributes.get(target_spec.type_key())
-                    hierarchy = self.vmap.namespace.catalog.get_hierarchy(data_type)
-                    if spec.dtype.target_type not in hierarchy:
-                        ret.append(IncorrectDataType(self.get_spec_loc(spec), spec.dtype.target_type, data_type))
-            else:
+        
+        if spec.required and value is None:
+            ret.append(MissingError(self.get_spec_loc(spec)))
+        elif spec.dtype == "isodatetime" and _is_missing_timezone(value):
+            ret.append(
+                Error(
+                    self.get_spec_loc(spec),
+                    "Datetime is missing required timezone information.",
+                )
+            )
+        elif spec.dtype is None:
+            ret.append(Error(self.get_spec_loc(spec)))
+        elif isinstance(spec.dtype, RefSpec):
+            if not isinstance(value, BaseBuilder):
+                expected = '%s reference' % spec.dtype.reftype
                 try:
-                    dtype, string_format = get_type(value)
-
-                    if not check_type(spec.dtype, dtype, string_format):
-                        ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
+                    value_type, _ = get_type(value)
+                    ret.append(DtypeError(self.get_spec_loc(spec), expected, value_type))
                 except EmptyArrayError:
                     # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                     pass
-            shape = get_data_shape(value)
-            if not check_shape(spec.shape, shape):
-                if shape is None:
-                    ret.append(ExpectedArrayError(self.get_spec_loc(self.spec), self.spec.shape, str(value)))
-                else:
-                    ret.append(ShapeError(self.get_spec_loc(spec), spec.shape, shape))
+            else:
+                target_spec = self.vmap.namespace.catalog.get_spec(spec.dtype.target_type)
+                data_type = value.attributes.get(target_spec.type_key())
+                hierarchy = self.vmap.namespace.catalog.get_hierarchy(data_type)
+                if spec.dtype.target_type not in hierarchy:
+                    ret.append(IncorrectDataType(self.get_spec_loc(spec), spec.dtype.target_type, data_type))
+
+        else:
+            try:
+                dtype, string_format = get_type(value)
+
+                if not check_type(spec.dtype, dtype, string_format):
+                    ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
+            except EmptyArrayError:
+                # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
+                pass
+            
+        shape = get_data_shape(value)
+        if not check_shape(spec.shape, shape):
+            if shape is None:
+                ret.append(ExpectedArrayError(self.get_spec_loc(self.spec), self.spec.shape, str(value)))
+            else:
+                ret.append(ShapeError(self.get_spec_loc(spec), spec.shape, shape))
         return ret
 
 
@@ -449,7 +442,6 @@ class BaseStorageValidator(Validator):
                 ret.extend(errors)
         return ret
 
-
 class DatasetValidator(BaseStorageValidator):
     '''A class for validating DatasetBuilders against DatasetSpecs'''
 
@@ -460,31 +452,15 @@ class DatasetValidator(BaseStorageValidator):
 
     def _validate_isodatetime_timezone(self, data, builder, ret):
         """Helper to validate timezone presence in isodatetime fields for datasets."""
-        if isinstance(data, (list, tuple, np.ndarray)):
-            if isinstance(data, np.ndarray):
-                iterator = [data.item()] if data.ndim == 0 else data.flat
-            else:
-                iterator = iter(data)
-
-            for v in iterator:
-                if isinstance(v, str) and not has_timezone(v):
-                    ret.append(
-                        Error(
-                            self.get_spec_loc(self.spec),
-                            "Datetime is missing required timezone information.",
-                            location=self.get_builder_loc(builder)
-                        )
-                    )
-                    break
-        elif isinstance(data, str):
-            if not has_timezone(data):
-                ret.append(
-                    Error(
-                        self.get_spec_loc(self.spec),
-                        "Datetime is missing required timezone information.",
-                        location=self.get_builder_loc(builder)
-                    )
+        # This calls the utility function you added to BaseStorageValidator
+        if _is_missing_timezone(data):
+            ret.append(
+                Error(
+                    self.get_spec_loc(self.spec),
+                    "Datetime is missing required timezone information.",
+                    location=self.get_builder_loc(builder)
                 )
+            )
 
     @docval({"name": "builder", "type": DatasetBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
@@ -811,3 +787,17 @@ class SpecMatcher:
             return False
 
         return list(filter(is_unsatisfied, candidates))
+
+def _is_missing_timezone(data):
+        """Utility to check if isodatetime data is missing timezone info."""
+        if isinstance(data, (list, tuple, np.ndarray)):
+            # Flatten array/iterator for check
+            iterator = [data.item()] if isinstance(data, np.ndarray) and data.ndim == 0 else \
+                       (data.flat if isinstance(data, np.ndarray) else iter(data))
+            for v in iterator:
+                if isinstance(v, str) and not has_timezone(v):
+                    return True  # Found one missing a TZ
+        elif isinstance(data, str):
+            if not has_timezone(data):
+                return True  # Single string is missing a TZ
+        return False
