@@ -111,7 +111,7 @@ def has_timezone(data):
     if "T" not in s:
         return False
 
-     # Check for valid timezone offset: +HH:MM or -HH:MM at the end
+    # Check for valid timezone offset: +HH:MM or -HH:MM at the end
     if re.search(r"[+-][0-9]{2}:[0-9]{2}$", s):
         return True
 
