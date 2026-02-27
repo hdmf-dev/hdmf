@@ -36,6 +36,9 @@
 - Added warning when `data_type_def` and `data_type_inc` are the same in a spec. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
 - Added abstract methods `HDMFIO.load_namespaces` and `HDMFIO.load_namespaces_io`. @rly [#1299](https://github.com/hdmf-dev/hdmf/pull/1299)
 
+### Enhancements
+- Reduced memory allocations in `DynamicTable.add_column(..., index=True)` ragged column flattening by using `np.concatenate` instead of `list(itertools.chain.from_iterable(...))` when all entries are compatible numpy arrays. @h-mayorquin [#1403](https://github.com/hdmf-dev/hdmf/pull/1403)
+
 ### Fixed
 - Fixed `VectorData.extend()` silently corrupting 1D numpy arrays by reshaping them into 2D matrices. Replaced `np.vstack` with `np.concatenate` in `extend_data`. @h-mayorquin [#1405](https://github.com/hdmf-dev/hdmf/pull/1405)
 - Fixed a broken test and refactored `VectorIndex.get`. @rly, @mavaylon1 [#1293](https://github.com/hdmf-dev/hdmf/pull/1293)
