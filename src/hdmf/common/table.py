@@ -21,6 +21,9 @@ from ..term_set import TermSetWrapper
 
 def _flatten_one_ragged_level(data):
     """Flatten one ragged nesting level with a fast path for numpy arrays."""
+    if len(data) == 0:
+        return []
+
     all_entries_are_numpy_arrays = all(isinstance(value, np.ndarray) for value in data)
     if all_entries_are_numpy_arrays:
         return np.concatenate(data)
