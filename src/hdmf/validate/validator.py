@@ -90,31 +90,17 @@ def get_string_format(data):
     return None
 
 def has_timezone(data):
-    """Return True if ISO datetime string contains timezone info.
-
-    Handles scalar strings or single-element arrays/lists. Returns False
-    for strings without a time component.
-    """
-    # If input is array-like, validate only first element
-    if isinstance(data, (list, tuple)):
-        data = data[0]
-    elif hasattr(data, "shape") and len(data) == 1:
-        data = data.item()
-
+    """Check if a scalar ISO datetime string includes timezone information."""
     s = pystr(data)
-
-
     if s.endswith("Z"):
         return True
-
     # Timezone offsets only valid if there is a time component
     if "T" not in s:
         return False
-
-    # Check for valid timezone offset: +HH:MM or -HH:MM at the end
-    if re.search(r"[+-][0-9]{2}:[0-9]{2}$", s):
+    # Check for a '+' offset or a '-' offset that appears after the 'T'
+    # (to avoid confusing a '-' in the date with a '-' for the timezone)
+    if "+" in s or (s.rfind("-") > s.find("T")):
         return True
-
     return False
 
 class EmptyArrayError(Exception):
@@ -368,13 +354,6 @@ class AttributeValidator(Validator):
         
         if spec.required and value is None:
             ret.append(MissingError(self.get_spec_loc(spec)))
-        elif spec.dtype == "isodatetime" and _is_missing_timezone(value):
-            ret.append(
-                Error(
-                    self.get_spec_loc(spec),
-                    "Datetime is missing required timezone information.",
-                )
-            )
         elif spec.dtype is None:
             ret.append(Error(self.get_spec_loc(spec)))
         elif isinstance(spec.dtype, RefSpec):
@@ -396,6 +375,14 @@ class AttributeValidator(Validator):
         else:
             try:
                 dtype, string_format = get_type(value)
+
+                if spec.dtype == "isodatetime" and string_format == "isodatetime" and _is_missing_timezone(value):
+                    ret.append(
+                        Error(
+                            self.get_spec_loc(spec),
+                            "Datetime is missing required timezone information.",
+                        )
+                    )
 
                 if not check_type(spec.dtype, dtype, string_format):
                     ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
@@ -450,18 +437,6 @@ class DatasetValidator(BaseStorageValidator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def _validate_isodatetime_timezone(self, data, builder, ret):
-        """Helper to validate timezone presence in isodatetime fields for datasets."""
-        # This calls the utility function you added to BaseStorageValidator
-        if _is_missing_timezone(data):
-            ret.append(
-                Error(
-                    self.get_spec_loc(self.spec),
-                    "Datetime is missing required timezone information.",
-                    location=self.get_builder_loc(builder)
-                )
-            )
-
     @docval({"name": "builder", "type": DatasetBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):
@@ -471,8 +446,14 @@ class DatasetValidator(BaseStorageValidator):
         if self.spec.dtype is not None:
             try:
                 dtype, string_format = get_type(data, builder.dtype)
-                if self.spec.dtype == "isodatetime" and string_format == "isodatetime":
-                    self._validate_isodatetime_timezone(data, builder, ret)
+                if self.spec.dtype == "isodatetime" and string_format == "isodatetime" and _is_missing_timezone(data):
+                    ret.append(
+                        Error(
+                            self.get_spec_loc(self.spec),
+                            "Datetime is missing required timezone information.",
+                            location=self.get_builder_loc(builder)
+                        )
+                    )
 
                 if not check_type(self.spec.dtype, dtype, string_format):
                     if isinstance(self.spec.dtype, RefSpec):
@@ -789,15 +770,26 @@ class SpecMatcher:
         return list(filter(is_unsatisfied, candidates))
 
 def _is_missing_timezone(data):
-        """Utility to check if isodatetime data is missing timezone info."""
-        if isinstance(data, (list, tuple, np.ndarray)):
-            # Flatten array/iterator for check
-            iterator = [data.item()] if isinstance(data, np.ndarray) and data.ndim == 0 else \
-                       (data.flat if isinstance(data, np.ndarray) else iter(data))
-            for v in iterator:
-                if isinstance(v, str) and not has_timezone(v):
-                    return True  # Found one missing a TZ
-        elif isinstance(data, str):
-            if not has_timezone(data):
-                return True  # Single string is missing a TZ
+        """Utility to check if isodatetime data is missing timezone info.
+        Supports scalars, multi-dimensional numpy arrays, and nested lists/tuples.
+        """
+        # 1. Handle single strings/bytes (Scalars)
+        if isinstance(data, (str, bytes)):
+            return not has_timezone(data)
+        
+        # 2. Handle Numpy arrays of any dimension (1D, 2D, 3D+)
+        if isinstance(data, np.ndarray):
+            # np.nditer efficiently visits every single element regardless of shape
+            for x in np.nditer(data, flags=['refs_ok', 'multi_index']):
+                # x.item() converts the numpy scalar back to a python string
+                if not has_timezone(x.item()):
+                    return True
+                
+        # 3. Handle nested Python lists or tuples
+        elif isinstance(data, (list, tuple)):
+            for item in data:
+                # Recursively call this function to handle nested levels
+                if _is_missing_timezone(item):
+                    return True
+                
         return False
