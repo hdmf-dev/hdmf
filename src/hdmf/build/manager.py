@@ -826,22 +826,22 @@ class TypeMap:
         spec = self.__ns_catalog.get_spec(namespace, data_type)  # make sure the spec exists
         self.__ns_dt_to_container_cls.setdefault(namespace, dict())
         previous_cls = self.__ns_dt_to_container_cls[namespace].get(data_type)
-        # set or replace mapping in ns_dt_to_container_cls
         self.__ns_dt_to_container_cls[namespace][data_type] = container_cls
-        if previous_cls is not None:
-            # NOTE: Removing previous_cls from container_cls_to_ns_dt but previous_cls may still
-            # exist in ns_dt_to_container_cls if it was a TypeSource registered for multiple namespaces.
-            self.__container_cls_to_ns_dt.pop(previous_cls, None)
-        # Keep the first registration: base namespaces are always loaded before extensions
-        # (guaranteed by the topological sort in NamespaceCatalog._order_deps), so the first
-        # entry is the defining namespace. When an extension calls include_namespace("core"),
-        # every core type gets re-registered under the extension namespace; without this guard,
-        # the reverse map would point core types like NWBFile to the extension instead of "core".
+        # Remove the previous reverse-map entry only if it belongs to this (namespace, data_type).
+        # A class can appear in multiple namespaces' forward maps (e.g. via include_namespace),
+        # so we must not remove an entry that belongs to a different namespace.
+        if previous_cls is not None and self.__container_cls_to_ns_dt.get(previous_cls) == (namespace, data_type):
+            self.__container_cls_to_ns_dt.pop(previous_cls)
+        # Only set the reverse map and class attributes on first registration. Base namespaces
+        # are loaded before extensions (topological sort in NamespaceCatalog._order_deps), so
+        # the first entry is the defining namespace. Extensions that include a base namespace
+        # re-register its types; this guard keeps the reverse map and class attributes pointing
+        # to the original namespace.
         if container_cls not in self.__container_cls_to_ns_dt:
             self.__container_cls_to_ns_dt[container_cls] = (namespace, data_type)
-        if not isinstance(container_cls, TypeSource):
-            setattr(container_cls, spec.type_key(), data_type)
-            setattr(container_cls, 'namespace', namespace)
+            if not isinstance(container_cls, TypeSource):
+                setattr(container_cls, spec.type_key(), data_type)
+                setattr(container_cls, 'namespace', namespace)
 
     @docval({"name": "container_cls", "type": type,
              "doc": "the AbstractContainer class for which the given ObjectMapper class gets used for"},
