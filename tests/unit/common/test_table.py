@@ -577,6 +577,19 @@ class TestDynamicTable(TestCase):
         np.testing.assert_array_equal(vector_data.data, expected_data)
         self.assertListEqual(table.qux_index.data, [3, 7])
 
+    def test_add_column_auto_index_with_empty_sub_arrays(self):
+        """Regression: add_column with index=2 handles rows containing empty sub-arrays.
+
+        When index > 1, the first flatten can produce an empty list (e.g., [[], []] flattens to []).
+        The second flatten iteration must handle that empty input without raising.
+        """
+        table = self.with_spec()
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        data = [[], []]
+        table.add_column(name='qux', description='qux column', data=data, index=2)
+        self.assertListEqual(table['qux'][:], [[], []])
+
     def test_add_column_auto_multi_index_int(self):
         """
         Add a column as a list of lists of lists after we have already added data so that we need to create a
