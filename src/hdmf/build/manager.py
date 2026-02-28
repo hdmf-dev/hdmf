@@ -783,7 +783,7 @@ class TypeMap:
              'doc': 'the namespace to get the container classes for', 'default': None})
     def get_container_classes(self, **kwargs):
         namespace = getargs('namespace', kwargs)
-        ret = self.__container_cls_to_ns_dt.keys()
+        ret = (k for k in self.__container_cls_to_ns_dt if not isinstance(k, TypeSource))
         if namespace is not None:
             ret = filter(lambda x: self.__container_cls_to_ns_dt[x][0] == namespace, ret)
         return list(ret)
