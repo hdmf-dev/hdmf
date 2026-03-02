@@ -1742,7 +1742,7 @@ class TestISODateTimeTimezone(ValidatorTestBase):
                 ]
             ),
         )
-    
+
     def check_iso(self, data, is_attr=False):
         """Helper to build the group and run validation for either attribute or dataset."""
         if is_attr:
@@ -1768,7 +1768,7 @@ class TestISODateTimeTimezone(ValidatorTestBase):
         for is_attr in [True, False]:
             with self.subTest(is_attr=is_attr):
                 result = self.check_iso('2026-02-12T10:30:00', is_attr=is_attr)
-                
+
                 self.assertEqual(len(result), 1)
                 self.assertIsInstance(result[0], Error)
                 self.assertTrue(any("timezone" in str(e).lower() for e in result))
@@ -1797,7 +1797,7 @@ class TestISODateTimeTimezone(ValidatorTestBase):
                 self.assertEqual(len(result), 0)
 
     def test_dataset_isodatetime_with_datetime_objects(self):
-        # NOTE: In practice, builders should never contain isodatetime objects, 
+        # NOTE: In practice, builders should never contain isodatetime objects,
         # but we test this just in case.
         data = [datetime(2026, 2, 12, 10, 30), datetime(2026, 2, 12, 12, 0)]
         for is_attr in [True, False]:
