@@ -42,6 +42,7 @@
 ### Fixed
 - Fixed `register_container_type` overwriting the reverse class-to-namespace map when an extension calls `include_namespace("core")`, which caused core types to be stamped with the extension's namespace. @h-mayorquin, @rly [#1407](https://github.com/hdmf-dev/hdmf/pull/1407)
 - Fixed `VectorData.extend()` silently corrupting 1D numpy arrays by reshaping them into 2D matrices. Replaced `np.vstack` with `np.concatenate` in `extend_data`. @h-mayorquin [#1405](https://github.com/hdmf-dev/hdmf/pull/1405)
+- Fixed validation of Python native `float` and `int` values against `float64` and `int64` specs. Python `float` is 64-bit but was mapped to `float32`, and Python `int` is 64-bit (or larger) but was mapped to `int32`. @rly [#1410](https://github.com/hdmf-dev/hdmf/pull/1410)
 - Fixed a broken test and refactored `VectorIndex.get`. @rly, @mavaylon1 [#1293](https://github.com/hdmf-dev/hdmf/pull/1293)
 - Fixed missing timezone validation for `isodatetime` values in `AttributeSpec` and `DatasetSpec`. @sejalpunwatkar [#1399](https://github.com/hdmf-dev/hdmf/pull/1399)
 

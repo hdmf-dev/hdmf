@@ -509,6 +509,46 @@ class TestDtypeValidation(TestCase):
         results = self.vmap.validate(bar_builder)
         self.assertEqual(len(results), 0)
 
+    def test_python_float_for_float64(self):
+        """Test that validator allows Python float data where float64 is specified."""
+        self.set_up_spec('float64')
+        value = 1.0
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_python_int_for_int64(self):
+        """Test that validator allows Python int data where int64 is specified."""
+        self.set_up_spec('int64')
+        value = 1
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_python_float_for_float32(self):
+        """Test that validator allows Python float data where float (float32) is specified."""
+        self.set_up_spec('float')
+        value = 1.0
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_python_int_for_int32(self):
+        """Test that validator allows Python int data where int (int32) is specified."""
+        self.set_up_spec('int')
+        value = 1
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
     def test_scalar_compound_dtype(self):
         """Test that validator allows scalar compound dtype data where a compound dtype is specified."""
         spec_catalog = SpecCatalog()
