@@ -70,11 +70,11 @@ test = [
 
 # documentation dependencies
 docs = [
-    "matplotlib",
+    "matplotlib>=3.6",
     "sphinx>=4",  # improved support for docutils>=0.17
     "sphinx_rtd_theme>=1",  # <1 does not work with docutils>=0.17
-    "sphinx-gallery",
-    "sphinx-copybutton",
+    "sphinx-gallery>=0.16",
+    "sphinx-copybutton>=0.5",
 ]
 
 [project.urls]
