@@ -90,6 +90,50 @@ def get_string_format(data):
     return None
 
 
+def has_timezone(data: str) -> bool:
+    """Check if a scalar ISO datetime string includes timezone information."""
+    s = pystr(data)
+    if s.endswith("Z"):
+        return True
+    # Timezone offsets only valid if there is a time component
+    if "T" not in s:
+        return False
+    # Check for a '+' offset or a '-' offset that appears after the 'T'
+    # (to avoid confusing a '-' in the date with a '-' for the timezone)
+    if "+" in s or (s.rfind("-") > s.find("T")):
+        return True
+    return False
+
+
+def _is_missing_timezone(data: str | bytes | np.ndarray | list | tuple) -> bool:
+    """Utility to check if isodatetime data is missing timezone info.
+    Supports scalars, multi-dimensional numpy arrays, and nested lists/tuples.
+    isodatetime objects are not supported. The build process should always convert
+    isodatetime objects to strings/bytes before they reach the builder.
+    """
+    # 1. Handle single strings/bytes (Scalars)
+    if isinstance(data, (str, bytes)):
+        return not has_timezone(data)
+
+    # 2. Handle Numpy arrays of any dimension (1D, 2D, 3D+)
+    if isinstance(data, np.ndarray):
+        # np.nditer efficiently visits every single element regardless of shape
+        for x in np.nditer(data, flags=['refs_ok', 'multi_index']):
+            # x.item() converts the numpy scalar back to a python string
+            val = x.item()
+            if isinstance(val, (str, bytes)) and not has_timezone(val):
+                return True
+
+    # 3. Handle nested Python lists or tuples
+    elif isinstance(data, (list, tuple)):
+        for item in data:
+            # Recursively call this function to handle nested levels
+            if _is_missing_timezone(item):
+                return True
+
+    return False
+
+
 class EmptyArrayError(Exception):
     pass
 
@@ -119,7 +163,6 @@ def _get_type_from_dtype_attr(data: Any, builder_dtype: list | None) -> tuple[st
             return "utf", None
         # Undetermined variable length data type
         raise EmptyArrayError()  # pragma: no cover
-
     # Handle object dtype (zarr style variable-length strings)
     if data.dtype.kind == 'O':
         if len(data) > 0:
@@ -147,7 +190,10 @@ def get_type(data, builder_dtype=None):
     # Numpy nd-array data
     elif isinstance(data, np.ndarray) and len(data.dtype) <= 1:
         if data.size > 0:
-            return get_type(data[0], builder_dtype)
+            if data.ndim == 0:
+                return get_type(data.item(), builder_dtype)
+            else:
+                return get_type(data[0], builder_dtype)
         raise EmptyArrayError()
     # Numpy bool data
     elif isinstance(data, np.bool_):
@@ -337,6 +383,7 @@ class AttributeValidator(Validator):
         value = getargs('value', kwargs)
         ret = list()
         spec = self.spec
+
         if spec.required and value is None:
             ret.append(MissingError(self.get_spec_loc(spec)))
         else:
@@ -357,20 +404,32 @@ class AttributeValidator(Validator):
                     hierarchy = self.vmap.namespace.catalog.get_hierarchy(data_type)
                     if spec.dtype.target_type not in hierarchy:
                         ret.append(IncorrectDataType(self.get_spec_loc(spec), spec.dtype.target_type, data_type))
+
             else:
                 try:
                     dtype, string_format = get_type(value)
+
+                    if spec.dtype == "isodatetime" and string_format == "isodatetime" and _is_missing_timezone(value):
+                        ret.append(
+                            Error(
+                                self.get_spec_loc(spec),
+                                "Datetime is missing required timezone information.",
+                            )
+                        )
+
                     if not check_type(spec.dtype, dtype, string_format):
                         ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
                 except EmptyArrayError:
                     # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                     pass
+
             shape = get_data_shape(value)
             if not check_shape(spec.shape, shape):
                 if shape is None:
                     ret.append(ExpectedArrayError(self.get_spec_loc(self.spec), self.spec.shape, str(value)))
                 else:
                     ret.append(ShapeError(self.get_spec_loc(spec), spec.shape, shape))
+
         return ret
 
 
@@ -422,6 +481,15 @@ class DatasetValidator(BaseStorageValidator):
         if self.spec.dtype is not None:
             try:
                 dtype, string_format = get_type(data, builder.dtype)
+                if self.spec.dtype == "isodatetime" and string_format == "isodatetime" and _is_missing_timezone(data):
+                    ret.append(
+                        Error(
+                            self.get_spec_loc(self.spec),
+                            "Datetime is missing required timezone information.",
+                            location=self.get_builder_loc(builder)
+                        )
+                    )
+
                 if not check_type(self.spec.dtype, dtype, string_format):
                     if isinstance(self.spec.dtype, RefSpec):
                         expected = f'{self.spec.dtype.reftype} reference'
