@@ -19,6 +19,18 @@ from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPosition
 from ..term_set import TermSetWrapper
 
 
+def _flatten_one_ragged_level(data):
+    """Flatten one ragged nesting level with a fast path for numpy arrays."""
+    if len(data) == 0:
+        return []
+
+    all_entries_are_numpy_arrays = all(isinstance(value, np.ndarray) for value in data)
+    if all_entries_are_numpy_arrays:
+        return np.concatenate(data)
+
+    return list(itertools.chain.from_iterable(data))
+
+
 @register_class('VectorData')
 class VectorData(Data):
     """
@@ -983,7 +995,7 @@ class DynamicTable(Container):
                     except TypeError as e:
                         raise ValueError("Cannot automatically construct VectorIndex for nested array. "
                                          "Invalid data array element found.") from e
-                    flatten_data = list(itertools.chain.from_iterable(flatten_data))
+                    flatten_data = _flatten_one_ragged_level(flatten_data)
                 # if our data still is an array (e.g., a list or numpy array) then warn that the index parameter
                 # may be incorrect.
                 if len(flatten_data) > 0 and isinstance(flatten_data[0], (np.ndarray, list, tuple)):
