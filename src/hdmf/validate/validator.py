@@ -429,6 +429,7 @@ class AttributeValidator(Validator):
                     ret.append(ExpectedArrayError(self.get_spec_loc(self.spec), self.spec.shape, str(value)))
                 else:
                     ret.append(ShapeError(self.get_spec_loc(spec), spec.shape, shape))
+
         return ret
 
 
@@ -461,6 +462,7 @@ class BaseStorageValidator(Validator):
                     err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
                 ret.extend(errors)
         return ret
+
 
 class DatasetValidator(BaseStorageValidator):
     '''A class for validating DatasetBuilders against DatasetSpecs'''
