@@ -89,7 +89,8 @@ def get_string_format(data):
         pass
     return None
 
-def has_timezone(data):
+
+def has_timezone(data: str) -> bool:
     """Check if a scalar ISO datetime string includes timezone information."""
     s = pystr(data)
     if s.endswith("Z"):
@@ -103,8 +104,39 @@ def has_timezone(data):
         return True
     return False
 
+
+def _is_missing_timezone(data: str | bytes | np.ndarray | list | tuple) -> bool:
+    """Utility to check if isodatetime data is missing timezone info.
+    Supports scalars, multi-dimensional numpy arrays, and nested lists/tuples.
+    isodatetime objects are not supported. The build process should always convert
+    isodatetime objects to strings/bytes before they reach the builder.
+    """
+    # 1. Handle single strings/bytes (Scalars)
+    if isinstance(data, (str, bytes)):
+        return not has_timezone(data)
+
+    # 2. Handle Numpy arrays of any dimension (1D, 2D, 3D+)
+    if isinstance(data, np.ndarray):
+        # np.nditer efficiently visits every single element regardless of shape
+        for x in np.nditer(data, flags=['refs_ok', 'multi_index']):
+            # x.item() converts the numpy scalar back to a python string
+            val = x.item()
+            if isinstance(val, (str, bytes)) and not has_timezone(val):
+                return True
+
+    # 3. Handle nested Python lists or tuples
+    elif isinstance(data, (list, tuple)):
+        for item in data:
+            # Recursively call this function to handle nested levels
+            if _is_missing_timezone(item):
+                return True
+
+    return False
+
+
 class EmptyArrayError(Exception):
     pass
+
 
 def _get_type_compound_dtype(data: Any, builder_dtype: list) -> tuple[list, list]:
     """Helper function to get type information for compound dtypes."""
@@ -351,7 +383,7 @@ class AttributeValidator(Validator):
         value = getargs('value', kwargs)
         ret = list()
         spec = self.spec
-        
+
         if spec.required and value is None:
             ret.append(MissingError(self.get_spec_loc(spec)))
         elif spec.dtype is None:
@@ -389,7 +421,7 @@ class AttributeValidator(Validator):
             except EmptyArrayError:
                 # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                 pass
-            
+
         shape = get_data_shape(value)
         if not check_shape(spec.shape, shape):
             if shape is None:
@@ -768,28 +800,3 @@ class SpecMatcher:
             return False
 
         return list(filter(is_unsatisfied, candidates))
-
-def _is_missing_timezone(data):
-        """Utility to check if isodatetime data is missing timezone info.
-        Supports scalars, multi-dimensional numpy arrays, and nested lists/tuples.
-        """
-        # 1. Handle single strings/bytes (Scalars)
-        if isinstance(data, (str, bytes)):
-            return not has_timezone(data)
-        
-        # 2. Handle Numpy arrays of any dimension (1D, 2D, 3D+)
-        if isinstance(data, np.ndarray):
-            # np.nditer efficiently visits every single element regardless of shape
-            for x in np.nditer(data, flags=['refs_ok', 'multi_index']):
-                # x.item() converts the numpy scalar back to a python string
-                if not has_timezone(x.item()):
-                    return True
-                
-        # 3. Handle nested Python lists or tuples
-        elif isinstance(data, (list, tuple)):
-            for item in data:
-                # Recursively call this function to handle nested levels
-                if _is_missing_timezone(item):
-                    return True
-                
-        return False
