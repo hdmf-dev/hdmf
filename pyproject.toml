@@ -29,21 +29,16 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
-# make sure to update test-min-deps dependencies below when these lower bounds change
 dependencies = [
-    "h5py>=3.6.0; python_version < '3.12'",
-    "h5py>=3.10.0; python_version >= '3.12'",
+    "h5py>=3.6.0",
     "jsonschema>=3.2.0",
-    "numpy>=1.22.0; python_version < '3.12'",
-    "numpy>=1.26.0; python_version >= '3.12'",
-    "pandas>=1.4.0,<3; python_version < '3.12'",
-    "pandas>=2.0.0,<3; python_version >= '3.12'",
+    "numpy>=1.22.0",
+    "pandas>=1.4.0,<3",
     "ruamel.yaml>=0.16",
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
-# make sure to update test-min-deps dependencies below when these lower bounds change
 tqdm = ["tqdm>=4.41.0"]
 zarr = [
     "zarr>=2.12.0,<3",
@@ -80,19 +75,6 @@ docs = [
     "sphinx_rtd_theme>=1",  # <1 does not work with docutils>=0.17
     "sphinx-gallery",
     "sphinx-copybutton",
-]
-
-# minimum requirements of project dependencies for testing (see .github/workflows/run_all_tests.yml)
-test-min-deps = [
-    "h5py==3.6.0; python_version == '3.10'",
-    "jsonschema==3.2.0; python_version == '3.10'",
-    "numpy==1.22.0; python_version == '3.10'",
-    "pandas==1.4.0; python_version == '3.10'",
-    "ruamel.yaml==0.16.0; python_version == '3.10'",
-    "scipy==1.7.2; python_version == '3.10'",
-    "tqdm==4.41.0; python_version == '3.10'",
-    "zarr==2.12.0; python_version == '3.10'",
-    {include-group = "test"},
 ]
 
 [project.urls]
@@ -162,18 +144,6 @@ omit = [
 # preview = true
 # exclude = ".git|.mypy_cache|.tox|.venv|venv|.ipynb_checkpoints|_build/|dist/|__pypackages__|.ipynb"
 # force-exclude = "src/hdmf/common/hdmf-common-schema|docs/gallery"
-
-[tool.uv]
-# This section indicates to uv that test-min-deps and the optional extras
-# are never installed together, so it resolves them in separate forks.
-conflicts = [
-    # all includes zarr and termset, which both conflict with test-min-deps
-    [{group = "test-min-deps"}, {extra = "all"}],
-    # hdmf-zarr requires numpy>=1.24.0, test-min-deps pins numpy==1.22.0
-    [{group = "test-min-deps"}, {extra = "zarr"}],
-    # linkml (via termset) requires jsonschema>=4.0.0, test-min-deps pins jsonschema==3.2.0
-    [{group = "test-min-deps"}, {extra = "termset"}],
-]
 
 [tool.ruff]
 lint.select = ["E", "F", "T100", "T201", "T203", "C901"]
