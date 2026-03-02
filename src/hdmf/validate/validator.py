@@ -199,6 +199,10 @@ def get_type(data, builder_dtype=None):
     elif isinstance(data, np.bool_):
         return 'bool', None
     if not hasattr(data, '__len__'):
+        if type(data) is float:  # Python float is 64-bit
+            return 'float64', None
+        if type(data) is int:  # Python int is 64-bit (or larger)
+            return 'int64', None
         return type(data).__name__, None
     # Case for h5py.Dataset, zarr.Array, and other I/O specific array types
     # Compound dtype
