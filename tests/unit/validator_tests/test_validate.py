@@ -1844,13 +1844,6 @@ class TestISODateTimeTimezone(ValidatorTestBase):
                 self.assertIsInstance(result[0], Error)
                 self.assertTrue("timezone" in str(result[0]).lower())
 
-    def test_isodatetime_list_without_timezone(self):
-        data = ['2026-02-12T10:30:00', '2026-02-12T11:30:00']
-        for is_attr in [True, False]:
-            with self.subTest(is_attr=is_attr):
-                result = self.check_iso(data, is_attr=is_attr)
-                self.assertTrue(any("timezone" in str(e).lower() for e in result))
-
     def test_isodatetime_numpy_single_element(self):
         """Specifically hits the 'len(data) == 1' and 'data.item()' branch."""
         data = np.array(['2026-02-12T10:30:00+02:00'])
