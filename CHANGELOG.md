@@ -13,6 +13,7 @@
 - Deprecated `BaseStorageSpec.add_attribute`, `GroupSpec.add_group`, `GroupSpec.add_dataset`, and `GroupSpec.add_link`. Use `set_attribute`, `set_group`, `set_dataset`, and `set_link` instead. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 - Deprecated unused `BaseStorageSpec.get_data_type_spec` and `BaseStorageSpec.get_namespace_spec`. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 - Moved `test`, `docs`, and `min-reqs` from `[project.optional-dependencies]` to `[dependency-groups]` (PEP 735). `min-reqs` was renamed to `test-min-deps`. @rly [#1395](https://github.com/hdmf-dev/hdmf/pull/1395)
+- Removed `test-min-deps` dependency group and replaced it with `uv pip install --resolution lowest-direct` in tox, making the project compatible with uv. @h-mayorquin [#1408](https://github.com/hdmf-dev/hdmf/pull/1408)
 - Changed `get_data_shape` to check `shape` before `maxshape`, so that objects with both attributes (e.g., h5py datasets) return their actual shape rather than their maximum shape. @rly [#1180](https://github.com/hdmf-dev/hdmf/pull/1180)
 
 ### Removed
@@ -42,7 +43,9 @@
 ### Fixed
 - Fixed `register_container_type` overwriting the reverse class-to-namespace map when an extension calls `include_namespace("core")`, which caused core types to be stamped with the extension's namespace. @h-mayorquin, @rly [#1407](https://github.com/hdmf-dev/hdmf/pull/1407)
 - Fixed `VectorData.extend()` silently corrupting 1D numpy arrays by reshaping them into 2D matrices. Replaced `np.vstack` with `np.concatenate` in `extend_data`. @h-mayorquin [#1405](https://github.com/hdmf-dev/hdmf/pull/1405)
+- Fixed validation of Python native `float` and `int` values against `float64` and `int64` specs. Python `float` is 64-bit but was mapped to `float32`, and Python `int` is 64-bit (or larger) but was mapped to `int32`. @rly [#1410](https://github.com/hdmf-dev/hdmf/pull/1410)
 - Fixed a broken test and refactored `VectorIndex.get`. @rly, @mavaylon1 [#1293](https://github.com/hdmf-dev/hdmf/pull/1293)
+- Fixed missing timezone validation for `isodatetime` values in `AttributeSpec` and `DatasetSpec`. @sejalpunwatkar [#1399](https://github.com/hdmf-dev/hdmf/pull/1399)
 
 
 ## HDMF 4.3.1 (January 28, 2026)
