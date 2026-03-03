@@ -15,7 +15,8 @@ import itertools
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
-from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type, is_ragged, _is_collection, _get_length
+from ..utils import (docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type, is_ragged,
+                     _is_collection, _get_length)
 from ..term_set import TermSetWrapper
 
 
