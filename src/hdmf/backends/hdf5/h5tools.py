@@ -1400,9 +1400,9 @@ class HDF5IO(HDMFIO):
                   (name, parent.name, str(data_shape), str(dtype), str(io_settings), str(exc))
             raise Exception(msg) from exc
         # Write the data
-        if len(data) > dset.shape[0]:
+        if _get_length(data) > dset.shape[0]:
             new_shape = list(dset.shape)
-            new_shape[0] = len(data)
+            new_shape[0] = _get_length(data)
             dset.resize(new_shape)
         try:
             dset[:] = data
