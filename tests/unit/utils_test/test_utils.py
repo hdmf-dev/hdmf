@@ -5,7 +5,7 @@ import numpy as np
 from hdmf.container import Data
 from hdmf.data_utils import DataChunkIterator, DataIO
 from hdmf.testing import TestCase
-from hdmf.utils import get_data_shape, to_uint_array, is_newer_version, _is_collection, _first_dim_size
+from hdmf.utils import get_data_shape, to_uint_array, is_newer_version, _is_collection, _get_length
 
 
 class TestIsCollection(TestCase):
@@ -86,28 +86,28 @@ class TestIsCollection(TestCase):
 
 
 class TestGetLength(TestCase):
-    """Tests for _first_dim_size helper that gets first-dimension length."""
+    """Tests for _get_length helper that gets first-dimension length."""
 
     def test_list(self):
-        self.assertEqual(_first_dim_size([1, 2, 3]), 3)
+        self.assertEqual(_get_length([1, 2, 3]), 3)
 
     def test_empty_list(self):
-        self.assertEqual(_first_dim_size([]), 0)
+        self.assertEqual(_get_length([]), 0)
 
     def test_tuple(self):
-        self.assertEqual(_first_dim_size((1, 2)), 2)
+        self.assertEqual(_get_length((1, 2)), 2)
 
     def test_numpy_array(self):
-        self.assertEqual(_first_dim_size(np.array([1, 2, 3, 4])), 4)
+        self.assertEqual(_get_length(np.array([1, 2, 3, 4])), 4)
 
     def test_numpy_2d_array(self):
-        self.assertEqual(_first_dim_size(np.array([[1, 2], [3, 4], [5, 6]])), 3)
+        self.assertEqual(_get_length(np.array([[1, 2], [3, 4], [5, 6]])), 3)
 
     def test_shape_without_len(self):
         """Simulate zarr v3 array: has shape but no __len__."""
         class FakeArray:
             shape = (10, 5)
-        self.assertEqual(_first_dim_size(FakeArray()), 10)
+        self.assertEqual(_get_length(FakeArray()), 10)
 
 
 class TestGetDataShape(TestCase):

@@ -20,7 +20,7 @@ from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import (docval, getargs, popargs, get_data_shape, get_docval, StrDataset, is_zarr_array,
-                      get_basic_array_info, generate_array_html_repr, _is_collection, _first_dim_size)
+                      get_basic_array_info, generate_array_html_repr, _is_collection, _get_length)
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
@@ -810,7 +810,7 @@ class HDF5IO(HDMFIO):
                 return data.dtype.type
             return type(data)
         else:
-            if _first_dim_size(data) == 0:
+            if _get_length(data) == 0:
                 if hasattr(data, 'dtype'):
                     return data.dtype
                 else:

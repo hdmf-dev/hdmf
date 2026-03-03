@@ -13,7 +13,7 @@ from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
 from ..spec import SpecNamespace
 from ..spec.spec import BaseStorageSpec, DtypeHelper
-from ..utils import _is_collection, _first_dim_size
+from ..utils import _is_collection, _get_length
 from ..utils import docval, getargs, pystr, get_data_shape
 from ..query import ReferenceResolver
 
@@ -219,7 +219,7 @@ def get_type(data, builder_dtype=None):
         return _get_type_from_dtype_attr(data, builder_dtype)
 
     # If all else has failed, try to determine the datatype from the first element of the array
-    if _first_dim_size(data) > 0:
+    if _get_length(data) > 0:
         return get_type(data[0], builder_dtype)
     raise EmptyArrayError()
 
