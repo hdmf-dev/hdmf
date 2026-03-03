@@ -5,7 +5,109 @@ import numpy as np
 from hdmf.container import Data
 from hdmf.data_utils import DataChunkIterator, DataIO
 from hdmf.testing import TestCase
-from hdmf.utils import get_data_shape, to_uint_array, is_newer_version
+from hdmf.utils import get_data_shape, to_uint_array, is_newer_version, _is_collection, _get_length
+
+
+class TestIsCollection(TestCase):
+    """Tests for _is_collection helper that detects collections vs scalars."""
+
+    def test_numpy_1d_array(self):
+        self.assertTrue(_is_collection(np.array([1, 2, 3])))
+
+    def test_numpy_empty_array(self):
+        self.assertTrue(_is_collection(np.array([])))
+
+    def test_numpy_2d_array(self):
+        self.assertTrue(_is_collection(np.array([[1, 2], [3, 4]])))
+
+    def test_numpy_0d_array(self):
+        self.assertFalse(_is_collection(np.array(5)))
+
+    def test_numpy_scalar(self):
+        self.assertFalse(_is_collection(np.float64(3.14)))
+
+    def test_list(self):
+        self.assertTrue(_is_collection([1, 2, 3]))
+
+    def test_empty_list(self):
+        self.assertTrue(_is_collection([]))
+
+    def test_tuple(self):
+        self.assertTrue(_is_collection((1, 2, 3)))
+
+    def test_set(self):
+        self.assertTrue(_is_collection({1, 2, 3}))
+
+    def test_int(self):
+        self.assertFalse(_is_collection(42))
+
+    def test_float(self):
+        self.assertFalse(_is_collection(3.14))
+
+    def test_string(self):
+        self.assertFalse(_is_collection("hello"))
+
+    def test_bytes(self):
+        self.assertFalse(_is_collection(b"hello"))
+
+    def test_none(self):
+        self.assertFalse(_is_collection(None))
+
+    def test_bool(self):
+        self.assertFalse(_is_collection(True))
+
+    def test_ndim_without_len(self):
+        """Simulate zarr v3 array: has ndim and shape but no __len__."""
+        class FakeArray:
+            ndim = 2
+            shape = (10, 5)
+        self.assertTrue(_is_collection(FakeArray()))
+
+    def test_ndim_zero_without_len(self):
+        """Simulate 0-d array-like: has ndim=0 but no __len__."""
+        class FakeScalar:
+            ndim = 0
+            shape = ()
+        self.assertFalse(_is_collection(FakeScalar()))
+
+    def test_numpy_0d_array_not_collection(self):
+        """Regression: numpy 0-d ndarrays have __len__ but len() raises TypeError.
+
+        zarr v3 scalar indexing (e.g. zarr_array[0]) returns 0-d ndarrays.
+        The old hasattr(data, '__len__') check would incorrectly treat these
+        as collections, then crash on len(data).
+        """
+        zero_d = np.array(5.0)
+        self.assertTrue(hasattr(zero_d, '__len__'))  # confirms the old check would pass
+        with self.assertRaises(TypeError):
+            len(zero_d)  # confirms len() crashes
+        self.assertFalse(_is_collection(zero_d))  # our helper handles it correctly
+
+
+
+class TestGetLength(TestCase):
+    """Tests for _get_length helper that gets first-dimension length."""
+
+    def test_list(self):
+        self.assertEqual(_get_length([1, 2, 3]), 3)
+
+    def test_empty_list(self):
+        self.assertEqual(_get_length([]), 0)
+
+    def test_tuple(self):
+        self.assertEqual(_get_length((1, 2)), 2)
+
+    def test_numpy_array(self):
+        self.assertEqual(_get_length(np.array([1, 2, 3, 4])), 4)
+
+    def test_numpy_2d_array(self):
+        self.assertEqual(_get_length(np.array([[1, 2], [3, 4], [5, 6]])), 3)
+
+    def test_shape_without_len(self):
+        """Simulate zarr v3 array: has shape but no __len__."""
+        class FakeArray:
+            shape = (10, 5)
+        self.assertEqual(_get_length(FakeArray()), 10)
 
 
 class TestGetDataShape(TestCase):

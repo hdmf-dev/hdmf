@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 5.0.1 (Upcoming)
+
+### Enhancements
+- Replaced `hasattr(data, "__len__")` checks with `ndim`-based collection detection via new `_is_collection` and `_get_length` helpers in `hdmf.utils`. This fixes compatibility with array libraries that follow the Python array API standard (e.g., zarr v3), which provide `ndim` and `shape` but not `__len__`. @h-mayorquin [#1414](https://github.com/hdmf-dev/hdmf/pull/1414)
+
+
 ## HDMF 5.0.0 (March 2, 2026)
 
 ### Changed
