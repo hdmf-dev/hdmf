@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 5.0.0 (Upcoming)
+## HDMF 5.0.0 (March 2, 2026)
 
 ### Changed
 - Refactored `TypeMap.load_namespaces` to register `TypeSource` placeholders for both source types and dependent types, enabling lazy class generation. Added `NamespaceCatalog.get_source_types` to get source types loaded for a namespace. Removed `TypeMap.container_types` property. Converted `TypeSource` to a frozen dataclass. @rly [#1372](https://github.com/hdmf-dev/hdmf/pull/1372)

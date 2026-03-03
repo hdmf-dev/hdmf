@@ -3646,7 +3646,7 @@ class TestWriteHDF5withZarrInput(TestCase):
 
     def test_roundtrip_basic(self):
         # Setup all the data we need
-        zarr.save(self.zarr_path, np.arange(50).reshape(5, 10))
+        zarr.save(self.zarr_path, np.arange(50))
         zarr_data = zarr.open(self.zarr_path, 'r')
         foo1 = Foo(name='foo1',
                    my_data=zarr_data,
@@ -3679,7 +3679,7 @@ class TestWriteHDF5withZarrInput(TestCase):
             self.assertListEqual([], read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
     def test_write_zarr_int32_dataset(self):
-        base_data = np.arange(50).reshape(5, 10).astype('int32')
+        base_data = np.arange(50).astype('int32')
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
@@ -3693,7 +3693,7 @@ class TestWriteHDF5withZarrInput(TestCase):
                              base_data.tolist())
 
     def test_write_zarr_float32_dataset(self):
-        base_data = np.arange(50).reshape(5, 10).astype('float32')
+        base_data = np.arange(50).astype('float32')
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
@@ -3823,7 +3823,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         np.testing.assert_array_equal(dset[:].astype(bytes), zarr_data[:])
 
     def test_write_zarr_dataset_compress_gzip(self):
-        base_data = np.arange(50).reshape(5, 10).astype('float32')
+        base_data = np.arange(50).astype('float32')
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         a = H5DataIO(zarr_data,

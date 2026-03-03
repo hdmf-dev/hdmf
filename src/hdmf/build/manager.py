@@ -463,7 +463,7 @@ class TypeMap:
 
     def copy_mappers(self, type_map):
         warnings.warn(
-            "copy_mappers is deprecated and will be removed in a future version. "
+            "copy_mappers is deprecated and will be removed in HDMF 6.0. "
             "Use merge instead with the argument ns_catalog=False to copy only mappers without namespaces.",
             DeprecationWarning,
         )
