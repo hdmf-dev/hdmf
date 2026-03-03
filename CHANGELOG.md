@@ -4,6 +4,7 @@
 
 ### Enhancements
 - Replaced `hasattr(data, "__len__")` checks with `ndim`-based collection detection via new `_is_collection` and `_get_length` helpers in `hdmf.utils`. This fixes compatibility with array libraries that follow the Python array API standard (e.g., zarr v3), which provide `ndim` and `shape` but not `__len__`. @h-mayorquin [#1414](https://github.com/hdmf-dev/hdmf/pull/1414)
+- Added `_unwrap_scalar` helper in `hdmf.utils` to convert 0-d ndarrays to numpy scalars via `.item()`. This fixes `isinstance` checks against Python scalar types that fail on 0-d ndarrays returned by array-API-conforming libraries (e.g., zarr v3 scalar indexing). @h-mayorquin [#1415](https://github.com/hdmf-dev/hdmf/pull/1415)
 
 
 ## HDMF 5.0.0 (March 2, 2026)

@@ -882,6 +882,18 @@ def _get_length(data):
     return len(data)
 
 
+def _unwrap_scalar(value):
+    """If value is a 0-d ndarray, extract the numpy scalar via .item().
+
+    Array-API-conforming libraries (e.g., zarr v3) return 0-d ndarrays from
+    scalar indexing instead of numpy scalars. This converts them so that
+    isinstance checks against Python/numpy scalar types work correctly.
+    """
+    if isinstance(value, np.ndarray) and value.ndim == 0:
+        return value.item()
+    return value
+
+
 def pystr(s):
     """
     Convert a string of characters to Python str object

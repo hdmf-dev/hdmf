@@ -5,7 +5,7 @@ import numpy as np
 from hdmf.container import Data
 from hdmf.data_utils import DataChunkIterator, DataIO
 from hdmf.testing import TestCase
-from hdmf.utils import get_data_shape, to_uint_array, is_newer_version, _is_collection, _get_length
+from hdmf.utils import get_data_shape, to_uint_array, is_newer_version, _is_collection, _get_length, _unwrap_scalar
 
 
 class TestIsCollection(TestCase):
@@ -108,6 +108,50 @@ class TestGetLength(TestCase):
         class FakeArray:
             shape = (10, 5)
         self.assertEqual(_get_length(FakeArray()), 10)
+
+
+class TestUnwrapScalar(TestCase):
+    """Tests for _unwrap_scalar helper that extracts numpy scalars from 0-d ndarrays.
+
+    The 0-d ndarray tests are the critical ones: numpy scalar indexing (array[0])
+    returns numpy scalars (e.g., numpy.float64), but array-API-conforming libraries
+    like zarr v3 return 0-d ndarrays instead. A 0-d ndarray is an ndarray with
+    shape=() and ndim=0 — it fails isinstance checks against Python scalar types
+    (int, float, bool) and type() returns numpy.ndarray rather than the element
+    dtype. _unwrap_scalar converts these to proper numpy scalars via .item().
+    """
+
+    def test_0_dimensional_float64_array(self):
+        result = _unwrap_scalar(np.asarray(3.14))
+        self.assertNotIsInstance(result, np.ndarray)
+        self.assertIsInstance(result, float)
+        self.assertEqual(result, 3.14)
+
+    def test_0_dimensional_int32_array(self):
+        result = _unwrap_scalar(np.asarray(42, dtype=np.int32))
+        self.assertNotIsInstance(result, np.ndarray)
+        self.assertIsInstance(result, int)
+        self.assertEqual(result, 42)
+
+    def test_0_dimensional_bool_array(self):
+        result = _unwrap_scalar(np.asarray(True))
+        self.assertNotIsInstance(result, np.ndarray)
+        self.assertIsInstance(result, bool)
+        self.assertTrue(result)
+
+    def test_python_int_passthrough(self):
+        self.assertEqual(_unwrap_scalar(5), 5)
+
+    def test_python_float_passthrough(self):
+        self.assertEqual(_unwrap_scalar(3.14), 3.14)
+
+    def test_python_str_passthrough(self):
+        self.assertEqual(_unwrap_scalar("hello"), "hello")
+
+    def test_1d_array_passthrough(self):
+        arr = np.array([1, 2, 3])
+        result = _unwrap_scalar(arr)
+        self.assertIs(result, arr)
 
 
 class TestGetDataShape(TestCase):
