@@ -830,7 +830,7 @@ def get_data_shape(data, strict_no_data_load=False):
     def __get_shape_helper(local_data):
         shape = list()
         if _is_collection(local_data):
-            length = _get_length(local_data)
+            length = _first_dim_size(local_data)
             shape.append(length)
             if length:
                 el = next(iter(local_data))
@@ -872,10 +872,11 @@ def _is_collection(data):
     return hasattr(data, "__len__")
 
 
-def _get_length(data):
-    """Get the length of the first dimension of a collection.
+def _first_dim_size(data):
+    """Get the size of the first dimension of a collection.
 
-    Uses shape[0] for array-like objects and len() for plain containers.
+    Returns shape[0] for array-like objects (including those without __len__,
+    such as zarr v3 arrays) and len() for plain containers.
     """
     if hasattr(data, "shape") and data.shape is not None:
         return data.shape[0]

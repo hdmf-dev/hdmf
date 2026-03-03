@@ -14,7 +14,7 @@ except ImportError:
 import h5py
 import numpy as np
 
-from .utils import docval, getargs, popargs, docval_macro, get_data_shape, _is_collection, _get_length
+from .utils import docval, getargs, popargs, docval_macro, get_data_shape, _is_collection, _first_dim_size
 
 def append_data(data, arg):
     from hdmf.backends.hdf5.h5_utils import HDMFDataset
@@ -740,7 +740,7 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 # possible. Otherwise, use None to represent an unlimited size
                 if _is_collection(self.data) and self.iter_axis == 0:
                     # special case of 1-D array
-                    self.__maxshape[0] = _get_length(self.data)
+                    self.__maxshape[0] = _first_dim_size(self.data)
                 else:
                     self.__maxshape[self.iter_axis] = self.data.shape[self.iter_axis]
             except AttributeError:  # from self.data.shape

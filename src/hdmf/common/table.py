@@ -16,7 +16,7 @@ from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..utils import (docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type, is_ragged,
-                     _is_collection, _get_length)
+                     _is_collection, _first_dim_size)
 from ..term_set import TermSetWrapper
 
 
@@ -295,7 +295,7 @@ class ElementIdentifiers(Data):
                 (hasattr(data, "data") and isinstance(data.data, AbstractDataChunkIterator))):
             if not np.issubdtype(data.dtype, np.integer):
                 raise ValueError("ElementIdentifiers must contain integers")
-        elif _is_collection(data) and _get_length(data):
+        elif _is_collection(data) and _first_dim_size(data):
             self._validate_new_data_element(data[0])
 
     def _validate_new_data_element(self, arg):
@@ -1466,7 +1466,7 @@ class DynamicTable(Container):
                 columns.append({'name': col_name,
                                 'description': column_descriptions.get(col_name, 'no description')})
                 if _is_collection(df[col_name].iloc[0]):
-                    lengths = [_get_length(x) for x in df[col_name]]
+                    lengths = [_first_dim_size(x) for x in df[col_name]]
                     if not lengths[1:] == lengths[:-1]:
                         columns[-1].update(index=True)
 
@@ -1782,7 +1782,7 @@ def _uint_precision(elements):
     """ Calculate the uint precision needed to encode a set of elements """
     n_elements = elements
     if _is_collection(elements):
-        n_elements = _get_length(elements)
+        n_elements = _first_dim_size(elements)
     return np.dtype('uint%d' % (8 * max(1, int((2 ** np.ceil((np.ceil(np.log2(n_elements)) - 8) / 8)))))).type
 
 
