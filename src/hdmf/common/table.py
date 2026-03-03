@@ -16,7 +16,7 @@ from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
 from ..utils import (docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type, is_ragged,
-                     _is_collection, _get_length)
+                     _is_collection, _get_length, _unwrap_scalar)
 from ..term_set import TermSetWrapper
 
 
@@ -299,6 +299,7 @@ class ElementIdentifiers(Data):
             self._validate_new_data_element(data[0])
 
     def _validate_new_data_element(self, arg):
+        arg = _unwrap_scalar(arg)
         if not check_type(arg, int):
             raise ValueError("ElementIdentifiers must contain integers")
         super()._validate_new_data_element(arg)
