@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 5.0.1 (Upcoming)
+
+### Fixed
+- Replaced undeclared `pyyaml` dependency with `ruamel.yaml` (a declared core dependency) in `test_common_io.py`. The test relied on PyYAML being transitively installed by pip's `h5py`, which is not the case in conda environments. @rly [#1418](https://github.com/hdmf-dev/hdmf/pull/1418)
+
 ## HDMF 5.0.0 (March 2, 2026)
 
 ### Changed
