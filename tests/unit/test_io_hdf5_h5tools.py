@@ -21,7 +21,7 @@ from hdmf.backends.hdf5.h5tools import HDF5IO, SPEC_LOC_ATTR, H5PY_3
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
-from hdmf.container import Container
+from hdmf.container import Container, HERDManager
 from hdmf import Data, docval
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError, append_data
 from hdmf.spec.catalog import SpecCatalog
@@ -203,6 +203,23 @@ class H5IOTest(TestCase):
         dset = self.f['test_dataset']
         for field in a.dtype.names:
             self.assertTrue(np.all(dset[field][:] == a[field]))
+
+    def test_write_dataset_list_single_field_compound_datatype(self):
+        """Test that a compound dtype with a single field can be written."""
+        a = np.array([('val1',), ('val2',)], dtype=[('key', 'O')])
+        dset_builder = DatasetBuilder(
+                    name='test_dataset',
+                    data=a.tolist(),
+                    attributes={},
+                    dtype=[
+                        DtypeSpec('key', doc='key', dtype='text'),
+                    ],
+                )
+        self.io.write_dataset(self.f, dset_builder)
+        dset = self.f['test_dataset']
+        self.assertEqual(dset.shape, (2,))
+        self.assertEqual(dset['key'][0].decode('utf-8'), 'val1')
+        self.assertEqual(dset['key'][1].decode('utf-8'), 'val2')
 
     def test_write_dataset_list_compress_gzip(self):
         a = H5DataIO(np.arange(30).reshape(5, 2, 3),
@@ -1186,6 +1203,74 @@ class TestHERDIO(TestCase):
             (0, read_foofile.object_id, 'FooFile', '', ''))
 
         self.remove_er_files()
+
+    def test_write_herd_as_child(self):
+        """Test writing and reading HERD as a child group of a container."""
+        from hdmf.common import get_type_map
+        from hdmf.utils import getargs
+
+        class SimpleFile(Container, HERDManager):
+            @docval({'name': 'external_resources', 'type': HERD, 'doc': 'HERD', 'default': None})
+            def __init__(self, **kwargs):
+                external_resources = getargs('external_resources', kwargs)
+                super().__init__(name='root')
+                self._herd = None
+                if external_resources is not None:
+                    self.external_resources = external_resources
+
+            @property
+            def external_resources(self):
+                return self._herd
+
+            @external_resources.setter
+            def external_resources(self, herd):
+                self._herd = herd
+                self._herd.parent = self
+
+        tm = get_type_map()
+        file_spec = GroupSpec(
+            'A simple file with HERD',
+            data_type_def='SimpleFile',
+            groups=[
+                GroupSpec(
+                    'external resources',
+                    name='external_resources',
+                    data_type_inc='HERD',
+                    quantity='?',
+                )
+            ],
+        )
+        tm.namespace_catalog.get_namespace('hdmf-common').catalog.register_spec(file_spec, 'test.yaml')
+        tm.register_container_type('hdmf-common', 'SimpleFile', SimpleFile)
+        manager = BuildManager(tm)
+
+        sf = SimpleFile()
+        data = Data(name='species', data=['Homo sapiens'])
+        data.parent = sf
+
+        herd = HERD()
+        sf.external_resources = herd
+        herd.add_ref(
+            file=sf,
+            container=data,
+            key='Homo sapiens',
+            entity_id='NCBI:9606',
+            entity_uri='https://example.com',
+        )
+
+        path = get_temp_filepath()
+        try:
+            with HDF5IO(path, manager=manager, mode='w') as io:
+                io.write(sf)
+
+            with HDF5IO(path, manager=manager, mode='r') as io:
+                read_sf = io.read()
+                self.assertIsInstance(read_sf.external_resources, HERD)
+                read_keys = read_sf.external_resources.keys[:]
+                self.assertEqual(read_keys.shape, (1,))
+                self.assertEqual(read_keys[0][0], 'Homo sapiens')
+        finally:
+            remove_test_file(path)
 
 
 class TestMultiWrite(TestCase):
