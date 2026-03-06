@@ -208,13 +208,13 @@ class H5IOTest(TestCase):
         """Test that a compound dtype with a single field can be written."""
         a = np.array([('val1',), ('val2',)], dtype=[('key', 'O')])
         dset_builder = DatasetBuilder(
-                    name='test_dataset',
-                    data=a.tolist(),
-                    attributes={},
-                    dtype=[
-                        DtypeSpec('key', doc='key', dtype='text'),
-                    ],
-                )
+              name='test_dataset',
+              data=a.tolist(),
+              attributes={},
+              dtype=[
+                  DtypeSpec('key', doc='key', dtype='text'),
+              ],
+          )
         self.io.write_dataset(self.f, dset_builder)
         dset = self.f['test_dataset']
         self.assertEqual(dset.shape, (2,))
