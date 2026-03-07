@@ -175,6 +175,14 @@ def _get_type_from_dtype_attr(data: Any, builder_dtype: list | None) -> tuple[st
 
 def get_type(data, builder_dtype=None):
     """Return a tuple of (the string representation of the type, the format of the string data) for the given data."""
+    if data is None:
+        return None, None
+    # Check for empty data safely (Fix for Issue #775)
+    try:
+        if hasattr(data, "__len__") and len(data) == 0:
+            raise EmptyArrayError("Dataset is empty; cannot determine type.")
+    except TypeError:
+        pass
     # String data
     if isinstance(data, str):
         return 'utf', get_string_format(data)

@@ -4,6 +4,8 @@ from unittest import mock, skip, skipIf
 
 import h5py
 import numpy as np
+import pytest
+from hdmf.validate.validator import get_type, EmptyArrayError
 from dateutil.tz import tzlocal
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, TypeMap, BuildManager
 from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace,
@@ -1907,3 +1909,9 @@ class TestISODateTimeTimezone(ValidatorTestBase):
                 # This confirms it fails because it lacks the 'T' and timezone
                 self.assertEqual(len(result), 1)
                 self.assertIsInstance(result[0], Error)
+
+def test_get_type_empty_data():
+    """Test that get_type handles empty data with an informative error (Issue #775)."""
+    assert get_type(None) == (None, None)
+    with pytest.raises(EmptyArrayError, match="Dataset is empty; cannot determine type."):
+        get_type([])
