@@ -23,6 +23,7 @@ from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
 from hdmf.container import Container, HERDManager
 from hdmf import Data, docval
+from hdmf.common import SimpleMultiContainer, get_hdf5io
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError, append_data
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
@@ -1205,54 +1206,21 @@ class TestHERDIO(TestCase):
         self.remove_er_files()
 
     def test_write_herd_as_child(self):
-        """Test writing and reading HERD as a child group of a container."""
-        from hdmf.common import get_type_map
-        from hdmf.utils import getargs
+        """Test writing and reading HERD as a child group of a
+        SimpleMultiContainer so that the Data is written and the
+        link from HERD to the data can be verified."""
 
-        class SimpleFile(Container, HERDManager):
-            @docval({'name': 'external_resources', 'type': HERD, 'doc': 'HERD', 'default': None})
-            def __init__(self, **kwargs):
-                external_resources = getargs('external_resources', kwargs)
-                super().__init__(name='root')
-                self._herd = None
-                if external_resources is not None:
-                    self.external_resources = external_resources
+        class _HERDManagerContainer(SimpleMultiContainer, HERDManager):
+            pass
 
-            @property
-            def external_resources(self):
-                return self._herd
-
-            @external_resources.setter
-            def external_resources(self, herd):
-                self._herd = herd
-                self._herd.parent = self
-
-        tm = get_type_map()
-        file_spec = GroupSpec(
-            'A simple file with HERD',
-            data_type_def='SimpleFile',
-            groups=[
-                GroupSpec(
-                    'external resources',
-                    name='external_resources',
-                    data_type_inc='HERD',
-                    quantity='?',
-                )
-            ],
-        )
-        tm.namespace_catalog.get_namespace('hdmf-common').catalog.register_spec(file_spec, 'test.yaml')
-        tm.register_container_type('hdmf-common', 'SimpleFile', SimpleFile)
-        manager = BuildManager(tm)
-
-        sf = SimpleFile()
-        data = Data(name='species', data=['Homo sapiens'])
-        data.parent = sf
-
+        species = Data(name='species', data=['Homo sapiens'])
         herd = HERD()
-        sf.external_resources = herd
+        container = _HERDManagerContainer(name='root', containers=[species, herd])
+
+        container.external_resources = herd
         herd.add_ref(
-            file=sf,
-            container=data,
+            file=container,
+            container=species,
             key='Homo sapiens',
             entity_id='NCBI:9606',
             entity_uri='https://example.com',
@@ -1260,15 +1228,20 @@ class TestHERDIO(TestCase):
 
         path = get_temp_filepath()
         try:
-            with HDF5IO(path, manager=manager, mode='w') as io:
-                io.write(sf)
+            with get_hdf5io(path=path, mode='w') as io:
+                io.write(container)
 
-            with HDF5IO(path, manager=manager, mode='r') as io:
-                read_sf = io.read()
-                self.assertIsInstance(read_sf.external_resources, HERD)
-                read_keys = read_sf.external_resources.keys[:]
+            with get_hdf5io(path=path, mode='r') as io:
+                read_container = io.read()
+                read_herd = read_container.get_container('external_resources')
+                self.assertIsInstance(read_herd, HERD)
+                read_keys = read_herd.keys[:]
                 self.assertEqual(read_keys.shape, (1,))
                 self.assertEqual(read_keys[0][0], 'Homo sapiens')
+
+                read_objects = read_herd.objects[:]
+                self.assertEqual(read_objects.shape, (1,))
+                self.assertEqual(read_objects[0][1], species.object_id)
         finally:
             remove_test_file(path)
 
