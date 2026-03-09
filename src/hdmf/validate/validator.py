@@ -200,7 +200,7 @@ def get_type(data, builder_dtype=None):
     elif isinstance(data, np.bool_):
         return 'bool', None
     # Numpy 0-d structured array with compound dtype (ndim=0 but has named fields)
-    if isinstance(data, np.ndarray) and data.ndim == 0 and len(data.dtype) > 1:
+    if isinstance(data, np.ndarray) and data.ndim == 0 and data.dtype.names is not None:
         if builder_dtype and isinstance(builder_dtype, list):
             return _get_type_compound_dtype(data, builder_dtype)
     if not _is_collection(data):
