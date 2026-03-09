@@ -5,6 +5,8 @@
 ### Enhancements
 - Replaced `hasattr(data, "__len__")` checks with `ndim`-based collection detection via new `_is_collection` and `_get_length` helpers in `hdmf.utils`. This fixes compatibility with array libraries that follow the Python array API standard (e.g., zarr v3), which provide `ndim` and `shape` but not `__len__`. @h-mayorquin [#1414](https://github.com/hdmf-dev/hdmf/pull/1414)
 
+### Fixed
+- Replaced undeclared `pyyaml` dependency with `ruamel.yaml` (a declared core dependency) in `test_common_io.py`. The test relied on PyYAML being transitively installed by pip's `h5py`, which is not the case in conda environments. @rly [#1418](https://github.com/hdmf-dev/hdmf/pull/1418)
 
 ## HDMF 5.0.0 (March 2, 2026)
 
