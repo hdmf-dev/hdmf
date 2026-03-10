@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 5.0.1 (Upcoming)
+## HDMF 5.0.1 (March 10, 2026)
 
 ### Fixed
 - Fixed writing compound dtype datasets with a single field. @rly [#1420](https://github.com/hdmf-dev/hdmf/pull/1420)
