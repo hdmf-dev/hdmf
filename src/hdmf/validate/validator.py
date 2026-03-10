@@ -157,7 +157,7 @@ def _get_type_from_dtype_attr(data: Any, builder_dtype: list | None) -> tuple[st
     """Helper function to get type from data with dtype attribute (h5py.Dataset, zarr.Array, etc.)."""
     # Handle variable-length data with vlen metadata (HDF5 style)
     if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
-        if len(data) > 0:
+        if _get_length(data) > 0:
             return get_type(data[0], builder_dtype)
         # Empty string array
         if data.dtype.metadata["vlen"] is str:
@@ -166,7 +166,7 @@ def _get_type_from_dtype_attr(data: Any, builder_dtype: list | None) -> tuple[st
         raise EmptyArrayError()  # pragma: no cover
     # Handle object dtype (zarr style variable-length strings)
     if data.dtype.kind == 'O':
-        if len(data) > 0:
+        if _get_length(data) > 0:
             return get_type(data[0], builder_dtype)
         return "utf", None
 

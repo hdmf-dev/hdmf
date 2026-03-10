@@ -1156,7 +1156,7 @@ class HDF5IO(HDMFIO):
                     msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                     raise Exception(msg) from exc
                 io_settings = options['io_settings']
-                dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **io_settings)
+                dset = parent.require_dataset(name, shape=(_get_length(data),), dtype=_dtype, **io_settings)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
                                   "object references. attributes: %s"
@@ -1208,7 +1208,7 @@ class HDF5IO(HDMFIO):
             else:
                 # Write array of object references
                 io_settings = options['io_settings']
-                dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **io_settings)
+                dset = parent.require_dataset(name, shape=(_get_length(data),), dtype=_dtype, **io_settings)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
                                   "object references. attributes: %s"
@@ -1388,7 +1388,7 @@ class HDF5IO(HDMFIO):
         elif hasattr(data, 'shape'):
             data_shape = data.shape
         elif isinstance(dtype, np.dtype) and dtype.names is not None:  # check if compound dtype
-            data_shape = (len(data),)
+            data_shape = (_get_length(data),)
         else:
             data_shape = get_data_shape(data)
 
