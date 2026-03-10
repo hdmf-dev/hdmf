@@ -139,6 +139,21 @@ class H5IOTest(TestCase):
         self.assertTupleEqual(dset.shape, ())
         self.assertEqual(dset[()], a)
 
+    def test_write_dataset_0d_ndarray(self):
+        """Regression: writing a 0-d ndarray as a scalar dataset should work.
+
+        A user computing a scalar attribute (e.g. a sampling rate) with an
+        array-API-conforming library gets a 0-d array back. Converting to
+        numpy via np.asarray() produces a 0-d ndarray, which they then pass
+        to hdmf to store as an HDF5 dataset. Previously this crashed because
+        the __len__ heuristic misidentified 0-d ndarrays as collections.
+        """
+        sampling_rate = np.asarray(30000.0)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', sampling_rate, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertTupleEqual(dset.shape, ())
+        self.assertEqual(dset[()], 30000.0)
+
     def test_write_dataset_string(self):
         a = 'test string'
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
@@ -3970,6 +3985,23 @@ class HDF5IOClassmethodTests(TestCase):
         HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
         with self.assertRaisesRegex(Exception, "Could not create dataset foo in /"):
             HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
+
+    def test_get_type_0d_ndarray(self):
+        """Regression: get_type should handle 0-d ndarrays.
+
+        The Python array API standard requires reductions (mean, sum, etc.)
+        to return 0-d arrays, not scalars. When results from array-API-
+        conforming libraries (zarr v3, cupy, etc.) are converted to numpy
+        via np.asarray(), the result is a 0-d ndarray. A 0-d ndarray has
+        __len__ defined but len() raises TypeError, which previously
+        crashed get_type. We use np.asarray(scalar) to produce a 0-d
+        ndarray without requiring any array library as a test dependency.
+        """
+        zero_d = np.asarray(3.14)
+        self.assertIsInstance(zero_d, np.ndarray)
+        self.assertEqual(zero_d.ndim, 0)
+        result = HDF5IO.get_type(zero_d)
+        self.assertIs(result, np.float64)
 
 
 class H5DataIOTests(TestCase):

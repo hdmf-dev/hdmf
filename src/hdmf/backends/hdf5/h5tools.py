@@ -20,7 +20,7 @@ from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import (docval, getargs, popargs, get_data_shape, get_docval, StrDataset, is_zarr_array,
-                      get_basic_array_info, generate_array_html_repr)
+                      get_basic_array_info, generate_array_html_repr, _is_collection, _get_length)
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
@@ -805,10 +805,12 @@ class HDF5IO(HDMFIO):
             return H5_BINARY
         elif isinstance(data, Container):
             return H5_REF
-        elif not hasattr(data, '__len__'):
+        elif not _is_collection(data):
+            if isinstance(data, np.ndarray) and data.ndim == 0:
+                return data.dtype.type
             return type(data)
         else:
-            if len(data) == 0:
+            if _get_length(data) == 0:
                 if hasattr(data, 'dtype'):
                     return data.dtype
                 else:
@@ -1238,7 +1240,7 @@ class HDF5IO(HDMFIO):
                 dset = self.__setup_chunked_dset__(parent, name, data, options)
                 self.__dci_queue.append(dataset=dset, data=data)
             # Write a regular in memory array (e.g., numpy array, list etc.)
-            elif hasattr(data, '__len__'):
+            elif _is_collection(data):
                 dset = self.__list_fill__(parent, name, data, options)
             # Write a regular scalar dataset
             else:
