@@ -11,7 +11,7 @@ import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator
 from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict,
-                    get_basic_array_info, generate_array_html_repr)
+                    get_basic_array_info, generate_array_html_repr, _is_collection)
 
 from .term_set import TermSet, TermSetWrapper
 
@@ -626,7 +626,7 @@ class Container(AbstractContainer):
             template += "\nFields:\n"
         for k in sorted(self.fields):  # sorted to enable tests
             v = self.fields[k]
-            if hasattr(v, '__len__'):
+            if _is_collection(v):
                 if isinstance(v, (np.ndarray, list, tuple)) or v:
                     template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
             else:
