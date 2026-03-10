@@ -21,8 +21,9 @@ from hdmf.backends.hdf5.h5tools import HDF5IO, SPEC_LOC_ATTR, H5PY_3
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
-from hdmf.container import Container
+from hdmf.container import Container, HERDManager
 from hdmf import Data, docval
+from hdmf.common import SimpleMultiContainer, get_hdf5io
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError, append_data
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
@@ -218,6 +219,23 @@ class H5IOTest(TestCase):
         dset = self.f['test_dataset']
         for field in a.dtype.names:
             self.assertTrue(np.all(dset[field][:] == a[field]))
+
+    def test_write_dataset_list_single_field_compound_datatype(self):
+        """Test that a compound dtype with a single field can be written."""
+        a = np.array([('val1',), ('val2',)], dtype=[('key', 'O')])
+        dset_builder = DatasetBuilder(
+            name='test_dataset',
+            data=a.tolist(),
+            attributes={},
+            dtype=[
+                DtypeSpec('key', doc='key', dtype='text'),
+            ],
+        )
+        self.io.write_dataset(self.f, dset_builder)
+        dset = self.f['test_dataset']
+        self.assertEqual(dset.shape, (2,))
+        self.assertEqual(dset['key'][0].decode('utf-8'), 'val1')
+        self.assertEqual(dset['key'][1].decode('utf-8'), 'val2')
 
     def test_write_dataset_list_compress_gzip(self):
         a = H5DataIO(np.arange(30).reshape(5, 2, 3),
@@ -1201,6 +1219,46 @@ class TestHERDIO(TestCase):
             (0, read_foofile.object_id, 'FooFile', '', ''))
 
         self.remove_er_files()
+
+    def test_write_herd_as_child(self):
+        """Test writing and reading HERD as a child group of a
+        SimpleMultiContainer so that the Data is written and the
+        link from HERD to the data can be verified."""
+
+        class _HERDManagerContainer(SimpleMultiContainer, HERDManager):
+            pass
+
+        species = Data(name='species', data=['Homo sapiens'])
+        herd = HERD()
+        container = _HERDManagerContainer(name='root', containers=[species, herd])
+
+        container.external_resources = herd
+        herd.add_ref(
+            file=container,
+            container=species,
+            key='Homo sapiens',
+            entity_id='NCBI:9606',
+            entity_uri='https://example.com',
+        )
+
+        path = get_temp_filepath()
+        try:
+            with get_hdf5io(path=path, mode='w') as io:
+                io.write(container)
+
+            with get_hdf5io(path=path, mode='r') as io:
+                read_container = io.read()
+                read_herd = read_container.get_container('external_resources')
+                self.assertIsInstance(read_herd, HERD)
+                read_keys = read_herd.keys[:]
+                self.assertEqual(read_keys.shape, (1,))
+                self.assertEqual(read_keys[0][0], 'Homo sapiens')
+
+                read_objects = read_herd.objects[:]
+                self.assertEqual(read_objects.shape, (1,))
+                self.assertEqual(read_objects[0][1], species.object_id)
+        finally:
+            remove_test_file(path)
 
 
 class TestMultiWrite(TestCase):
