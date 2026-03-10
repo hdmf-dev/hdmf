@@ -873,7 +873,7 @@ def _is_collection(data):
 
 
 def _get_length(data) -> int:
-    """Get the first dimension of an array or a Sized object (``collections.abc.Sized`` such as list, dict, set).
+    """Get the first dimension of an array or a Sized object (``collections.abc.Sized`` such as list or tuple).
 
     Uses ``shape[0]`` for objects that expose a ``shape`` attribute (numpy
     arrays, h5py datasets, zarr arrays) and falls back to ``len()`` for
