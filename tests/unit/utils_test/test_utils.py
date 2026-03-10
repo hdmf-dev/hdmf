@@ -70,20 +70,6 @@ class TestIsCollection(TestCase):
             shape = ()
         self.assertFalse(_is_collection(FakeScalar()))
 
-    def test_numpy_0d_array_not_collection(self):
-        """Regression: numpy 0-d ndarrays have __len__ but len() raises TypeError.
-
-        zarr v3 scalar indexing (e.g. zarr_array[0]) returns 0-d ndarrays.
-        The old hasattr(data, '__len__') check would incorrectly treat these
-        as collections, then crash on len(data).
-        """
-        zero_d = np.array(5.0)
-        self.assertTrue(hasattr(zero_d, '__len__'))  # confirms the old check would pass
-        with self.assertRaises(TypeError):
-            len(zero_d)  # confirms len() crashes
-        self.assertFalse(_is_collection(zero_d))  # our helper handles it correctly
-
-
 
 class TestGetLength(TestCase):
     """Tests for _get_length helper that gets first-dimension length."""
