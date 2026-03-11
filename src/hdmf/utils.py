@@ -872,14 +872,33 @@ def _is_collection(data):
     return hasattr(data, "__len__")
 
 
-def _get_length(data):
-    """Get the length of the first dimension of a collection.
+def _get_length(data) -> int:
+    """Get the first dimension of an array or a Sized object (``collections.abc.Sized`` such as list or tuple).
 
-    Uses shape[0] for array-like objects and len() for plain containers.
+    Uses ``shape[0]`` for objects that expose a ``shape`` attribute (numpy
+    arrays, h5py datasets, zarr arrays) and falls back to ``len()`` for
+    Sized objects.
+
+    This exists because the Python array API standard does not require
+    ``__len__``, so libraries like zarr v3 may omit it. Accessing
+    ``shape[0]`` works universally for array-API-conforming objects.
     """
     if hasattr(data, "shape") and data.shape is not None:
         return data.shape[0]
     return len(data)
+
+
+def _unwrap_scalar(value):
+    """If value is a 0-d ndarray, extract the numpy scalar via .item().
+
+    Array-API-conforming libraries (e.g., zarr v3) return 0-d ndarrays from
+    scalar indexing instead of numpy scalars. This converts them so that
+    isinstance checks against Python/numpy scalar types work correctly.
+    """
+    if isinstance(value, np.ndarray) and value.ndim == 0:
+        return value.item()
+    return value
+
 
 
 def pystr(s):
