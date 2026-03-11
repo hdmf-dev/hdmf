@@ -11,7 +11,7 @@ import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator
 from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict,
-                    get_basic_array_info, generate_array_html_repr, _is_collection)
+                    get_basic_array_info, generate_array_html_repr, _is_collection, _get_length, _unwrap_scalar)
 
 from .term_set import TermSet, TermSetWrapper
 
@@ -717,6 +717,7 @@ class Container(AbstractContainer):
 
         """
 
+        value = _unwrap_scalar(value)
         if isinstance(value, (int, float, str, bool)):
             return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
                    f' title="{access_code}">{key}: </span><span class="field-value">{value}</span></div>'
@@ -976,7 +977,7 @@ class Data(AbstractContainer):
         return False
 
     def __len__(self):
-        return len(self.__data)
+        return _get_length(self.__data)
 
     def __getitem__(self, args):
         return self.get(args)
