@@ -1120,6 +1120,36 @@ Fields:
         )
 
 
+    def test_repr_html_closed_file(self):
+        """Test that _repr_html_ handles a closed HDF5 file gracefully."""
+        with h5py.File('test_table_repr.h5', 'w') as f:
+            f.create_dataset('foo', data=[1, 2, 3])
+            f.create_dataset('bar', data=[10.0, 20.0, 30.0])
+            f.create_dataset('baz', data=['cat', 'dog', 'bird'])
+
+        with HDF5IO('test_table_repr.h5', mode='r') as io:
+            f = io._file
+            columns = [
+                VectorData(name='foo', description='foo column', data=f['foo']),
+                VectorData(name='bar', description='bar column', data=f['bar']),
+                VectorData(name='baz', description='baz column', data=f['baz']),
+            ]
+            table = DynamicTable(
+                name='test_table', description='a test table', columns=columns,
+                id=list(range(3)),
+            )
+            table.read_io = io
+            for col in columns:
+                col.read_io = io
+
+        # File is now closed
+        html = table._repr_html_()
+        self.assertIn("file backing this object is closed", html)
+        self.assertIn("unable to render table data", html)
+        self.assertIn("<b>Warning:</b>", html)
+
+        os.remove('test_table_repr.h5')
+
     def test_add_column_existing_attr(self):
         table = self.with_table_columns()
         attrs = ['name', 'description', 'parent', 'id', 'fields']  # just a few

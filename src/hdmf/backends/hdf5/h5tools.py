@@ -725,6 +725,12 @@ class HDF5IO(HDMFIO):
             # an error before self.__file has been created
             self.__file = None
 
+    def is_open(self) -> bool:
+        """Check whether this HDF5IO object is open for reading/writing."""
+        if self.__file is None:
+            return False
+        return bool(self.__file)
+
     def close_linked_files(self):
         """Close all opened, linked-to files.
 
