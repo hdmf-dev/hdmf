@@ -70,6 +70,23 @@ class TestIsCollection(TestCase):
             shape = ()
         self.assertFalse(_is_collection(FakeScalar()))
 
+    def test_ndim_raises_runtime_error(self):
+        """Simulate closed h5py dataset where accessing ndim raises RuntimeError."""
+        class ClosedDataset:
+            @property
+            def ndim(self):
+                raise RuntimeError("File is closed")
+        self.assertFalse(_is_collection(ClosedDataset()))
+
+    def test_closed_h5py_dataset(self):
+        """Test that a real closed h5py dataset is handled gracefully."""
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".h5") as f:
+            hfile = h5py.File(f.name, "w")
+            ds = hfile.create_dataset("data", data=[1, 2, 3])
+            hfile.close()
+            self.assertFalse(_is_collection(ds))
+
 
 class TestGetLength(TestCase):
     """Tests for _get_length helper that gets first-dimension length."""

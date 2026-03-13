@@ -7,6 +7,7 @@
 - Added `_unwrap_scalar` helper in `hdmf.utils` to convert 0-d ndarrays to numpy scalars via `.item()`. This fixes `isinstance` checks against Python scalar types that fail on 0-d ndarrays returned by array-API-conforming libraries (e.g., zarr v3 scalar indexing). @h-mayorquin [#1415](https://github.com/hdmf-dev/hdmf/pull/1415)
 
 ### Fixed
+- Fixed `_is_collection` raising `RuntimeError` when accessing `ndim` on closed h5py datasets, which caused `__repr__` to crash on containers read from closed HDF5 files. @rly [#1426](https://github.com/hdmf-dev/hdmf/pull/1426)
 - Fixed writing compound dtype datasets with a single field. @rly [#1420](https://github.com/hdmf-dev/hdmf/pull/1420)
 - Replaced undeclared `pyyaml` dependency with `ruamel.yaml` (a declared core dependency) in `test_common_io.py`. The test relied on PyYAML being transitively installed by pip's `h5py`, which is not the case in conda environments. @rly [#1418](https://github.com/hdmf-dev/hdmf/pull/1418)
 
