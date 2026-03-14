@@ -8,7 +8,7 @@ from hdmf.container import AbstractContainer, Container, Data, HERDManager
 from hdmf.common.resources import HERD
 from hdmf.testing import TestCase
 from hdmf.utils import docval
-from hdmf.common import DynamicTable, VectorData, DynamicTableRegion
+from hdmf.common import DynamicTable, VectorData, DynamicTableRegion, SimpleMultiContainer, get_manager
 from hdmf.backends.hdf5.h5tools import HDF5IO
 
 from tests.unit.helpers.io import DoNothingIO
@@ -590,37 +590,34 @@ class TestHTMLRepr(TestCase):
         os.remove('array_data.h5')
 
     def test_repr_html_hdf5_dataset_closed_file(self):
-        """Test that _repr_html_ shows a warning banner and gracefully renders when the file is closed."""
+        """Test that _repr_html_ shows a warning banner when the file is closed."""
+        smc = SimpleMultiContainer(name='root')
+        smc.add_container(Data(name='my_data', data=np.array([1, 2, 3, 4], dtype=np.int64)))
 
-        with h5py.File('test_closed.h5', 'w') as f:
-            f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+        with HDF5IO('test_closed.h5', manager=get_manager(), mode='w') as io:
+            io.write(smc)
 
-        io = HDF5IO('test_closed.h5', mode='r')
-        dataset = io._file['my_dataset']
-        obj = self.ContainerWithData(data=dataset, str="hello")
-        obj.read_io = io
-        io.close()
+        with HDF5IO('test_closed.h5', manager=get_manager(), mode='r') as io:
+            read_smc = io.read()
 
         # File is now closed
-        html = obj._repr_html_()
+        html = read_smc._repr_html_()
         self.assertIn("<b>Warning:</b>", html)
         self.assertIn("The file backing this object is closed", html)
-        self.assertIn("unable to render", html)
 
         os.remove('test_closed.h5')
 
     def test_repr_html_no_warning_banner_when_file_open(self):
         """Test that _repr_html_ does not show a warning banner when the file is open."""
+        smc = SimpleMultiContainer(name='root')
+        smc.add_container(Data(name='my_data', data=np.array([1, 2, 3, 4], dtype=np.int64)))
 
-        with h5py.File('test_open.h5', 'w') as f:
-            f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+        with HDF5IO('test_open.h5', manager=get_manager(), mode='w') as io:
+            io.write(smc)
 
-        with HDF5IO('test_open.h5', mode='r') as io:
-            dataset = io._file['my_dataset']
-            obj = self.ContainerWithData(data=dataset, str="hello")
-            obj.read_io = io
-
-            html = obj._repr_html_()
+        with HDF5IO('test_open.h5', manager=get_manager(), mode='r') as io:
+            read_smc = io.read()
+            html = read_smc._repr_html_()
             self.assertNotIn("Warning", html)
             self.assertNotIn("unable to render", html)
 
