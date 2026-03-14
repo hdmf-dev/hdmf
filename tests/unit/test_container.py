@@ -1,6 +1,7 @@
 import numpy as np
 from uuid import uuid4, UUID
 from unittest.mock import patch, PropertyMock
+import h5py
 import os
 
 from hdmf.container import AbstractContainer, Container, Data, HERDManager
@@ -540,7 +541,6 @@ class TestHTMLRepr(TestCase):
 
     def test_repr_html_lindi_dataset(self):
         """Test HTML repr for datasets without get_storage_size method (e.g., LINDI datasets)."""
-        import h5py
 
         # Create a regular HDF5 dataset using h5py
         with h5py.File('array_data.h5', 'w') as f:
@@ -591,7 +591,6 @@ class TestHTMLRepr(TestCase):
 
     def test_repr_html_hdf5_dataset_closed_file(self):
         """Test that _repr_html_ shows a warning banner and gracefully renders when the file is closed."""
-        import h5py
 
         with h5py.File('test_closed.h5', 'w') as f:
             f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
@@ -612,7 +611,6 @@ class TestHTMLRepr(TestCase):
 
     def test_repr_html_no_warning_banner_when_file_open(self):
         """Test that _repr_html_ does not show a warning banner when the file is open."""
-        import h5py
 
         with h5py.File('test_open.h5', 'w') as f:
             f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
