@@ -727,7 +727,7 @@ class HDF5IO(HDMFIO):
 
     def is_open(self) -> bool:
         """Check whether this HDF5IO object is open for reading/writing."""
-        # Returns False if file is None or closed
+        # Return False if file is None or closed
         return bool(self.__file)
 
     def close_linked_files(self):
