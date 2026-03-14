@@ -1,5 +1,6 @@
 import numpy as np
 from uuid import uuid4, UUID
+from unittest.mock import patch, PropertyMock
 import os
 
 from hdmf.container import AbstractContainer, Container, Data, HERDManager
@@ -539,7 +540,6 @@ class TestHTMLRepr(TestCase):
 
     def test_repr_html_lindi_dataset(self):
         """Test HTML repr for datasets without get_storage_size method (e.g., LINDI datasets)."""
-        from unittest.mock import PropertyMock, patch
         import h5py
 
         # Create a regular HDF5 dataset using h5py
@@ -591,24 +591,34 @@ class TestHTMLRepr(TestCase):
 
     def test_repr_html_hdf5_dataset_closed_file(self):
         """Test that _repr_html_ shows a warning banner and gracefully renders when the file is closed."""
-        with HDF5IO('array_data.h5', mode='w') as io:
-            dataset = io._file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
-            obj = self.ContainerWithData(data=dataset, str="hello")
-            obj.read_io = io
+        import h5py
+
+        with h5py.File('test_closed.h5', 'w') as f:
+            f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+
+        io = HDF5IO('test_closed.h5', mode='r')
+        dataset = io._file['my_dataset']
+        obj = self.ContainerWithData(data=dataset, str="hello")
+        obj.read_io = io
+        io.close()
 
         # File is now closed
         html = obj._repr_html_()
         self.assertIn("<b>Warning:</b>", html)
         self.assertIn("The file backing this object is closed", html)
         self.assertIn("unable to render", html)
-        self.assertIn("file backing this object is closed", html)
 
-        os.remove('array_data.h5')
+        os.remove('test_closed.h5')
 
     def test_repr_html_no_warning_banner_when_file_open(self):
         """Test that _repr_html_ does not show a warning banner when the file is open."""
-        with HDF5IO('array_data.h5', mode='w') as io:
-            dataset = io._file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+        import h5py
+
+        with h5py.File('test_open.h5', 'w') as f:
+            f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+
+        with HDF5IO('test_open.h5', mode='r') as io:
+            dataset = io._file['my_dataset']
             obj = self.ContainerWithData(data=dataset, str="hello")
             obj.read_io = io
 
@@ -616,7 +626,7 @@ class TestHTMLRepr(TestCase):
             self.assertNotIn("Warning", html)
             self.assertNotIn("unable to render", html)
 
-        os.remove('array_data.h5')
+        os.remove('test_open.h5')
 
     def test_repr_html_no_warning_banner_without_io(self):
         """Test that _repr_html_ does not show a warning banner when there is no read_io."""
@@ -629,7 +639,6 @@ class TestHTMLRepr(TestCase):
         obj = self.ContainerWithData(data=np.array([1, 2, 3]), str="hello")
 
         # Patch _generate_array_html to raise a non-file-closed error
-        from unittest.mock import patch
         with patch.object(type(obj), '_generate_array_html', side_effect=ValueError("custom error")):
             html = obj._repr_html_()
         self.assertIn("unable to render", html)
