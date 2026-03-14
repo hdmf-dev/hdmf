@@ -607,6 +607,26 @@ class TestHTMLRepr(TestCase):
 
         os.remove('test_closed.h5')
 
+    def test_repr_html_hdf5_dataset_field_closed_file(self):
+        """Test that _repr_html_ gracefully renders a closed h5py dataset field."""
+        with h5py.File('test_closed_field.h5', 'w') as f:
+            f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+
+        io = HDF5IO('test_closed_field.h5', mode='r')
+        dataset = io._file['my_dataset']
+        obj = self.ContainerWithData(data=dataset, str="hello")
+        # Set read_io manually to simulate this container being read from disk
+        obj.read_io = io
+        io.close()
+
+        # File is now closed — accessing dataset.shape raises RuntimeError
+        html = obj._repr_html_()
+        self.assertIn("<b>Warning:</b>", html)
+        self.assertIn("unable to render", html)
+        self.assertIn("file backing this object is closed", html)
+
+        os.remove('test_closed_field.h5')
+
     def test_repr_html_no_warning_banner_when_file_open(self):
         """Test that _repr_html_ does not show a warning banner when the file is open."""
         smc = SimpleMultiContainer(name='root')
