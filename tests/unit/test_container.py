@@ -624,8 +624,8 @@ class TestHTMLRepr(TestCase):
         html = obj._repr_html_()
         self.assertNotIn("Warning", html)
 
-    def test_repr_html_array_error_shows_exception_message(self):
-        """Test that a non-closed-file error in _generate_array_html shows the exception message."""
+    def test_repr_html_field_rendering_error_shows_exception_message(self):
+        """Test that an error rendering a field in _generate_field_html shows the exception message."""
         obj = self.ContainerWithData(data=np.array([1, 2, 3]), str="hello")
 
         # Patch _generate_array_html to raise a non-file-closed error
