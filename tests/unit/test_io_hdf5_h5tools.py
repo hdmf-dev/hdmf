@@ -21,8 +21,9 @@ from hdmf.backends.hdf5.h5tools import HDF5IO, SPEC_LOC_ATTR, H5PY_3
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
-from hdmf.container import Container
+from hdmf.container import Container, HERDManager
 from hdmf import Data, docval
+from hdmf.common import SimpleMultiContainer, get_hdf5io
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError, append_data
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
@@ -138,6 +139,21 @@ class H5IOTest(TestCase):
         self.assertTupleEqual(dset.shape, ())
         self.assertEqual(dset[()], a)
 
+    def test_write_dataset_0d_ndarray(self):
+        """Regression: writing a 0-d ndarray as a scalar dataset should work.
+
+        A user computing a scalar attribute (e.g. a sampling rate) with an
+        array-API-conforming library gets a 0-d array back. Converting to
+        numpy via np.asarray() produces a 0-d ndarray, which they then pass
+        to hdmf to store as an HDF5 dataset. Previously this crashed because
+        the __len__ heuristic misidentified 0-d ndarrays as collections.
+        """
+        sampling_rate = np.asarray(30000.0)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', sampling_rate, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertTupleEqual(dset.shape, ())
+        self.assertEqual(dset[()], 30000.0)
+
     def test_write_dataset_string(self):
         a = 'test string'
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
@@ -203,6 +219,23 @@ class H5IOTest(TestCase):
         dset = self.f['test_dataset']
         for field in a.dtype.names:
             self.assertTrue(np.all(dset[field][:] == a[field]))
+
+    def test_write_dataset_list_single_field_compound_datatype(self):
+        """Test that a compound dtype with a single field can be written."""
+        a = np.array([('val1',), ('val2',)], dtype=[('key', 'O')])
+        dset_builder = DatasetBuilder(
+            name='test_dataset',
+            data=a.tolist(),
+            attributes={},
+            dtype=[
+                DtypeSpec('key', doc='key', dtype='text'),
+            ],
+        )
+        self.io.write_dataset(self.f, dset_builder)
+        dset = self.f['test_dataset']
+        self.assertEqual(dset.shape, (2,))
+        self.assertEqual(dset['key'][0].decode('utf-8'), 'val1')
+        self.assertEqual(dset['key'][1].decode('utf-8'), 'val2')
 
     def test_write_dataset_list_compress_gzip(self):
         a = H5DataIO(np.arange(30).reshape(5, 2, 3),
@@ -1186,6 +1219,46 @@ class TestHERDIO(TestCase):
             (0, read_foofile.object_id, 'FooFile', '', ''))
 
         self.remove_er_files()
+
+    def test_write_herd_as_child(self):
+        """Test writing and reading HERD as a child group of a
+        SimpleMultiContainer so that the Data is written and the
+        link from HERD to the data can be verified."""
+
+        class _HERDManagerContainer(SimpleMultiContainer, HERDManager):
+            pass
+
+        species = Data(name='species', data=['Homo sapiens'])
+        herd = HERD()
+        container = _HERDManagerContainer(name='root', containers=[species, herd])
+
+        container.external_resources = herd
+        herd.add_ref(
+            file=container,
+            container=species,
+            key='Homo sapiens',
+            entity_id='NCBI:9606',
+            entity_uri='https://example.com',
+        )
+
+        path = get_temp_filepath()
+        try:
+            with get_hdf5io(path=path, mode='w') as io:
+                io.write(container)
+
+            with get_hdf5io(path=path, mode='r') as io:
+                read_container = io.read()
+                read_herd = read_container.get_container('external_resources')
+                self.assertIsInstance(read_herd, HERD)
+                read_keys = read_herd.keys[:]
+                self.assertEqual(read_keys.shape, (1,))
+                self.assertEqual(read_keys[0][0], 'Homo sapiens')
+
+                read_objects = read_herd.objects[:]
+                self.assertEqual(read_objects.shape, (1,))
+                self.assertEqual(read_objects[0][1], species.object_id)
+        finally:
+            remove_test_file(path)
 
 
 class TestMultiWrite(TestCase):
@@ -3912,6 +3985,23 @@ class HDF5IOClassmethodTests(TestCase):
         HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
         with self.assertRaisesRegex(Exception, "Could not create dataset foo in /"):
             HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
+
+    def test_get_type_0d_ndarray(self):
+        """Regression: get_type should handle 0-d ndarrays.
+
+        The Python array API standard requires reductions (mean, sum, etc.)
+        to return 0-d arrays, not scalars. When results from array-API-
+        conforming libraries (zarr v3, cupy, etc.) are converted to numpy
+        via np.asarray(), the result is a 0-d ndarray. A 0-d ndarray has
+        __len__ defined but len() raises TypeError, which previously
+        crashed get_type. We use np.asarray(scalar) to produce a 0-d
+        ndarray without requiring any array library as a test dependency.
+        """
+        zero_d = np.asarray(3.14)
+        self.assertIsInstance(zero_d, np.ndarray)
+        self.assertEqual(zero_d.ndim, 0)
+        result = HDF5IO.get_type(zero_d)
+        self.assertIs(result, np.float64)
 
 
 class H5DataIOTests(TestCase):

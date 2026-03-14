@@ -20,7 +20,7 @@ from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import (docval, getargs, popargs, get_data_shape, get_docval, StrDataset, is_zarr_array,
-                      get_basic_array_info, generate_array_html_repr)
+                      get_basic_array_info, generate_array_html_repr, _is_collection, _get_length)
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
@@ -805,10 +805,12 @@ class HDF5IO(HDMFIO):
             return H5_BINARY
         elif isinstance(data, Container):
             return H5_REF
-        elif not hasattr(data, '__len__'):
+        elif not _is_collection(data):
+            if isinstance(data, np.ndarray) and data.ndim == 0:
+                return data.dtype.type
             return type(data)
         else:
-            if len(data) == 0:
+            if _get_length(data) == 0:
                 if hasattr(data, 'dtype'):
                     return data.dtype
                 else:
@@ -1154,7 +1156,7 @@ class HDF5IO(HDMFIO):
                     msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                     raise Exception(msg) from exc
                 io_settings = options['io_settings']
-                dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **io_settings)
+                dset = parent.require_dataset(name, shape=(_get_length(data),), dtype=_dtype, **io_settings)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
                                   "object references. attributes: %s"
@@ -1206,7 +1208,7 @@ class HDF5IO(HDMFIO):
             else:
                 # Write array of object references
                 io_settings = options['io_settings']
-                dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **io_settings)
+                dset = parent.require_dataset(name, shape=(_get_length(data),), dtype=_dtype, **io_settings)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
                                   "object references. attributes: %s"
@@ -1238,7 +1240,7 @@ class HDF5IO(HDMFIO):
                 dset = self.__setup_chunked_dset__(parent, name, data, options)
                 self.__dci_queue.append(dataset=dset, data=data)
             # Write a regular in memory array (e.g., numpy array, list etc.)
-            elif hasattr(data, '__len__'):
+            elif _is_collection(data):
                 dset = self.__list_fill__(parent, name, data, options)
             # Write a regular scalar dataset
             else:
@@ -1385,8 +1387,8 @@ class HDF5IO(HDMFIO):
             data_shape = io_settings.pop('shape')
         elif hasattr(data, 'shape'):
             data_shape = data.shape
-        elif isinstance(dtype, np.dtype) and len(dtype) > 1:  # check if compound dtype
-            data_shape = (len(data),)
+        elif isinstance(dtype, np.dtype) and dtype.names is not None:  # check if compound dtype
+            data_shape = (_get_length(data),)
         else:
             data_shape = get_data_shape(data)
 
@@ -1398,9 +1400,9 @@ class HDF5IO(HDMFIO):
                   (name, parent.name, str(data_shape), str(dtype), str(io_settings), str(exc))
             raise Exception(msg) from exc
         # Write the data
-        if len(data) > dset.shape[0]:
+        if _get_length(data) > dset.shape[0]:
             new_shape = list(dset.shape)
-            new_shape[0] = len(data)
+            new_shape[0] = _get_length(data)
             dset.resize(new_shape)
         try:
             dset[:] = data

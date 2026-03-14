@@ -1792,6 +1792,11 @@ class TestElementIdentifiers(TestCase):
         with self.assertRaises(TypeError):
             _ = (self.e == 'test')
 
+    def test_validate_0d_ndarray_element(self):
+        """ElementIdentifiers should accept 0-d int ndarrays (zarr v3 scalar indexing returns these)."""
+        eids = ElementIdentifiers(name='ids', data=[0, 1, 2])
+        eids._validate_new_data_element(np.array(42))  # 0-d ndarray, should not raise
+
 
 class TestBadElementIdentifiers(TestCase):
 

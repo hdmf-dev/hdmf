@@ -18,6 +18,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from ..container import AbstractContainer, Data
 from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
+from ..utils import _is_collection, _get_length, _unwrap_scalar
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
 from ..spec.spec import BaseStorageSpec
@@ -973,7 +974,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             return None, None
         else:
             if spec_dtype is not None and isinstance(spec_dtype, list):
-                data_shape = (len(data),)
+                data_shape = (_get_length(data),)
             else:
                 data_shape = get_data_shape(data)
 
@@ -1024,19 +1025,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
             return False
 
         tmp = data
-        while hasattr(tmp, '__len__') and not isinstance(tmp, (AbstractContainer, str, bytes)):
+        while _is_collection(tmp) and not isinstance(tmp, AbstractContainer):
             tmptmp = None
             for t in tmp:
                 # In case of a numeric array stop the iteration at the first element to avoid long-running loop
-                if isinstance(t, (int, float, complex, bool)):
+                if isinstance(_unwrap_scalar(t), (int, float, complex, bool)):
                     break
-                if hasattr(t, '__len__') and len(t) > 0 and not isinstance(t, (AbstractContainer, str, bytes)):
+                if _is_collection(t) and _get_length(t) > 0 and not isinstance(t, AbstractContainer):
                     tmptmp = tmp[0]
                     break
             if tmptmp is not None:
                 break
             else:
-                if len(tmp) == 0:
+                if _get_length(tmp) == 0:
                     tmp = None
                 else:
                     tmp = tmp[0]
@@ -1065,6 +1066,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             refs = [(i, subt) for i, subt in enumerate(spec_dtype) if isinstance(subt.dtype, RefSpec)]
             bldr_data = list()
             for i, row in enumerate(container.data):
+                row = _unwrap_scalar(row)
                 tmp = list(row)
                 for j, subt in refs:
                     tmp[j] = self.__get_ref_builder(builder, subt.dtype, None, row[j], build_manager)

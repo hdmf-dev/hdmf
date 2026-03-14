@@ -13,6 +13,7 @@ from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
 from ..spec import SpecNamespace
 from ..spec.spec import BaseStorageSpec, DtypeHelper
+from ..utils import _is_collection, _get_length
 from ..utils import docval, getargs, pystr, get_data_shape
 from ..query import ReferenceResolver
 
@@ -156,7 +157,7 @@ def _get_type_from_dtype_attr(data: Any, builder_dtype: list | None) -> tuple[st
     """Helper function to get type from data with dtype attribute (h5py.Dataset, zarr.Array, etc.)."""
     # Handle variable-length data with vlen metadata (HDF5 style)
     if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
-        if len(data) > 0:
+        if _get_length(data) > 0:
             return get_type(data[0], builder_dtype)
         # Empty string array
         if data.dtype.metadata["vlen"] is str:
@@ -165,7 +166,7 @@ def _get_type_from_dtype_attr(data: Any, builder_dtype: list | None) -> tuple[st
         raise EmptyArrayError()  # pragma: no cover
     # Handle object dtype (zarr style variable-length strings)
     if data.dtype.kind == 'O':
-        if len(data) > 0:
+        if _get_length(data) > 0:
             return get_type(data[0], builder_dtype)
         return "utf", None
 
@@ -203,7 +204,11 @@ def get_type(data, builder_dtype=None):
     # Numpy bool data
     elif isinstance(data, np.bool_):
         return 'bool', None
-    if not hasattr(data, '__len__'):
+    # Numpy 0-d structured array with compound dtype (ndim=0 but has named fields)
+    if isinstance(data, np.ndarray) and data.ndim == 0 and data.dtype.names is not None:
+        if builder_dtype and isinstance(builder_dtype, list):
+            return _get_type_compound_dtype(data, builder_dtype)
+    if not _is_collection(data):
         if type(data) is float:  # Python float is 64-bit
             return 'float64', None
         if type(data) is int:  # Python int is 64-bit (or larger)
@@ -219,7 +224,7 @@ def get_type(data, builder_dtype=None):
         return _get_type_from_dtype_attr(data, builder_dtype)
 
     # If all else has failed, try to determine the datatype from the first element of the array
-    if len(data) > 0:
+    if _get_length(data) > 0:
         return get_type(data[0], builder_dtype)
     raise EmptyArrayError()
 
