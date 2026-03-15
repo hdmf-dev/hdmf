@@ -1120,6 +1120,30 @@ Fields:
         )
 
 
+    def test_repr_html_closed_file(self):
+        """Test that _repr_html_ handles a closed HDF5 file gracefully."""
+        table = DynamicTable(name='test_table', description='a test table')
+        table.add_column('foo', 'foo column')
+        table.add_column('bar', 'bar column')
+        table.add_column('baz', 'baz column')
+        table.add_row(foo=1, bar=10.0, baz='cat')
+        table.add_row(foo=2, bar=20.0, baz='dog')
+        table.add_row(foo=3, bar=30.0, baz='bird')
+
+        with HDF5IO('test_table_repr.h5', manager=get_manager(), mode='w') as io:
+            io.write(table)
+
+        with HDF5IO('test_table_repr.h5', manager=get_manager(), mode='r') as io:
+            read_table = io.read()
+
+        # File is now closed
+        html = read_table._repr_html_()
+        self.assertIn("file backing this object is closed", html)
+        self.assertIn("unable to render table data", html)
+        self.assertIn("<b>Warning:</b>", html)
+
+        os.remove('test_table_repr.h5')
+
     def test_add_column_existing_attr(self):
         table = self.with_table_columns()
         attrs = ['name', 'description', 'parent', 'id', 'fields']  # just a few
