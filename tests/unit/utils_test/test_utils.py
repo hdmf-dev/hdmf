@@ -6,6 +6,7 @@ from hdmf.container import Data
 from hdmf.data_utils import DataChunkIterator, DataIO
 from hdmf.testing import TestCase
 from hdmf.utils import get_data_shape, to_uint_array, is_newer_version, _is_collection, _get_length, _unwrap_scalar
+from tests.unit.helpers.utils import get_temp_filepath
 
 
 class TestIsCollection(TestCase):
@@ -80,12 +81,15 @@ class TestIsCollection(TestCase):
 
     def test_closed_h5py_dataset(self):
         """Test that a real closed h5py dataset is handled gracefully."""
-        import tempfile
-        with tempfile.NamedTemporaryFile(suffix=".h5") as f:
-            hfile = h5py.File(f.name, "w")
+        path = get_temp_filepath()
+        try:
+            hfile = h5py.File(path, "w")
             ds = hfile.create_dataset("data", data=[1, 2, 3])
             hfile.close()
             self.assertFalse(_is_collection(ds))
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
 
 
 class TestGetLength(TestCase):
