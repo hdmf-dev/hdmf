@@ -867,9 +867,16 @@ def _is_collection(data):
     """
     if isinstance(data, (str, bytes)):
         return False
-    if hasattr(data, "ndim"):
-        return data.ndim > 0
-    return hasattr(data, "__len__")
+    try:
+        ndim = data.ndim
+        return ndim > 0
+    except AttributeError:
+        # No ndim attribute (e.g. list, tuple, dict). Fall back to __len__.
+        return hasattr(data, "__len__")
+    except Exception:
+        # Accessing ndim on a closed h5py dataset raises RuntimeError.
+        # Treat inaccessible data as non-collection.
+        return False
 
 
 def _get_length(data) -> int:

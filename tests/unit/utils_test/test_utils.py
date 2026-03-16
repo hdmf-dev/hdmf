@@ -6,6 +6,7 @@ from hdmf.container import Data
 from hdmf.data_utils import DataChunkIterator, DataIO
 from hdmf.testing import TestCase
 from hdmf.utils import get_data_shape, to_uint_array, is_newer_version, _is_collection, _get_length, _unwrap_scalar
+from tests.unit.helpers.utils import get_temp_filepath
 
 
 class TestIsCollection(TestCase):
@@ -69,6 +70,26 @@ class TestIsCollection(TestCase):
             ndim = 0
             shape = ()
         self.assertFalse(_is_collection(FakeScalar()))
+
+    def test_ndim_raises_runtime_error(self):
+        """Simulate closed h5py dataset where accessing ndim raises RuntimeError."""
+        class ClosedDataset:
+            @property
+            def ndim(self):
+                raise RuntimeError("File is closed")
+        self.assertFalse(_is_collection(ClosedDataset()))
+
+    def test_closed_h5py_dataset(self):
+        """Test that a real closed h5py dataset is handled gracefully."""
+        path = get_temp_filepath()
+        try:
+            hfile = h5py.File(path, "w")
+            ds = hfile.create_dataset("data", data=[1, 2, 3])
+            hfile.close()
+            self.assertFalse(_is_collection(ds))
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
 
 
 class TestGetLength(TestCase):

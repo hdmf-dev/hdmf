@@ -8,6 +8,7 @@
 - Added `HDF5IO.is_open()` to check whether the HDF5 file handle is still valid. @rly [#1423](https://github.com/hdmf-dev/hdmf/pull/1423)
 
 ### Fixed
+- Fixed `_is_collection` raising `RuntimeError` when accessing `ndim` on closed h5py datasets, which caused `__repr__` to crash on containers read from closed HDF5 files. @rly [#1426](https://github.com/hdmf-dev/hdmf/pull/1426)
 - Fixed `_repr_html_` raising `RuntimeError` when the backing HDF5 file is closed. A warning banner is now shown and failed renders display a descriptive message instead of raising. @rly [#1423](https://github.com/hdmf-dev/hdmf/pull/1423)
 - Fixed writing compound dtype datasets with a single field. @rly [#1420](https://github.com/hdmf-dev/hdmf/pull/1420)
 - Replaced undeclared `pyyaml` dependency with `ruamel.yaml` (a declared core dependency) in `test_common_io.py`. The test relied on PyYAML being transitively installed by pip's `h5py`, which is not the case in conda environments. @rly [#1418](https://github.com/hdmf-dev/hdmf/pull/1418)
