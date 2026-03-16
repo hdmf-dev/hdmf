@@ -1,12 +1,14 @@
 import numpy as np
 from uuid import uuid4, UUID
+from unittest.mock import patch, PropertyMock
+import h5py
 import os
 
 from hdmf.container import AbstractContainer, Container, Data, HERDManager
 from hdmf.common.resources import HERD
 from hdmf.testing import TestCase
 from hdmf.utils import docval
-from hdmf.common import DynamicTable, VectorData, DynamicTableRegion
+from hdmf.common import DynamicTable, VectorData, DynamicTableRegion, SimpleMultiContainer, get_manager
 from hdmf.backends.hdf5.h5tools import HDF5IO
 
 from tests.unit.helpers.io import DoNothingIO
@@ -539,8 +541,6 @@ class TestHTMLRepr(TestCase):
 
     def test_repr_html_lindi_dataset(self):
         """Test HTML repr for datasets without get_storage_size method (e.g., LINDI datasets)."""
-        from unittest.mock import PropertyMock, patch
-        import h5py
 
         # Create a regular HDF5 dataset using h5py
         with h5py.File('array_data.h5', 'w') as f:
@@ -588,6 +588,76 @@ class TestHTMLRepr(TestCase):
 
         # Cleanup
         os.remove('array_data.h5')
+
+    def test_repr_html_hdf5_dataset_closed_file(self):
+        """Test that _repr_html_ shows a warning banner when the file is closed."""
+        smc = SimpleMultiContainer(name='root')
+        smc.add_container(Data(name='my_data', data=np.array([1, 2, 3, 4], dtype=np.int64)))
+
+        with HDF5IO('test_closed.h5', manager=get_manager(), mode='w') as io:
+            io.write(smc)
+
+        with HDF5IO('test_closed.h5', manager=get_manager(), mode='r') as io:
+            read_smc = io.read()
+
+        # File is now closed
+        html = read_smc._repr_html_()
+        self.assertIn("<b>Warning:</b>", html)
+        self.assertIn("The file backing this object is closed", html)
+
+        os.remove('test_closed.h5')
+
+    def test_repr_html_hdf5_dataset_field_closed_file(self):
+        """Test that _repr_html_ gracefully renders a closed h5py dataset field."""
+        with h5py.File('test_closed_field.h5', 'w') as f:
+            f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+
+        io = HDF5IO('test_closed_field.h5', mode='r')
+        dataset = io._file['my_dataset']
+        obj = self.ContainerWithData(data=dataset, str="hello")
+        # Set read_io manually to simulate this container being read from disk
+        obj.read_io = io
+        io.close()
+
+        # File is now closed — accessing dataset.shape raises RuntimeError
+        html = obj._repr_html_()
+        self.assertIn("<b>Warning:</b>", html)
+        self.assertIn("unable to render", html)
+        self.assertIn("file backing this object is closed", html)
+
+        os.remove('test_closed_field.h5')
+
+    def test_repr_html_no_warning_banner_when_file_open(self):
+        """Test that _repr_html_ does not show a warning banner when the file is open."""
+        smc = SimpleMultiContainer(name='root')
+        smc.add_container(Data(name='my_data', data=np.array([1, 2, 3, 4], dtype=np.int64)))
+
+        with HDF5IO('test_open.h5', manager=get_manager(), mode='w') as io:
+            io.write(smc)
+
+        with HDF5IO('test_open.h5', manager=get_manager(), mode='r') as io:
+            read_smc = io.read()
+            html = read_smc._repr_html_()
+            self.assertNotIn("Warning", html)
+            self.assertNotIn("unable to render", html)
+
+        os.remove('test_open.h5')
+
+    def test_repr_html_no_warning_banner_without_io(self):
+        """Test that _repr_html_ does not show a warning banner when there is no read_io."""
+        obj = self.ContainerWithData(data=np.array([1, 2, 3]), str="hello")
+        html = obj._repr_html_()
+        self.assertNotIn("Warning", html)
+
+    def test_repr_html_field_rendering_error_shows_exception_message(self):
+        """Test that an error rendering a field in _generate_field_html shows the exception message."""
+        obj = self.ContainerWithData(data=np.array([1, 2, 3]), str="hello")
+
+        # Patch _generate_array_html to raise a non-file-closed error
+        with patch.object(type(obj), '_generate_array_html', side_effect=ValueError("custom error")):
+            html = obj._repr_html_()
+        self.assertIn("unable to render", html)
+        self.assertIn("custom error", html)
 
 
 class TestData(TestCase):

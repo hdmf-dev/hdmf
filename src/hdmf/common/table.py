@@ -1358,6 +1358,7 @@ class DynamicTable(Container):
         html_repr = self.css_style + self.js_script
         html_repr += "<div class='container-wrap'>"
         html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
+        html_repr += self._closed_file_warning_html()
         html_repr += self.generate_html_repr()
         html_repr += "</div>"
         return html_repr
@@ -1391,10 +1392,14 @@ class DynamicTable(Container):
             f'class="container-fields field-key"><b>columns</b></summary>{col_desc_inner}</details>'
         )
 
-        inside = f"{self[:min(nrows, len(self))].to_html()}"
+        try:
+            inside = f"{self[:min(nrows, len(self))].to_html()}"
 
-        if len(self) >= nrows + 1:
-            inside += f"<p>... and {len(self) - nrows} more row(s).</p>"
+            if len(self) >= nrows + 1:
+                inside += f"<p>... and {len(self) - nrows} more row(s).</p>"
+        except Exception as e:
+            reason = "the file backing this object is closed" if self._file_is_closed() else str(e)
+            inside = f"<p><em>{type(self).__name__} (unable to render table data: {reason})</em></p>"
 
         out += (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '

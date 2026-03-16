@@ -998,6 +998,24 @@ class TestHDF5IO(TestCase):
             self.assertEqual(io.manager, self.manager)
             self.assertEqual(io.source, self.path)
 
+    def test_is_open_true(self):
+        """Test that is_open returns True when the file is open."""
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            self.assertTrue(io.is_open())
+
+    def test_is_open_false_after_close(self):
+        """Test that is_open returns False after the file is closed."""
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        io.close()
+        self.assertFalse(io.is_open())
+
+    def test_is_open_false_before_open(self):
+        """Test that is_open returns False before the file is opened."""
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        io.close()
+        io._HDF5IO__file = None
+        self.assertFalse(io.is_open())
+
     def test_delete_with_incomplete_construction_missing_file(self):
         """
         Here we test what happens when `close` is called before `HDF5IO.__init__` has

@@ -5,8 +5,11 @@
 ### Enhancements
 - Replaced `hasattr(data, "__len__")` checks with `ndim`-based collection detection via new `_is_collection` and `_get_length` helpers in `hdmf.utils`. This fixes compatibility with array libraries that follow the Python array API standard (e.g., zarr v3), which provide `ndim` and `shape` but not `__len__`. @h-mayorquin [#1414](https://github.com/hdmf-dev/hdmf/pull/1414)
 - Added `_unwrap_scalar` helper in `hdmf.utils` to convert 0-d ndarrays to numpy scalars via `.item()`. This fixes `isinstance` checks against Python scalar types that fail on 0-d ndarrays returned by array-API-conforming libraries (e.g., zarr v3 scalar indexing). @h-mayorquin [#1415](https://github.com/hdmf-dev/hdmf/pull/1415)
+- Added `HDF5IO.is_open()` to check whether the HDF5 file handle is still valid. @rly [#1423](https://github.com/hdmf-dev/hdmf/pull/1423)
 
 ### Fixed
+- Fixed `_is_collection` raising `RuntimeError` when accessing `ndim` on closed h5py datasets, which caused `__repr__` to crash on containers read from closed HDF5 files. @rly [#1426](https://github.com/hdmf-dev/hdmf/pull/1426)
+- Fixed `_repr_html_` raising `RuntimeError` when the backing HDF5 file is closed. A warning banner is now shown and failed renders display a descriptive message instead of raising. @rly [#1423](https://github.com/hdmf-dev/hdmf/pull/1423)
 - Fixed writing compound dtype datasets with a single field. @rly [#1420](https://github.com/hdmf-dev/hdmf/pull/1420)
 - Replaced undeclared `pyyaml` dependency with `ruamel.yaml` (a declared core dependency) in `test_common_io.py`. The test relied on PyYAML being transitively installed by pip's `h5py`, which is not the case in conda environments. @rly [#1418](https://github.com/hdmf-dev/hdmf/pull/1418)
 
