@@ -1723,3 +1723,52 @@ class TestVlenStringData(ValidatorTestBase):
         self.assertEqual(len(results), 1)
         self.assertIsInstance(results[0], DtypeError)
         self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
+
+def test_dataset_reference_type_validation_failure():
+    from hdmf.spec import DatasetSpec, SpecCatalog, SpecNamespace, RefSpec
+    from hdmf.validate import ValidatorMap
+    from hdmf.build import DatasetBuilder, ReferenceBuilder
+
+    foo_spec = DatasetSpec(
+        doc='dataset with ref',
+        dtype=RefSpec('Bar', 'object'),
+        data_type_def='Foo',
+        shape=None
+    )
+
+    bar_spec = DatasetSpec(
+        doc='correct dataset',
+        data_type_def='Bar',
+        dtype='int',
+        shape=None
+    )
+
+    baz_spec = DatasetSpec(
+        doc='wrong dataset',
+        data_type_def='Baz',
+        dtype='int',
+        shape=None
+    )
+
+    catalog = SpecCatalog()
+    for spec in [foo_spec, bar_spec, baz_spec]:
+        catalog.register_spec(spec, 'test.yaml')
+
+    namespace = SpecNamespace(
+        'test ns', 'test_ns',
+        [{'source': 'test.yaml'}],
+        version='0.1.0',
+        catalog=catalog
+    )
+
+    vmap = ValidatorMap(namespace)
+
+    baz = DatasetBuilder('baz', 5, attributes={'data_type': 'Baz'})
+    foo = DatasetBuilder('foo', ReferenceBuilder(baz), attributes={'data_type': 'Foo'})
+
+    errors = vmap.validate(foo)
+
+    assert errors, "Expected validation error for incorrect reference type"
+
+
+
