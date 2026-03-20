@@ -514,7 +514,7 @@ class DatasetValidator(BaseStorageValidator):
                             target = val.builder
                             ref_type = target.attributes.get("data_type")
 
-                            if expected_type and ref_type:
+                            if expected_type is not None and ref_type is not None:
                                 if ref_type != expected_type:
                                     ret.append(
                                         DtypeError(
