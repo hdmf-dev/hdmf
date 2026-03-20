@@ -1766,9 +1766,6 @@ class TestVlenStringData(ValidatorTestBase):
         self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
 
 def test_dataset_reference_type_validation_failure():
-    from hdmf.spec import DatasetSpec, SpecCatalog, SpecNamespace, RefSpec
-    from hdmf.validate import ValidatorMap
-    from hdmf.build import DatasetBuilder, ReferenceBuilder
 
     foo_spec = DatasetSpec(
         doc='dataset with ref',
@@ -1809,7 +1806,9 @@ def test_dataset_reference_type_validation_failure():
 
     errors = vmap.validate(foo)
 
-    assert errors, "Expected validation error for incorrect reference type"
+    assert len(errors) == 1
+    assert isinstance(errors[0], DtypeError)
+
 
 class TestISODateTimeTimezone(ValidatorTestBase):
     """Test that isodatetime specs for both Datasets and Attributes require timezone information."""
