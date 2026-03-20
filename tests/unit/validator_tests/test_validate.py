@@ -1765,49 +1765,96 @@ class TestVlenStringData(ValidatorTestBase):
         self.assertIsInstance(results[0], DtypeError)
         self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
 
-def test_dataset_reference_type_validation_failure():
+    def test_dataset_reference_type_validation_failure(self):
+        foo_spec = DatasetSpec(
+            doc='dataset with ref',
+            dtype=RefSpec('Bar', 'object'),
+            data_type_def='Foo',
+            shape=None
+        )
 
-    foo_spec = DatasetSpec(
-        doc='dataset with ref',
-        dtype=RefSpec('Bar', 'object'),
-        data_type_def='Foo',
-        shape=None
-    )
+        bar_spec = DatasetSpec(
+            doc='correct dataset',
+            data_type_def='Bar',
+            dtype='int',
+            shape=None
+        )
 
-    bar_spec = DatasetSpec(
-        doc='correct dataset',
-        data_type_def='Bar',
-        dtype='int',
-        shape=None
-    )
+        baz_spec = DatasetSpec(
+            doc='wrong dataset',
+            data_type_def='Baz',
+            dtype='int',
+            shape=None
+        )
 
-    baz_spec = DatasetSpec(
-        doc='wrong dataset',
-        data_type_def='Baz',
-        dtype='int',
-        shape=None
-    )
+        catalog = SpecCatalog()
+        for spec in [foo_spec, bar_spec, baz_spec]:
+            catalog.register_spec(spec, 'test.yaml')
 
-    catalog = SpecCatalog()
-    for spec in [foo_spec, bar_spec, baz_spec]:
-        catalog.register_spec(spec, 'test.yaml')
+        namespace = SpecNamespace(
+            'test ns', 'test_ns',
+            [{'source': 'test.yaml'}],
+            version='0.1.0',
+            catalog=catalog
+        )
 
-    namespace = SpecNamespace(
-        'test ns', 'test_ns',
-        [{'source': 'test.yaml'}],
-        version='0.1.0',
-        catalog=catalog
-    )
+        vmap = ValidatorMap(namespace)
 
-    vmap = ValidatorMap(namespace)
+        baz = DatasetBuilder('baz', 5, attributes={'data_type': 'Baz'})
+        foo = DatasetBuilder('foo', ReferenceBuilder(baz), attributes={'data_type': 'Foo'})
 
-    baz = DatasetBuilder('baz', 5, attributes={'data_type': 'Baz'})
-    foo = DatasetBuilder('foo', ReferenceBuilder(baz), attributes={'data_type': 'Foo'})
+        errors = vmap.validate(foo)
 
-    errors = vmap.validate(foo)
+        assert len(errors) == 1
+        assert isinstance(errors[0], DtypeError)
 
-    assert len(errors) == 1
-    assert isinstance(errors[0], DtypeError)
+    def test_dataset_reference_list_mixed(self):
+        foo_spec = DatasetSpec(
+            doc='dataset with ref',
+            dtype=RefSpec('Bar', 'object'),
+            data_type_def='Foo'
+        )
+
+        bar_spec = DatasetSpec(
+            doc='correct dataset',
+            data_type_def='Bar',
+            dtype='int'
+        )
+
+        baz_spec = DatasetSpec(
+            doc='wrong dataset',
+            data_type_def='Baz',
+            dtype='int'
+        )
+
+        catalog = SpecCatalog()
+        for spec in [foo_spec, bar_spec, baz_spec]:
+            catalog.register_spec(spec, 'test.yaml')
+
+        namespace = SpecNamespace(
+            'test ns', 'test_ns',
+            [{'source': 'test.yaml'}],
+            version='0.1.0',
+            catalog=catalog
+        )
+
+        vmap = ValidatorMap(namespace)
+
+        bar = DatasetBuilder('bar', 5, attributes={'data_type': 'Bar'})
+        baz = DatasetBuilder('baz', 5, attributes={'data_type': 'Baz'})
+
+        foo = DatasetBuilder(
+            'foo',
+            [
+                ReferenceBuilder(bar),
+                ReferenceBuilder(baz)
+            ],
+            attributes={'data_type': 'Foo'}
+        )
+
+        errors = vmap.validate(foo)
+
+        assert len(errors) == 1
 
 
 class TestISODateTimeTimezone(ValidatorTestBase):
