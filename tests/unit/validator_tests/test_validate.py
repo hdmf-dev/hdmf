@@ -1952,4 +1952,3 @@ class TestISODateTimeTimezone(ValidatorTestBase):
                 # This confirms it fails because it lacks the 'T' and timezone
                 self.assertEqual(len(result), 1)
                 self.assertIsInstance(result[0], Error)
-
