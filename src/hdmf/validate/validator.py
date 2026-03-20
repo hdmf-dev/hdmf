@@ -514,7 +514,7 @@ class DatasetValidator(BaseStorageValidator):
                             target = val.builder
                             ref_type = target.attributes.get("data_type")
 
-                            if ref_type != expected_type:
+                            if ref_type is not None and ref_type != expected_type:
                                 ret.append(
                                     DtypeError(
                                         self.get_spec_loc(self.spec),
@@ -523,7 +523,7 @@ class DatasetValidator(BaseStorageValidator):
                                         location=self.get_builder_loc(builder)
                                     )
                                 )
-                        elif isinstance(val, (list, tuple)):
+                        elif isinstance(val, (list, tuple, np.ndarray)):
                             for v in val:
                                 _check_ref(v)
 
