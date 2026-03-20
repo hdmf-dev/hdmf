@@ -195,9 +195,9 @@ class TestCase(unittest.TestCase):
                 self.assertEqual(arr1, arr2, message)  # scalar
         else:
             self.assertEqual(len(arr1), len(arr2), message)
-            if isinstance(arr1, np.ndarray) and len(arr1.dtype) > 1:  # compound type
+            if isinstance(arr1, np.ndarray) and arr1.dtype.names is not None:  # compound type
                 arr1 = arr1.tolist()
-            if isinstance(arr2, np.ndarray) and len(arr2.dtype) > 1:  # compound type
+            if isinstance(arr2, np.ndarray) and arr2.dtype.names is not None:  # compound type
                 arr2 = arr2.tolist()
             if isinstance(arr1, np.ndarray) and isinstance(arr2, np.ndarray):
                 if np.issubdtype(arr1.dtype, np.number):

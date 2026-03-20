@@ -314,11 +314,28 @@ class NamespaceCatalog:
         if name in self.__namespaces:
             raise KeyError("namespace '%s' already exists" % name)
         self.__namespaces[name] = namespace
+
+        # Determine which source files are owned by this namespace
+        # (not imported from other namespaces via 'namespace' schema entries).
+        # Only specs from own sources should be added to the unresolved cache
+        # to avoid duplicates when multiple namespaces import the same types.
+        own_sources = set()
+        for elem in namespace.schema:
+            if 'source' in elem:
+                own_sources.add(elem['source'])
+
         for dt in namespace.catalog.get_registered_types():
             source = namespace.catalog.get_spec_source_file(dt)
             # do not add types that have already been loaded
             # use dict with None values as ordered set because order of specs does matter
             self.__loaded_specs.setdefault(source, dict()).update({dt: None})
+
+            # Only add to unresolved spec dicts for types from this namespace's
+            # own source files. Types imported from other namespaces are already
+            # tracked under their original namespace's source.
+            if source not in own_sources:
+                continue
+
             # Build the unresolved spec dict for caching (if not already present from file loading)
             if source not in self.__unresolved_spec_dicts:
                 self.__unresolved_spec_dicts[source] = {'groups': [], 'datasets': []}

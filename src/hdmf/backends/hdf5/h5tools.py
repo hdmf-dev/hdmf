@@ -20,7 +20,7 @@ from ...container import Container
 from ...data_utils import AbstractDataChunkIterator
 from ...spec import RefSpec, DtypeSpec, NamespaceCatalog
 from ...utils import (docval, getargs, popargs, get_data_shape, get_docval, StrDataset, is_zarr_array,
-                      get_basic_array_info, generate_array_html_repr)
+                      get_basic_array_info, generate_array_html_repr, _is_collection, _get_length)
 from ..utils import NamespaceToBuilderHelper, WriteStatusTracker
 
 ROOT_NAME = 'root'
@@ -309,7 +309,10 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'herd', 'type': 'hdmf.common.resources.HERD',
              'doc': 'A HERD object to populate with references.',
-             'default': None})
+             'default': None},
+            {'name': 'expandable', 'type': bool, 'default': True,
+             'doc': ('If True (default), datasets will be created as expandable by setting the maxshape '
+                     'based on the matching shape defined in the spec.')})
     def write(self, **kwargs):
         """Write the container to an HDF5 file."""
         if self.__mode == 'r':
@@ -722,6 +725,11 @@ class HDF5IO(HDMFIO):
             # an error before self.__file has been created
             self.__file = None
 
+    def is_open(self) -> bool:
+        """Check whether this HDF5IO object is open for reading/writing."""
+        # Return False if file is None or closed
+        return bool(self.__file)
+
     def close_linked_files(self):
         """Close all opened, linked-to files.
 
@@ -750,17 +758,19 @@ class HDF5IO(HDMFIO):
              'doc': 'exhaust DataChunkIterators one at a time. If False, exhaust them concurrently',
              'default': True},
             {'name': 'export_source', 'type': str,
-             'doc': 'The source of the builders when exporting', 'default': None})
+             'doc': 'The source of the builders when exporting', 'default': None},
+            {'name': 'expandable', 'type': bool, 'default': True,
+             'doc': ('If True (default), datasets will be created as expandable by setting the maxshape '
+                     'based on the matching shape defined in the spec.')})
     def write_builder(self, **kwargs):
         f_builder = popargs('builder', kwargs)
-        link_data, exhaust_dci, export_source = getargs('link_data', 'exhaust_dci', 'export_source', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to path '%s' with kwargs=%s"
                           % (f_builder.name, self.source, kwargs))
-        for name, gbldr in f_builder.groups.items():
+        for gbldr in f_builder.groups.values():
             self.write_group(self.__file, gbldr, **kwargs)
-        for name, dbldr in f_builder.datasets.items():
+        for dbldr in f_builder.datasets.values():
             self.write_dataset(self.__file, dbldr, **kwargs)
-        for name, lbldr in f_builder.links.items():
+        for lbldr in f_builder.links.values():
             self.write_link(self.__file, lbldr, export_source=kwargs.get("export_source"))
         self.set_attributes(self.__file, f_builder.attributes)
         self.__add_refs()
@@ -800,10 +810,12 @@ class HDF5IO(HDMFIO):
             return H5_BINARY
         elif isinstance(data, Container):
             return H5_REF
-        elif not hasattr(data, '__len__'):
+        elif not _is_collection(data):
+            if isinstance(data, np.ndarray) and data.ndim == 0:
+                return data.dtype.type
             return type(data)
         else:
-            if len(data) == 0:
+            if _get_length(data) == 0:
                 if hasattr(data, 'dtype'):
                     return data.dtype
                 else:
@@ -927,6 +939,9 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
+            {'name': 'expandable', 'type': bool, 'default': True,
+             'doc': ('If True (default), datasets will be created as expandable by setting the maxshape '
+                     'based on the matching shape defined in the spec.')},
             returns='the Group that was created', rtype=Group)
     def write_group(self, **kwargs):
         parent, builder = popargs('parent', 'builder', kwargs)
@@ -940,18 +955,18 @@ class HDF5IO(HDMFIO):
         # write all groups
         subgroups = builder.groups
         if subgroups:
-            for subgroup_name, sub_builder in subgroups.items():
+            for sub_builder in subgroups.values():
                 # do not create an empty group without attributes or links
                 self.write_group(group, sub_builder, **kwargs)
         # write all datasets
         datasets = builder.datasets
         if datasets:
-            for dset_name, sub_builder in datasets.items():
+            for sub_builder in datasets.values():
                 self.write_dataset(group, sub_builder, **kwargs)
         # write all links
         links = builder.links
         if links:
-            for link_name, sub_builder in links.items():
+            for sub_builder in links.values():
                 self.write_link(group, sub_builder, export_source=kwargs.get("export_source"))
         attributes = builder.attributes
         self.set_attributes(group, attributes)
@@ -1027,6 +1042,9 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
+            {'name': 'expandable', 'type': bool, 'default': True,
+             'doc': ('If True (default), datasets will be created as expandable by setting the maxshape '
+                     'based on the matching shape defined in the spec.')},
             returns='the Dataset that was created', rtype=Dataset)
     def write_dataset(self, **kwargs):  # noqa: C901
         """ Write a dataset to HDF5
@@ -1034,7 +1052,7 @@ class HDF5IO(HDMFIO):
         The function uses other dataset-dependent write functions, e.g,
         ``__scalar_fill__``, ``__list_fill__``, and ``__setup_chunked_dset__`` to write the data.
         """
-        parent, builder = popargs('parent', 'builder', kwargs)
+        parent, builder, expandable = popargs('parent', 'builder', 'expandable', kwargs)
         link_data, exhaust_dci, export_source = getargs('link_data', 'exhaust_dci', 'export_source', kwargs)
         self.logger.debug("Writing DatasetBuilder '%s' to parent group '%s'" % (builder.name, parent.name))
         if self.get_written(builder):
@@ -1042,6 +1060,7 @@ class HDF5IO(HDMFIO):
             return None
         name = builder.name
         data = builder.data
+        matched_spec_shape = builder.matched_spec_shape
         dataio = None
         options = dict()  # dict with additional
         if isinstance(data, H5DataIO):
@@ -1051,6 +1070,16 @@ class HDF5IO(HDMFIO):
             data = data.data
         else:
             options['io_settings'] = {}
+
+        # Set maxshape to make a non-scalar dataset expandable but do not override existing settings
+        if (
+            expandable
+            and 'maxshape' not in options['io_settings']
+            and np.ndim(data) != 0
+            and matched_spec_shape is not None
+        ):
+            options['io_settings']['maxshape'] = matched_spec_shape
+
         attributes = builder.attributes
         options['dtype'] = builder.dtype
         dset = None
@@ -1131,7 +1160,8 @@ class HDF5IO(HDMFIO):
                 except Exception as exc:
                     msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                     raise Exception(msg) from exc
-                dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
+                io_settings = options['io_settings']
+                dset = parent.require_dataset(name, shape=(_get_length(data),), dtype=_dtype, **io_settings)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
                                   "object references. attributes: %s"
@@ -1154,7 +1184,7 @@ class HDF5IO(HDMFIO):
 
                 return
             # If the compound data type contains only regular data (i.e., no references) then we can write it as usual
-            elif len(np.shape(data)) == 0:
+            elif np.ndim(data) == 0:
                 dset = self.__scalar_fill__(parent, name, data, options)
             else:
                 dset = self.__list_fill__(parent, name, data, options)
@@ -1182,7 +1212,8 @@ class HDF5IO(HDMFIO):
             # Write an array dataset of references
             else:
                 # Write array of object references
-                dset = parent.require_dataset(name, shape=(len(data),), dtype=_dtype, **options['io_settings'])
+                io_settings = options['io_settings']
+                dset = parent.require_dataset(name, shape=(_get_length(data),), dtype=_dtype, **io_settings)
                 self.__set_written(builder)
                 self.logger.debug("Queueing reference resolution and set attribute on dataset '%s' containing "
                                   "object references. attributes: %s"
@@ -1214,7 +1245,7 @@ class HDF5IO(HDMFIO):
                 dset = self.__setup_chunked_dset__(parent, name, data, options)
                 self.__dci_queue.append(dataset=dset, data=data)
             # Write a regular in memory array (e.g., numpy array, list etc.)
-            elif hasattr(data, '__len__'):
+            elif _is_collection(data):
                 dset = self.__list_fill__(parent, name, data, options)
             # Write a regular scalar dataset
             else:
@@ -1361,8 +1392,8 @@ class HDF5IO(HDMFIO):
             data_shape = io_settings.pop('shape')
         elif hasattr(data, 'shape'):
             data_shape = data.shape
-        elif isinstance(dtype, np.dtype) and len(dtype) > 1:  # check if compound dtype
-            data_shape = (len(data),)
+        elif isinstance(dtype, np.dtype) and dtype.names is not None:  # check if compound dtype
+            data_shape = (_get_length(data),)
         else:
             data_shape = get_data_shape(data)
 
@@ -1374,9 +1405,9 @@ class HDF5IO(HDMFIO):
                   (name, parent.name, str(data_shape), str(dtype), str(io_settings), str(exc))
             raise Exception(msg) from exc
         # Write the data
-        if len(data) > dset.shape[0]:
+        if _get_length(data) > dset.shape[0]:
             new_shape = list(dset.shape)
-            new_shape[0] = len(data)
+            new_shape[0] = _get_length(data)
             dset.resize(new_shape)
         try:
             dset[:] = data

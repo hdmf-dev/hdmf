@@ -10,16 +10,20 @@ from glob import glob
 import zipfile
 
 import h5py
-import numpy as np
 from h5py import SoftLink, HardLink, ExternalLink, File
 from h5py import filters as h5py_filters
+
+import numpy as np
+import numpy.testing as npt
+
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.hdf5.h5tools import HDF5IO, SPEC_LOC_ATTR, H5PY_3
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
-from hdmf.container import Container
+from hdmf.container import Container, HERDManager
 from hdmf import Data, docval
+from hdmf.common import SimpleMultiContainer, get_hdf5io
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError, append_data
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
@@ -27,12 +31,13 @@ from hdmf.spec.spec import GroupSpec, DtypeSpec
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.common.resources import HERD
 from hdmf.term_set import TermSet, TermSetWrapper
-
+from hdmf.utils import get_data_shape
 
 from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
                               Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
                               CORE_NAMESPACE, get_temp_filepath, CacheSpecTestHelper,
-                              CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
+                              CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace,
+                              QuxData, QuxBucket, get_qux_buildmanager)
 from tests.unit.helpers.io import DoNothingIO
 
 try:
@@ -134,6 +139,21 @@ class H5IOTest(TestCase):
         self.assertTupleEqual(dset.shape, ())
         self.assertEqual(dset[()], a)
 
+    def test_write_dataset_0d_ndarray(self):
+        """Regression: writing a 0-d ndarray as a scalar dataset should work.
+
+        A user computing a scalar attribute (e.g. a sampling rate) with an
+        array-API-conforming library gets a 0-d array back. Converting to
+        numpy via np.asarray() produces a 0-d ndarray, which they then pass
+        to hdmf to store as an HDF5 dataset. Previously this crashed because
+        the __len__ heuristic misidentified 0-d ndarrays as collections.
+        """
+        sampling_rate = np.asarray(30000.0)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', sampling_rate, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertTupleEqual(dset.shape, ())
+        self.assertEqual(dset[()], 30000.0)
+
     def test_write_dataset_string(self):
         a = 'test string'
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
@@ -199,6 +219,23 @@ class H5IOTest(TestCase):
         dset = self.f['test_dataset']
         for field in a.dtype.names:
             self.assertTrue(np.all(dset[field][:] == a[field]))
+
+    def test_write_dataset_list_single_field_compound_datatype(self):
+        """Test that a compound dtype with a single field can be written."""
+        a = np.array([('val1',), ('val2',)], dtype=[('key', 'O')])
+        dset_builder = DatasetBuilder(
+            name='test_dataset',
+            data=a.tolist(),
+            attributes={},
+            dtype=[
+                DtypeSpec('key', doc='key', dtype='text'),
+            ],
+        )
+        self.io.write_dataset(self.f, dset_builder)
+        dset = self.f['test_dataset']
+        self.assertEqual(dset.shape, (2,))
+        self.assertEqual(dset['key'][0].decode('utf-8'), 'val1')
+        self.assertEqual(dset['key'][1].decode('utf-8'), 'val2')
 
     def test_write_dataset_list_compress_gzip(self):
         a = H5DataIO(np.arange(30).reshape(5, 2, 3),
@@ -840,6 +877,26 @@ class TestRoundTrip(TestCase):
             self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
+    def test_roundtrip_basic_append(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with HDF5IO(self.path, manager=self.manager, mode='a') as io:
+            read_foofile = io.read()
+            data = read_foofile.buckets['bucket1'].foos['foo1'].my_data
+            shape = list(data.shape)
+            shape[0] += 1
+            data.resize(shape)
+            data[-1] = 6
+            self.assertListEqual(read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist(),
+                                 [1, 2, 3, 4, 5, 6])
+
+
     def test_roundtrip_empty_dataset(self):
         foo1 = Foo('foo1', [], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
@@ -940,6 +997,24 @@ class TestHDF5IO(TestCase):
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
             self.assertEqual(io.manager, self.manager)
             self.assertEqual(io.source, self.path)
+
+    def test_is_open_true(self):
+        """Test that is_open returns True when the file is open."""
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            self.assertTrue(io.is_open())
+
+    def test_is_open_false_after_close(self):
+        """Test that is_open returns False after the file is closed."""
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        io.close()
+        self.assertFalse(io.is_open())
+
+    def test_is_open_false_before_open(self):
+        """Test that is_open returns False before the file is opened."""
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        io.close()
+        io._HDF5IO__file = None
+        self.assertFalse(io.is_open())
 
     def test_delete_with_incomplete_construction_missing_file(self):
         """
@@ -1162,6 +1237,46 @@ class TestHERDIO(TestCase):
             (0, read_foofile.object_id, 'FooFile', '', ''))
 
         self.remove_er_files()
+
+    def test_write_herd_as_child(self):
+        """Test writing and reading HERD as a child group of a
+        SimpleMultiContainer so that the Data is written and the
+        link from HERD to the data can be verified."""
+
+        class _HERDManagerContainer(SimpleMultiContainer, HERDManager):
+            pass
+
+        species = Data(name='species', data=['Homo sapiens'])
+        herd = HERD()
+        container = _HERDManagerContainer(name='root', containers=[species, herd])
+
+        container.external_resources = herd
+        herd.add_ref(
+            file=container,
+            container=species,
+            key='Homo sapiens',
+            entity_id='NCBI:9606',
+            entity_uri='https://example.com',
+        )
+
+        path = get_temp_filepath()
+        try:
+            with get_hdf5io(path=path, mode='w') as io:
+                io.write(container)
+
+            with get_hdf5io(path=path, mode='r') as io:
+                read_container = io.read()
+                read_herd = read_container.get_container('external_resources')
+                self.assertIsInstance(read_herd, HERD)
+                read_keys = read_herd.keys[:]
+                self.assertEqual(read_keys.shape, (1,))
+                self.assertEqual(read_keys[0][0], 'Homo sapiens')
+
+                read_objects = read_herd.objects[:]
+                self.assertEqual(read_objects.shape, (1,))
+                self.assertEqual(read_objects[0][1], species.object_id)
+        finally:
+            remove_test_file(path)
 
 
 class TestMultiWrite(TestCase):
@@ -3622,7 +3737,7 @@ class TestWriteHDF5withZarrInput(TestCase):
 
     def test_roundtrip_basic(self):
         # Setup all the data we need
-        zarr.save(self.zarr_path, np.arange(50).reshape(5, 10))
+        zarr.save(self.zarr_path, np.arange(50))
         zarr_data = zarr.open(self.zarr_path, 'r')
         foo1 = Foo(name='foo1',
                    my_data=zarr_data,
@@ -3655,7 +3770,7 @@ class TestWriteHDF5withZarrInput(TestCase):
             self.assertListEqual([], read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
     def test_write_zarr_int32_dataset(self):
-        base_data = np.arange(50).reshape(5, 10).astype('int32')
+        base_data = np.arange(50).astype('int32')
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
@@ -3669,7 +3784,7 @@ class TestWriteHDF5withZarrInput(TestCase):
                              base_data.tolist())
 
     def test_write_zarr_float32_dataset(self):
-        base_data = np.arange(50).reshape(5, 10).astype('float32')
+        base_data = np.arange(50).astype('float32')
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
@@ -3799,7 +3914,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         np.testing.assert_array_equal(dset[:].astype(bytes), zarr_data[:])
 
     def test_write_zarr_dataset_compress_gzip(self):
-        base_data = np.arange(50).reshape(5, 10).astype('float32')
+        base_data = np.arange(50).astype('float32')
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         a = H5DataIO(zarr_data,
@@ -3888,6 +4003,23 @@ class HDF5IOClassmethodTests(TestCase):
         HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
         with self.assertRaisesRegex(Exception, "Could not create dataset foo in /"):
             HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
+
+    def test_get_type_0d_ndarray(self):
+        """Regression: get_type should handle 0-d ndarrays.
+
+        The Python array API standard requires reductions (mean, sum, etc.)
+        to return 0-d arrays, not scalars. When results from array-API-
+        conforming libraries (zarr v3, cupy, etc.) are converted to numpy
+        via np.asarray(), the result is a 0-d ndarray. A 0-d ndarray has
+        __len__ defined but len() raises TypeError, which previously
+        crashed get_type. We use np.asarray(scalar) to produce a 0-d
+        ndarray without requiring any array library as a test dependency.
+        """
+        zero_d = np.asarray(3.14)
+        self.assertIsInstance(zero_d, np.ndarray)
+        self.assertEqual(zero_d.ndim, 0)
+        result = HDF5IO.get_type(zero_d)
+        self.assertIs(result, np.float64)
 
 
 class H5DataIOTests(TestCase):
@@ -4023,3 +4155,61 @@ class TestDataSetDataIO(TestCase):
         self.assertIsInstance(my_data.data, H5DataIO)
         self.assertEqual(my_data.data.io_settings["chunks"], (2,))
         file.close()
+
+
+class TestExpand(TestCase):
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_expand_false(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile, expandable=False)
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
+                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+            self.assertEqual(get_data_shape(read_foofile.buckets['bucket1'].foos['foo1'].my_data),
+                            (5,))
+
+    def test_multi_shape_no_labels(self):
+        qux = QuxData(name='my_qux', data=[[1, 2, 3], [4, 5, 6]])
+        quxbucket = QuxBucket('bucket1', qux)
+
+        manager = get_qux_buildmanager([[None, None], [None, 3]])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(quxbucket, expandable=True)
+
+        with HDF5IO(self.path, manager=manager, mode='r') as io:
+            read_quxbucket = io.read()
+            self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None, 3))
+
+    def test_expand_set_shape(self):
+        qux = QuxData(name='my_qux', data=[[1, 2, 3], [4, 5, 6]])
+        quxbucket = QuxBucket('bucket1', qux)
+
+        manager = get_qux_buildmanager([None, 3])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(quxbucket, expandable=True)
+
+        with HDF5IO(self.path, manager=manager, mode='r+') as io:
+            read_quxbucket = io.read()
+            read_quxbucket.qux_data.append([7, 8, 9])
+
+            expected = np.array([[1, 2, 3],
+                                 [4, 5, 6],
+                                 [7, 8, 9]])
+            npt.assert_array_equal(read_quxbucket.qux_data.data[:], expected)
+            self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None, 3))

@@ -258,7 +258,21 @@ class TestDynamicTable(TestCase):
         )
         compound_vector_data.extend(c_data2)
 
-        np.testing.assert_array_equal(compound_vector_data.data, np.vstack((c_data, c_data2)))
+        expected = np.array([('Homo sapiens', 24), ('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        np.testing.assert_array_equal(compound_vector_data.data, expected)
+
+    def test_1d_ndarray_extend(self):
+        """Test that extending a 1D numpy array produces a flat 1D result, not 2D."""
+        vector_data = VectorData(
+            name='scores',
+            description='scalar column',
+            data=np.array([1.0, 2.0])
+        )
+        vector_data.extend(np.array([3.0, 4.0]))
+
+        expected = np.array([1.0, 2.0, 3.0, 4.0])
+        np.testing.assert_array_equal(vector_data.data, expected)
+        self.assertEqual(vector_data.data.ndim, 1)
 
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_wrapped_array_append(self):
@@ -286,7 +300,8 @@ class TestDynamicTable(TestCase):
         )
         vector_data.extend(data2)
 
-        np.testing.assert_array_equal(vector_data.data.data, np.vstack((data, data2)))
+        expected = np.array(['Homo sapiens', 'Mus musculus'])
+        np.testing.assert_array_equal(vector_data.data.data, expected)
 
     @unittest.skipIf(not REQUIREMENTS_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_wrapped_compound_data_append(self):
@@ -314,7 +329,8 @@ class TestDynamicTable(TestCase):
         )
         compound_vector_data.extend(c_data2)
 
-        np.testing.assert_array_equal(compound_vector_data.data.data, np.vstack((c_data, c_data2)))
+        expected = np.array([('Homo sapiens', 24), ('Mus musculus', 24)], dtype=[('species', 'U50'), ('age', 'i4')])
+        np.testing.assert_array_equal(compound_vector_data.data.data, expected)
 
     def test_constructor_bad_columns(self):
         columns = ['bad_column']
@@ -556,6 +572,39 @@ class TestDynamicTable(TestCase):
         table.add_row(foo=5, bar=50.0, baz='lizard', qux=[10, 11, 12])
         self.assertListEqual(table['qux'][:], expected + [[10, 11, 12], ])
         self.assertListEqual(table.qux_index.data, [3, 7, 10])
+
+    def test_add_column_auto_index_bool_with_numpy_arrays(self):
+        """Regression: add_column with index=True preserves numpy array storage.
+
+        When ragged column data is provided as numpy arrays, the underlying VectorData should
+        store an ndarray rather than a Python list. This avoids unnecessary memory allocations
+        during writing.
+        """
+        table = self.with_spec()
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        expected = [np.array([1, 2, 3]), np.array([1, 2, 3, 4])]
+        data = np.array(expected, dtype=object)
+        table.add_column(name='qux', description='qux column', data=data, index=True)
+        # The underlying VectorData should remain a numpy array, not a Python list
+        expected_data = np.array([1, 2, 3, 1, 2, 3, 4])
+        vector_data = table['qux'].target
+        self.assertIsInstance(vector_data.data, np.ndarray)
+        np.testing.assert_array_equal(vector_data.data, expected_data)
+        self.assertListEqual(table.qux_index.data, [3, 7])
+
+    def test_add_column_auto_index_with_empty_sub_arrays(self):
+        """Regression: add_column with index=2 handles rows containing empty sub-arrays.
+
+        When index > 1, the first flatten can produce an empty list (e.g., [[], []] flattens to []).
+        The second flatten iteration must handle that empty input without raising.
+        """
+        table = self.with_spec()
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        table.add_row(foo=5, bar=50.0, baz='lizard')
+        data = [[], []]
+        table.add_column(name='qux', description='qux column', data=data, index=2)
+        self.assertListEqual(table['qux'][:], [[], []])
 
     def test_add_column_auto_multi_index_int(self):
         """
@@ -1070,6 +1119,30 @@ Fields:
             '</tbody>\n</table><p>... and 1 more row(s).</p></details></div>'
         )
 
+
+    def test_repr_html_closed_file(self):
+        """Test that _repr_html_ handles a closed HDF5 file gracefully."""
+        table = DynamicTable(name='test_table', description='a test table')
+        table.add_column('foo', 'foo column')
+        table.add_column('bar', 'bar column')
+        table.add_column('baz', 'baz column')
+        table.add_row(foo=1, bar=10.0, baz='cat')
+        table.add_row(foo=2, bar=20.0, baz='dog')
+        table.add_row(foo=3, bar=30.0, baz='bird')
+
+        with HDF5IO('test_table_repr.h5', manager=get_manager(), mode='w') as io:
+            io.write(table)
+
+        with HDF5IO('test_table_repr.h5', manager=get_manager(), mode='r') as io:
+            read_table = io.read()
+
+        # File is now closed
+        html = read_table._repr_html_()
+        self.assertIn("file backing this object is closed", html)
+        self.assertIn("unable to render table data", html)
+        self.assertIn("<b>Warning:</b>", html)
+
+        os.remove('test_table_repr.h5')
 
     def test_add_column_existing_attr(self):
         table = self.with_table_columns()
@@ -1742,6 +1815,11 @@ class TestElementIdentifiers(TestCase):
             _ = (self.e == 0.1)
         with self.assertRaises(TypeError):
             _ = (self.e == 'test')
+
+    def test_validate_0d_ndarray_element(self):
+        """ElementIdentifiers should accept 0-d int ndarrays (zarr v3 scalar indexing returns these)."""
+        eids = ElementIdentifiers(name='ids', data=[0, 1, 2])
+        eids._validate_new_data_element(np.array(42))  # 0-d ndarray, should not raise
 
 
 class TestBadElementIdentifiers(TestCase):

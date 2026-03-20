@@ -15,6 +15,7 @@ from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, 
                                   IncorrectQuantityError, IllegalLinkError, ShapeError)
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.utils import ZARR_INSTALLED, StrDataset
+from hdmf.validate.errors import Error
 
 CORE_NAMESPACE = 'test_core'
 
@@ -502,6 +503,46 @@ class TestDtypeValidation(TestCase):
         """Test that validator allows np.bool_ data where bool is specified."""
         self.set_up_spec('bool')
         value = np.bool_(True)
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_python_float_for_float64(self):
+        """Test that validator allows Python float data where float64 is specified."""
+        self.set_up_spec('float64')
+        value = 1.0
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_python_int_for_int64(self):
+        """Test that validator allows Python int data where int64 is specified."""
+        self.set_up_spec('int64')
+        value = 1
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_python_float_for_float32(self):
+        """Test that validator allows Python float data where float (float32) is specified."""
+        self.set_up_spec('float')
+        value = 1.0
+        bar_builder = GroupBuilder('my_bar',
+                                   attributes={'data_type': 'Bar', 'attr1': value},
+                                   datasets=[DatasetBuilder('data', value)])
+        results = self.vmap.validate(bar_builder)
+        self.assertEqual(len(results), 0)
+
+    def test_python_int_for_int32(self):
+        """Test that validator allows Python int data where int (int32) is specified."""
+        self.set_up_spec('int')
+        value = 1
         bar_builder = GroupBuilder('my_bar',
                                    attributes={'data_type': 'Bar', 'attr1': value},
                                    datasets=[DatasetBuilder('data', value)])
@@ -1770,5 +1811,145 @@ def test_dataset_reference_type_validation_failure():
 
     assert errors, "Expected validation error for incorrect reference type"
 
+class TestISODateTimeTimezone(ValidatorTestBase):
+    """Test that isodatetime specs for both Datasets and Attributes require timezone information."""
 
+    def getSpecs(self):
+        return (
+            GroupSpec(
+                doc='Test group for isodatetime',
+                data_type_def='DateTimeTest',
+                datasets=[
+                    DatasetSpec(name='dt', doc='dataset', dtype='isodatetime', quantity='?')
+                ],
+                attributes=[
+                    AttributeSpec(name='at', doc='attribute', dtype='isodatetime', required=False)
+                ]
+            ),
+        )
+
+    def check_iso(self, data, is_attr=False):
+        """Helper to build the group and run validation for either attribute or dataset."""
+        if is_attr:
+            builder = GroupBuilder(
+                name='test_group',
+                attributes={'data_type': 'DateTimeTest', 'at': data}
+            )
+        else:
+            builder = GroupBuilder(
+                name='test_group',
+                attributes={'data_type': 'DateTimeTest'},
+                datasets=[DatasetBuilder(name='dt', data=data)]
+            )
+        return self.vmap.validate(builder)
+
+    def test_isodatetime_with_timezone(self):
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso('2026-02-12T10:30:00+02:00', is_attr=is_attr)
+                self.assertEqual(len(result), 0)
+
+    def test_isodatetime_without_timezone(self):
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso('2026-02-12T10:30:00', is_attr=is_attr)
+
+                self.assertEqual(len(result), 1)
+                self.assertIsInstance(result[0], Error)
+                self.assertTrue(any("timezone" in str(e).lower() for e in result))
+
+    def test_isodatetime_array_mixed_timezone(self):
+        data = ['2026-02-12T10:30:00+02:00', '2026-02-12T12:00:00']
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso(data, is_attr=is_attr)
+                self.assertEqual(len(result), 1)
+                self.assertIsInstance(result[0], Error)
+
+    def test_isodatetime_array_all_without_timezone(self):
+        data = ['2026-02-12T10:30:00', '2026-02-12T12:00:00']
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso(data, is_attr=is_attr)
+                self.assertIsInstance(result[0], Error)
+                self.assertTrue(any("timezone" in str(e).lower() for e in result))
+
+    def test_isodatetime_array_all_with_timezone(self):
+        data = ['2026-02-12T10:30:00+02:00', '2026-02-12T12:00:00+02:00']
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso(data, is_attr=is_attr)
+                self.assertEqual(len(result), 0)
+
+    def test_dataset_isodatetime_with_datetime_objects(self):
+        # NOTE: In practice, builders should never contain isodatetime objects,
+        # but we test this just in case.
+        data = [datetime(2026, 2, 12, 10, 30), datetime(2026, 2, 12, 12, 0)]
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso(data, is_attr=is_attr)
+                self.assertEqual(len(result), 0)
+
+    def test_isodatetime_empty_array(self):
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso([], is_attr=is_attr)
+                self.assertEqual(len(result), 0)
+
+    def test_isodatetime_numpy_array(self):
+        data = np.array(['2026-02-12T10:30:00+02:00', '2026-02-12T12:00:00+02:00'])
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso(data, is_attr=is_attr)
+                self.assertEqual(len(result), 0)
+
+    def test_isodatetime_numpy_array_mixed_timezone(self):
+         data = np.array(['2026-02-12T10:30:00+02:00', '2026-02-12T12:00:00'])
+         for is_attr in [True, False]:
+             with self.subTest(is_attr=is_attr):
+                 result = self.check_iso(data, is_attr=is_attr)
+                 self.assertEqual(len(result), 1)
+                 self.assertIsInstance(result[0], Error)
+
+    def test_dataset_isodatetime_numpy_array_with_datetime_objects(self):
+        # NOTE: In practice, builders should never contain isodatetime objects,
+        # but we test this just in case.
+        data = np.array([datetime(2026, 2, 12, 10, 30), datetime(2026, 2, 12, 12, 0)])
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso(data, is_attr=is_attr)
+                self.assertEqual(len(result), 0)
+
+    def test_isodatetime_numpy_scalar_without_timezone(self):
+        data = np.array('2026-02-12T10:30:00')
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso(data, is_attr=is_attr)
+                self.assertEqual(len(result), 1)
+                self.assertIsInstance(result[0], Error)
+                self.assertTrue("timezone" in str(result[0]).lower())
+
+    def test_isodatetime_numpy_single_element(self):
+        """Specifically hits the 'len(data) == 1' and 'data.item()' branch."""
+        data = np.array(['2026-02-12T10:30:00+02:00'])
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso(data, is_attr=is_attr)
+                self.assertEqual(len(result), 0)
+
+    def test_isodatetime_timezone_z_suffix(self):
+        """Covers the 'endswith("Z")' True branch."""
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso('2026-02-12T10:30:00Z', is_attr=is_attr)
+                self.assertEqual(len(result), 0)
+
+    def test_isodatetime_no_time_component_fails(self):
+        """Covers the '"T" not in s' branch."""
+        for is_attr in [True, False]:
+            with self.subTest(is_attr=is_attr):
+                result = self.check_iso('2026-02-12', is_attr=is_attr)
+                # This confirms it fails because it lacks the 'T' and timezone
+                self.assertEqual(len(result), 1)
+                self.assertIsInstance(result[0], Error)
 

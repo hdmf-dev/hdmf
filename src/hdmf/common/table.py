@@ -15,8 +15,21 @@ import itertools
 from . import register_class, EXP_NAMESPACE
 from ..container import Container, Data
 from ..data_utils import DataIO, AbstractDataChunkIterator
-from ..utils import docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type, is_ragged
+from ..utils import (docval, getargs, ExtenderMeta, popargs, pystr, AllowPositional, check_type, is_ragged,
+                     _is_collection, _get_length, _unwrap_scalar)
 from ..term_set import TermSetWrapper
+
+
+def _flatten_one_ragged_level(data):
+    """Flatten one ragged nesting level with a fast path for numpy arrays."""
+    if len(data) == 0:
+        return []
+
+    all_entries_are_numpy_arrays = all(isinstance(value, np.ndarray) for value in data)
+    if all_entries_are_numpy_arrays:
+        return np.concatenate(data)
+
+    return list(itertools.chain.from_iterable(data))
 
 
 @register_class('VectorData')
@@ -226,7 +239,7 @@ class VectorIndex(VectorData):
             return self.__getitem_helper(arg, **kwargs)
         else:
             if isinstance(arg, slice):
-                indices = list(range(*arg.indices(len(self.data))))
+                indices = list(range(*arg.indices(_get_length(self.data))))
             else:
                 if isinstance(arg[0], (bool, np.bool_)):
                     arg = np.where(arg)[0]
@@ -282,10 +295,11 @@ class ElementIdentifiers(Data):
                 (hasattr(data, "data") and isinstance(data.data, AbstractDataChunkIterator))):
             if not np.issubdtype(data.dtype, np.integer):
                 raise ValueError("ElementIdentifiers must contain integers")
-        elif hasattr(data, "__len__") and len(data):
+        elif _is_collection(data) and _get_length(data):
             self._validate_new_data_element(data[0])
 
     def _validate_new_data_element(self, arg):
+        arg = _unwrap_scalar(arg)
         if not check_type(arg, int):
             raise ValueError("ElementIdentifiers must contain integers")
         super()._validate_new_data_element(arg)
@@ -972,7 +986,7 @@ class DynamicTable(Container):
                      stacklevel=3)
 
             # Check that we are asked to create an index
-            if (isinstance(index, bool) or isinstance(index, int)) and index > 0 and len(data) > 0:
+            if (isinstance(index, bool) or isinstance(index, int)) and index > 0 and _get_length(data) > 0:
                 # Iteratively flatten the data we use for the column based on the depth of the index to generate.
                 # Also, for each level compute the data for the VectorIndex for that level
                 flatten_data = data
@@ -983,7 +997,7 @@ class DynamicTable(Container):
                     except TypeError as e:
                         raise ValueError("Cannot automatically construct VectorIndex for nested array. "
                                          "Invalid data array element found.") from e
-                    flatten_data = list(itertools.chain.from_iterable(flatten_data))
+                    flatten_data = _flatten_one_ragged_level(flatten_data)
                 # if our data still is an array (e.g., a list or numpy array) then warn that the index parameter
                 # may be incorrect.
                 if len(flatten_data) > 0 and isinstance(flatten_data[0], (np.ndarray, list, tuple)):
@@ -1344,6 +1358,7 @@ class DynamicTable(Container):
         html_repr = self.css_style + self.js_script
         html_repr += "<div class='container-wrap'>"
         html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
+        html_repr += self._closed_file_warning_html()
         html_repr += self.generate_html_repr()
         html_repr += "</div>"
         return html_repr
@@ -1377,10 +1392,14 @@ class DynamicTable(Container):
             f'class="container-fields field-key"><b>columns</b></summary>{col_desc_inner}</details>'
         )
 
-        inside = f"{self[:min(nrows, len(self))].to_html()}"
+        try:
+            inside = f"{self[:min(nrows, len(self))].to_html()}"
 
-        if len(self) >= nrows + 1:
-            inside += f"<p>... and {len(self) - nrows} more row(s).</p>"
+            if len(self) >= nrows + 1:
+                inside += f"<p>... and {len(self) - nrows} more row(s).</p>"
+        except Exception as e:
+            reason = "the file backing this object is closed" if self._file_is_closed() else str(e)
+            inside = f"<p><em>{type(self).__name__} (unable to render table data: {reason})</em></p>"
 
         out += (
             f'<details><summary style="display: list-item; margin-left: {level * 20}px;" '
@@ -1452,8 +1471,8 @@ class DynamicTable(Container):
             else:
                 columns.append({'name': col_name,
                                 'description': column_descriptions.get(col_name, 'no description')})
-                if hasattr(df[col_name].iloc[0], '__len__') and not isinstance(df[col_name].iloc[0], str):
-                    lengths = [len(x) for x in df[col_name]]
+                if _is_collection(df[col_name].iloc[0]):
+                    lengths = [_get_length(x) for x in df[col_name]]
                     if not lengths[1:] == lengths[:-1]:
                         columns[-1].update(index=True)
 
@@ -1637,8 +1656,8 @@ class DynamicTableRegion(VectorData):
         elif isinstance(arg, str):
             return self.table[arg]
         elif np.issubdtype(type(arg), np.integer):
-            if arg >= len(self.data):
-                raise IndexError('index {} out of bounds for data of length {}'.format(arg, len(self.data)))
+            if arg >= _get_length(self.data):
+                raise IndexError('index {} out of bounds for data of length {}'.format(arg, _get_length(self.data)))
             ret = self.data[arg]
             if not index:
                 ret = self.table.get(ret, df=df, index=index, **kwargs)
@@ -1710,7 +1729,7 @@ class DynamicTableRegion(VectorData):
         Define the shape, i.e., (num_rows, num_columns) of the selected table region
         :return: Shape tuple with two integers indicating the number of rows and number of columns
         """
-        return (len(self.data), len(self.table.columns))
+        return (_get_length(self.data), len(self.table.columns))
 
     def __repr__(self):
         """
@@ -1768,8 +1787,8 @@ class DynamicTableRegion(VectorData):
 def _uint_precision(elements):
     """ Calculate the uint precision needed to encode a set of elements """
     n_elements = elements
-    if hasattr(elements, '__len__'):
-        n_elements = len(elements)
+    if _is_collection(elements):
+        n_elements = _get_length(elements)
     return np.dtype('uint%d' % (8 * max(1, int((2 ** np.ceil((np.ceil(np.log2(n_elements)) - 8) / 8)))))).type
 
 
@@ -1825,7 +1844,7 @@ class EnumData(VectorData):
                 # remap terms to their uint and bump the precision of existing data
                 self.__uint = uint
                 self.__revidx = _map_elements(self.__uint, self.elements)
-                for i in range(len(self.data)):
+                for i in range(_get_length(self.data)):
                     self.data[i] = self.__uint(self.data[i])
         return self.__revidx[term]
 

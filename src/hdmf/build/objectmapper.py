@@ -18,6 +18,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from ..container import AbstractContainer, Data
 from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
+from ..utils import _is_collection, _get_length, _unwrap_scalar
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
 from ..spec.spec import BaseStorageSpec
@@ -787,7 +788,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     msg = "'container' must be of type Data with DatasetSpec"
                     raise ValueError(msg)
                 spec_dtype, spec_shape, spec_dims, spec = self.__check_dset_spec(self.spec, spec_ext)
-                dimension_labels = self.__get_dimension_labels_from_spec(container.data, spec_shape, spec_dims)
+                dimension_labels, matched_shape = self.__get_spec_info(
+                    container.data, spec_shape, spec_dims, spec_dtype
+                )
                 if isinstance(spec_dtype, RefSpec):
                     self.logger.debug("Building %s '%s' as a dataset of references (source: %s)"
                                       % (container.__class__.__name__, container.name, repr(source)))
@@ -798,6 +801,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         parent=parent,
                         source=source,
                         dtype=spec_dtype.reftype,
+                        matched_spec_shape=matched_shape,
                         dimension_labels=dimension_labels,
                     )
                     manager.queue_ref(self.__set_dataset_to_refs(builder, spec_dtype, spec_shape, container, manager))
@@ -812,6 +816,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         parent=parent,
                         source=source,
                         dtype=spec_dtype,
+                        matched_spec_shape=matched_shape,
                         dimension_labels=dimension_labels,
                     )
                     manager.queue_ref(self.__set_compound_dataset_to_refs(builder, spec, spec_dtype, container,
@@ -830,6 +835,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             parent=parent,
                             source=source,
                             dtype="object",
+                            matched_spec_shape=matched_shape,
                             dimension_labels=dimension_labels,
                         )
                         manager.queue_ref(self.__set_untyped_dataset_to_refs(builder, container, manager))
@@ -855,6 +861,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             parent=parent,
                             source=source,
                             dtype=dtype,
+                            matched_spec_shape=matched_shape,
                             dimension_labels=dimension_labels,
                         )
 
@@ -886,56 +893,131 @@ class ObjectMapper(metaclass=ExtenderMeta):
             spec = ext
         return dtype, shape, dims, spec
 
-    def __get_dimension_labels_from_spec(self, data, spec_shape, spec_dims) -> tuple:
-        if spec_shape is None or spec_dims is None:
-            return None
-        data_shape = get_data_shape(data)
-        # if shape is a list of allowed shapes, find the index of the shape that matches the data
-        if isinstance(spec_shape[0], list):
-            match_shape_inds = list()
-            for i, s in enumerate(spec_shape):
-                # skip this shape if it has a different number of dimensions from the data
-                if len(s) != len(data_shape):
-                    continue
-                # check each dimension. None means any length is allowed
-                match = True
-                for j, d in enumerate(data_shape):
-                    if s[j] is not None and s[j] != d:
-                        match = False
-                        break
-                if match:
-                    match_shape_inds.append(i)
-            # use the most specific match -- the one with the fewest Nones
-            if match_shape_inds:
-                if len(match_shape_inds) == 1:
-                    return tuple(spec_dims[match_shape_inds[0]])
+    def __get_matched_dimension(self, data_shape, spec_shape):
+        """
+        Determine which allowed shapes match the given data shape.
+
+        Parameters
+        ----------
+        data_shape : tuple or list of int
+            The shape of the data being validated.
+        spec_shape : list of list
+            A list of alternative shapes, where each element is itself a shape
+            specification (a list of dimension lengths or ``None``, where ``None``
+            means any length is allowed for that dimension).
+
+        Returns
+        -------
+        list of int
+            A list of indices into ``spec_shape`` whose shape specifications match
+            ``data_shape``. Returns an empty list if no shapes match.
+        """
+        match_shape_inds = list()
+        for i, s in enumerate(spec_shape):
+            # skip this shape if it has a different number of dimensions from the data
+            if len(s) != len(data_shape):
+                continue
+            # check each dimension. None means any length is allowed
+            match = True
+            for j, d in enumerate(data_shape):
+                if s[j] is not None and s[j] != d:
+                    match = False
+                    break
+            if match:
+                match_shape_inds.append(i)
+        return match_shape_inds
+
+    def __get_spec_info(self, data, spec_shape, spec_dims, spec_dtype=None):
+        """
+        Determine the dimension labels and shape for data based on the allowed shapes in the spec.
+
+        This method compares the shape of ``data`` against the allowed shapes defined in
+        ``spec_shape`` and, if possible, selects the best-matching shape and corresponding
+        dimension labels from ``spec_dims``.
+
+        Parameters
+        ----------
+        data
+            The data object whose shape is to be matched against the specification. This may be
+            any array-like object supported by :func:`get_data_shape`.
+        spec_shape
+            The allowed shape definition(s) from the spec. This may be:
+
+            * ``None`` - no shape is defined.
+            * A list/tuple of dimension lengths, where each element is an int or ``None``.
+            * A list of such lists/tuples, representing multiple allowed shapes.
+        spec_dims
+            The dimension labels defined in the spec. This may be:
+
+            * ``None`` - no dimension labels are defined.
+            * A list/tuple of labels corresponding to a single shape in ``spec_shape``.
+            * A list of lists/tuples of labels, each corresponding to an entry in
+              ``spec_shape`` when multiple shapes are allowed.
+        spec_dtype
+            The dtype or list of dtypes defined in the spec. When ``spec_dtype`` is a list,
+            the data is treated as 1D with length equal to ``len(data)`` for the purpose of
+            shape matching. May be ``None`` if no dtype constraint is specified.
+
+        Returns
+        -------
+        tuple
+            A 2-tuple ``(dims, shape)`` where:
+
+            * ``dims`` is either ``None`` or a tuple of selected dimension labels.
+            * ``shape`` is either ``None`` or a tuple of dimension lengths corresponding to
+              the best-matching allowed shape.
+
+            If no matching shape is found, or if ``spec_shape`` is ``None``, the method
+            returns ``(None, None)``.
+        """
+        if spec_shape is None:
+            return None, None
+        else:
+            if spec_dtype is not None and isinstance(spec_dtype, list):
+                data_shape = (_get_length(data),)
+            else:
+                data_shape = get_data_shape(data)
+
+            if isinstance(spec_shape[0], list):
+                match_shape_inds = self.__get_matched_dimension(data_shape, spec_shape)
+                if len(match_shape_inds) == 0:
+                    # no matches found
+                    msg = "Shape of data does not match any allowed shapes in spec '%s'" % self.spec.path
+                    warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
+                    return None, None
+                elif len(match_shape_inds) == 1:
+                    if spec_dims is not None:
+                        return tuple(spec_dims[match_shape_inds[0]]), tuple(spec_shape[match_shape_inds[0]])
+                    else:
+                        return spec_dims, tuple(spec_shape[match_shape_inds[0]])
                 else:
                     count_nones = [len([x for x in spec_shape[k] if x is None]) for k in match_shape_inds]
                     index_min_count = count_nones.index(min(count_nones))
                     best_match_ind = match_shape_inds[index_min_count]
-                    return tuple(spec_dims[best_match_ind])
+                    if spec_dims is not None:
+                        return tuple(spec_dims[best_match_ind]), tuple(spec_shape[best_match_ind])
+                    else:
+                        return spec_dims, tuple(spec_shape[best_match_ind])
             else:
-                # no matches found
-                msg = "Shape of data does not match any allowed shapes in spec '%s'" % self.spec.path
-                warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
-                return None
-        else:
-            if len(data_shape) != len(spec_shape):
-                msg = "Shape of data does not match shape in spec '%s'" % self.spec.path
-                warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
-                return None
-            # check each dimension. None means any length is allowed
-            match = True
-            for j, d in enumerate(data_shape):
-                if spec_shape[j] is not None and spec_shape[j] != d:
-                    match = False
-                    break
-            if not match:
-                msg = "Shape of data does not match shape in spec '%s'" % self.spec.path
-                warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
-                return None
-            # shape is a single list of allowed dimension lengths
-            return tuple(spec_dims)
+                if len(data_shape) != len(spec_shape):
+                    msg = "Shape of data does not match shape in spec '%s'" % self.spec.path
+                    warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
+                    return None, None
+                # check each dimension. None means any length is allowed
+                match = True
+                for j, d in enumerate(data_shape):
+                    if spec_shape[j] is not None and spec_shape[j] != d:
+                        match = False
+                        break
+                if not match:
+                    msg = "Shape of data does not match shape in spec '%s'" % self.spec.path
+                    warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
+                    return None, None
+                # shape is a single list of allowed dimension lengths
+                if spec_dims is not None:
+                    return tuple(spec_dims), tuple(spec_shape)
+                else:
+                    return None, tuple(spec_shape)
 
     def __is_reftype(self, data):
         if (isinstance(data, AbstractDataChunkIterator) or
@@ -943,19 +1025,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
             return False
 
         tmp = data
-        while hasattr(tmp, '__len__') and not isinstance(tmp, (AbstractContainer, str, bytes)):
+        while _is_collection(tmp) and not isinstance(tmp, AbstractContainer):
             tmptmp = None
             for t in tmp:
                 # In case of a numeric array stop the iteration at the first element to avoid long-running loop
-                if isinstance(t, (int, float, complex, bool)):
+                if isinstance(_unwrap_scalar(t), (int, float, complex, bool)):
                     break
-                if hasattr(t, '__len__') and len(t) > 0 and not isinstance(t, (AbstractContainer, str, bytes)):
+                if _is_collection(t) and _get_length(t) > 0 and not isinstance(t, AbstractContainer):
                     tmptmp = tmp[0]
                     break
             if tmptmp is not None:
                 break
             else:
-                if len(tmp) == 0:
+                if _get_length(tmp) == 0:
                     tmp = None
                 else:
                     tmp = tmp[0]
@@ -984,6 +1066,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             refs = [(i, subt) for i, subt in enumerate(spec_dtype) if isinstance(subt.dtype, RefSpec)]
             bldr_data = list()
             for i, row in enumerate(container.data):
+                row = _unwrap_scalar(row)
                 tmp = list(row)
                 for j, subt in refs:
                     tmp[j] = self.__get_ref_builder(builder, subt.dtype, None, row[j], build_manager)
@@ -1161,7 +1244,20 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         raise BuildError(builder, msg) from ex
                     self.logger.debug("        Adding untyped dataset for spec name %s and adding attributes"
                                       % repr(spec.name))
-                    sub_builder = DatasetBuilder(spec.name, data, parent=builder, source=source, dtype=dtype)
+
+                    dimension_labels, matched_shape = self.__get_spec_info(
+                        data, spec.shape, spec.dims, dtype
+                    )
+
+                    sub_builder = DatasetBuilder(
+                        spec.name,
+                        data,
+                        parent=builder,
+                        source=source,
+                        dtype=dtype,
+                        matched_spec_shape=matched_shape,
+                        dimension_labels=dimension_labels
+                    )
                     builder.set_dataset(sub_builder)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager)
             else:
