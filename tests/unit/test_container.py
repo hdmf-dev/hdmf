@@ -26,17 +26,39 @@ class ContainerWithChild(Container):
         self.field1 = kwargs['field1']
 
 
+class ContainerWithHERD(HERDManager, Container):
+    """A test Container subclass that uses the HERDManager mixin."""
+
+    __fields__ = (
+        {'name': 'external_resources', 'child': True, 'required_name': 'external_resources'},
+    )
+
+
 class TestHERDManager(TestCase):
 
-    def test_get_and_set_resources(self):
-        em = HERDManager()
+    def test_subclass_has_external_resources_field(self):
+        """Test that a subclass declaring external_resources in __fields__ has it."""
+        self.assertIn('external_resources', ContainerWithHERD.__fields__)
+
+    def test_mixin_external_resources_default_none(self):
+        """Test that external_resources defaults to None when not set."""
+        container = ContainerWithHERD(name='test')
+        self.assertIsNone(container.external_resources)
+
+    def test_mixin_set_external_resources(self):
+        """Test setting external_resources on a Container subclass with HERDManager."""
+        container = ContainerWithHERD(name='test')
         er = HERD()
+        container.external_resources = er
+        self.assertIs(container.external_resources, er)
 
-        em.external_resources = er
-        self.assertEqual(em.external_resources, er)
-
-        er_get = em.external_resources
-        self.assertEqual(er, er_get)
+    def test_mixin_external_resources_is_child(self):
+        """Test that external_resources is registered as a child of the container."""
+        container = ContainerWithHERD(name='test')
+        er = HERD()
+        container.external_resources = er
+        self.assertIn(er, container.children)
+        self.assertIs(er.parent, container)
 
 
 class TestContainer(TestCase):

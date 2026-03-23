@@ -10,7 +10,9 @@ from hdmf.common.resources import HERD
 class _HERDManagerContainer(SimpleMultiContainer, HERDManager):
     """A SimpleMultiContainer that also implements HERDManager, for testing."""
 
-    pass
+    __fields__ = (
+        {'name': 'external_resources', 'child': True, 'required_name': 'external_resources'},
+    )
 
 
 def make_herd_1_8_0_file(outdir):
