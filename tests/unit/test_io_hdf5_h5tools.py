@@ -1244,7 +1244,9 @@ class TestHERDIO(TestCase):
         link from HERD to the data can be verified."""
 
         class _HERDManagerContainer(SimpleMultiContainer, HERDManager):
-            pass
+            __fields__ = (
+                {'name': 'external_resources', 'child': True, 'required_name': 'external_resources'},
+            )
 
         species = Data(name='species', data=['Homo sapiens'])
         herd = HERD()

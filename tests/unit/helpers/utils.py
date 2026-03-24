@@ -124,6 +124,10 @@ class FooFile(Container, HERDManager):
           and should be reset to 'root' when use is finished to avoid potential cross-talk between tests.
     """
 
+    __fields__ = (
+        {'name': 'external_resources', 'child': True, 'required_name': 'external_resources'},
+    )
+
     ROOT_NAME = "root"  # For HDF5 and Zarr this is the root. It should be set before use if different for the backend.
 
     @docval(

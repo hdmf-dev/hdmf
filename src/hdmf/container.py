@@ -1,4 +1,5 @@
 import types
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
 from uuid import uuid4
@@ -31,20 +32,64 @@ def _exp_warn_msg(cls):
     return msg
 
 
-class HERDManager:
+class HERDManager(ABC):
+    """An abstract mixin interface for containers that support external resources.
+
+    Container subclasses that inherit from this mixin must declare
+    ``external_resources`` in their ``__fields__`` (or equivalent, e.g.,
+    ``__nwbfields__``) with ``'child': True`` so that the auto-generated
+    property satisfies the abstract interface. The subclass must also create
+    an ObjectMapper mapping so that the ``external_resources`` value is
+    written to a file on write and populated from a file on read.
+
+    Example::
+
+        class MyFile(HERDManager, Container):
+            __fields__ = (
+                {'name': 'external_resources', 'child': True, 'required_name': 'external_resources'},
+            )
+
+    This class serves as a marker for ``isinstance`` checks throughout
+    hdmf (e.g., in HERD and HDMFIO) to identify containers that support
+    external resources.
     """
-    When this class is used as a mixin for a Container, it enables setting and getting an instance of HERD.
-    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._linked_external_resources = None
 
     @property
+    @abstractmethod
     def external_resources(self):
-        return self._herd if hasattr(self, "_herd") else None
+        pass
 
     @external_resources.setter
-    def external_resources(self, herd):
-        if hasattr(self, "_herd"):
-            warn("Reassigning external_resources may lead to unexpected behavior.")
-        self._herd = herd
+    @abstractmethod
+    def external_resources(self, val):
+        pass
+
+    def link_resources(self, external_resources):
+        """Link an external HERD object as the external resources for this container.
+
+        The linked HERD will not be written on export; the original HERD
+        (if any) is preserved in the exported file. Use
+        ``get_external_resources(linked=True)`` to access the linked HERD.
+        """
+        self._linked_external_resources = external_resources
+
+    def get_external_resources(self, linked=False):
+        """Return the HERD external resources object for this container.
+
+        Parameters
+        ----------
+        linked : bool, optional
+            If True, return the linked HERD set via ``link_resources``.
+            If False (default), return the HERD set via ``__init__`` or the
+            ``external_resources`` attribute.
+        """
+        if linked:
+            return self._linked_external_resources
+        return self.external_resources
 
 
 class AbstractContainer(metaclass=ExtenderMeta):
@@ -256,14 +301,23 @@ class AbstractContainer(metaclass=ExtenderMeta):
                         base_fields_conf_to_add.append(pconf)
                 all_fields_conf[0:0] = base_fields_conf_to_add
 
-        # create getter and setter if attribute does not already exist
+        # create getter and setter if attribute does not already exist or is abstract
         # if 'doc' not specified in __fields__, use doc from docval of __init__
         docs = {dv['name']: dv['doc'] for dv in get_docval(cls.__init__)}
+        abstracts_overridden = set()
         for field_conf in all_fields_conf:
             pname = field_conf['name']
             field_conf.setdefault('doc', docs.get(pname))
-            if not hasattr(cls, pname):
+            existing = getattr(cls, pname, None)
+            if existing is None or getattr(existing, '__isabstractmethod__', False):
+                if getattr(existing, '__isabstractmethod__', False):
+                    abstracts_overridden.add(pname)
                 setattr(cls, pname, property(cls._getter(field_conf), cls._setter(field_conf)))
+
+        # update __abstractmethods__ to remove any that were satisfied by auto-generated properties
+        if abstracts_overridden:
+            remaining = getattr(cls, '__abstractmethods__', frozenset()) - abstracts_overridden
+            cls.__abstractmethods__ = remaining
 
         cls._set_fields(tuple(field_conf['name'] for field_conf in all_fields_conf))
         cls.__fieldsconf = tuple(all_fields_conf)
