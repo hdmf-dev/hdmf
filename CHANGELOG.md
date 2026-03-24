@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF Unreleased
+## HDMF 5.1.0 (March 24, 2026)
 
 ### Enhancements
 - Made `HERDManager` an abstract interface (ABC) with an abstract `external_resources` property. Subclasses must now declare `external_resources` in their `__fields__` to satisfy the interface. Updated `__gather_fields` to allow auto-generated properties to override inherited abstract properties. Added `link_resources` and `get_external_resources` methods to `HERDManager` for managing a linked HERD separate from the primary one. @rly [#1431](https://github.com/hdmf-dev/hdmf/pull/1431)
