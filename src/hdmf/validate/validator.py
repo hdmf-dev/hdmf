@@ -521,12 +521,13 @@ class DatasetValidator(BaseStorageValidator):
                             )
                         )
                     expected_type = self.spec.dtype.target_type
+                    type_key = self.spec.type_key()
 
                     def _check_ref(val):
                         if isinstance(val, ReferenceBuilder):
                             target = val.builder
-                            ref_type = target.attributes.get(self.spec.type_key())
-
+                            ref_type = target.attributes.get(type_key)
+                            
                             if expected_type is not None and ref_type is not None:
                                 hierarchy = self.vmap.namespace.catalog.get_hierarchy(ref_type)
                                 if expected_type not in hierarchy:
@@ -538,20 +539,10 @@ class DatasetValidator(BaseStorageValidator):
                                             location=self.get_builder_loc(builder)
                                         )
                                     )
+                        
                         elif isinstance(val, (list, tuple, np.ndarray)):
                             for v in val:
                                 _check_ref(v)
-                        else:
-                            if dtype == 'object':
-                                return
-                            ret.append(
-                                DtypeError(
-                                    self.get_spec_loc(self.spec),
-                                    f'{self.spec.dtype.reftype} reference',
-                                    dtype,
-                                    location=self.get_builder_loc(builder)
-                                )
-                            )
 
                     _check_ref(data)
             except EmptyArrayError:
