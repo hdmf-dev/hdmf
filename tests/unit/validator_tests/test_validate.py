@@ -2043,4 +2043,3 @@ class TestISODateTimeTimezone(ValidatorTestBase):
         errors = vmap.validate(foo)
 
         assert len(errors) == 0
-
