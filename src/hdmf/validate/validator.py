@@ -499,23 +499,37 @@ class DatasetValidator(BaseStorageValidator):
                         )
                     )
 
-                if not check_type(self.spec.dtype, dtype, string_format):
-                    if isinstance(self.spec.dtype, RefSpec):
-                        expected = f'{self.spec.dtype.reftype} reference'
-                    else:
+                if not isinstance(self.spec.dtype, RefSpec):
+                    if not check_type(self.spec.dtype, dtype, string_format):
                         expected = self.spec.dtype
-                    ret.append(DtypeError(self.get_spec_loc(self.spec), expected, dtype,
-                                          location=self.get_builder_loc(builder)))
-                if isinstance(self.spec.dtype, RefSpec) and check_type(self.spec.dtype, dtype, string_format):
+                        ret.append(
+                            DtypeError(
+                                self.get_spec_loc(self.spec),
+                                expected,
+                                dtype,
+                                location=self.get_builder_loc(builder)
+                            )
+                        )
+                if isinstance(self.spec.dtype, RefSpec):
+                    if dtype != 'object':
+                        ret.append(
+                            DtypeError(
+                                self.get_spec_loc(self.spec),
+                                "object reference",
+                                dtype,
+                                location=self.get_builder_loc(builder)
+                            )
+                        )
                     expected_type = self.spec.dtype.target_type
 
                     def _check_ref(val):
                         if isinstance(val, ReferenceBuilder):
                             target = val.builder
-                            ref_type = target.attributes.get("data_type")
+                            ref_type = target.attributes.get(self.spec.type_key())
 
                             if expected_type is not None and ref_type is not None:
-                                if ref_type != expected_type:
+                                hierarchy = self.vmap.namespace.catalog.get_hierarchy(ref_type)
+                                if expected_type not in hierarchy:
                                     ret.append(
                                         DtypeError(
                                             self.get_spec_loc(self.spec),
@@ -527,6 +541,17 @@ class DatasetValidator(BaseStorageValidator):
                         elif isinstance(val, (list, tuple, np.ndarray)):
                             for v in val:
                                 _check_ref(v)
+                        else:
+                            if dtype == 'object':
+                                return
+                            ret.append(
+                                DtypeError(
+                                    self.get_spec_loc(self.spec),
+                                    f'{self.spec.dtype.reftype} reference',
+                                    dtype,
+                                    location=self.get_builder_loc(builder)
+                                )
+                            )
 
                     _check_ref(data)
             except EmptyArrayError:
