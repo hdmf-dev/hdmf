@@ -54,6 +54,10 @@ class HERDManager(ABC):
     external resources.
     """
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._linked_external_resources = None
+
     @property
     @abstractmethod
     def external_resources(self):
@@ -63,6 +67,29 @@ class HERDManager(ABC):
     @abstractmethod
     def external_resources(self, val):
         pass
+
+    def link_resources(self, external_resources):
+        """Link an external HERD object as the external resources for this container.
+
+        The linked HERD will not be written on export; the original HERD
+        (if any) is preserved in the exported file. Use
+        ``get_external_resources(linked=True)`` to access the linked HERD.
+        """
+        self._linked_external_resources = external_resources
+
+    def get_external_resources(self, linked=False):
+        """Return the HERD external resources object for this container.
+
+        Parameters
+        ----------
+        linked : bool, optional
+            If True, return the linked HERD set via ``link_resources``.
+            If False (default), return the HERD set via ``__init__`` or the
+            ``external_resources`` attribute.
+        """
+        if linked:
+            return self._linked_external_resources
+        return self.external_resources
 
 
 class AbstractContainer(metaclass=ExtenderMeta):

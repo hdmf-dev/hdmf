@@ -60,6 +60,36 @@ class TestHERDManager(TestCase):
         self.assertIn(er, container.children)
         self.assertIs(er.parent, container)
 
+    def test_link_resources(self):
+        """Test linking an external HERD object."""
+        container = ContainerWithHERD(name='test')
+        linked_herd = HERD()
+        container.link_resources(linked_herd)
+        self.assertIs(container.get_external_resources(linked=True), linked_herd)
+
+    def test_get_external_resources_default(self):
+        """Test get_external_resources returns the primary HERD by default."""
+        container = ContainerWithHERD(name='test')
+        er = HERD()
+        container.external_resources = er
+        self.assertIs(container.get_external_resources(), er)
+        self.assertIs(container.get_external_resources(linked=False), er)
+
+    def test_get_external_resources_linked_default_none(self):
+        """Test get_external_resources(linked=True) returns None when no linked HERD is set."""
+        container = ContainerWithHERD(name='test')
+        self.assertIsNone(container.get_external_resources(linked=True))
+
+    def test_link_resources_does_not_affect_primary(self):
+        """Test that linking a HERD does not overwrite the primary external_resources."""
+        container = ContainerWithHERD(name='test')
+        primary = HERD()
+        linked = HERD()
+        container.external_resources = primary
+        container.link_resources(linked)
+        self.assertIs(container.get_external_resources(), primary)
+        self.assertIs(container.get_external_resources(linked=True), linked)
+
 
 class TestContainer(TestCase):
 
