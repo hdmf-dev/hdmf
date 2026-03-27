@@ -82,7 +82,7 @@ class HERDManager(ABC):
 
         Parameters
         ----------
-        linked : bool, optional
+        linked : bool
             If True, return the linked HERD set via ``link_resources``.
             If False (default), return the HERD set via ``__init__`` or the
             ``external_resources`` attribute.
