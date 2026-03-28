@@ -1806,7 +1806,7 @@ class TestVlenStringData(ValidatorTestBase):
         errors = vmap.validate(foo)
 
         assert len(errors) == 1
-        assert isinstance(errors[0], IncorrectDataType) 
+        assert isinstance(errors[0], IncorrectDataType)
 
     def test_dataset_reference_list_mixed(self):
         foo_spec = DatasetSpec(
