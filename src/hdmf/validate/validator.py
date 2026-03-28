@@ -479,7 +479,6 @@ class DatasetValidator(BaseStorageValidator):
     @docval({'name': 'spec', 'type': DatasetSpec, 'doc': 'the specification to use to validate'},
             {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
     def __init__(self, **kwargs):
-        self.validator_map = getargs('validator_map', kwargs)
         super().__init__(**kwargs)
 
     def _check_ref_target_type(self, val, expected_type, type_key, builder, ret):
@@ -489,10 +488,10 @@ class DatasetValidator(BaseStorageValidator):
             ref_type = target.attributes.get(type_key)
 
             if expected_type is not None and ref_type is not None:
-                hierarchy = self.validator_map.namespace.catalog.get_hierarchy(ref_type)
+                hierarchy = self.vmap.namespace.catalog.get_hierarchy(ref_type)
                 if expected_type not in hierarchy:
                     ret.append(
-                        DtypeError(
+                        IncorrectDataType(
                             self.get_spec_loc(self.spec),
                             f"{expected_type} (or subtype)",
                             ref_type,
@@ -532,7 +531,8 @@ class DatasetValidator(BaseStorageValidator):
                                 location=self.get_builder_loc(builder)
                             )
                         )
-                if isinstance(self.spec.dtype, RefSpec):
+
+                else:
                     if dtype != 'object':
                         ret.append(
                             DtypeError(
@@ -547,6 +547,7 @@ class DatasetValidator(BaseStorageValidator):
                     self._check_ref_target_type(data, expected_target, type_key, builder, ret)
 
             except EmptyArrayError:
+                # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                 pass
 
         if isinstance(builder.dtype, list) and len(np.shape(builder.data)) == 0:

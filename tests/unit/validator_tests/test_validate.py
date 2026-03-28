@@ -12,7 +12,7 @@ from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
-                                  IncorrectQuantityError, IllegalLinkError, ShapeError)
+                                  IncorrectQuantityError, IllegalLinkError, ShapeError, IncorrectDataType)
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.utils import ZARR_INSTALLED, StrDataset
 from hdmf.validate.errors import Error
@@ -1806,7 +1806,7 @@ class TestVlenStringData(ValidatorTestBase):
         errors = vmap.validate(foo)
 
         assert len(errors) == 1
-        assert isinstance(errors[0], DtypeError)
+        assert isinstance(errors[0], IncorrectDataType) 
 
     def test_dataset_reference_list_mixed(self):
         foo_spec = DatasetSpec(
