@@ -1765,6 +1765,51 @@ class TestVlenStringData(ValidatorTestBase):
         self.assertIsInstance(results[0], DtypeError)
         self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
 
+    def test_dataset_reference_type_validation_hierarchy_success(self):
+        """Test that subtype references are accepted via type hierarchy."""
+
+        foo_spec = DatasetSpec(
+            doc='dataset with ref',
+            dtype=RefSpec('Bar', 'object'),
+            data_type_def='Foo',
+            shape=None
+        )
+
+        bar_spec = DatasetSpec(
+            doc='base dataset',
+            data_type_def='Bar',
+            dtype='int',
+            shape=None
+        )
+
+        subbar_spec = DatasetSpec(
+            doc='subtype dataset',
+            data_type_def='SubBar',
+            data_type_inc='Bar',
+            dtype='int',
+            shape=None
+        )
+
+        catalog = SpecCatalog()
+        for spec in [foo_spec, bar_spec, subbar_spec]:
+            catalog.register_spec(spec, 'test.yaml')
+
+        namespace = SpecNamespace(
+            'test ns', 'test_ns',
+            [{'source': 'test.yaml'}],
+            version='0.1.0',
+            catalog=catalog
+        )
+
+        vmap = ValidatorMap(namespace)
+
+        subbar = DatasetBuilder('subbar', 5, attributes={'data_type': 'SubBar'})
+        foo = DatasetBuilder('foo', ReferenceBuilder(subbar), attributes={'data_type': 'Foo'})
+
+        errors = vmap.validate(foo)
+
+        assert len(errors) == 0
+
     def test_dataset_reference_type_validation_failure(self):
         foo_spec = DatasetSpec(
             doc='dataset with ref',
@@ -1998,48 +2043,3 @@ class TestISODateTimeTimezone(ValidatorTestBase):
                 # This confirms it fails because it lacks the 'T' and timezone
                 self.assertEqual(len(result), 1)
                 self.assertIsInstance(result[0], Error)
-
-    def test_dataset_reference_type_validation_hierarchy_success(self):
-        """Test that subtype references are accepted via type hierarchy."""
-
-        foo_spec = DatasetSpec(
-            doc='dataset with ref',
-            dtype=RefSpec('Bar', 'object'),
-            data_type_def='Foo',
-            shape=None
-        )
-
-        bar_spec = DatasetSpec(
-            doc='base dataset',
-            data_type_def='Bar',
-            dtype='int',
-            shape=None
-        )
-
-        subbar_spec = DatasetSpec(
-            doc='subtype dataset',
-            data_type_def='SubBar',
-            data_type_inc='Bar',
-            dtype='int',
-            shape=None
-        )
-
-        catalog = SpecCatalog()
-        for spec in [foo_spec, bar_spec, subbar_spec]:
-            catalog.register_spec(spec, 'test.yaml')
-
-        namespace = SpecNamespace(
-            'test ns', 'test_ns',
-            [{'source': 'test.yaml'}],
-            version='0.1.0',
-            catalog=catalog
-        )
-
-        vmap = ValidatorMap(namespace)
-
-        subbar = DatasetBuilder('subbar', 5, attributes={'data_type': 'SubBar'})
-        foo = DatasetBuilder('foo', ReferenceBuilder(subbar), attributes={'data_type': 'Foo'})
-
-        errors = vmap.validate(foo)
-
-        assert len(errors) == 0
