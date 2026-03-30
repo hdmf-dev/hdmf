@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## Unreleased
+
+### Fixed
+- Add validation for dataset reference target types to ensure correct RefSpec.target_type matching. @sejalpunwatkar [#1429](https://github.com/hdmf-dev/hdmf/pull/1429)
+
+
 ## HDMF 5.1.0 (March 24, 2026)
 
 ### Enhancements
@@ -265,7 +271,7 @@ is available on build (during the write process), but not on read of a dataset f
 
 ### Bug Fixes
 - Fixed `TermSetWrapper` warning raised during the setters. @mavaylon1 [#1116](https://github.com/hdmf-dev/hdmf/pull/1116)
-- Add validation for dataset reference target types to ensure correct RefSpec.target_type matching. @sejalpunwatkar [#1429](https://github.com/hdmf-dev/hdmf/pull/1429)
+
 
 ## HDMF 3.13.0 (March 20, 2024)
 
