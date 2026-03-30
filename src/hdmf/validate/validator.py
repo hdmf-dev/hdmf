@@ -410,7 +410,7 @@ class AttributeValidator(Validator):
                 else:
                     target_spec = self.vmap.namespace.catalog.get_spec(spec.dtype.target_type)
                     data_type = value.attributes.get(target_spec.type_key())
-                    hierarchy = self.vmap.namespace.catalog.get_hierarchy(data_type)
+                    hierarchy = self.vmap.namespace.get_hierarchy(data_type)
                     if spec.dtype.target_type not in hierarchy:
                         ret.append(IncorrectDataType(self.get_spec_loc(spec), spec.dtype.target_type, data_type))
 
@@ -505,6 +505,27 @@ class DatasetValidator(BaseStorageValidator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def _check_ref_target_type(self, val, expected_type, type_key, builder, ret):
+        """Helper to recursively validate reference target types and hierarchy."""
+        if isinstance(val, ReferenceBuilder):
+            target = val.builder
+            ref_type = target.attributes.get(type_key)
+
+            if expected_type is not None and ref_type is not None:
+                hierarchy = self.vmap.namespace.get_hierarchy(ref_type)
+                if expected_type not in hierarchy:
+                    ret.append(
+                        IncorrectDataType(
+                            self.get_spec_loc(self.spec),
+                            f"{expected_type} (or subtype)",
+                            ref_type,
+                            location=self.get_builder_loc(builder)
+                        )
+                    )
+        elif isinstance(val, (list, tuple, np.ndarray)):
+            for v in val:
+                self._check_ref_target_type(v, expected_type, type_key, builder, ret)
+
     @docval({"name": "builder", "type": DatasetBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):
@@ -523,16 +544,36 @@ class DatasetValidator(BaseStorageValidator):
                         )
                     )
 
-                if not check_type(self.spec.dtype, dtype, string_format):
-                    if isinstance(self.spec.dtype, RefSpec):
-                        expected = f'{self.spec.dtype.reftype} reference'
-                    else:
+                if not isinstance(self.spec.dtype, RefSpec):
+                    if not check_type(self.spec.dtype, dtype, string_format):
                         expected = self.spec.dtype
-                    ret.append(DtypeError(self.get_spec_loc(self.spec), expected, dtype,
-                                          location=self.get_builder_loc(builder)))
+                        ret.append(
+                            DtypeError(
+                                self.get_spec_loc(self.spec),
+                                expected,
+                                dtype,
+                                location=self.get_builder_loc(builder)
+                            )
+                        )
+
+                else:
+                    if dtype != 'object':
+                        ret.append(
+                            DtypeError(
+                                self.get_spec_loc(self.spec),
+                                "object reference",
+                                dtype,
+                                location=self.get_builder_loc(builder)
+                            )
+                        )
+                    expected_target = self.spec.dtype.target_type
+                    type_key = self.spec.type_key()
+                    self._check_ref_target_type(data, expected_target, type_key, builder, ret)
+
             except EmptyArrayError:
                 # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                 pass
+
         if isinstance(builder.dtype, list) and len(np.shape(builder.data)) == 0:
             shape = ()  # scalar compound dataset
         elif isinstance(builder.dtype, list):
