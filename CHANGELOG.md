@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Fixed
-- Add validation for dataset reference target types to ensure correct RefSpec.target_type matching. @sejalpunwatkar [#1429](https://github.com/hdmf-dev/hdmf/pull/1429)
+- Added missing validation for dataset reference target types to ensure correct `RefSpec.target_type` matching. @sejalpunwatkar [#1429](https://github.com/hdmf-dev/hdmf/pull/1429)
 
 
 ## HDMF 5.1.0 (March 24, 2026)
