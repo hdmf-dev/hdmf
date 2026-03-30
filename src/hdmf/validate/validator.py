@@ -410,7 +410,7 @@ class AttributeValidator(Validator):
                 else:
                     target_spec = self.vmap.namespace.catalog.get_spec(spec.dtype.target_type)
                     data_type = value.attributes.get(target_spec.type_key())
-                    hierarchy = self.vmap.namespace.catalog.get_hierarchy(data_type)
+                    hierarchy = self.vmap.namespace.get_hierarchy(data_type)
                     if spec.dtype.target_type not in hierarchy:
                         ret.append(IncorrectDataType(self.get_spec_loc(spec), spec.dtype.target_type, data_type))
 
@@ -488,7 +488,7 @@ class DatasetValidator(BaseStorageValidator):
             ref_type = target.attributes.get(type_key)
 
             if expected_type is not None and ref_type is not None:
-                hierarchy = self.vmap.namespace.catalog.get_hierarchy(ref_type)
+                hierarchy = self.vmap.namespace.get_hierarchy(ref_type)
                 if expected_type not in hierarchy:
                     ret.append(
                         IncorrectDataType(
