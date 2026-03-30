@@ -11,6 +11,7 @@
 ### Enhancements
 - Made `HERDManager` an abstract interface (ABC) with an abstract `external_resources` property. Subclasses must now declare `external_resources` in their `__fields__` to satisfy the interface. Updated `__gather_fields` to allow auto-generated properties to override inherited abstract properties. Added `link_resources` and `get_external_resources` methods to `HERDManager` for managing a linked HERD separate from the primary one. @rly [#1431](https://github.com/hdmf-dev/hdmf/pull/1431)
 
+
 ## HDMF 5.0.1 (March 16, 2026)
 
 ### Enhancements
@@ -23,6 +24,7 @@
 - Fixed `_repr_html_` raising `RuntimeError` when the backing HDF5 file is closed. A warning banner is now shown and failed renders display a descriptive message instead of raising. @rly [#1423](https://github.com/hdmf-dev/hdmf/pull/1423)
 - Fixed writing compound dtype datasets with a single field. @rly [#1420](https://github.com/hdmf-dev/hdmf/pull/1420)
 - Replaced undeclared `pyyaml` dependency with `ruamel.yaml` (a declared core dependency) in `test_common_io.py`. The test relied on PyYAML being transitively installed by pip's `h5py`, which is not the case in conda environments. @rly [#1418](https://github.com/hdmf-dev/hdmf/pull/1418)
+
 
 ## HDMF 5.0.0 (March 2, 2026)
 
