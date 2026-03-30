@@ -13,7 +13,6 @@ from hdmf.testing import TestCase, remove_test_file
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
                                   IncorrectQuantityError, IllegalLinkError, ShapeError, ValidationWarning, ExtraFieldWarning, Error, IncorrectDataType)
-
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.utils import ZARR_INSTALLED, StrDataset
 from collections import defaultdict, OrderedDict, Counter
