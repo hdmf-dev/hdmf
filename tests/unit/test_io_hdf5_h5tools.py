@@ -4215,3 +4215,45 @@ class TestExpand(TestCase):
                                  [7, 8, 9]])
             npt.assert_array_equal(read_quxbucket.qux_data.data[:], expected)
             self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None, 3))
+
+
+class TestComputeChunkShape(TestCase):
+
+    def test_target_chunk_size(self):
+        """Computed chunks should be close to the target size."""
+        # 10000x100 float64: 8 bytes/element, target 4 MB
+        shape = (10000, 100)
+        chunks = HDF5IO._compute_chunk_shape(shape, np.float64)
+        chunk_bytes = np.prod(chunks) * np.dtype(np.float64).itemsize
+        self.assertGreater(chunk_bytes, 1 * 1024 * 1024)  # > 1 MB
+        self.assertLessEqual(chunk_bytes, 8 * 1024 * 1024)  # <= 8 MB
+        # Second dimension should be preserved
+        self.assertEqual(chunks[1], 100)
+
+    def test_small_dataset_uses_data_shape(self):
+        """Datasets smaller than the target should use their full shape as chunks."""
+        shape = (100,)
+        chunks = HDF5IO._compute_chunk_shape(shape, np.float64)
+        self.assertEqual(chunks, (100,))
+
+    def test_empty_dataset(self):
+        """Empty datasets should get chunk shape with 1 in first dimension."""
+        shape = (0,)
+        chunks = HDF5IO._compute_chunk_shape(shape, np.int32)
+        self.assertEqual(chunks, (1,))
+
+    def test_1d_large(self):
+        """Large 1D dataset should get chunks targeting ~4 MB."""
+        shape = (10_000_000,)
+        chunks = HDF5IO._compute_chunk_shape(shape, np.float64)
+        chunk_bytes = chunks[0] * 8
+        self.assertGreater(chunk_bytes, 2 * 1024 * 1024)
+        self.assertLessEqual(chunk_bytes, 8 * 1024 * 1024)
+
+    def test_custom_target(self):
+        """Custom target_chunk_bytes should be respected."""
+        shape = (10_000_000,)
+        chunks = HDF5IO._compute_chunk_shape(shape, np.float64, target_chunk_bytes=16 * 1024 * 1024)
+        chunk_bytes = chunks[0] * 8
+        self.assertGreater(chunk_bytes, 8 * 1024 * 1024)
+        self.assertLessEqual(chunk_bytes, 32 * 1024 * 1024)
