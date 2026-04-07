@@ -884,7 +884,7 @@ class TestRoundTrip(TestCase):
         foofile = FooFile(buckets=[foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            io.write(foofile)
+            io.write(foofile, expandable=True)
 
         with HDF5IO(self.path, manager=self.manager, mode='a') as io:
             read_foofile = io.read()

@@ -310,9 +310,11 @@ class HDF5IO(HDMFIO):
             {'name': 'herd', 'type': 'hdmf.common.resources.HERD',
              'doc': 'A HERD object to populate with references.',
              'default': None},
-            {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('If True (default), datasets will be created as expandable by setting the maxshape '
-                     'based on the matching shape defined in the spec.')})
+            {'name': 'expandable', 'type': bool, 'default': None,
+             'doc': ('If None (default), only VectorData (and subclasses) and ElementIdentifiers datasets '
+                     'will be created as expandable. If True, all datasets will be created as expandable. '
+                     'If False, no datasets will be automatically made expandable. Expandable datasets have '
+                     'maxshape set based on the matching shape defined in the spec.')})
     def write(self, **kwargs):
         """Write the container to an HDF5 file."""
         if self.__mode == 'r':
@@ -759,9 +761,11 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
-            {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('If True (default), datasets will be created as expandable by setting the maxshape '
-                     'based on the matching shape defined in the spec.')})
+            {'name': 'expandable', 'type': bool, 'default': None,
+             'doc': ('If None (default), only VectorData (and subclasses) and ElementIdentifiers datasets '
+                     'will be created as expandable. If True, all datasets will be created as expandable. '
+                     'If False, no datasets will be automatically made expandable. Expandable datasets have '
+                     'maxshape set based on the matching shape defined in the spec.')})
     def write_builder(self, **kwargs):
         f_builder = popargs('builder', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to path '%s' with kwargs=%s"
@@ -939,9 +943,11 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
-            {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('If True (default), datasets will be created as expandable by setting the maxshape '
-                     'based on the matching shape defined in the spec.')},
+            {'name': 'expandable', 'type': bool, 'default': None,
+             'doc': ('If None (default), only VectorData (and subclasses) and ElementIdentifiers datasets '
+                     'will be created as expandable. If True, all datasets will be created as expandable. '
+                     'If False, no datasets will be automatically made expandable. Expandable datasets have '
+                     'maxshape set based on the matching shape defined in the spec.')},
             returns='the Group that was created', rtype=Group)
     def write_group(self, **kwargs):
         parent, builder = popargs('parent', 'builder', kwargs)
@@ -1042,9 +1048,11 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
-            {'name': 'expandable', 'type': bool, 'default': True,
-             'doc': ('If True (default), datasets will be created as expandable by setting the maxshape '
-                     'based on the matching shape defined in the spec.')},
+            {'name': 'expandable', 'type': bool, 'default': None,
+             'doc': ('If None (default), only VectorData (and subclasses) and ElementIdentifiers datasets '
+                     'will be created as expandable. If True, all datasets will be created as expandable. '
+                     'If False, no datasets will be automatically made expandable. Expandable datasets have '
+                     'maxshape set based on the matching shape defined in the spec.')},
             returns='the Dataset that was created', rtype=Dataset)
     def write_dataset(self, **kwargs):  # noqa: C901
         """ Write a dataset to HDF5
@@ -1071,14 +1079,27 @@ class HDF5IO(HDMFIO):
         else:
             options['io_settings'] = {}
 
-        # Set maxshape to make a non-scalar dataset expandable but do not override existing settings
+        # Set maxshape to make datasets expandable. When expandable is None (default), only
+        # VectorData (and subclasses) and ElementIdentifiers are made expandable — these are the
+        # column and id datasets of DynamicTable, which users commonly need to append to. When
+        # expandable is True, all datasets are made expandable. When False, none are.
         if (
-            expandable
+            expandable is not False
             and 'maxshape' not in options['io_settings']
             and np.ndim(data) != 0
             and matched_spec_shape is not None
         ):
-            options['io_settings']['maxshape'] = matched_spec_shape
+            should_expand = expandable is True
+            if not should_expand:
+                # expandable is None (default): only expand VectorData and ElementIdentifiers
+                builder_dt = self.manager.get_builder_dt(builder)
+                if builder_dt is not None:
+                    should_expand = (
+                        self.manager.is_sub_data_type(builder, 'VectorData')
+                        or builder_dt == 'ElementIdentifiers'
+                    )
+            if should_expand:
+                options['io_settings']['maxshape'] = matched_spec_shape
 
         attributes = builder.attributes
         options['dtype'] = builder.dtype

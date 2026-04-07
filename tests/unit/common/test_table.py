@@ -3211,6 +3211,86 @@ class TestDataIOReferences(H5RoundTripMixin, TestCase):
 
         self.assertContainerEqual(read_container['table']['y'][-1], group1)
 
+class TestDefaultExpandable(H5RoundTripMixin, TestCase):
+    """Test that VectorData, VectorIndex, and ElementIdentifiers datasets are expandable by default."""
+
+    def setUpContainer(self):
+        table = DynamicTable(name='table0', description='an example table')
+        table.add_column(name='foo', description='an int column')
+        table.add_column(name='bar', description='an indexed column', index=True)
+        table.add_row(foo=1, bar=[1, 2, 3])
+        table.add_row(foo=2, bar=[4, 5])
+        return table
+
+    def test_roundtrip(self):
+        super().test_roundtrip()
+
+        with h5py.File(self.filename, 'r') as f:
+            # VectorData columns should be expandable (maxshape has None in first dim)
+            self.assertEqual(f['foo'].maxshape, (None,))
+            self.assertIsNotNone(f['foo'].chunks)
+
+            # VectorIndex columns should be expandable
+            self.assertEqual(f['bar_index'].maxshape, (None,))
+            self.assertIsNotNone(f['bar_index'].chunks)
+
+            # Indexed VectorData should be expandable
+            self.assertEqual(f['bar'].maxshape, (None,))
+            self.assertIsNotNone(f['bar'].chunks)
+
+            # ElementIdentifiers (id column) should be expandable
+            self.assertEqual(f['id'].maxshape, (None,))
+            self.assertIsNotNone(f['id'].chunks)
+
+
+class TestDefaultExpandableWithReferences(H5RoundTripMixin, TestCase):
+    """Test that a VectorData column of references is expandable by default."""
+
+    def setUpContainer(self):
+        group1 = Container('group1')
+        group2 = Container('group2')
+
+        table = DynamicTable(name='table0', description='an example table')
+        table.add_column(name='ref', description='a reference column')
+        table.add_row(ref=group1)
+        table.add_row(ref=group2)
+
+        multi = SimpleMultiContainer(name='multi')
+        multi.add_container(group1)
+        multi.add_container(group2)
+        multi.add_container(table)
+        return multi
+
+    def test_roundtrip(self):
+        super().test_roundtrip()
+
+        with h5py.File(self.filename, 'r') as f:
+            table_grp = f['table0']
+            self.assertEqual(table_grp['ref'].maxshape, (None,))
+            self.assertIsNotNone(table_grp['ref'].chunks)
+
+
+class TestDefaultExpandableExplicitOverride(H5RoundTripMixin, TestCase):
+    """Test that explicit H5DataIO settings are not overridden by the default expandable behavior."""
+
+    def setUpContainer(self):
+        # User explicitly sets maxshape — should be respected
+        foo = VectorData(
+            name='foo',
+            description='a column with explicit maxshape',
+            data=H5DataIO(data=[1, 2, 3], maxshape=(10,)),
+        )
+        table = DynamicTable(name='table0', description='an example table', columns=[foo])
+        return table
+
+    def test_roundtrip(self):
+        super().test_roundtrip()
+
+        with h5py.File(self.filename, 'r') as f:
+            # User's explicit maxshape should be preserved, not overridden
+            self.assertEqual(f['foo'].maxshape, (10,))
+
+
 class TestVectorIndexDtype(TestCase):
 
     def set_up_array_index(self):
