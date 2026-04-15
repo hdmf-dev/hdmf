@@ -883,8 +883,13 @@ class TestRoundTrip(TestCase):
         foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile(buckets=[foobucket])
 
+        # expandable=True forces all datasets with a matching spec shape to be expandable,
+        # including Foo.my_data which is not a VectorData/ElementIdentifiers subclass.
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
             io.write(foofile, expandable=True)
+
+        with h5py.File(self.path, 'r') as f:
+            self.assertEqual(f['buckets/bucket1/foo_holder/foo1/my_data'].maxshape, (None,))
 
         with HDF5IO(self.path, manager=self.manager, mode='a') as io:
             read_foofile = io.read()
