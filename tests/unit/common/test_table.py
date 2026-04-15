@@ -3,12 +3,15 @@ import h5py
 import numpy as np
 import os
 import pandas as pd
+import shutil
+import tempfile
 import unittest
 
 from hdmf import Container
 from hdmf import TermSet, TermSetWrapper
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
 from hdmf.backends.hdf5.h5tools import H5_TEXT, H5PY_3
+from hdmf.build import BuildManager
 from hdmf.common import (
     DynamicTable,
     VectorData,
@@ -18,12 +21,16 @@ from hdmf.common import (
     DynamicTableRegion,
     MeaningsTable,
     get_manager,
+    get_type_map,
     SimpleMultiContainer)
+from hdmf.spec import DatasetSpec
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.utils import StrDataset
 from hdmf.data_utils import DataChunkIterator
 
 from tests.unit.helpers.utils import (
+    CORE_NAMESPACE,
+    create_load_namespace_yaml,
     get_temp_filepath,
     FooExtendDynamicTable0,
     FooExtendDynamicTable1,
@@ -3289,6 +3296,69 @@ class TestDefaultExpandableExplicitOverride(H5RoundTripMixin, TestCase):
         with h5py.File(self.filename, 'r') as f:
             # User's explicit maxshape should be preserved, not overridden
             self.assertEqual(f['foo'].maxshape, (10,))
+
+
+class TestDefaultExpandableSubclasses(TestCase):
+    """Test that subclasses of VectorData and ElementIdentifiers are expandable by default."""
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+
+        custom_ei_spec = DatasetSpec(
+            data_type_def='CustomElementIdentifiers',
+            data_type_inc='ElementIdentifiers',
+            doc='a custom ElementIdentifiers subclass',
+        )
+        custom_vd_spec = DatasetSpec(
+            data_type_def='CustomVectorData',
+            data_type_inc='VectorData',
+            doc='a custom VectorData subclass',
+        )
+
+        self.type_map = get_type_map()
+        create_load_namespace_yaml(
+            namespace_name=CORE_NAMESPACE,
+            specs=[custom_ei_spec, custom_vd_spec],
+            output_dir=self.test_dir,
+            incl_types={'hdmf-common': ['ElementIdentifiers', 'VectorData', 'DynamicTable']},
+            type_map=self.type_map,
+        )
+        self.manager = BuildManager(self.type_map)
+
+        self.CustomElementIdentifiers = self.type_map.get_dt_container_cls(
+            'CustomElementIdentifiers', CORE_NAMESPACE
+        )
+        self.CustomVectorData = self.type_map.get_dt_container_cls(
+            'CustomVectorData', CORE_NAMESPACE
+        )
+
+        self.filename = os.path.join(self.test_dir, 'test_expandable_subclasses.h5')
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir)
+
+    def test_subclasses_are_expandable(self):
+        custom_ids = self.CustomElementIdentifiers(name='id', data=[10, 20])
+        custom_col = self.CustomVectorData(
+            name='custom_col', description='a custom column', data=[1.0, 2.0]
+        )
+        table = DynamicTable(
+            name='table0',
+            description='an example table',
+            id=custom_ids,
+            columns=[custom_col],
+        )
+
+        with HDF5IO(self.filename, manager=self.manager, mode='w') as write_io:
+            write_io.write(table)
+
+        with h5py.File(self.filename, 'r') as f:
+            # ElementIdentifiers subclass (id) should be expandable
+            self.assertEqual(f['id'].maxshape, (None,))
+            self.assertIsNotNone(f['id'].chunks)
+            # VectorData subclass (custom_col) should be expandable
+            self.assertEqual(f['custom_col'].maxshape, (None,))
+            self.assertIsNotNone(f['custom_col'].chunks)
 
 
 class TestVectorIndexDtype(TestCase):

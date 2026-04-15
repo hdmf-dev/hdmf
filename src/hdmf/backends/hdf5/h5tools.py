@@ -311,7 +311,7 @@ class HDF5IO(HDMFIO):
              'doc': 'A HERD object to populate with references.',
              'default': None},
             {'name': 'expandable', 'type': bool, 'default': None,
-             'doc': ('If None (default), only VectorData (and subclasses) and ElementIdentifiers datasets '
+             'doc': ('If None (default), only VectorData, ElementIdentifiers, and their subclasses datasets '
                      'will be created as expandable. If True, all datasets will be created as expandable. '
                      'If False, no datasets will be automatically made expandable. Expandable datasets have '
                      'maxshape set based on the matching shape defined in the spec.')})
@@ -762,7 +762,7 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': None,
-             'doc': ('If None (default), only VectorData (and subclasses) and ElementIdentifiers datasets '
+             'doc': ('If None (default), only VectorData, ElementIdentifiers, and their subclasses datasets '
                      'will be created as expandable. If True, all datasets will be created as expandable. '
                      'If False, no datasets will be automatically made expandable. Expandable datasets have '
                      'maxshape set based on the matching shape defined in the spec.')})
@@ -944,7 +944,7 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': None,
-             'doc': ('If None (default), only VectorData (and subclasses) and ElementIdentifiers datasets '
+             'doc': ('If None (default), only VectorData, ElementIdentifiers, and their subclasses datasets '
                      'will be created as expandable. If True, all datasets will be created as expandable. '
                      'If False, no datasets will be automatically made expandable. Expandable datasets have '
                      'maxshape set based on the matching shape defined in the spec.')},
@@ -1049,7 +1049,7 @@ class HDF5IO(HDMFIO):
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
             {'name': 'expandable', 'type': bool, 'default': None,
-             'doc': ('If None (default), only VectorData (and subclasses) and ElementIdentifiers datasets '
+             'doc': ('If None (default), only VectorData, ElementIdentifiers, and their subclasses datasets '
                      'will be created as expandable. If True, all datasets will be created as expandable. '
                      'If False, no datasets will be automatically made expandable. Expandable datasets have '
                      'maxshape set based on the matching shape defined in the spec.')},
@@ -1080,7 +1080,7 @@ class HDF5IO(HDMFIO):
             options['io_settings'] = {}
 
         # Set maxshape to make datasets expandable. When expandable is None (default), only
-        # VectorData (and subclasses) and ElementIdentifiers are made expandable — these are the
+        # VectorData, ElementIdentifiers, and their subclasses are made expandable — these are the
         # column and id datasets of DynamicTable, which users commonly need to append to. When
         # expandable is True, all datasets are made expandable. When False, none are.
         if (
@@ -1096,7 +1096,7 @@ class HDF5IO(HDMFIO):
                 if builder_dt is not None:
                     should_expand = (
                         self.manager.is_sub_data_type(builder, 'VectorData')
-                        or builder_dt == 'ElementIdentifiers'
+                        or self.manager.is_sub_data_type(builder, 'ElementIdentifiers')
                     )
             if should_expand:
                 options['io_settings']['maxshape'] = matched_spec_shape
