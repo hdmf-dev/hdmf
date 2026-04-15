@@ -3298,6 +3298,30 @@ class TestDefaultExpandableExplicitOverride(H5RoundTripMixin, TestCase):
             self.assertEqual(f['foo'].maxshape, (10,))
 
 
+class TestExpandableFalse(TestCase):
+    """Test that expandable=False disables maxshape for all datasets, including VectorData and id."""
+
+    def setUp(self):
+        self.filename = get_temp_filepath()
+
+    def tearDown(self):
+        remove_test_file(self.filename)
+
+    def test_expandable_false_no_maxshape(self):
+        table = DynamicTable(name='table0', description='an example table')
+        table.add_column(name='foo', description='an int column')
+        table.add_row(foo=1)
+        table.add_row(foo=2)
+
+        with HDF5IO(self.filename, manager=get_manager(), mode='w') as io:
+            io.write(table, expandable=False)
+
+        with h5py.File(self.filename, 'r') as f:
+            # With expandable=False, non-scalar datasets get a fixed shape, not (None,).
+            self.assertEqual(f['foo'].maxshape, (2,))
+            self.assertEqual(f['id'].maxshape, (2,))
+
+
 class TestDefaultExpandableSubclasses(TestCase):
     """Test that subclasses of VectorData and ElementIdentifiers are expandable by default."""
 
