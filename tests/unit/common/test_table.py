@@ -3298,8 +3298,8 @@ class TestDefaultExpandableExplicitOverride(H5RoundTripMixin, TestCase):
             self.assertEqual(f['foo'].maxshape, (10,))
 
 
-class TestExpandableFalse(TestCase):
-    """Test that expandable=False disables maxshape for all datasets, including VectorData and id."""
+class TestExpandableEmpty(TestCase):
+    """Test that expandable=[] disables maxshape for all datasets, including VectorData and id."""
 
     def setUp(self):
         self.filename = get_temp_filepath()
@@ -3307,18 +3307,43 @@ class TestExpandableFalse(TestCase):
     def tearDown(self):
         remove_test_file(self.filename)
 
-    def test_expandable_false_no_maxshape(self):
+    def test_expandable_empty_no_maxshape(self):
         table = DynamicTable(name='table0', description='an example table')
         table.add_column(name='foo', description='an int column')
         table.add_row(foo=1)
         table.add_row(foo=2)
 
         with HDF5IO(self.filename, manager=get_manager(), mode='w') as io:
-            io.write(table, expandable=False)
+            io.write(table, expandable=[])
 
         with h5py.File(self.filename, 'r') as f:
-            # With expandable=False, non-scalar datasets get a fixed shape, not (None,).
+            # With an empty expandable list, non-scalar datasets get a fixed shape, not (None,).
             self.assertEqual(f['foo'].maxshape, (2,))
+            self.assertEqual(f['id'].maxshape, (2,))
+
+
+class TestExpandableCustomList(TestCase):
+    """Test that a custom expandable list expands only listed types."""
+
+    def setUp(self):
+        self.filename = get_temp_filepath()
+
+    def tearDown(self):
+        remove_test_file(self.filename)
+
+    def test_expandable_only_vectordata(self):
+        table = DynamicTable(name='table0', description='an example table')
+        table.add_column(name='foo', description='an int column')
+        table.add_row(foo=1)
+        table.add_row(foo=2)
+
+        with HDF5IO(self.filename, manager=get_manager(), mode='w') as io:
+            io.write(table, expandable=['VectorData'])
+
+        with h5py.File(self.filename, 'r') as f:
+            # VectorData column 'foo' is in the list → expandable.
+            self.assertEqual(f['foo'].maxshape, (None,))
+            # ElementIdentifiers 'id' is NOT in the list → fixed shape.
             self.assertEqual(f['id'].maxshape, (2,))
 
 

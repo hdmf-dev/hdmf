@@ -4,7 +4,7 @@
 
 ### Fixed
 - Added missing validation for dataset reference target types to ensure correct `RefSpec.target_type` matching. @sejalpunwatkar [#1429](https://github.com/hdmf-dev/hdmf/pull/1429)
-- Changed the default of `HDF5IO.write` / `write_builder` / `write_group` / `write_dataset` `expandable` argument from `True` to `None`. The new default only makes datasets of type `VectorData`, `ElementIdentifiers`, or their subclasses expandable (i.e., the columns and id of `DynamicTable`), instead of every dataset with a matching spec shape. `expandable=True` and `expandable=False` continue to force expansion for all or none of the datasets, respectively. @rly
+- Changed the `expandable` argument of `HDF5IO.write` / `write_builder` / `write_group` / `write_dataset` from a boolean to a list (or tuple) of data type names. Only datasets whose type (or an ancestor) is in the list are created as expandable; the default is `("VectorData", "ElementIdentifiers")`, so out of the box only `DynamicTable` columns and id are made expandable instead of every dataset with a matching spec shape. Pass an empty list/tuple to disable automatic expansion entirely. @rly
 
 
 ## HDMF 5.1.0 (March 24, 2026)

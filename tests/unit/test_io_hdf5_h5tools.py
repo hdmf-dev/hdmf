@@ -878,15 +878,14 @@ class TestRoundTrip(TestCase):
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
     def test_roundtrip_basic_append(self):
-        # Setup all the data we need
-        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        # Foo.my_data is an anonymous (untyped) dataset, so the default `expandable` list does
+        # not cover it. Wrap its data in H5DataIO with an explicit maxshape to make it expandable.
+        foo1 = Foo('foo1', H5DataIO(data=[1, 2, 3, 4, 5], maxshape=(None,)), "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile(buckets=[foobucket])
 
-        # expandable=True forces all datasets with a matching spec shape to be expandable,
-        # including Foo.my_data which is not a VectorData/ElementIdentifiers subclass.
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            io.write(foofile, expandable=True)
+            io.write(foofile)
 
         with h5py.File(self.path, 'r') as f:
             self.assertEqual(f['buckets/bucket1/foo_holder/foo1/my_data'].maxshape, (None,))
@@ -4180,7 +4179,7 @@ class TestExpand(TestCase):
         foofile = FooFile(buckets=[foobucket])
 
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
-            io.write(foofile, expandable=False)
+            io.write(foofile, expandable=[])
 
         with HDF5IO(self.path, manager=self.manager, mode='r') as io:
             read_foofile = io.read()
@@ -4196,7 +4195,7 @@ class TestExpand(TestCase):
         manager = get_qux_buildmanager([[None, None], [None, 3]])
 
         with HDF5IO(self.path, manager=manager, mode='w') as io:
-            io.write(quxbucket, expandable=True)
+            io.write(quxbucket, expandable=['QuxData'])
 
         with HDF5IO(self.path, manager=manager, mode='r') as io:
             read_quxbucket = io.read()
@@ -4209,7 +4208,7 @@ class TestExpand(TestCase):
         manager = get_qux_buildmanager([None, 3])
 
         with HDF5IO(self.path, manager=manager, mode='w') as io:
-            io.write(quxbucket, expandable=True)
+            io.write(quxbucket, expandable=['QuxData'])
 
         with HDF5IO(self.path, manager=manager, mode='r+') as io:
             read_quxbucket = io.read()

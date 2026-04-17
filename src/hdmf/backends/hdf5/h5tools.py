@@ -310,11 +310,13 @@ class HDF5IO(HDMFIO):
             {'name': 'herd', 'type': 'hdmf.common.resources.HERD',
              'doc': 'A HERD object to populate with references.',
              'default': None},
-            {'name': 'expandable', 'type': bool, 'default': None,
-             'doc': ('If None (default), only datasets of type VectorData, ElementIdentifiers, or their '
-                     'subclasses will be created as expandable. If True, all datasets will be created as '
-                     'expandable. If False, no datasets will be automatically made expandable. Expandable '
-                     'datasets have maxshape set based on the matching shape defined in the spec.')})
+            {'name': 'expandable', 'type': (list, tuple),
+             'default': ("VectorData", "ElementIdentifiers"),
+             'doc': ('A list of data type names whose datasets (and subclasses) will be created as '
+                     'expandable — maxshape is set based on the matching shape defined in the spec. '
+                     'Default is ("VectorData", "ElementIdentifiers"), so only DynamicTable columns '
+                     'and id are expandable. Pass an empty list/tuple to disable automatic expansion '
+                     'entirely.')})
     def write(self, **kwargs):
         """Write the container to an HDF5 file."""
         if self.__mode == 'r':
@@ -761,11 +763,13 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
-            {'name': 'expandable', 'type': bool, 'default': None,
-             'doc': ('If None (default), only datasets of type VectorData, ElementIdentifiers, or their '
-                     'subclasses will be created as expandable. If True, all datasets will be created as '
-                     'expandable. If False, no datasets will be automatically made expandable. Expandable '
-                     'datasets have maxshape set based on the matching shape defined in the spec.')})
+            {'name': 'expandable', 'type': (list, tuple),
+             'default': ("VectorData", "ElementIdentifiers"),
+             'doc': ('A list of data type names whose datasets (and subclasses) will be created as '
+                     'expandable — maxshape is set based on the matching shape defined in the spec. '
+                     'Default is ("VectorData", "ElementIdentifiers"), so only DynamicTable columns '
+                     'and id are expandable. Pass an empty list/tuple to disable automatic expansion '
+                     'entirely.')})
     def write_builder(self, **kwargs):
         f_builder = popargs('builder', kwargs)
         self.logger.debug("Writing GroupBuilder '%s' to path '%s' with kwargs=%s"
@@ -943,11 +947,13 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
-            {'name': 'expandable', 'type': bool, 'default': None,
-             'doc': ('If None (default), only datasets of type VectorData, ElementIdentifiers, or their '
-                     'subclasses will be created as expandable. If True, all datasets will be created as '
-                     'expandable. If False, no datasets will be automatically made expandable. Expandable '
-                     'datasets have maxshape set based on the matching shape defined in the spec.')},
+            {'name': 'expandable', 'type': (list, tuple),
+             'default': ("VectorData", "ElementIdentifiers"),
+             'doc': ('A list of data type names whose datasets (and subclasses) will be created as '
+                     'expandable — maxshape is set based on the matching shape defined in the spec. '
+                     'Default is ("VectorData", "ElementIdentifiers"), so only DynamicTable columns '
+                     'and id are expandable. Pass an empty list/tuple to disable automatic expansion '
+                     'entirely.')},
             returns='the Group that was created', rtype=Group)
     def write_group(self, **kwargs):
         parent, builder = popargs('parent', 'builder', kwargs)
@@ -1048,11 +1054,13 @@ class HDF5IO(HDMFIO):
              'default': True},
             {'name': 'export_source', 'type': str,
              'doc': 'The source of the builders when exporting', 'default': None},
-            {'name': 'expandable', 'type': bool, 'default': None,
-             'doc': ('If None (default), only datasets of type VectorData, ElementIdentifiers, or their '
-                     'subclasses will be created as expandable. If True, all datasets will be created as '
-                     'expandable. If False, no datasets will be automatically made expandable. Expandable '
-                     'datasets have maxshape set based on the matching shape defined in the spec.')},
+            {'name': 'expandable', 'type': (list, tuple),
+             'default': ("VectorData", "ElementIdentifiers"),
+             'doc': ('A list of data type names whose datasets (and subclasses) will be created as '
+                     'expandable — maxshape is set based on the matching shape defined in the spec. '
+                     'Default is ("VectorData", "ElementIdentifiers"), so only DynamicTable columns '
+                     'and id are expandable. Pass an empty list/tuple to disable automatic expansion '
+                     'entirely.')},
             returns='the Dataset that was created', rtype=Dataset)
     def write_dataset(self, **kwargs):  # noqa: C901
         """ Write a dataset to HDF5
@@ -1079,27 +1087,19 @@ class HDF5IO(HDMFIO):
         else:
             options['io_settings'] = {}
 
-        # Set maxshape to make datasets expandable. When expandable is None (default), only
-        # VectorData, ElementIdentifiers, and their subclasses are made expandable — these are the
-        # column and id datasets of DynamicTable, which users commonly need to append to. When
-        # expandable is True, all datasets are made expandable. When False, none are.
+        # Set maxshape to make datasets expandable. `expandable` is a list/tuple of data type names:
+        # a dataset is made expandable if its data type (or an ancestor) is in the list. The default
+        # list ("VectorData", "ElementIdentifiers") covers DynamicTable columns and id, which users
+        # commonly need to append to. An empty list disables automatic expansion.
         if (
-            expandable is not False
+            expandable
             and 'maxshape' not in options['io_settings']
             and np.ndim(data) != 0
             and matched_spec_shape is not None
+            and self.manager.get_builder_dt(builder) is not None
+            and any(self.manager.is_sub_data_type(builder, dt) for dt in expandable)
         ):
-            should_expand = expandable is True
-            if not should_expand:
-                # expandable is None (default): only expand VectorData and ElementIdentifiers
-                builder_dt = self.manager.get_builder_dt(builder)
-                if builder_dt is not None:
-                    should_expand = (
-                        self.manager.is_sub_data_type(builder, 'VectorData')
-                        or self.manager.is_sub_data_type(builder, 'ElementIdentifiers')
-                    )
-            if should_expand:
-                options['io_settings']['maxshape'] = matched_spec_shape
+            options['io_settings']['maxshape'] = matched_spec_shape
 
         attributes = builder.attributes
         options['dtype'] = builder.dtype

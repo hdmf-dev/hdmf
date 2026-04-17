@@ -295,22 +295,6 @@ class TestDocValidator(TestCase):
         with self.assertRaisesWith(TypeError, msg):
             self.test_obj_sub.basic_add2_kw('a string', 100, 'another string', None, arg6=True)
 
-    def test_docval_none_default_with_non_none_type(self):
-        """Test that docval accepts default=None even when the declared type excludes NoneType,
-        and that the runtime type check still rejects wrongly-typed values.
-        """
-        class Foo:
-            @docval({'name': 'flag', 'type': bool, 'doc': 'a bool flag', 'default': None})
-            def run(self, **kwargs):
-                return kwargs['flag']
-
-        f = Foo()
-        self.assertIsNone(f.run())  # default None is accepted despite type=bool
-        self.assertIs(f.run(flag=True), True)
-        self.assertIs(f.run(flag=False), False)
-        with self.assertRaisesRegex(TypeError, r"incorrect type for 'flag' \(got 'str', expected 'bool'\)"):
-            f.run(flag='not a bool')
-
     def test_only_kw_no_args(self):
         """Test that docval parses arguments when only keyword
            arguments exist, and no arguments are specified
