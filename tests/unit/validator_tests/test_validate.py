@@ -12,10 +12,10 @@ from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
-                                  IncorrectQuantityError, IllegalLinkError, ShapeError)
+                                  IncorrectQuantityError, IllegalLinkError, ShapeError, ValidationWarning, ExtraFieldWarning, Error)
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.utils import ZARR_INSTALLED, StrDataset
-from hdmf.validate.errors import Error
+from collections import defaultdict, OrderedDict, Counter
 
 CORE_NAMESPACE = 'test_core'
 
@@ -1907,3 +1907,89 @@ class TestISODateTimeTimezone(ValidatorTestBase):
                 # This confirms it fails because it lacks the 'T' and timezone
                 self.assertEqual(len(result), 1)
                 self.assertIsInstance(result[0], Error)
+
+
+class TestExtraFieldIntersection(ValidatorTestBase):
+    """Test that extra field warnings are only raised if unmatched by ALL applicable specs."""
+
+    def getSpecs(self):
+        base_spec = DatasetSpec(
+            doc='base type',
+            data_type_def='BaseType',
+            attributes=[]
+        )
+        ext_spec = DatasetSpec(
+            doc='extended type',
+            data_type_def='ExtType',
+            data_type_inc='BaseType',
+            attributes=[
+                AttributeSpec(name='resolution', dtype='float', doc='extra attribute')
+            ]
+        )
+        return (
+            base_spec,
+            ext_spec,
+            GroupSpec(
+                doc='A group containing the base type',
+                data_type_def='GroupWithBase',
+                datasets=[
+                    DatasetSpec(
+                        name='data_column',
+                        doc='a dataset of base type',
+                        data_type_inc='BaseType'
+                    )
+                ]
+            ),
+        )
+    
+    def test_attribute_intersection_no_warning(self):
+        """Test that 'resolution' triggers NO warning because ext_spec knows it."""
+        dataset = DatasetBuilder(
+            name='data_column',
+            data=[1.0, 2.0],
+            attributes={'data_type': 'BaseType', 'resolution': 0.1}
+        )
+        builder = GroupBuilder(
+            name='my_group',
+            attributes={'data_type': 'GroupWithBase'},
+            datasets=[dataset]
+        )
+
+        result = self.vmap.validate(builder)
+
+        extra_warnings = [r for r in result if isinstance(r, ExtraFieldWarning)]
+        self.assertEqual(len(extra_warnings), 0, f"False positive found: {extra_warnings}")
+
+    def test_truly_extra_attribute_warning(self):
+        """Test that a completely unknown attribute DOES trigger an ExtraFieldWarning."""
+        dataset = DatasetBuilder(
+            name='data_column',
+            data=[1.0],
+            attributes={'data_type': 'BaseType', 'completely_unknown': 'surprise'}
+        )
+        builder = GroupBuilder(
+            name='my_group',
+            attributes={'data_type': 'GroupWithBase'},
+            datasets=[dataset]
+        )
+
+        result = self.vmap.validate(builder)
+
+        extra_warnings = [r for r in result if isinstance(r, ExtraFieldWarning)]
+        self.assertEqual(len(extra_warnings), 1)
+        self.assertIn("completely_unknown", str(extra_warnings))
+
+    def test_unexpected_element_warning(self):
+        """Test that an unknown dataset triggers a ValidationWarning."""
+        extra_dataset = DatasetBuilder(name='extra_ds', data=[1])
+        builder = GroupBuilder(
+            name='my_group',
+            attributes={'data_type': 'GroupWithBase'},
+            datasets=[extra_dataset]
+        )
+
+        result = self.vmap.validate(builder)
+
+        warnings = [r for r in result if isinstance(r, ValidationWarning) and "Unexpected element" in str(r)]
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("extra_ds", str(warnings))

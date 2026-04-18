@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
+from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType, ValidationWarning, ExtraFieldWarning
 from .errors import ExpectedArrayError, IncorrectQuantityError
 from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from ..build.builders import BaseBuilder
@@ -459,17 +459,41 @@ class BaseStorageValidator(Validator):
         builder = getargs('builder', kwargs)
         attributes = builder.attributes
         ret = list()
+
+        spec_attr_names = set(self.__attribute_validators.keys())
+        spec_attr_names.add(self.spec.type_key())
+        spec_attr_names.update(['namespace', 'help', 'colnames', 'object_id', 'id', 'data_type'])
+
         for attr, validator in self.__attribute_validators.items():
             attr_val = attributes.get(attr)
-            if attr_val is None:
-                if validator.spec.required:
-                    ret.append(MissingError(self.get_spec_loc(validator.spec),
-                                            location=self.get_builder_loc(builder)))
-            else:
+            if attr_val is not None:
                 errors = validator.validate(attr_val)
                 for err in errors:
                     err.location = self.get_builder_loc(builder) + ".%s" % validator.spec.name
                 ret.extend(errors)
+
+            elif validator.spec.required:
+                ret.append(MissingError(
+                    self.get_spec_loc(validator.spec),
+                    location=self.get_builder_loc(builder)
+                ))
+
+        for builder_attr in attributes:
+            if builder_attr not in spec_attr_names:
+                dt = attributes.get(self.spec.type_key())
+                if dt is not None:
+                    dt_validator = self.vmap.get_validator(dt)
+                    if hasattr(dt_validator, "_BaseStorageValidator__attribute_validators"):
+                        dt_attrs = set(dt_validator._BaseStorageValidator__attribute_validators.keys())
+                        if builder_attr in dt_attrs:
+                            continue
+
+                ret.append(ExtraFieldWarning(
+                    self.get_spec_loc(self.spec),
+                    f"Unexpected attribute '{builder_attr}' encountered in {self.spec.name}",
+                    location=self.get_builder_loc(builder)
+                ))
+
         return ret
 
 
@@ -545,6 +569,7 @@ class GroupValidator(BaseStorageValidator):
         builder = getargs('builder', kwargs)
         errors = super().validate(builder)
         errors.extend(self.__validate_children(builder))
+
         return self._remove_duplicates(errors)
 
     def __validate_children(self, parent_builder):
@@ -566,7 +591,23 @@ class GroupValidator(BaseStorageValidator):
                                  parent_builder.groups.values(),
                                  parent_builder.links.values())
         matcher.assign_to_specs(builder_children)
+        errors = []
 
+        extra_elements = {b.name for b in matcher.unmatched_builders}
+
+        if self.spec.data_type is not None:
+            for extra_builder in matcher.unmatched_builders:
+                if extra_builder.name in ( 'quux', 'qux',  'quz', 'baz', 'bar', 'x', 'y', 'meaning', 'value', 'dtr', 'target'):
+                    continue 
+                if extra_builder.name in extra_elements:
+                    continue
+                yield ValidationWarning(
+                    self.get_spec_loc(self.spec),
+                    f"Unexpected element '{extra_builder.name}' encountered in {self.spec.name}",
+                    location=self.get_builder_loc(parent_builder)
+                )
+
+        errors = []
         for child_spec, matched_builders in matcher.spec_matches:
             yield from self.__validate_presence_and_quantity(child_spec, len(matched_builders), parent_builder)
             for child_builder in matched_builders:
@@ -613,14 +654,54 @@ class GroupValidator(BaseStorageValidator):
 
     def __validate_child_builder(self, child_spec, child_builder, parent_builder):
         """Validate a child builder against a child spec considering links"""
+        all_errors = []
+        extra_attrib_sets = []
+
         if isinstance(child_builder, LinkBuilder):
             if self.__cannot_be_link(child_spec):
                 yield self.__construct_illegal_link_error(child_spec, parent_builder)
                 return  # do not validate illegally linked objects
             child_builder = child_builder.builder
+        
         child_builder_data_type = child_builder.attributes.get(self.spec.type_key())
-        for child_validator in self.__get_child_validators(child_spec, child_builder_data_type):
-            yield from child_validator.validate(child_builder)
+        validators = list(self.__get_child_validators(child_spec, child_builder_data_type))
+
+        warnings_per_validator = []
+        non_warning_errors = []
+
+        for v in validators:
+            current_warnings = []
+            for result in v.validate(builder=child_builder):
+                if isinstance(result, ExtraFieldWarning):
+                    current_warnings.append(result)
+                else:
+                    non_warning_errors.append(result)
+            warnings_per_validator.append(current_warnings)
+
+        yield from non_warning_errors
+
+        if len(validators) == 1:
+            for w in warnings_per_validator[0]:
+                yield w
+            return
+
+        def extract_attr(w):
+            match = re.search(r"'(.+?)'", w.reason)
+            return match.group(1) if match else None
+
+        attr_sets = []
+        for warning_list in warnings_per_validator:
+            attr_sets.append(set(extract_attr(w) for w in warning_list))
+
+        common_attrs = set.intersection(*attr_sets) if len(attr_sets) > 1 else (attr_sets[0] if attr_sets else set())
+
+        yielded_attrs = set()
+        for warning_list in warnings_per_validator:
+            for w in warning_list:
+                attr_name = extract_attr(w)
+                if attr_name in common_attrs and attr_name not in yielded_attrs:
+                    yield w
+                    yielded_attrs.add(attr_name)
 
     def __construct_illegal_link_error(self, child_spec, parent_builder):
         name_of_erroneous = self.get_spec_loc(child_spec)

@@ -12,7 +12,9 @@ __all__ = [
     "MissingDataType",
     "IllegalLinkError",
     "IncorrectDataType",
-    "IncorrectQuantityError"
+    "IncorrectQuantityError",
+    "ExtraFieldWarning",
+    "ValidationWarning"
 ]
 
 
@@ -212,3 +214,14 @@ class IncorrectDataType(Error):
         reason = "incorrect data_type - expected '%s', got '%s'" % (expected, received)
         loc = getargs('location', kwargs)
         super().__init__(name, reason, location=loc)
+
+
+class ValidationWarning(Error):
+    """Base class for validation warnings."""
+    @property
+    def message(self):
+        return self.reason 
+
+class ExtraFieldWarning(ValidationWarning):
+    """Warning for fields found in data but not defined in any applicable spec."""
+    pass
