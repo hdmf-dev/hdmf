@@ -640,6 +640,11 @@ class GroupValidator(BaseStorageValidator):
             for extra_builder in matcher.unmatched_builders:
                 if extra_builder.name in ( 'quux', 'qux',  'quz', 'baz', 'bar', 'x', 'y', 'meaning', 'value', 'dtr', 'target'):
                     continue
+
+                if extra_builder.name in seen:
+                    continue
+                seen.add(extra_builder.name)
+
                 if extra_builder.name in extra_elements:
                     continue
                 yield ValidationWarning(

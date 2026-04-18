@@ -2129,4 +2129,6 @@ class TestExtraFieldIntersection(ValidatorTestBase):
 
         warnings = [r for r in result if isinstance(r, ValidationWarning) and "Unexpected element" in str(r)]
         self.assertEqual(len(warnings), 1)
+
         self.assertIn("extra_ds", str(warnings))
+        
