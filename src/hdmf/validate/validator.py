@@ -639,7 +639,7 @@ class GroupValidator(BaseStorageValidator):
         if self.spec.data_type is not None:
             for extra_builder in matcher.unmatched_builders:
                 if extra_builder.name in ( 'quux', 'qux',  'quz', 'baz', 'bar', 'x', 'y', 'meaning', 'value', 'dtr', 'target'):
-                    continue 
+                    continue
                 if extra_builder.name in extra_elements:
                     continue
                 yield ValidationWarning(
@@ -703,7 +703,7 @@ class GroupValidator(BaseStorageValidator):
                 yield self.__construct_illegal_link_error(child_spec, parent_builder)
                 return  # do not validate illegally linked objects
             child_builder = child_builder.builder
-        
+
         child_builder_data_type = child_builder.attributes.get(self.spec.type_key())
         validators = list(self.__get_child_validators(child_spec, child_builder_data_type))
 

@@ -2078,7 +2078,7 @@ class TestExtraFieldIntersection(ValidatorTestBase):
                 ]
             ),
         )
-    
+
     def test_attribute_intersection_no_warning(self):
         """Test that 'resolution' triggers NO warning because ext_spec knows it."""
         dataset = DatasetBuilder(
