@@ -1464,7 +1464,8 @@ class HDF5IO(HDMFIO):
     def _compute_chunk_shape(data_shape, dtype, target_chunk_bytes=4 * 1024 * 1024):
         """Compute a chunk shape targeting a given number of bytes per chunk.
 
-        h5py's default auto-chunking targets ~32 KB, which is too small for cloud access where each
+        h5py's default auto-chunking targets 8-500 KB chunks for datasets under 100 GB, depending on 
+        dataset size. This is too small for cloud access where each
         chunk may require a separate HTTP range request. This method targets larger chunks (default
         4 MB) in the recommended 2-16 MB range for cloud-hosted files.
 
