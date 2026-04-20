@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Breaking changes
+- `HDF5IO` `expandable` argument is now a list of data type names instead of a boolean. The default is `("VectorData", "ElementIdentifiers")`, so only `DynamicTable` columns and id are expandable out of the box — previously every dataset with a matching spec shape was expanded. Datasets of types outside this list that previously were expandable by default will now default to fixed-shape on-disk layout; add the relevant type to `expandable` to restore prior behavior. Replace `expandable=True` with an explicit list (e.g. `["VectorData", "ElementIdentifiers", "MyType"]`) and `expandable=False` with `[]`; passing `True`/`False` now raises a `TypeError`. @bendichter @rly [#1439](https://github.com/hdmf-dev/hdmf/pull/1439)
+
 ### Fixed
 - Added missing validation for dataset reference target types to ensure correct `RefSpec.target_type` matching. @sejalpunwatkar [#1429](https://github.com/hdmf-dev/hdmf/pull/1429)
 
