@@ -3211,6 +3211,7 @@ class TestDataIOReferences(H5RoundTripMixin, TestCase):
 
         self.assertContainerEqual(read_container['table']['y'][-1], group1)
 
+
 class TestVectorIndexDtype(TestCase):
 
     def set_up_array_index(self):
