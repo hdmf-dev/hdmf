@@ -4230,7 +4230,7 @@ class TestComputeChunkShape(TestCase):
         """Computed chunks should be close to the target size."""
         # 10000x100 float64: 8 bytes/element, target 4 MB
         shape = (10000, 100)
-        chunks = HDF5IO._compute_chunk_shape(shape, np.float64)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.float64)
         chunk_bytes = np.prod(chunks) * np.dtype(np.float64).itemsize
         self.assertGreater(chunk_bytes, 1 * 1024 * 1024)  # > 1 MB
         self.assertLessEqual(chunk_bytes, 8 * 1024 * 1024)  # <= 8 MB
@@ -4240,19 +4240,26 @@ class TestComputeChunkShape(TestCase):
     def test_small_dataset_uses_data_shape(self):
         """Datasets smaller than the target should use their full shape as chunks."""
         shape = (100,)
-        chunks = HDF5IO._compute_chunk_shape(shape, np.float64)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.float64)
         self.assertEqual(chunks, (100,))
 
     def test_empty_dataset(self):
         """Empty datasets should get chunk shape with 1 in first dimension."""
         shape = (0,)
-        chunks = HDF5IO._compute_chunk_shape(shape, np.int32)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.int32)
         self.assertEqual(chunks, (1,))
+
+    def test_zero_trailing_dimension_falls_back(self):
+        """A zero-length trailing dimension can't be chunked by us — fall back to h5py auto-chunking."""
+        # bytes_per_row == 0 branch: product of trailing dims is 0
+        shape = (10, 0, 5)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.float64)
+        self.assertIs(chunks, True)
 
     def test_1d_large(self):
         """Large 1D dataset should get chunks targeting ~4 MB."""
         shape = (10_000_000,)
-        chunks = HDF5IO._compute_chunk_shape(shape, np.float64)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.float64)
         chunk_bytes = chunks[0] * 8
         self.assertGreater(chunk_bytes, 2 * 1024 * 1024)
         self.assertLessEqual(chunk_bytes, 8 * 1024 * 1024)
@@ -4260,10 +4267,22 @@ class TestComputeChunkShape(TestCase):
     def test_custom_target(self):
         """Custom target_chunk_bytes should be respected."""
         shape = (10_000_000,)
-        chunks = HDF5IO._compute_chunk_shape(shape, np.float64, target_chunk_bytes=16 * 1024 * 1024)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.float64, target_chunk_bytes=16 * 1024 * 1024)
         chunk_bytes = chunks[0] * 8
         self.assertGreater(chunk_bytes, 8 * 1024 * 1024)
         self.assertLessEqual(chunk_bytes, 32 * 1024 * 1024)
+
+    def test_large_trailing_dims_get_split(self):
+        """When a single first-dim slice exceeds the target, trailing dims are reduced."""
+        # (1000, 4096, 4096) uint16 -> a single (1, 4096, 4096) slice is 32 MB, way over target
+        shape = (1000, 4096, 4096)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.uint16)
+        chunk_bytes = int(np.prod(chunks)) * np.dtype(np.uint16).itemsize
+        # Should stay within the recommended 2-16 MB range, not balloon to 32 MB
+        self.assertLessEqual(chunk_bytes, 8 * 1024 * 1024)
+        self.assertGreater(chunk_bytes, 1 * 1024 * 1024)
+        # First dim must stay at 1 since even one full slice was already over target
+        self.assertEqual(chunks[0], 1)
 
 
 class TestDefaultExpandable(H5RoundTripMixin, TestCase):
