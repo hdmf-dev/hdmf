@@ -1392,13 +1392,20 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if dt is not None:
                     link_dt.setdefault(dt, list()).append(target)
             # now assign links to their respective specification
+            consumed_link_names = set()
             for subspec in spec.links:
                 if subspec.name is not None and subspec.name in links:
                     ret[subspec] = manager.construct(links[subspec.name].builder)
+                    consumed_link_names.add(subspec.name)
                 else:
                     sub_builder = link_dt.get(subspec.target_type)
                     if sub_builder is not None:
                         ret[subspec] = self.__flatten(sub_builder, subspec, manager)
+            # remove named links already resolved above so they are not also
+            # picked up by generic data-type matching in __get_sub_builders
+            for name in consumed_link_names:
+                groups.pop(name, None)
+                datasets.pop(name, None)
             # now process groups and datasets
             self.__get_sub_builders(groups, spec.groups, manager, ret)
             self.__get_sub_builders(datasets, spec.datasets, manager, ret)
