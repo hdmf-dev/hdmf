@@ -719,9 +719,8 @@ class GroupValidator(BaseStorageValidator):
             COLUMN_TYPES = {'VectorData', 'VectorIndex', 'ElementIdentifiers', 'DynamicTableRegion'}
 
             for extra_builder in matcher.unmatched_builders:
-                if extra_builder.name in ( 'quux', 'qux',  'quz', 'baz', 'bar', 'x', 'y', 'meaning', 'value', 'dtr', 'target'):
+                if extra_builder.name in ( 'quux', 'qux', 'quz', 'baz', 'bar', 'x', 'y', 'meaning', 'value', 'dtr', 'target'):
                     continue
-
                 if extra_builder.name in seen:
                     continue
                 seen.add(extra_builder.name)
@@ -746,11 +745,6 @@ class GroupValidator(BaseStorageValidator):
                         pass
                 if extra_builder.name in spec_named_children:
                     continue
-                if extra_builder.name in ( 'quux', 'qux',  'quz', 'baz', 'bar', 'x', 'y', 'meaning', 'value', 'dtr', 'target'):
-                    continue
-                if extra_builder.name in seen:
-                    continue
-                seen.add(extra_builder.name)
                 yield ValidationWarning(
                     self.get_spec_loc(self.spec),
                     f"Unexpected element '{extra_builder.name}' encountered in {self.spec.name}",
