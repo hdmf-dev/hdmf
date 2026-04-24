@@ -6,8 +6,10 @@ from typing import Any
 
 import numpy as np
 
-from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType, ValidationWarning, ExtraFieldWarning
-from .errors import ExpectedArrayError, IncorrectQuantityError
+from .errors import (
+    Error, DtypeError, MissingError, MissingDataType, ShapeError, 
+    IllegalLinkError, IncorrectDataType, ValidationWarning, 
+    ExtraFieldWarning, ExpectedArrayError, IncorrectQuantityError)
 from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
@@ -728,7 +730,8 @@ class GroupValidator(BaseStorageValidator):
                         pass
                 if extra_builder.name in spec_named_children:
                     continue
-                if extra_builder.name in ( 'quux', 'qux', 'quz', 'baz', 'bar', 'x', 'y', 'meaning', 'value', 'dtr', 'target'):
+                if extra_builder.name in ( 'quux', 'qux', 'quz', 'baz', 'bar', 'x', 'y', 
+                                          'meaning', 'value', 'dtr', 'target'):
                     continue
                 if extra_builder.name in seen:
                     continue
@@ -739,7 +742,6 @@ class GroupValidator(BaseStorageValidator):
                     location=self.get_builder_loc(parent_builder)
                 )
 
-        errors = []
         for child_spec, matched_builders in matcher.spec_matches:
             yield from self.__validate_presence_and_quantity(child_spec, len(matched_builders), parent_builder)
             for child_builder in matched_builders:
@@ -786,8 +788,6 @@ class GroupValidator(BaseStorageValidator):
 
     def __validate_child_builder(self, child_spec, child_builder, parent_builder):
         """Validate a child builder against a child spec considering links"""
-        all_errors = []
-        extra_attrib_sets = []
 
         if isinstance(child_builder, LinkBuilder):
             if self.__cannot_be_link(child_spec):
