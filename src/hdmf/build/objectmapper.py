@@ -628,7 +628,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 attr_val = attr_val.value
             if attr_val is not None:
                 if not isinstance(attr_val, Data):
-                    # NOTE: Do not process Data objects here
+                    # Data containers are unwrapped and string-converted later in build(),
+                    # after the Data sub-builder is created. Converting here would operate
+                    # on the Data wrapper itself and produce the wrong result.
                     attr_val = self.__convert_string(attr_val, spec)
                 spec_dt = self.__get_data_type(spec)
                 if spec_dt is not None:

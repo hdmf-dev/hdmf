@@ -141,3 +141,29 @@ class TestBuildDatasetDateTime(TestCase):
         ret = builder.get('data')
         assert ret.data == [b'2023-07-09T00:00:00', b'2023-07-10T00:00:00']
         assert ret.dtype == 'ascii'
+
+    def test_date_array_ext_spec(self):
+        # This mirrors the traceback in issue #1311, which used datetime.date on a VectorData extension.
+        column_spec = DatasetSpec(data_type_def='Column', doc='an example dataset', dims=(None,))
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    data_type_inc='Column',
+                    doc='an example dataset',
+                    name='data',
+                    dtype='isodatetime',
+                ),
+            ],
+        )
+        type_map = create_test_type_map([bar_spec, column_spec], {'Bar': BarWithColumnData, 'Column': Column})
+
+        bar_inst = BarWithColumnData(
+            name='my_bar',
+            data=Column(name='data', data=[date(2023, 7, 9), date(2023, 7, 10)]),
+        )
+        builder = type_map.build(bar_inst)
+        ret = builder.get('data')
+        assert ret.data == [b'2023-07-09', b'2023-07-10']
+        assert ret.dtype == 'ascii'
