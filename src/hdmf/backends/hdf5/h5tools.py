@@ -1101,6 +1101,11 @@ class HDF5IO(HDMFIO):
         ):
             options['io_settings']['maxshape'] = matched_spec_shape
 
+        # Ensure chunking is explicitly enabled when maxshape requires it, so that
+        # compute_default_chunk_shape can replace it with appropriately-sized chunks later.
+        if 'maxshape' in options['io_settings'] and 'chunks' not in options['io_settings']:
+            options['io_settings']['chunks'] = True
+
         attributes = builder.attributes
         options['dtype'] = builder.dtype
         dset = None
@@ -1338,6 +1343,9 @@ class HDF5IO(HDMFIO):
             if isinstance(io_settings['dtype'], str):
                 # map to real dtype if we were given a string
                 io_settings['dtype'] = cls.__dtypes.get(io_settings['dtype'])
+        # Replace chunks=True with computed chunk shape for better cloud access performance
+        if io_settings.get('chunks') is True and 'shape' in io_settings and len(io_settings['shape']) > 0:
+            io_settings['chunks'] = HDF5IO.compute_default_chunk_shape(io_settings['shape'], io_settings.get('dtype'))
         try:
             dset = parent.create_dataset(name, **io_settings)
         except Exception as exc:
@@ -1367,6 +1375,9 @@ class HDF5IO(HDMFIO):
         if isinstance(io_settings['dtype'], str):
             # map to real dtype if we were given a string
             io_settings['dtype'] = cls.__dtypes.get(io_settings['dtype'])
+        # Replace chunks=True with computed chunk shape for better cloud access performance
+        if io_settings.get('chunks') is True and 'shape' in io_settings and len(io_settings['shape']) > 0:
+            io_settings['chunks'] = HDF5IO.compute_default_chunk_shape(io_settings['shape'], io_settings.get('dtype'))
         try:
             dset = parent.create_dataset(name, **io_settings)
         except Exception as exc:
@@ -1418,6 +1429,10 @@ class HDF5IO(HDMFIO):
         else:
             data_shape = get_data_shape(data)
 
+        # Replace chunks=True with computed chunk shape for better cloud access performance
+        if io_settings.get('chunks') is True and data_shape is not None and len(data_shape) > 0:
+            io_settings['chunks'] = HDF5IO.compute_default_chunk_shape(data_shape, dtype)
+
         # Create the dataset
         try:
             dset = parent.create_dataset(name, shape=data_shape, dtype=dtype, **io_settings)
@@ -1465,6 +1480,72 @@ class HDF5IO(HDMFIO):
             returns='the reference', rtype=Reference)
     def _create_ref(self, **kwargs):
         return self.__get_ref(**kwargs)
+
+    @staticmethod
+    def compute_default_chunk_shape(data_shape, dtype, target_chunk_bytes=4 * 1024 * 1024, neurodata_type=None):
+        """Compute a chunk shape targeting a given number of bytes per chunk.
+
+        h5py's default auto-chunking targets 8-500 KB chunks for datasets under 100 GB, depending on
+        dataset size. This is too small for cloud access where each chunk may require a separate
+        HTTP range request. This method targets larger chunks (default 4 MB) in the recommended
+        2-16 MB range for cloud-hosted files.
+
+        The algorithm keeps all dimensions except the first at their full size and adjusts the first
+        dimension to reach the target chunk size. When a single slice along the first dimension
+        already exceeds the target (e.g. mesoscale imaging frames), trailing dimensions are halved
+        in place of the largest axis until the chunk fits within the target.
+
+        Parameters
+        ----------
+        data_shape : tuple
+            The shape of the dataset.
+        dtype : numpy.dtype or type
+            The data type, used to determine bytes per element.
+        target_chunk_bytes : int, optional
+            Target chunk size in bytes. Default is 4 MB.
+        neurodata_type : str, optional
+            Name of the neurodata type for this dataset. Unused by the default implementation;
+            provided as a hook so subclasses can specialize chunking per type.
+
+        Returns
+        -------
+        tuple or True
+            The computed chunk shape, or ``True`` to fall back to h5py auto-chunking when a shape
+            cannot be computed (unsupported dtype or zero-length trailing dimension).
+        """
+        del neurodata_type  # extension hook for overrides; unused by default
+
+        try:
+            itemsize = np.dtype(dtype).itemsize
+        except TypeError:
+            return True  # fall back to h5py auto-chunking for unsupported dtypes
+
+        # Elements per "row" (all dimensions except the first)
+        elements_per_row = 1
+        for s in data_shape[1:]:
+            elements_per_row *= s
+        bytes_per_row = elements_per_row * itemsize
+
+        if bytes_per_row == 0:
+            return True
+
+        if bytes_per_row > target_chunk_bytes:
+            # A single slice along the first axis already exceeds the target. Halve the largest
+            # trailing dimension repeatedly until the chunk fits within the target.
+            chunks = [1] + list(data_shape[1:])
+            while int(np.prod(chunks)) * itemsize > target_chunk_bytes:
+                idx = 1 + int(np.argmax(chunks[1:]))
+                if chunks[idx] <= 1:
+                    break
+                chunks[idx] = max(1, chunks[idx] // 2)
+            return tuple(chunks)
+
+        # Compute first dimension to reach target chunk size
+        first_dim = max(1, target_chunk_bytes // bytes_per_row)
+        # Don't exceed the actual data size in the first dimension, but always at least 1
+        first_dim = max(1, min(first_dim, data_shape[0]))
+
+        return (first_dim,) + tuple(data_shape[1:])
 
     def __is_ref(self, dtype):
         if isinstance(dtype, DtypeSpec):
