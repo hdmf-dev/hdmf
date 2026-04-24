@@ -122,9 +122,12 @@ class TestExtensionDatetime(TestCase):
             f.write(group)
         with HDF5IO(os.path.join(self.test_dir, 'test.h5'), 'r', manager=self.manager) as f:
             group_read = f.read()
-            self.assertContainerEqual(group_read, group)
+            # HDF5IO names the top-level container 'root' and assigns fresh object_ids on read.
+            self.assertContainerEqual(group_read, group, ignore_name=True, ignore_hdmf_attrs=True)
             self.assertEqual(group_read.my_data1.data, datetime.datetime(2020, 1, 1, 0, 0, 0))
             self.assertEqual(group_read.my_data2.data, datetime.datetime(2020, 1, 1, 0, 0, 0))
-            self.assertEqual(group_read.my_data3.data, datetime.datetime(2020, 1, 1, 0, 0, 0))
+            # my_data3 has no data_type_inc, so it is stored as a named scalar dataset on the group
+            # and accessed as a plain datetime value rather than a wrapped Data container.
+            self.assertEqual(group_read.my_data3, datetime.datetime(2020, 1, 1, 0, 0, 0))
             self.assertEqual(group_read.my_data2.my_attr, datetime.datetime(2020, 1, 1, 0, 0, 0))
             self.assertEqual(group_read.my_attr, datetime.datetime(2020, 1, 1, 0, 0, 0))
