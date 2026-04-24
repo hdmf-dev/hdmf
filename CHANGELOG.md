@@ -10,6 +10,7 @@
 
 ### Fixed
 - Added missing validation for dataset reference target types to ensure correct `RefSpec.target_type` matching. @sejalpunwatkar [#1429](https://github.com/hdmf-dev/hdmf/pull/1429)
+- Fixed reading a `DynamicTable` that contains a named link to a `VectorData` (e.g., `MeaningsTable.target`). The link target was being picked up as an extra column, causing a `"Columns must be the same length"` error when the target column's row count differed from the table's own row count. @rly [#1445](https://github.com/hdmf-dev/hdmf/pull/1445)
 
 
 ## HDMF 5.1.0 (March 24, 2026)
