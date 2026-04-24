@@ -97,11 +97,15 @@ def _ascii(s):
 
 def _isoformat(s):
     """
-    A helper function for converting to ISO format
+    A helper function for converting datetime/date to an ASCII-encoded ISO 8601 bytes value.
+
+    Returns bytes to match the `ascii` dtype label used by `convert_dtype` for `isodatetime`/`datetime` specs.
     """
     if isinstance(s, (datetime.datetime, datetime.date)):
-        return s.isoformat()
-    elif isinstance(s, str):  # probably already converted to isoformat
+        return s.isoformat().encode('ascii')
+    elif isinstance(s, str):  # already converted to isoformat, e.g. by __convert_string
+        return s.encode('ascii', 'backslashreplace')
+    elif isinstance(s, bytes):  # already encoded
         return s
     else:
         raise ValueError("Expected datetime, got %s" % type(s))
