@@ -225,4 +225,3 @@ class ValidationWarning(Error):
 class ExtraFieldWarning(ValidationWarning):
     """Warning for fields found in data but not defined in any applicable spec."""
     pass
-

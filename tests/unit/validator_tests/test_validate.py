@@ -1652,7 +1652,7 @@ class TestShapeValidation(ValidatorTestBase):
             ]
         )
         result = self.vmap.validate(builder)
-        
+
         self.assertEqual(len(result), 1)
         # Should be ExpectedArrayError, not ShapeError
         self.assertIsInstance(result[0], ExpectedArrayError)
@@ -2131,4 +2131,4 @@ class TestExtraFieldIntersection(ValidatorTestBase):
         self.assertEqual(len(warnings), 1)
 
         self.assertIn("extra_ds", str(warnings))
-        
+
