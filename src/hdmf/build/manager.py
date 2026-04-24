@@ -463,7 +463,7 @@ class TypeMap:
 
     def copy_mappers(self, type_map):
         warnings.warn(
-            "copy_mappers is deprecated and will be removed in a future version. "
+            "copy_mappers is deprecated and will be removed in HDMF 6.0. "
             "Use merge instead with the argument ns_catalog=False to copy only mappers without namespaces.",
             DeprecationWarning,
         )
@@ -783,7 +783,7 @@ class TypeMap:
              'doc': 'the namespace to get the container classes for', 'default': None})
     def get_container_classes(self, **kwargs):
         namespace = getargs('namespace', kwargs)
-        ret = self.__container_cls_to_ns_dt.keys()
+        ret = (k for k in self.__container_cls_to_ns_dt if not isinstance(k, TypeSource))
         if namespace is not None:
             ret = filter(lambda x: self.__container_cls_to_ns_dt[x][0] == namespace, ret)
         return list(ret)
@@ -826,16 +826,22 @@ class TypeMap:
         spec = self.__ns_catalog.get_spec(namespace, data_type)  # make sure the spec exists
         self.__ns_dt_to_container_cls.setdefault(namespace, dict())
         previous_cls = self.__ns_dt_to_container_cls[namespace].get(data_type)
-        # set or replace mapping in ns_dt_to_container_cls
         self.__ns_dt_to_container_cls[namespace][data_type] = container_cls
-        if previous_cls is not None:
-            # NOTE: Removing previous_cls from container_cls_to_ns_dt but previous_cls may still
-            # exist in ns_dt_to_container_cls if it was a TypeSource registered for multiple namespaces.
-            self.__container_cls_to_ns_dt.pop(previous_cls, None)
-        self.__container_cls_to_ns_dt[container_cls] = (namespace, data_type)
-        if not isinstance(container_cls, TypeSource):
-            setattr(container_cls, spec.type_key(), data_type)
-            setattr(container_cls, 'namespace', namespace)
+        # Remove the previous reverse-map entry only if it belongs to this (namespace, data_type).
+        # A class can appear in multiple namespaces' forward maps (e.g. via include_namespace),
+        # so we must not remove an entry that belongs to a different namespace.
+        if previous_cls is not None and self.__container_cls_to_ns_dt.get(previous_cls) == (namespace, data_type):
+            self.__container_cls_to_ns_dt.pop(previous_cls)
+        # Only set the reverse map and class attributes on first registration. Base namespaces
+        # are loaded before extensions (topological sort in NamespaceCatalog._order_deps), so
+        # the first entry is the defining namespace. Extensions that include a base namespace
+        # re-register its types; this guard keeps the reverse map and class attributes pointing
+        # to the original namespace.
+        if container_cls not in self.__container_cls_to_ns_dt:
+            self.__container_cls_to_ns_dt[container_cls] = (namespace, data_type)
+            if not isinstance(container_cls, TypeSource):
+                setattr(container_cls, spec.type_key(), data_type)
+                setattr(container_cls, 'namespace', namespace)
 
     @docval({"name": "container_cls", "type": type,
              "doc": "the AbstractContainer class for which the given ObjectMapper class gets used for"},

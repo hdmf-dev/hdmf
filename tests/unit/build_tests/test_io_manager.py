@@ -649,26 +649,22 @@ class TestGetDtContainerClsTypeSourceResolution(TestCase):
         self.assertIsNone(cls)
 
     def test_get_container_classes_after_partial_resolution(self):
-        """Test get_container_classes with a mix of TypeSource and real classes."""
+        """Test get_container_classes only returns resolved classes, not TypeSource placeholders."""
         bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
         baz_spec = GroupSpec(doc='A test group spec', data_type_def='Baz')
         create_load_namespace_yaml('ns1', [bar_spec, baz_spec], self.test_dir, {}, self.type_map)
 
-        # Initially, all should be TypeSource
+        # Initially, no resolved classes
         classes = self.type_map.get_container_classes('ns1')
-        self.assertEqual(len(classes), 2)
-        self.assertTrue(all(isinstance(c, TypeSource) for c in classes))
+        self.assertEqual(len(classes), 0)
 
         # Resolve only Bar
         self.type_map.get_dt_container_cls('Bar', 'ns1')
 
-        # Now there should be one real class and one TypeSource
+        # Now there should be one real class
         classes = self.type_map.get_container_classes('ns1')
-        self.assertEqual(len(classes), 2)
-        type_source_count = sum(1 for c in classes if isinstance(c, TypeSource))
-        real_class_count = sum(1 for c in classes if not isinstance(c, TypeSource))
-        self.assertEqual(type_source_count, 1)
-        self.assertEqual(real_class_count, 1)
+        self.assertEqual(len(classes), 1)
+        self.assertFalse(isinstance(classes[0], TypeSource))
 
 
 class TestNamespaceLookupWithTypeSource(TestCase):
@@ -789,10 +785,9 @@ class TestLoadNamespacesMultipleTypes(TestCase):
         baz_spec = GroupSpec(doc='A test group spec', data_type_def='Baz')
         create_load_namespace_yaml('ns1', [bar_spec, baz_spec], self.test_dir, {}, self.type_map)
 
-        # After load_namespaces, all types should be TypeSource (not actual classes)
+        # After load_namespaces, no classes should be resolved yet
         classes = self.type_map.get_container_classes('ns1')
-        for cls in classes:
-            self.assertIsInstance(cls, TypeSource)
+        self.assertEqual(len(classes), 0)
 
     def test_resolve_all_types_in_namespace(self):
         """Test resolving all types in a namespace one by one."""
@@ -810,6 +805,137 @@ class TestLoadNamespacesMultipleTypes(TestCase):
         self.assertFalse(any(isinstance(c, TypeSource) for c in classes))
         class_names = {c.__name__ for c in classes}
         self.assertSetEqual(class_names, {'Bar', 'Baz', 'Qux'})
+
+
+class TestExtensionIncludeNamespaceDoesNotContaminateCore(TestCase):
+    """Tests that loading an extension with include_namespace("core") does not contaminate core types.
+
+    When an extension calls include_namespace("core"), all core types get re-registered under the
+    extension namespace. These tests verify that the reverse map, class attributes, and builders
+    all still point to the original "core" namespace.
+    """
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+        self.type_map = TypeMap()
+
+        # Define "core" namespace with NWBFile, like pynwb core
+        nwbfile_spec = GroupSpec(doc='The root NWB file type', data_type_def='NWBFile')
+        create_load_namespace_yaml(
+            namespace_name='core',
+            specs=[nwbfile_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map,
+        )
+        self.NWBFile = self.type_map.get_dt_container_cls(data_type='NWBFile', namespace='core')
+
+        # Load an extension that does include_namespace("core"), like ndx-events or ndx-hed
+        events_spec = GroupSpec(doc='An events type', data_type_def='EventsTable', data_type_inc='NWBFile')
+        create_load_namespace_yaml(
+            namespace_name='ndx-events',
+            specs=[events_spec],
+            output_dir=self.test_dir,
+            incl_types={'core': None},  # None means include_namespace("core"), i.e. all core types
+            type_map=self.type_map,
+        )
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir)
+
+    def test_build_core_type_keeps_core_namespace(self):
+        """Building a core type must produce a builder with namespace='core'."""
+        builder = self.type_map.build(
+            container=self.NWBFile(name='root'),
+            manager=BuildManager(self.type_map),
+            source='test.nwb',
+        )
+        self.assertEqual(builder.attributes['namespace'], 'core')
+
+    def test_reverse_map_returns_core_namespace(self):
+        """get_container_cls_dt must return 'core' for a core type."""
+        ns, dt = self.type_map.get_container_cls_dt(self.NWBFile)
+        self.assertEqual(ns, 'core')
+        self.assertEqual(dt, 'NWBFile')
+
+    def test_class_namespace_attribute_not_overwritten(self):
+        """The class-level .namespace attribute must remain 'core'."""
+        self.assertEqual(self.NWBFile.namespace, 'core')
+
+
+class TestRegisterContainerTypeCrossNamespace(TestCase):
+    """Tests that register_container_type correctly handles types shared across namespaces.
+
+    These tests verify that:
+    - Replacing a class in one namespace does not corrupt the reverse map for another namespace.
+    - Replacing a TypeSource with a real class in the same namespace still works correctly.
+    """
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+        self.type_map = TypeMap()
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir)
+
+    def test_resolving_included_type_does_not_destroy_original_mapping(self):
+        """Replacing a TypeSource in a non-primary namespace must not destroy the primary namespace's reverse map."""
+        bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
+        create_load_namespace_yaml(
+            namespace_name='ns1',
+            specs=[bar_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map,
+        )
+
+        # ns2 includes Bar from ns1
+        baz_spec = GroupSpec(doc='Another type', data_type_def='Baz', data_type_inc='Bar')
+        create_load_namespace_yaml(
+            namespace_name='ns2',
+            specs=[baz_spec],
+            output_dir=self.test_dir,
+            incl_types={'ns1': ['Bar']},
+            type_map=self.type_map,
+        )
+
+        # Resolve Bar in ns1 (primary namespace) - this replaces the TypeSource with a real class
+        Bar = self.type_map.get_dt_container_cls('Bar', 'ns1')
+        ns, dt = self.type_map.get_container_cls_dt(Bar)
+        self.assertEqual(ns, 'ns1')
+        self.assertEqual(dt, 'Bar')
+
+        # Resolve Bar in ns2 - this replaces the TypeSource in ns2's forward map with Bar.
+        # The reverse map for Bar must still point to ns1.
+        Bar_via_ns2 = self.type_map.get_dt_container_cls('Bar', 'ns2')
+        self.assertIs(Bar_via_ns2, Bar)
+        ns, dt = self.type_map.get_container_cls_dt(Bar)
+        self.assertEqual(ns, 'ns1')
+        self.assertEqual(dt, 'Bar')
+
+    def test_typesource_replacement_updates_reverse_map(self):
+        """Replacing a TypeSource with a real class in the same namespace must update the reverse map."""
+        bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
+        create_load_namespace_yaml(
+            namespace_name='ns1',
+            specs=[bar_spec],
+            output_dir=self.test_dir,
+            incl_types={},
+            type_map=self.type_map,
+        )
+
+        # Before resolution, Bar should be a TypeSource
+        bar_ts = self.type_map.get_dt_container_cls('Bar', 'ns1', autogen=False)
+        self.assertIsInstance(bar_ts, TypeSource)
+
+        # Resolve to a real class — this replaces the TypeSource in register_container_type
+        Bar = self.type_map.get_dt_container_cls('Bar', 'ns1')
+        self.assertFalse(isinstance(Bar, TypeSource))
+
+        # The real class should be in the reverse map pointing to ns1
+        ns, dt = self.type_map.get_container_cls_dt(Bar)
+        self.assertEqual(ns, 'ns1')
+        self.assertEqual(dt, 'Bar')
 
 
 # TODO:

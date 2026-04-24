@@ -1,6 +1,39 @@
 # HDMF Changelog
 
-## HDMF 5.0.0 (Upcoming)
+## Unreleased
+
+### Breaking changes
+- `HDF5IO` `expandable` argument is now a list of data type names instead of a boolean. The default is `("VectorData", "ElementIdentifiers")`, so only `DynamicTable` columns and id are expandable out of the box — previously every dataset with a matching spec shape was expanded. Datasets of types outside this list that previously were expandable by default will now default to fixed-shape on-disk layout; add the relevant type to `expandable` to restore prior behavior. Replace `expandable=True` with an explicit list (e.g. `["VectorData", "ElementIdentifiers", "MyType"]`) and `expandable=False` with `[]`; passing `True`/`False` now raises a `TypeError`. @bendichter @rly [#1439](https://github.com/hdmf-dev/hdmf/pull/1439)
+
+### Enhancements
+- Set sensible default chunk sizes (~4 MB, in the recommended 2-16 MB range for cloud-hosted files) when `chunks=True`, replacing h5py's much smaller defaults. Added public `HDF5IO.compute_default_chunk_shape()` so users can inspect or override the chunk shape that would be used. @bendichter [#1440](https://github.com/hdmf-dev/hdmf/pull/1440)
+
+### Fixed
+- Added missing validation for dataset reference target types to ensure correct `RefSpec.target_type` matching. @sejalpunwatkar [#1429](https://github.com/hdmf-dev/hdmf/pull/1429)
+- Fixed reading a `DynamicTable` that contains a named link to a `VectorData` (e.g., `MeaningsTable.target`). The link target was being picked up as an extra column, causing a `"Columns must be the same length"` error when the target column's row count differed from the table's own row count. @rly [#1445](https://github.com/hdmf-dev/hdmf/pull/1445)
+
+
+## HDMF 5.1.0 (March 24, 2026)
+
+### Enhancements
+- Made `HERDManager` an abstract interface (ABC) with an abstract `external_resources` property. Subclasses must now declare `external_resources` in their `__fields__` to satisfy the interface. Updated `__gather_fields` to allow auto-generated properties to override inherited abstract properties. Added `link_resources` and `get_external_resources` methods to `HERDManager` for managing a linked HERD separate from the primary one. @rly [#1431](https://github.com/hdmf-dev/hdmf/pull/1431)
+
+
+## HDMF 5.0.1 (March 16, 2026)
+
+### Enhancements
+- Replaced `hasattr(data, "__len__")` checks with `ndim`-based collection detection via new `_is_collection` and `_get_length` helpers in `hdmf.utils`. This fixes compatibility with array libraries that follow the Python array API standard (e.g., zarr v3), which provide `ndim` and `shape` but not `__len__`. @h-mayorquin [#1414](https://github.com/hdmf-dev/hdmf/pull/1414)
+- Added `_unwrap_scalar` helper in `hdmf.utils` to convert 0-d ndarrays to numpy scalars via `.item()`. This fixes `isinstance` checks against Python scalar types that fail on 0-d ndarrays returned by array-API-conforming libraries (e.g., zarr v3 scalar indexing). @h-mayorquin [#1415](https://github.com/hdmf-dev/hdmf/pull/1415)
+- Added `HDF5IO.is_open()` to check whether the HDF5 file handle is still valid. @rly [#1423](https://github.com/hdmf-dev/hdmf/pull/1423)
+
+### Fixed
+- Fixed `_is_collection` raising `RuntimeError` when accessing `ndim` on closed h5py datasets, which caused `__repr__` to crash on containers read from closed HDF5 files. @rly [#1426](https://github.com/hdmf-dev/hdmf/pull/1426)
+- Fixed `_repr_html_` raising `RuntimeError` when the backing HDF5 file is closed. A warning banner is now shown and failed renders display a descriptive message instead of raising. @rly [#1423](https://github.com/hdmf-dev/hdmf/pull/1423)
+- Fixed writing compound dtype datasets with a single field. @rly [#1420](https://github.com/hdmf-dev/hdmf/pull/1420)
+- Replaced undeclared `pyyaml` dependency with `ruamel.yaml` (a declared core dependency) in `test_common_io.py`. The test relied on PyYAML being transitively installed by pip's `h5py`, which is not the case in conda environments. @rly [#1418](https://github.com/hdmf-dev/hdmf/pull/1418)
+
+
+## HDMF 5.0.0 (March 2, 2026)
 
 ### Changed
 - Refactored `TypeMap.load_namespaces` to register `TypeSource` placeholders for both source types and dependent types, enabling lazy class generation. Added `NamespaceCatalog.get_source_types` to get source types loaded for a namespace. Removed `TypeMap.container_types` property. Converted `TypeSource` to a frozen dataclass. @rly [#1372](https://github.com/hdmf-dev/hdmf/pull/1372)
@@ -13,6 +46,8 @@
 - Deprecated `BaseStorageSpec.add_attribute`, `GroupSpec.add_group`, `GroupSpec.add_dataset`, and `GroupSpec.add_link`. Use `set_attribute`, `set_group`, `set_dataset`, and `set_link` instead. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 - Deprecated unused `BaseStorageSpec.get_data_type_spec` and `BaseStorageSpec.get_namespace_spec`. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 - Moved `test`, `docs`, and `min-reqs` from `[project.optional-dependencies]` to `[dependency-groups]` (PEP 735). `min-reqs` was renamed to `test-min-deps`. @rly [#1395](https://github.com/hdmf-dev/hdmf/pull/1395)
+- Removed `test-min-deps` dependency group and replaced it with `uv pip install --resolution lowest-direct` in tox, making the project compatible with uv. @h-mayorquin [#1408](https://github.com/hdmf-dev/hdmf/pull/1408)
+- Changed `get_data_shape` to check `shape` before `maxshape`, so that objects with both attributes (e.g., h5py datasets) return their actual shape rather than their maximum shape. @rly [#1180](https://github.com/hdmf-dev/hdmf/pull/1180)
 
 ### Removed
 - Dropped support for Python 3.9. The minimum supported version is now Python 3.10. @rly [#xxx](https://github.com/hdmf-dev/hdmf/pull/xxx)
@@ -25,6 +60,7 @@
 - Deprecated `TypeMap.copy_mappers` method. Use `TypeMap.merge` instead with the argument `ns_catalog=False` to copy only mappers without namespaces. @rly [#1372](https://github.com/hdmf-dev/hdmf/pull/1372)
 
 ### Added
+- Added `expandable` parameter to `HDF5IO.write` (default `True`) that makes all non-scalar datasets expandable by setting `maxshape` based on the matching shape defined in the spec. Pass `expandable=False` to disable this behavior. @rly [#1180](https://github.com/hdmf-dev/hdmf/pull/1180)
 - Added support for HDMF Common Schema 1.9.0.
   - Introduced a new data type `MeaningsTable` and changes to `DynamicTable` to support included `MeaningsTable` objects. @rly [#1376](https://github.com/hdmf-dev/hdmf/pull/1376)
   - Promoted `HERD` from the hdmf-experimental namespace to the HDMF Common namespace. @rly [#1387](https://github.com/hdmf-dev/hdmf/pull/1387)
@@ -34,8 +70,15 @@
 - Added warning when `data_type_def` and `data_type_inc` are the same in a spec. @rly [#1312](https://github.com/hdmf-dev/hdmf/pull/1312)
 - Added abstract methods `HDMFIO.load_namespaces` and `HDMFIO.load_namespaces_io`. @rly [#1299](https://github.com/hdmf-dev/hdmf/pull/1299)
 
+### Enhancements
+- Reduced memory allocations in `DynamicTable.add_column(..., index=True)` ragged column flattening by using `np.concatenate` instead of `list(itertools.chain.from_iterable(...))` when all entries are compatible numpy arrays. @h-mayorquin [#1403](https://github.com/hdmf-dev/hdmf/pull/1403)
+
 ### Fixed
+- Fixed `register_container_type` overwriting the reverse class-to-namespace map when an extension calls `include_namespace("core")`, which caused core types to be stamped with the extension's namespace. @h-mayorquin, @rly [#1407](https://github.com/hdmf-dev/hdmf/pull/1407)
+- Fixed `VectorData.extend()` silently corrupting 1D numpy arrays by reshaping them into 2D matrices. Replaced `np.vstack` with `np.concatenate` in `extend_data`. @h-mayorquin [#1405](https://github.com/hdmf-dev/hdmf/pull/1405)
+- Fixed validation of Python native `float` and `int` values against `float64` and `int64` specs. Python `float` is 64-bit but was mapped to `float32`, and Python `int` is 64-bit (or larger) but was mapped to `int32`. @rly [#1410](https://github.com/hdmf-dev/hdmf/pull/1410)
 - Fixed a broken test and refactored `VectorIndex.get`. @rly, @mavaylon1 [#1293](https://github.com/hdmf-dev/hdmf/pull/1293)
+- Fixed missing timezone validation for `isodatetime` values in `AttributeSpec` and `DatasetSpec`. @sejalpunwatkar [#1399](https://github.com/hdmf-dev/hdmf/pull/1399)
 
 
 ## HDMF 4.3.1 (January 28, 2026)
@@ -237,6 +280,7 @@ is available on build (during the write process), but not on read of a dataset f
 
 ### Bug Fixes
 - Fixed `TermSetWrapper` warning raised during the setters. @mavaylon1 [#1116](https://github.com/hdmf-dev/hdmf/pull/1116)
+
 
 ## HDMF 3.13.0 (March 20, 2024)
 
