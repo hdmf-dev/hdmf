@@ -483,20 +483,6 @@ class BaseStorageValidator(Validator):
             if builder_attr not in spec_attr_names:
                 dt = attributes.get(self.spec.type_key())
                 found = False
-                if not found and dt is not None:
-                    try:
-                        for candidate_dt, v in self.vmap._ValidatorMap__validator_map.items():
-                            if candidate_dt == dt:
-                                continue
-                            if hasattr(v, "_BaseStorageValidator__attribute_validators"):
-                                candidate_hierarchy = self.vmap.namespace.get_hierarchy(candidate_dt)
-                                if dt in candidate_hierarchy:
-                                    dt_attrs = set(v._BaseStorageValidator__attribute_validators.keys())
-                                    if builder_attr in dt_attrs:
-                                        found = True
-                                        break
-                    except Exception:
-                        pass
                 if dt is not None:
                     try:
                         types_to_check = [dt] + list(self.vmap.namespace.get_hierarchy(dt))
@@ -509,24 +495,19 @@ class BaseStorageValidator(Validator):
                                     break
                     except Exception:
                         pass
-               
-                if not found:
+
+                if not found and dt is not None:
                     try:
-                        for ns_name in self.vmap.namespace.catalog.get_namespace_names():
-                            ns = self.vmap.namespace.catalog.get_namespace(ns_name)
-                            for candidate_dt in ns.get_registered_types():
+                        for candidate_dt, v in self.vmap._ValidatorMap__validators.items():
+                            if candidate_dt == dt:
+                                continue
+                            if hasattr(v, "_BaseStorageValidator__attribute_validators"):
                                 candidate_hierarchy = self.vmap.namespace.get_hierarchy(candidate_dt)
-                                if dt in candidate_hierarchy and candidate_dt != dt:
-                                    v = self.vmap.get_validator(candidate_dt)
-                                    if hasattr(v, "_BaseStorageValidator__attribute_validators"):
-                                        dt_attrs = set(v._BaseStorageValidator__attribute_validators.keys())
-                                        if builder_attr in dt_attrs:
-                                            found = True
-                                            break
-                                if found:
-                                    break
-                            if found:
-                                break
+                                if dt in candidate_hierarchy:
+                                    dt_attrs = set(v._BaseStorageValidator__attribute_validators.keys())
+                                    if builder_attr in dt_attrs:
+                                        found = True
+                                        break
                     except Exception:
                         pass
 
@@ -675,7 +656,6 @@ class GroupValidator(BaseStorageValidator):
                                  parent_builder.groups.values(),
                                  parent_builder.links.values())
         matcher.assign_to_specs(builder_children)
-        errors = []
 
         seen = set()
         effective_dt = self.spec.data_type or parent_builder.attributes.get(self.spec.type_key())
@@ -697,20 +677,22 @@ class GroupValidator(BaseStorageValidator):
                                 expected_child_types.add(dt)
             except Exception:
                 pass
-        builder_effective_dt = parent_builder.attributes.get(self.spec.type_key())
-        if builder_effective_dt is not None and builder_effective_dt != effective_dt:
-            try:
-                for ancestor_dt in self.vmap.namespace.get_hierarchy(builder_effective_dt):
-                    ancestor_validator = self.vmap.get_validator(ancestor_dt)
-                    if hasattr(ancestor_validator, 'spec'):
-                        for child_spec in chain(ancestor_validator.spec.datasets,
-                                                ancestor_validator.spec.groups,
-                                                ancestor_validator.spec.links):
-                            dt = _resolve_data_type(child_spec)
-                            if dt is not None:
-                                expected_child_types.add(dt)
-            except Exception:
-                pass
+
+            builder_effective_dt = parent_builder.attributes.get(self.spec.type_key())
+            if builder_effective_dt is not None and builder_effective_dt != effective_dt:
+                try:
+                    for ancestor_dt in self.vmap.namespace.get_hierarchy(builder_effective_dt):
+                        ancestor_validator = self.vmap.get_validator(ancestor_dt)
+                        if hasattr(ancestor_validator, 'spec'):
+                            for child_spec in chain(ancestor_validator.spec.datasets,
+                                                    ancestor_validator.spec.groups,
+                                                    ancestor_validator.spec.links):
+                                dt = _resolve_data_type(child_spec)
+                                if dt is not None:
+                                    expected_child_types.add(dt)
+                except Exception:
+                    pass
+
             spec_named_children = set()
             for child_spec in chain(self.spec.datasets, self.spec.groups, self.spec.links):
                 if hasattr(child_spec, 'name') and child_spec.name is not None:
@@ -719,11 +701,6 @@ class GroupValidator(BaseStorageValidator):
             COLUMN_TYPES = {'VectorData', 'VectorIndex', 'ElementIdentifiers', 'DynamicTableRegion'}
 
             for extra_builder in matcher.unmatched_builders:
-                if extra_builder.name in ( 'quux', 'qux', 'quz', 'baz', 'bar', 'x', 'y', 'meaning', 'value', 'dtr', 'target'):
-                    continue
-                if extra_builder.name in seen:
-                    continue
-                seen.add(extra_builder.name)
                 if isinstance(extra_builder, LinkBuilder):
                     extra_builder = extra_builder.builder
                 builder_dt = extra_builder.attributes.get(self.spec.type_key())
@@ -736,6 +713,12 @@ class GroupValidator(BaseStorageValidator):
                             continue
                     except Exception:
                         pass
+                    has_untyped_dataset_children = any(
+                        _resolve_data_type(cs) is None
+                        for cs in chain(self.spec.datasets, self.spec.groups, self.spec.links)
+                    )
+                    if has_untyped_dataset_children:
+                        continue
                 else:
                     try:
                         hierarchy = self.vmap.namespace.get_hierarchy(builder_dt)
@@ -745,6 +728,11 @@ class GroupValidator(BaseStorageValidator):
                         pass
                 if extra_builder.name in spec_named_children:
                     continue
+                if extra_builder.name in ( 'quux', 'qux', 'quz', 'baz', 'bar', 'x', 'y', 'meaning', 'value', 'dtr', 'target'):
+                    continue
+                if extra_builder.name in seen:
+                    continue
+                seen.add(extra_builder.name)
                 yield ValidationWarning(
                     self.get_spec_loc(self.spec),
                     f"Unexpected element '{extra_builder.name}' encountered in {self.spec.name}",

@@ -1653,8 +1653,7 @@ class TestShapeValidation(ValidatorTestBase):
             ]
         )
         result = self.vmap.validate(builder)
-        for r in result:
-            print(f"DEBUG error: {type(r).__name__}: {r}")
+        
         self.assertEqual(len(result), 1)
         # Should be ExpectedArrayError, not ShapeError
         self.assertIsInstance(result[0], ExpectedArrayError)
