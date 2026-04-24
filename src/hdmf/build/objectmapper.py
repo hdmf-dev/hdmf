@@ -110,6 +110,22 @@ def _isoformat(s):
     else:
         raise ValueError("Expected datetime, got %s" % type(s))
 
+
+def _parse_isoformat(s):
+    """Parse an ISO 8601 str/bytes back into a datetime or date.
+
+    Returns a datetime if the string includes a time component (contains 'T' or a space),
+    otherwise a date. Non-str/bytes inputs pass through unchanged so this helper is idempotent
+    when a value has already been parsed.
+    """
+    if isinstance(s, bytes):
+        s = s.decode('ascii')
+    if not isinstance(s, str):
+        return s
+    if 'T' in s or ' ' in s:
+        return datetime.datetime.fromisoformat(s)
+    return datetime.date.fromisoformat(s)
+
 class ObjectMapper(metaclass=ExtenderMeta):
     '''A class for mapping between Spec objects and AbstractContainer attributes
 
@@ -1392,7 +1408,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             elif isinstance(attr_val, ReferenceBuilder):
                 ret[attr_spec] = manager.construct(attr_val.builder)
             else:
-                ret[attr_spec] = attr_val
+                ret[attr_spec] = self.__parse_datetime_on_read(attr_val, attr_spec)
         if isinstance(spec, GroupSpec):
             if not isinstance(builder, GroupBuilder):  # pragma: no cover
                 raise ValueError("__get_subspec_values - must pass GroupBuilder with GroupSpec")
@@ -1436,8 +1452,23 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     type(builder.data[0]) is not np.void):
                 # if a scalar dataset is expected and a 1-element non-compound dataset is given, then read the dataset
                 builder['data'] = builder.data[0]  # use dictionary reference instead of .data to bypass error
-            ret[spec] = self.__check_ref_resolver(builder.data)
+            ret[spec] = self.__parse_datetime_on_read(self.__check_ref_resolver(builder.data), spec)
         return ret
+
+    @staticmethod
+    def __parse_datetime_on_read(value, spec):
+        """For specs with isodatetime/datetime dtype, parse a stored ISO str/bytes back to a datetime/date.
+
+        Idempotent — values that are not str/bytes (already parsed, arrays, etc.) pass through unchanged.
+        Array/h5py-dataset handling is intentionally out of scope; only scalar values are parsed.
+        """
+        if not isinstance(spec, (AttributeSpec, DatasetSpec)):
+            return value
+        if getattr(spec, 'dtype', None) not in ('isodatetime', 'datetime'):
+            return value
+        if isinstance(value, (str, bytes)):
+            return _parse_isoformat(value)
+        return value
 
     @staticmethod
     def __check_ref_resolver(data):
@@ -1506,7 +1537,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if issubclass(cls, Data):
             if not isinstance(builder, DatasetBuilder):  # pragma: no cover
                 raise ValueError('Can only construct a Data object from a DatasetBuilder - got %s' % type(builder))
-            const_args['data'] = self.__check_ref_resolver(builder.data)
+            const_args['data'] = self.__parse_datetime_on_read(
+                self.__check_ref_resolver(builder.data), self.spec
+            )
         for subspec, value in subspecs.items():
             const_arg = self.get_const_arg(subspec)
             if const_arg is not None:
