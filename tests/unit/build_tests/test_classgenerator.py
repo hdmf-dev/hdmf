@@ -558,6 +558,40 @@ class TestDynamicContainer(TestCase):
         goo = goo_cls(name='my_goo', data=datetime.datetime(2020, 1, 1, 0, 0, 0))
         self.assertEqual(goo.data, datetime.datetime(2020, 1, 1, 0, 0, 0))
 
+    def test_get_class_dataset_preserves_parent_data_default(self):
+        """Inheriting from a parent that gives `data` a default (e.g., VectorData -> []) should
+        not turn `data` into a required arg in the generated subclass.
+        """
+        from hdmf.container import Data
+        from hdmf.utils import docval, get_docval, popargs
+
+        class DefaultedData(Data):
+            @docval({'name': 'name', 'type': str, 'doc': 'name'},
+                    {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'data', 'default': list()})
+            def __init__(self, **kwargs):
+                data = popargs('data', kwargs)
+                super().__init__(data=data, **kwargs)
+
+        parent_spec = DatasetSpec(
+            doc='parent with a defaulted data arg',
+            data_type_def='DefaultedData',
+            dims=('num_data',),
+            shape=(None,),
+        )
+        goo_spec = DatasetSpec(
+            doc='a DefaultedData subtype with dtype datetime',
+            data_type_def='Goo',
+            data_type_inc='DefaultedData',
+            dtype='isodatetime',
+        )
+        self.spec_catalog.register_spec(parent_spec, 'extension.yaml')
+        self.spec_catalog.register_spec(goo_spec, 'extension.yaml')
+        self.type_map.register_container_type(CORE_NAMESPACE, 'DefaultedData', DefaultedData)
+        goo_cls = self.type_map.get_dt_container_cls('Goo', CORE_NAMESPACE)
+
+        goo_data_arg = next(a for a in get_docval(goo_cls.__init__) if a['name'] == 'data')
+        self.assertEqual(goo_data_arg['default'], list())
+
 
 class TestDynamicContainerFixedValue(TestCase):
 

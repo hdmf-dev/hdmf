@@ -311,31 +311,47 @@ class CustomClassGenerator:
         cls._set_default_name(docval_args, spec.default_name)
 
         if isinstance(spec, DatasetSpec):
-            # handle the data field specially
-            # fixed and default values are not supported for datasets
-            if getattr(spec, 'value', None) is not None:
-                warnings.warn(
-                    "Generating a class for a dataset with a fixed value is not supported. "
-                    "The fixed value will be ignored."
-                )
-            if getattr(spec, 'default_value', None) is not None:
-                warnings.warn(
-                    "Generating a class for a dataset with a default value is not supported. "
-                    "The default value will be ignored."
-                )
+            cls._update_data_docval_arg(docval_args, spec)
 
-            data_docval_arg = dict(name='data', doc=spec.doc)
-            shape = spec.shape
-            if shape is None and spec.dims is None:
-                if spec.dtype is not None:
-                    dtype = cls._get_type_from_spec_dtype(spec.dtype)
-                else:
-                    dtype = ('scalar_data', 'array_data', 'data')
+    @classmethod
+    def _update_data_docval_arg(cls, docval_args, spec):
+        """Update the inherited 'data' docval arg in place to reflect the dataset spec.
+
+        Updates only `type`, `doc`, and `shape` (when the spec declares one). Other keys
+        like `default` are preserved from the parent class's docval, so subclasses don't
+        accidentally lose, e.g., VectorData's empty-list default.
+        """
+        # fixed and default values are not supported for datasets
+        if spec.value is not None:
+            warnings.warn(
+                "Generating a class for a dataset with a fixed value is not supported. "
+                "The fixed value will be ignored."
+            )
+        if spec.default_value is not None:
+            warnings.warn(
+                "Generating a class for a dataset with a default value is not supported. "
+                "The default value will be ignored."
+            )
+
+        if spec.shape is None and spec.dims is None:
+            if spec.dtype is not None:
+                dtype = cls._get_type_from_spec_dtype(spec.dtype)
             else:
-                dtype = ('array_data', 'data')
-                data_docval_arg['shape'] = shape
-            data_docval_arg['type'] = dtype
-            cls._add_to_docval_args(docval_args, data_docval_arg)
+                dtype = ('scalar_data', 'array_data', 'data')
+        else:
+            dtype = ('array_data', 'data')
+
+        existing = next((a for a in docval_args if a['name'] == 'data'), None)
+        if existing is not None:
+            existing['type'] = dtype
+            existing['doc'] = spec.doc
+            if spec.shape is not None:
+                existing['shape'] = spec.shape
+        else:
+            new_arg = dict(name='data', doc=spec.doc, type=dtype)
+            if spec.shape is not None:
+                new_arg['shape'] = spec.shape
+            docval_args.append(new_arg)
 
     @classmethod
     def _get_attrs_not_to_set_init(cls, classdict, parent_docval_args):

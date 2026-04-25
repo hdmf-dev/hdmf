@@ -4,25 +4,31 @@ import shutil
 import tempfile
 
 from hdmf.backends.hdf5 import HDF5IO
-from hdmf.common import get_type_map
-from hdmf.testing import TestCase
-from hdmf.spec import AttributeSpec,DatasetSpec, GroupSpec, SpecCatalog, SpecNamespace, NamespaceCatalog
 from hdmf.build import BuildManager, TypeMap
+from hdmf.common import get_type_map
+from hdmf.spec import (
+    AttributeSpec,
+    DatasetSpec,
+    GroupSpec,
+    NamespaceCatalog,
+    SpecNamespace,
+)
+from hdmf.spec.write import YAMLSpecWriter
+from hdmf.testing import TestCase
 from tests.unit.helpers.utils import CORE_NAMESPACE
 
 
 class TestExtensionDatetime(TestCase):
     def setUp(self):
-
         self.dataset1_spec = DatasetSpec(
             data_type_def='TestDatasetNoDtypeInDef',
             data_type_inc='Data',
-            doc='a test Dataset without a specified dtype',  # this is overridden where it is used
+            doc='a scalar Dataset without a specified dtype',
         )
         self.dataset2_spec = DatasetSpec(
             data_type_def='TestDatasetWithDtypeInDef',
             data_type_inc='Data',
-            doc='a test Dataset with a specified dtype',  # this is overridden where it is used
+            doc='a scalar Dataset with dtype=datetime',
             dtype='datetime',
             attributes=[
                 AttributeSpec(
@@ -33,30 +39,51 @@ class TestExtensionDatetime(TestCase):
                 )
             ]
         )
+        self.dataset3_spec = DatasetSpec(
+            data_type_def='TestArrayDatasetWithDtypeInDef',
+            data_type_inc='Data',
+            doc='a 1-D Dataset with dtype=datetime',
+            dtype='datetime',
+            dims=('num_times',),
+            shape=(None,),
+        )
 
         self.group_spec = GroupSpec(
             data_type_def='TestGroup',
             data_type_inc='Container',
-            doc='A test group that contains a dataset',
+            doc='A test group that contains datetime datasets',
             datasets=[
-                # NOTE: these are all scalar datasets
                 DatasetSpec(
                     data_type_inc='TestDatasetNoDtypeInDef',
                     name='my_data1',
-                    doc='a test Dataset without a specified dtype where the dtype is added in the data_type_inc',
+                    doc='scalar dataset, dtype added at the inc site',
                     dtype='datetime',
                     quantity='?',
                 ),
                 DatasetSpec(
                     data_type_inc='TestDatasetWithDtypeInDef',
                     name='my_data2',
-                    doc='a test Dataset with a specified dtype where the dtype is specified in the data_type_def',
+                    doc='scalar dataset, dtype already on the def',
                     quantity='?',
                 ),
                 DatasetSpec(
                     name='my_data3',
-                    doc='a test Dataset with no data_type_inc',
+                    doc='untyped scalar dataset with dtype=datetime',
                     dtype='datetime',
+                    quantity='?',
+                ),
+                DatasetSpec(
+                    data_type_inc='TestArrayDatasetWithDtypeInDef',
+                    name='my_array_data',
+                    doc='1-D datetime dataset',
+                    quantity='?',
+                ),
+                DatasetSpec(
+                    name='my_untyped_array',
+                    doc='untyped 1-D dataset with dtype=datetime',
+                    dtype='datetime',
+                    dims=('num_times',),
+                    shape=(None,),
                     quantity='?',
                 ),
             ],
@@ -70,14 +97,19 @@ class TestExtensionDatetime(TestCase):
             ]
         )
 
-        from hdmf.spec.write import YAMLSpecWriter
+        self.test_dir = tempfile.mkdtemp()
         writer = YAMLSpecWriter(outdir='.')
-
-        self.spec_catalog = SpecCatalog()
-        self.spec_catalog.register_spec(self.dataset1_spec, 'test.yaml')
-        self.spec_catalog.register_spec(self.dataset2_spec, 'test.yaml')
-        self.spec_catalog.register_spec(self.group_spec, 'test.yaml')
-        self.namespace = SpecNamespace(
+        spec_fpath = os.path.join(self.test_dir, 'test.yaml')
+        namespace_fpath = os.path.join(self.test_dir, 'test-namespace.yaml')
+        writer.write_spec(
+            dict(
+                datasets=[self.dataset1_spec, self.dataset2_spec, self.dataset3_spec],
+                groups=[self.group_spec],
+            ),
+            spec_fpath,
+        )
+        # Build a SpecNamespace just for serialization; the on-disk YAML is what we load below.
+        namespace = SpecNamespace(
             doc='a test namespace',
             name=CORE_NAMESPACE,
             schema=[
@@ -85,30 +117,27 @@ class TestExtensionDatetime(TestCase):
                 dict(source='test.yaml'),
             ],
             version='0.1.0',
-            catalog=self.spec_catalog
+            catalog=None,
         )
+        writer.write_namespace(namespace, namespace_fpath)
 
-        self.test_dir = tempfile.mkdtemp()
-        spec_fpath = os.path.join(self.test_dir, 'test.yaml')
-        namespace_fpath = os.path.join(self.test_dir, 'test-namespace.yaml')
-        writer.write_spec(dict(datasets=[self.dataset1_spec, self.dataset2_spec], groups=[self.group_spec]), spec_fpath)
-        writer.write_namespace(self.namespace, namespace_fpath)
         self.namespace_catalog = NamespaceCatalog()
-        # We only use Container and Data from hdmf-common
-        hdmf_typemap = get_type_map()
         self.type_map = TypeMap(self.namespace_catalog)
-        self.type_map.merge(hdmf_typemap, ns_catalog=True)
+        self.type_map.merge(get_type_map(), ns_catalog=True)  # we use Container and Data from hdmf-common
         self.type_map.load_namespaces(namespace_fpath)
         self.manager = BuildManager(self.type_map)
 
         self.TestDatasetNoDtypeInDef = self.type_map.get_dt_container_cls('TestDatasetNoDtypeInDef', CORE_NAMESPACE)
         self.TestDatasetWithDtypeInDef = self.type_map.get_dt_container_cls('TestDatasetWithDtypeInDef', CORE_NAMESPACE)
+        self.TestArrayDatasetWithDtypeInDef = self.type_map.get_dt_container_cls(
+            'TestArrayDatasetWithDtypeInDef', CORE_NAMESPACE
+        )
         self.TestGroup = self.type_map.get_dt_container_cls('TestGroup', CORE_NAMESPACE)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.test_dir)
 
-    def test_roundtrip(self):
+    def test_roundtrip_scalar(self):
         group = self.TestGroup(name='my_group')
         group.my_data1 = self.TestDatasetNoDtypeInDef(name='my_data1', data=datetime.datetime(2020, 1, 1, 0, 0, 0))
         group.my_data2 = self.TestDatasetWithDtypeInDef(
@@ -118,9 +147,11 @@ class TestExtensionDatetime(TestCase):
         )
         group.my_data3 = datetime.datetime(2020, 1, 1, 0, 0, 0)
         group.my_attr = datetime.datetime(2020, 1, 1, 0, 0, 0)
-        with HDF5IO(os.path.join(self.test_dir, 'test.h5'), 'w', manager=self.manager) as f:
+
+        h5_path = os.path.join(self.test_dir, 'test_scalar.h5')
+        with HDF5IO(h5_path, 'w', manager=self.manager) as f:
             f.write(group)
-        with HDF5IO(os.path.join(self.test_dir, 'test.h5'), 'r', manager=self.manager) as f:
+        with HDF5IO(h5_path, 'r', manager=self.manager) as f:
             group_read = f.read()
             # HDF5IO names the top-level container 'root' and assigns fresh object_ids on read.
             self.assertContainerEqual(group_read, group, ignore_name=True, ignore_hdmf_attrs=True)
@@ -131,3 +162,17 @@ class TestExtensionDatetime(TestCase):
             self.assertEqual(group_read.my_data3, datetime.datetime(2020, 1, 1, 0, 0, 0))
             self.assertEqual(group_read.my_data2.my_attr, datetime.datetime(2020, 1, 1, 0, 0, 0))
             self.assertEqual(group_read.my_attr, datetime.datetime(2020, 1, 1, 0, 0, 0))
+
+    def test_roundtrip_array(self):
+        times = [datetime.datetime(2020, 1, 1) + datetime.timedelta(days=i) for i in range(3)]
+        group = self.TestGroup(name='my_group')
+        group.my_array_data = self.TestArrayDatasetWithDtypeInDef(name='my_array_data', data=times)
+        group.my_untyped_array = times
+
+        h5_path = os.path.join(self.test_dir, 'test_array.h5')
+        with HDF5IO(h5_path, 'w', manager=self.manager) as f:
+            f.write(group)
+        with HDF5IO(h5_path, 'r', manager=self.manager) as f:
+            group_read = f.read()
+            self.assertEqual(list(group_read.my_array_data.data), times)
+            self.assertEqual(list(group_read.my_untyped_array), times)

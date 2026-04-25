@@ -5,6 +5,7 @@ import warnings
 from collections import OrderedDict
 from copy import copy
 
+import h5py
 import numpy as np
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, BaseBuilder
@@ -1457,10 +1458,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
     @staticmethod
     def __parse_datetime_on_read(value, spec):
-        """For specs with isodatetime/datetime dtype, parse a stored ISO str/bytes back to a datetime/date.
+        """For specs with isodatetime/datetime dtype, parse stored ISO str/bytes back to datetime/date.
 
-        Idempotent — values that are not str/bytes (already parsed, arrays, etc.) pass through unchanged.
-        Array/h5py-dataset handling is intentionally out of scope; only scalar values are parsed.
+        Handles scalars, lists/tuples, numpy arrays, and h5py datasets (eagerly materialized).
+        Idempotent: values whose elements are already parsed (or whose container type is unknown,
+        e.g., a DataIO wrapper) pass through unchanged.
+
+        TODO: for very large datetime arrays, eager materialization is suboptimal. A lazy decoder
+        wrapper analogous to StrDataset would preserve chunked access.
         """
         if not isinstance(spec, (AttributeSpec, DatasetSpec)):
             return value
@@ -1468,6 +1473,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
             return value
         if isinstance(value, (str, bytes)):
             return _parse_isoformat(value)
+        if isinstance(value, (list, tuple)):
+            return type(value)(_parse_isoformat(v) for v in value)
+        if isinstance(value, np.ndarray):
+            return [_parse_isoformat(v) for v in value.tolist()]
+        # h5py.Dataset (and StrDataset, which subclasses it) — materialize via [()]
+        if isinstance(value, h5py.Dataset):
+            return [_parse_isoformat(v) for v in value[()].tolist()]
         return value
 
     @staticmethod
