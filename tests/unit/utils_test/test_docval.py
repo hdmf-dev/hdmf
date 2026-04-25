@@ -1,3 +1,5 @@
+import datetime
+
 import numpy as np
 from hdmf.testing import TestCase
 from hdmf.utils import (docval, get_docval, getargs, popargs, AllowPositional, get_docval_macro,
@@ -1082,13 +1084,19 @@ class TestMacro(TestCase):
         self.assertTrue(isinstance(get_docval_macro(), dict))
         self.assertSetEqual(set(get_docval_macro().keys()), {'array_data', 'scalar_data', 'data'})
 
-        self.assertTupleEqual(get_docval_macro('scalar_data'), (str, int, float, bytes, bool))
+        self.assertTupleEqual(
+            get_docval_macro('scalar_data'),
+            (str, int, float, bytes, bool, datetime.datetime, datetime.date),
+        )
 
         @docval_macro('scalar_data')
         class Dummy1:
             pass
 
-        self.assertTupleEqual(get_docval_macro('scalar_data'), (str, int, float, bytes, bool, Dummy1))
+        self.assertTupleEqual(
+            get_docval_macro('scalar_data'),
+            (str, int, float, bytes, bool, datetime.datetime, datetime.date, Dummy1),
+        )
 
         @docval_macro('dummy')
         class Dummy2:
