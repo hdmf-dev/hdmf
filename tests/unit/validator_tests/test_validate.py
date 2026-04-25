@@ -2063,21 +2063,20 @@ class TestExtraFieldIntersection(ValidatorTestBase):
                 AttributeSpec(name='resolution', dtype='float', doc='extra attribute')
             ]
         )
-        return (
-            base_spec,
-            ext_spec,
-            GroupSpec(
-                doc='A group containing the base type',
-                data_type_def='GroupWithBase',
-                datasets=[
-                    DatasetSpec(
-                        name='data_column',
-                        doc='a dataset of base type',
-                        data_type_inc='BaseType'
-                    )
-                ]
-            ),
+        group_dataset_spec = DatasetSpec(
+            name='data_column',
+            doc='a dataset of base type',
+            data_type_inc='BaseType',
+            attributes=[
+                AttributeSpec(name='resolution', dtype='float', doc='extra attribute')
+            ]
         )
+        group_spec = GroupSpec(
+            doc='A group containing the base type',
+            data_type_def='GroupWithBase',
+            datasets=[group_dataset_spec]
+        )
+        return (base_spec, ext_spec, group_spec)
 
     def test_attribute_intersection_no_warning(self):
         """Test that 'resolution' triggers NO warning because ext_spec knows it."""

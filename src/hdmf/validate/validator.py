@@ -498,21 +498,6 @@ class BaseStorageValidator(Validator):
                     except Exception:
                         pass
 
-                if not found and dt is not None:
-                    try:
-                        for candidate_dt, v in self.vmap._ValidatorMap__validators.items():
-                            if candidate_dt == dt:
-                                continue
-                            if hasattr(v, "_BaseStorageValidator__attribute_validators"):
-                                candidate_hierarchy = self.vmap.namespace.get_hierarchy(candidate_dt)
-                                if dt in candidate_hierarchy:
-                                    dt_attrs = set(v._BaseStorageValidator__attribute_validators.keys())
-                                    if builder_attr in dt_attrs:
-                                        found = True
-                                        break
-                    except Exception:
-                        pass
-
                 if not found:
                     ret.append(ExtraFieldWarning(
                     self.get_spec_loc(self.spec),
