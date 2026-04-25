@@ -1511,7 +1511,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     # recurse
                     ret.update(self.__get_subspec_values(sub_builder, subspec, manager))
                 else:
-                    ret[subspec] = manager.construct(sub_builder)
+                    # Pass subspec as spec_ext so inc-site overrides (e.g., dtype) reach the child's mapper
+                    ret[subspec] = manager.construct(sub_builder, spec_ext=subspec)
 
     def __flatten(self, sub_builder, subspec, manager):
         tmp = [manager.construct(b) for b in sub_builder]
@@ -1523,10 +1524,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
              'doc': 'the builder to construct the AbstractContainer from'},
             {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager for this build'},
             {'name': 'parent', 'type': (Proxy, AbstractContainer),
-             'doc': 'the parent AbstractContainer/Proxy for the AbstractContainer being built', 'default': None})
+             'doc': 'the parent AbstractContainer/Proxy for the AbstractContainer being built', 'default': None},
+            {'name': 'spec_ext', 'type': BaseStorageSpec,
+             'doc': 'a spec extension carrying inc-site overrides (e.g., dtype) from the parent', 'default': None})
     def construct(self, **kwargs):
         ''' Construct an AbstractContainer from the given Builder '''
-        builder, manager, parent = getargs('builder', 'manager', 'parent', kwargs)
+        builder, manager, parent, spec_ext = getargs('builder', 'manager', 'parent', 'spec_ext', kwargs)
         cls = manager.get_cls(builder)
         # gather all subspecs
         subspecs = self.__get_subspec_values(builder, self.spec, manager)
@@ -1537,8 +1540,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if issubclass(cls, Data):
             if not isinstance(builder, DatasetBuilder):  # pragma: no cover
                 raise ValueError('Can only construct a Data object from a DatasetBuilder - got %s' % type(builder))
+            # Use spec_ext for dtype resolution if the base def spec has none (e.g., inc-site dtype override)
+            data_spec = spec_ext if (spec_ext is not None and getattr(self.spec, 'dtype', None) is None) else self.spec
             const_args['data'] = self.__parse_datetime_on_read(
-                self.__check_ref_resolver(builder.data), self.spec
+                self.__check_ref_resolver(builder.data), data_spec
             )
         for subspec, value in subspecs.items():
             const_arg = self.get_const_arg(subspec)

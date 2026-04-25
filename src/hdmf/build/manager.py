@@ -278,10 +278,12 @@ class BuildManager:
         return result
 
     @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
-             'doc': 'the builder to construct the AbstractContainer from'})
+             'doc': 'the builder to construct the AbstractContainer from'},
+            {'name': 'spec_ext', 'type': BaseStorageSpec,
+             'doc': 'a spec extension carrying inc-site overrides (e.g., dtype) from the parent', 'default': None})
     def construct(self, **kwargs):
         """ Construct the AbstractContainer represented by the given builder """
-        builder = getargs('builder', kwargs)
+        builder, spec_ext = getargs('builder', 'spec_ext', kwargs)
         if isinstance(builder, LinkBuilder):
             builder = builder.target
         builder_id = self.__bldrhash__(builder)
@@ -290,11 +292,11 @@ class BuildManager:
             parent_builder = self.__get_parent_dt_builder(builder)
             if parent_builder is not None:
                 parent = self._get_proxy_builder(parent_builder)
-                result = self.__type_map.construct(builder, self, parent)
+                result = self.__type_map.construct(builder, self, parent, spec_ext=spec_ext)
             else:
                 # we are at the top of the hierarchy,
                 # so it must be time to resolve parents
-                result = self.__type_map.construct(builder, self, None)
+                result = self.__type_map.construct(builder, self, None, spec_ext=spec_ext)
                 self.__resolve_parents(result)
             self.prebuilt(result, builder)
         result.set_modified(False)
@@ -888,10 +890,14 @@ class TypeMap:
             {'name': 'build_manager', 'type': BuildManager,
              'doc': 'the BuildManager for constructing', 'default': None},
             {'name': 'parent', 'type': (Proxy, Container),
-             'doc': 'the parent Container/Proxy for the Container being built', 'default': None})
+             'doc': 'the parent Container/Proxy for the Container being built', 'default': None},
+            {'name': 'spec_ext', 'type': BaseStorageSpec,
+             'doc': 'a spec extension carrying inc-site overrides (e.g., dtype) from the parent', 'default': None})
     def construct(self, **kwargs):
         """ Construct the AbstractContainer represented by the given builder """
-        builder, build_manager, parent = getargs('builder', 'build_manager', 'parent', kwargs)
+        builder, build_manager, parent, spec_ext = getargs(
+            'builder', 'build_manager', 'parent', 'spec_ext', kwargs
+        )
         if build_manager is None:
             build_manager = BuildManager(self)
         obj_mapper = self.get_map(builder)
@@ -899,7 +905,7 @@ class TypeMap:
             dt = builder.attributes[self.namespace_catalog.group_spec_cls.type_key()]
             raise ValueError('No ObjectMapper found for builder of type %s' % dt)
         else:
-            return obj_mapper.construct(builder, build_manager, parent)
+            return obj_mapper.construct(builder, build_manager, parent, spec_ext=spec_ext)
 
     @docval({"name": "container", "type": AbstractContainer, "doc": "the container to convert to a Builder"},
             returns='The name a Builder should be given when building this container', rtype=str)
