@@ -7,8 +7,8 @@ from typing import Any
 import numpy as np
 
 from .errors import (
-    Error, DtypeError, MissingError, MissingDataType, ShapeError, 
-    IllegalLinkError, IncorrectDataType, ValidationWarning, 
+    Error, DtypeError, MissingError, MissingDataType, ShapeError,
+    IllegalLinkError, IncorrectDataType, ValidationWarning,
     ExtraFieldWarning, ExpectedArrayError, IncorrectQuantityError)
 from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from ..build.builders import BaseBuilder
@@ -715,7 +715,7 @@ class GroupValidator(BaseStorageValidator):
                         pass
                 if extra_builder.name in spec_named_children:
                     continue
-                if extra_builder.name in ( 'quux', 'qux', 'quz', 'baz', 'bar', 'x', 'y', 
+                if extra_builder.name in ( 'quux', 'qux', 'quz', 'baz', 'bar', 'x', 'y',
                                           'meaning', 'value', 'dtr', 'target'):
                     continue
                 if extra_builder.name in seen:

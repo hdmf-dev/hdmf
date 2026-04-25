@@ -2130,4 +2130,3 @@ class TestExtraFieldIntersection(ValidatorTestBase):
         self.assertEqual(len(warnings), 1)
 
         self.assertIn("extra_ds", str(warnings))
-
