@@ -787,7 +787,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
             {"name": "builder", "type": BaseBuilder, "doc": "the Builder to build on", 'default': None},
-            {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", 'default': None},
+            {"name": "matched_spec", "type": BaseStorageSpec,
+             "doc": ("the position-resolved subspec for this container in its parent's spec tree, used to compute "
+                     "dtype/shape for the new dataset builder before it exists. Stored on the resulting builder as "
+                     "`builder.matched_spec` so post-creation consumers can read it without re-deriving the match."),
+             'default': None},
             returns="the Builder representing the given AbstractContainer", rtype=Builder)
     def build(self, **kwargs):
         '''Convert an AbstractContainer to a Builder representation.
@@ -795,13 +799,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
         References are not added but are queued to be added in the BuildManager.
         '''
         container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
-        builder, spec_ext = getargs('builder', 'spec_ext', kwargs)
+        builder, matched_spec = getargs('builder', 'matched_spec', kwargs)
         name = manager.get_builder_name(container)
         if isinstance(self.__spec, GroupSpec):
             self.logger.debug("Building %s '%s' as a group (source: %s)"
                               % (container.__class__.__name__, container.name, repr(source)))
             if builder is None:
                 builder = GroupBuilder(name, parent=parent, source=source)
+            if matched_spec is not None:
+                self.__set_matched_spec(builder, matched_spec)
             self.__add_datasets(builder, self.__spec.datasets, container, manager, source)
             self.__add_groups(builder, self.__spec.groups, container, manager, source)
             self.__add_links(builder, self.__spec.links, container, manager, source)
@@ -810,11 +816,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if not isinstance(container, Data):
                     msg = "'container' must be of type Data with DatasetSpec"
                     raise ValueError(msg)
-                spec_dtype, spec_shape, spec_dims, spec = self.__check_dset_spec(self.spec, spec_ext)
+                # Position override info has to be consumed before the dataset builder is created.
+                # After creation, downstream code reads the override from builder.matched_spec instead.
+                # The position subspec (when given) already has dtype/shape/dims merged from the def-site
+                # type via namespace resolution at load time, so we just pick whichever spec is more specific.
+                spec = matched_spec if matched_spec is not None else self.spec
                 dimension_labels, matched_shape = self.__get_spec_info(
-                    container.data, spec_shape, spec_dims, spec_dtype
+                    container.data, spec.shape, spec.dims, spec.dtype
                 )
-                if isinstance(spec_dtype, RefSpec):
+                if isinstance(spec.dtype, RefSpec):
                     self.logger.debug("Building %s '%s' as a dataset of references (source: %s)"
                                       % (container.__class__.__name__, container.name, repr(source)))
                     # create dataset builder with data=None as a placeholder. fill in with refs later
@@ -823,12 +833,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         data=None,
                         parent=parent,
                         source=source,
-                        dtype=spec_dtype.reftype,
+                        dtype=spec.dtype.reftype,
                         matched_spec_shape=matched_shape,
                         dimension_labels=dimension_labels,
                     )
-                    manager.queue_ref(self.__set_dataset_to_refs(builder, spec_dtype, spec_shape, container, manager))
-                elif isinstance(spec_dtype, list):
+                    manager.queue_ref(self.__set_dataset_to_refs(builder, spec.dtype, spec.shape, container, manager))
+                elif isinstance(spec.dtype, list):
                     # a compound dataset
                     self.logger.debug("Building %s '%s' as a dataset of compound dtypes (source: %s)"
                                       % (container.__class__.__name__, container.name, repr(source)))
@@ -838,15 +848,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         data=None,
                         parent=parent,
                         source=source,
-                        dtype=spec_dtype,
+                        dtype=spec.dtype,
                         matched_spec_shape=matched_shape,
                         dimension_labels=dimension_labels,
                     )
-                    manager.queue_ref(self.__set_compound_dataset_to_refs(builder, spec, spec_dtype, container,
+                    manager.queue_ref(self.__set_compound_dataset_to_refs(builder, spec, spec.dtype, container,
                                                                           manager))
                 else:
                     # a regular dtype
-                    if spec_dtype is None and self.__is_reftype(container.data):
+                    if spec.dtype is None and self.__is_reftype(container.data):
                         self.logger.debug("Building %s '%s' containing references as a dataset of unspecified dtype "
                                           "(source: %s)"
                                           % (container.__class__.__name__, container.name, repr(source)))
@@ -867,12 +877,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         self.logger.debug("Building %s '%s' as a dataset (source: %s)"
                                           % (container.__class__.__name__, container.name, repr(source)))
                         try:
-                            # use spec_dtype from self.spec when spec_ext does not specify dtype
                             if isinstance(container.data, TermSetWrapper):
                                 data = container.data.value
                             else:
                                 data = container.data
-                            bldr_data, dtype = self.convert_dtype(spec, data, spec_dtype=spec_dtype)
+                            bldr_data, dtype = self.convert_dtype(spec, data, spec_dtype=spec.dtype)
                         except Exception as ex:
                             msg = f"could not resolve dtype for {type(container).__name__} '{container.name}'"
                             full_msg = f"{msg}: {str(ex)}"
@@ -887,34 +896,26 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             matched_spec_shape=matched_shape,
                             dimension_labels=dimension_labels,
                         )
+                if matched_spec is not None:
+                    self.__set_matched_spec(builder, matched_spec)
 
-        # Add attributes from the specification extension to the list of attributes
-        all_attrs = self.__spec.attributes + getattr(spec_ext, 'attributes', tuple())
-        # If the spec_ext refines an existing attribute it will now appear twice in the list. The
-        # refinement should only be relevant for validation (not for write). To avoid problems with the
-        # write we here remove duplicates and keep the original spec of the two to make write work.
+        # Combine def-site attrs with any inc-site additions from matched_spec. When an attribute
+        # name appears in both (an inc-site refinement of a def-site attr), the dedup below keeps
+        # the def-site spec object: the mapper's __spec2attr map is built at mapper init time from
+        # self.__spec.attributes, so the inc-site refined spec object is not registered there
+        # and `get_attribute(refined_spec)` would return None — silently dropping the attribute.
+        # This means refinements like dtype=int8 are validation-only at write time today.
+        # Two follow-ups would let refinements bind the write:
+        #   - #1461: make namespace resolution recurse into named-untyped GroupSpec subspecs so
+        #     matched_spec.attributes is complete for nested-typed subspecs.
+        #   - #1462: fix __spec2attr's object-identity coupling so inc-site refined specs resolve
+        #     to a container attribute name.
+        # After both land, the def-site fallback below can be replaced with just matched_spec.
         # TODO: We should add validation in the AttributeSpec to make sure refinements are valid
-        # TODO: Check the BuildManager as refinements should probably be resolved rather than be passed in via spec_ext
+        all_attrs = self.__spec.attributes + getattr(builder.matched_spec, 'attributes', tuple())
         all_attrs = list({a.name: a for a in all_attrs[::-1]}.values())
         self.__add_attributes(builder, all_attrs, container, manager)
         return builder
-
-    def __check_dset_spec(self, orig, ext):
-        """
-        Check a dataset spec against a refining spec to see which dtype and shape should be used
-        """
-        dtype = orig.dtype
-        shape = orig.shape
-        dims = orig.dims
-        spec = orig
-        if ext is not None:
-            if ext.dtype is not None:
-                dtype = ext.dtype
-            if ext.shape is not None:
-                shape = ext.shape
-                dims = ext.dims
-            spec = ext
-        return dtype, shape, dims, spec
 
     def __get_matched_dimension(self, data_shape, spec_shape):
         """
@@ -1282,6 +1283,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         dimension_labels=dimension_labels
                     )
                     builder.set_dataset(sub_builder)
+                self.__set_matched_spec(sub_builder, spec)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager)
             else:
                 self.logger.debug("        Adding typed dataset for spec name: %s, %s: %s, %s: %s"
@@ -1302,6 +1304,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 sub_builder = builder.groups.get(spec.name)
                 if sub_builder is None:
                     sub_builder = GroupBuilder(spec.name, source=source)
+                self.__set_matched_spec(sub_builder, spec)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager)
                 self.__add_datasets(sub_builder, spec.datasets, container, build_manager, source)
                 self.__add_links(sub_builder, spec.links, container, build_manager, source)
@@ -1338,7 +1341,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 # instantiated (in_export_mode=True)
                 self.logger.debug("    Building newly instantiated %s '%s'" % (value.__class__.__name__, value.name))
                 if isinstance(spec, BaseStorageSpec):
-                    new_builder = build_manager.build(value, source=source, spec_ext=spec)
+                    new_builder = build_manager.build(value, source=source, matched_spec=spec)
                 else:
                     new_builder = build_manager.build(value, source=source)
                 # use spec to determine what kind of HDF5 object this AbstractContainer corresponds to
@@ -1363,7 +1366,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     self.logger.debug("    Building %s '%s' (container source: %s) and adding a link to it"
                                       % (value.__class__.__name__, value.name, value.container_source))
                     if isinstance(spec, BaseStorageSpec):
-                        new_builder = build_manager.build(value, source=source, spec_ext=spec)
+                        new_builder = build_manager.build(value, source=source, matched_spec=spec)
                     else:
                         new_builder = build_manager.build(value, source=source)
                     builder.set_link(LinkBuilder(new_builder, name=spec.name, parent=builder))

@@ -334,6 +334,7 @@ def get_foo_buildmanager(my_data_dtype="int"):
     )
     namespace_catalog = NamespaceCatalog()
     namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+    namespace_catalog.resolve_all_specs()
     type_map = TypeMap(namespace_catalog)
 
     type_map.register_container_type(CORE_NAMESPACE, "Foo", Foo)
@@ -402,6 +403,7 @@ def get_qux_buildmanager(shape):
 
     namespace_catalog = NamespaceCatalog()
     namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+    namespace_catalog.resolve_all_specs()
 
     type_map = TypeMap(namespace_catalog)
     type_map.register_container_type(CORE_NAMESPACE, "QuxData", QuxData)
@@ -526,6 +528,7 @@ def get_baz_buildmanager():
 
     namespace_catalog = NamespaceCatalog()
     namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+    namespace_catalog.resolve_all_specs()
 
     type_map = TypeMap(namespace_catalog)
     type_map.register_container_type(CORE_NAMESPACE, "Baz", Baz)
