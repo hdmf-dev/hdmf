@@ -1277,6 +1277,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         dimension_labels=dimension_labels
                     )
                     builder.set_dataset(sub_builder)
+                self.__set_resolved_spec(sub_builder, spec)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager)
             else:
                 self.logger.debug("        Adding typed dataset for spec name: %s, %s: %s, %s: %s"
@@ -1297,6 +1298,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 sub_builder = builder.groups.get(spec.name)
                 if sub_builder is None:
                     sub_builder = GroupBuilder(spec.name, source=source)
+                self.__set_resolved_spec(sub_builder, spec)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager)
                 self.__add_datasets(sub_builder, spec.datasets, container, build_manager, source)
                 self.__add_links(sub_builder, spec.links, container, build_manager, source)
@@ -1346,11 +1348,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     self.logger.debug("    Adding dataset %s '%s' to %s '%s'"
                                       % (new_builder.__class__.__name__, new_builder.name,
                                          builder.__class__.__name__, builder.name))
+                    self.__set_resolved_spec(new_builder, spec)
                     builder.set_dataset(new_builder)
                 else:
                     self.logger.debug("    Adding subgroup %s '%s' to %s '%s'"
                                       % (new_builder.__class__.__name__, new_builder.name,
                                          builder.__class__.__name__, builder.name))
+                    self.__set_resolved_spec(new_builder, spec)
                     builder.set_group(new_builder)
             elif value.container_source:  # make a link to an existing container
                 if (value.container_source != parent_container.container_source
