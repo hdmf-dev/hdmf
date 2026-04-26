@@ -28,6 +28,7 @@ class Builder(dict, metaclass=ABCMeta):
             self.__source = parent.source
         else:
             self.__source = None
+        self.__resolved_spec = None
 
     @property
     def path(self):
@@ -67,6 +68,21 @@ class Builder(dict, metaclass=ABCMeta):
         self.__parent = p
         if self.__source is None:
             self.source = p.source
+
+    @property
+    def resolved_spec(self):
+        """The position-resolved spec for this builder, or None if unset.
+
+        Set by the matcher that pairs builders to subspecs (build and read paths).
+        Consumers should fall back to the type's def-site spec when this is None.
+        """
+        return self.__resolved_spec
+
+    @resolved_spec.setter
+    def resolved_spec(self, spec):
+        if self.__resolved_spec is not None:
+            raise AttributeError('Cannot overwrite resolved_spec.')
+        self.__resolved_spec = spec
 
     def __repr__(self):
         ret = "%s %s %s" % (self.path, self.__class__.__name__, super().__repr__())

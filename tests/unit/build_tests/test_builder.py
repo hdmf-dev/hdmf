@@ -55,6 +55,34 @@ class TestGroupBuilder(TestCase):
         gb1.location = 'new location'
         self.assertEqual(gb1.location, 'new location')
 
+    def test_resolved_spec_default_none(self):
+        gb = GroupBuilder('gb')
+        db = DatasetBuilder('db', list(range(3)))
+        lb = LinkBuilder(gb, 'lb')
+        self.assertIsNone(gb.resolved_spec)
+        self.assertIsNone(db.resolved_spec)
+        self.assertIsNone(lb.resolved_spec)
+
+    def test_set_resolved_spec(self):
+        gb = GroupBuilder('gb')
+        sentinel = object()
+        gb.resolved_spec = sentinel
+        self.assertIs(gb.resolved_spec, sentinel)
+
+    def test_overwrite_resolved_spec_raises(self):
+        gb = GroupBuilder('gb')
+        gb.resolved_spec = object()
+        with self.assertRaisesRegex(AttributeError, 'Cannot overwrite resolved_spec.'):
+            gb.resolved_spec = object()
+
+    def test_resolved_spec_independent_per_builder(self):
+        gb1 = GroupBuilder('gb1')
+        gb2 = GroupBuilder('gb2')
+        spec1 = object()
+        gb1.resolved_spec = spec1
+        self.assertIs(gb1.resolved_spec, spec1)
+        self.assertIsNone(gb2.resolved_spec)
+
 
 class TestGroupBuilderSetters(TestCase):
 
