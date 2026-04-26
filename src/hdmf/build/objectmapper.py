@@ -797,6 +797,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                               % (container.__class__.__name__, container.name, repr(source)))
             if builder is None:
                 builder = GroupBuilder(name, parent=parent, source=source)
+            if spec_ext is not None:
+                self.__set_resolved_spec(builder, spec_ext)
             self.__add_datasets(builder, self.__spec.datasets, container, manager, source)
             self.__add_groups(builder, self.__spec.groups, container, manager, source)
             self.__add_links(builder, self.__spec.links, container, manager, source)
@@ -882,14 +884,20 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             matched_spec_shape=matched_shape,
                             dimension_labels=dimension_labels,
                         )
+                if spec_ext is not None:
+                    self.__set_resolved_spec(builder, spec_ext)
 
-        # Add attributes from the specification extension to the list of attributes
-        all_attrs = self.__spec.attributes + getattr(spec_ext, 'attributes', tuple())
-        # If the spec_ext refines an existing attribute it will now appear twice in the list. The
+        # Add attributes from the specification extension to the list of attributes.
+        # The resolved spec on the builder carries the same refinement info as the original spec_ext.
+        if builder.resolved_spec is not None:
+            ext_attrs = getattr(builder.resolved_spec, 'attributes', tuple())
+        else:
+            ext_attrs = tuple()
+        all_attrs = self.__spec.attributes + ext_attrs
+        # If the resolved_spec refines an existing attribute it will now appear twice in the list. The
         # refinement should only be relevant for validation (not for write). To avoid problems with the
         # write we here remove duplicates and keep the original spec of the two to make write work.
         # TODO: We should add validation in the AttributeSpec to make sure refinements are valid
-        # TODO: Check the BuildManager as refinements should probably be resolved rather than be passed in via spec_ext
         all_attrs = list({a.name: a for a in all_attrs[::-1]}.values())
         self.__add_attributes(builder, all_attrs, container, manager)
         return builder
@@ -1277,6 +1285,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         dimension_labels=dimension_labels
                     )
                     builder.set_dataset(sub_builder)
+                self.__set_resolved_spec(sub_builder, spec)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager)
             else:
                 self.logger.debug("        Adding typed dataset for spec name: %s, %s: %s, %s: %s"
@@ -1297,6 +1306,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 sub_builder = builder.groups.get(spec.name)
                 if sub_builder is None:
                     sub_builder = GroupBuilder(spec.name, source=source)
+                self.__set_resolved_spec(sub_builder, spec)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager)
                 self.__add_datasets(sub_builder, spec.datasets, container, build_manager, source)
                 self.__add_links(sub_builder, spec.links, container, build_manager, source)
