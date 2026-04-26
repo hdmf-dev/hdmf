@@ -1,9 +1,11 @@
+import datetime
 import logging
 import re
 import warnings
 from collections import OrderedDict
 from copy import copy
 
+import h5py
 import numpy as np
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, BaseBuilder
@@ -92,6 +94,28 @@ def _ascii(s):
         return s
     else:
         raise ValueError("Expected unicode or ascii string, got %s" % type(s))
+
+
+def _parse_isoformat(value: str | bytes | datetime.datetime | datetime.date):
+    """Parse an ISO 8601 str/bytes back into a datetime or date.
+
+    Returns a datetime if the string carries a time component (contains 'T' or a space),
+    otherwise a date. Non-str/bytes inputs pass through unchanged so the helper is
+    idempotent when a value has already been parsed.
+
+    :param value: the value to parse. ASCII-encoded bytes are decoded first; str values are
+        parsed via ``datetime.fromisoformat`` or ``date.fromisoformat``; anything else
+        (e.g., a ``datetime``/``date`` already produced by an earlier call) is returned as-is.
+    :return: a ``datetime.datetime`` or ``datetime.date`` for parseable str/bytes input; the
+        unchanged ``value`` otherwise.
+    """
+    if isinstance(value, bytes):
+        value = value.decode('ascii')
+    if not isinstance(value, str):
+        return value
+    if 'T' in value or ' ' in value:
+        return datetime.datetime.fromisoformat(value)
+    return datetime.date.fromisoformat(value)
 
 
 class ObjectMapper(metaclass=ExtenderMeta):
@@ -1372,7 +1396,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             elif isinstance(attr_val, ReferenceBuilder):
                 ret[attr_spec] = manager.construct(attr_val.builder)
             else:
-                ret[attr_spec] = attr_val
+                ret[attr_spec] = self.__parse_datetime_on_read(attr_val, attr_spec)
         if isinstance(spec, GroupSpec):
             if not isinstance(builder, GroupBuilder):  # pragma: no cover
                 raise ValueError("__get_subspec_values - must pass GroupBuilder with GroupSpec")
@@ -1416,7 +1440,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     type(builder.data[0]) is not np.void):
                 # if a scalar dataset is expected and a 1-element non-compound dataset is given, then read the dataset
                 builder['data'] = builder.data[0]  # use dictionary reference instead of .data to bypass error
-            ret[spec] = self.__check_ref_resolver(builder.data)
+            # matched_spec is set by the parent matcher when this builder was paired to a subspec
+            # position; fall back to spec for top-level / direct-construct callers that bypass it.
+            data_spec = builder.matched_spec or spec
+            ret[spec] = self.__parse_datetime_on_read(self.__check_ref_resolver(builder.data), data_spec)
         return ret
 
     @staticmethod
@@ -1427,6 +1454,34 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if isinstance(data, ReferenceResolver):
             return data.invert()
         return data
+
+    @staticmethod
+    def __parse_datetime_on_read(value, spec):
+        """For specs with isodatetime/datetime dtype, parse stored ISO str/bytes back to datetime/date.
+
+        Handles scalars, lists/tuples, numpy arrays, and h5py datasets (eagerly materialized).
+        Idempotent: values whose elements are already parsed (or whose container type is
+        unknown, e.g., a DataIO wrapper) pass through unchanged.
+
+        TODO: implement lazy decoder for large datasets.
+        """
+        if not isinstance(spec, (AttributeSpec, DatasetSpec)):
+            return value
+        if getattr(spec, 'dtype', None) not in ('isodatetime', 'datetime'):
+            return value
+        if isinstance(value, (str, bytes)):
+            return _parse_isoformat(value)
+        if isinstance(value, (list, tuple)):
+            return type(value)(_parse_isoformat(v) for v in value)
+        if isinstance(value, np.ndarray) or isinstance(value, h5py.Dataset) or is_zarr_array(value):
+            # Use the numpy array protocol so this works uniformly across numpy ndarrays,
+            # h5py datasets, and zarr v2/v3 arrays without per-backend slicing.
+            materialized = np.asarray(value).tolist()
+            if isinstance(materialized, list):
+                return [_parse_isoformat(v) for v in materialized]
+            # 0-d array: tolist() returns a Python scalar, not a list.
+            return _parse_isoformat(materialized)
+        return value
 
     def __get_sub_builders(self, sub_builders, subspecs, manager, ret):
         # index builders by data_type
@@ -1499,7 +1554,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if issubclass(cls, Data):
             if not isinstance(builder, DatasetBuilder):  # pragma: no cover
                 raise ValueError('Can only construct a Data object from a DatasetBuilder - got %s' % type(builder))
-            const_args['data'] = self.__check_ref_resolver(builder.data)
+            # matched_spec is set by the parent matcher when this builder was paired to a subspec
+            # position; fall back to self.spec for top-level / direct-construct callers that bypass it.
+            data_spec = builder.matched_spec or self.spec
+            const_args['data'] = self.__parse_datetime_on_read(
+                self.__check_ref_resolver(builder.data), data_spec
+            )
         for subspec, value in subspecs.items():
             const_arg = self.get_const_arg(subspec)
             if const_arg is not None:
