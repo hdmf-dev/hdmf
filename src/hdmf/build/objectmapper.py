@@ -797,6 +797,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                               % (container.__class__.__name__, container.name, repr(source)))
             if builder is None:
                 builder = GroupBuilder(name, parent=parent, source=source)
+            if spec_ext is not None:
+                self.__set_resolved_spec(builder, spec_ext)
             self.__add_datasets(builder, self.__spec.datasets, container, manager, source)
             self.__add_groups(builder, self.__spec.groups, container, manager, source)
             self.__add_links(builder, self.__spec.links, container, manager, source)
@@ -805,6 +807,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if not isinstance(container, Data):
                     msg = "'container' must be of type Data with DatasetSpec"
                     raise ValueError(msg)
+                # Position override info has to be consumed before the dataset builder is created.
+                # After creation, downstream code reads the override from builder.resolved_spec instead.
                 spec_dtype, spec_shape, spec_dims, spec = self.__check_dset_spec(self.spec, spec_ext)
                 dimension_labels, matched_shape = self.__get_spec_info(
                     container.data, spec_shape, spec_dims, spec_dtype
@@ -882,14 +886,20 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             matched_spec_shape=matched_shape,
                             dimension_labels=dimension_labels,
                         )
+                if spec_ext is not None:
+                    self.__set_resolved_spec(builder, spec_ext)
 
-        # Add attributes from the specification extension to the list of attributes
-        all_attrs = self.__spec.attributes + getattr(spec_ext, 'attributes', tuple())
-        # If the spec_ext refines an existing attribute it will now appear twice in the list. The
+        # Add attributes from the specification extension to the list of attributes.
+        # The resolved spec on the builder carries the same refinement info as the original spec_ext.
+        if builder.resolved_spec is not None:
+            ext_attrs = getattr(builder.resolved_spec, 'attributes', tuple())
+        else:
+            ext_attrs = tuple()
+        all_attrs = self.__spec.attributes + ext_attrs
+        # If the resolved_spec refines an existing attribute it will now appear twice in the list. The
         # refinement should only be relevant for validation (not for write). To avoid problems with the
         # write we here remove duplicates and keep the original spec of the two to make write work.
         # TODO: We should add validation in the AttributeSpec to make sure refinements are valid
-        # TODO: Check the BuildManager as refinements should probably be resolved rather than be passed in via spec_ext
         all_attrs = list({a.name: a for a in all_attrs[::-1]}.values())
         self.__add_attributes(builder, all_attrs, container, manager)
         return builder
@@ -1348,13 +1358,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     self.logger.debug("    Adding dataset %s '%s' to %s '%s'"
                                       % (new_builder.__class__.__name__, new_builder.name,
                                          builder.__class__.__name__, builder.name))
-                    self.__set_resolved_spec(new_builder, spec)
                     builder.set_dataset(new_builder)
                 else:
                     self.logger.debug("    Adding subgroup %s '%s' to %s '%s'"
                                       % (new_builder.__class__.__name__, new_builder.name,
                                          builder.__class__.__name__, builder.name))
-                    self.__set_resolved_spec(new_builder, spec)
                     builder.set_group(new_builder)
             elif value.container_source:  # make a link to an existing container
                 if (value.container_source != parent_container.container_source
