@@ -782,7 +782,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
             {"name": "builder", "type": BaseBuilder, "doc": "the Builder to build on", 'default': None},
-            {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", 'default': None},
+            {"name": "spec_ext", "type": BaseStorageSpec,
+             "doc": ("the position-resolved subspec for this container in its parent's spec tree, used to compute "
+                     "dtype/shape for the new dataset builder before it exists. Stored on the resulting builder as "
+                     "`builder.resolved_spec` so post-creation consumers can read it without re-deriving the match."),
+             'default': None},
             returns="the Builder representing the given AbstractContainer", rtype=Builder)
     def build(self, **kwargs):
         '''Convert an AbstractContainer to a Builder representation.
@@ -864,7 +868,6 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         self.logger.debug("Building %s '%s' as a dataset (source: %s)"
                                           % (container.__class__.__name__, container.name, repr(source)))
                         try:
-                            # use spec_dtype from self.spec when spec_ext does not specify dtype
                             if isinstance(container.data, TermSetWrapper):
                                 data = container.data.value
                             else:

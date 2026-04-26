@@ -149,7 +149,9 @@ class BuildManager:
     @docval({"name": "container", "type": AbstractContainer, "doc": "the container to convert to a Builder"},
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
-            {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec that further refines the base specification",
+            {"name": "spec_ext", "type": BaseStorageSpec,
+             "doc": ("the position-resolved subspec for this container in its parent's spec tree. Threaded through "
+                     "to ObjectMapper.build, which sets it on the resulting builder as `builder.resolved_spec`."),
              'default': None},
             {"name": "export", "type": bool, "doc": "whether this build is for exporting",
              'default': False},
@@ -859,7 +861,10 @@ class TypeMap:
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
             {"name": "builder", "type": BaseBuilder, "doc": "the Builder to build on", 'default': None},
-            {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", 'default': None},
+            {"name": "spec_ext", "type": BaseStorageSpec,
+             "doc": ("the position-resolved subspec for this container in its parent's spec tree. Forwarded to "
+                     "ObjectMapper.build, which records it on the resulting builder as `builder.resolved_spec`."),
+             'default': None},
     )
     def build(self, **kwargs):
         """Build the GroupBuilder/DatasetBuilder for the given AbstractContainer"""

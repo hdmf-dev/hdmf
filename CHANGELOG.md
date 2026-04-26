@@ -7,6 +7,7 @@
 
 ### Enhancements
 - Set sensible default chunk sizes (~4 MB, in the recommended 2-16 MB range for cloud-hosted files) when `chunks=True`, replacing h5py's much smaller defaults. Added public `HDF5IO.compute_default_chunk_shape()` so users can inspect or override the chunk shape that would be used. @bendichter [#1440](https://github.com/hdmf-dev/hdmf/pull/1440)
+- Added `Builder.resolved_spec`, a write-once slot recording the position-resolved subspec for each builder. Set by the build and read matchers in `ObjectMapper.__get_subspec_values`, `__add_datasets`, `__add_groups`, and inside `ObjectMapper.build`, so type-keyed mappers can see position-specific overrides (e.g., a `VectorData` column declaring `dtype='isodatetime'` at the inc-site of its parent table). On read, `isodatetime`/`datetime`-typed values are now parsed back into Python `datetime`/`date` objects via the resolved spec. @rly [#1448](https://github.com/hdmf-dev/hdmf/issues/1448)
 
 ### Fixed
 - Added missing validation for dataset reference target types to ensure correct `RefSpec.target_type` matching. @sejalpunwatkar [#1429](https://github.com/hdmf-dev/hdmf/pull/1429)
