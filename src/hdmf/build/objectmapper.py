@@ -1448,19 +1448,32 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 dt = None
             # use name if we can, otherwise use data_data
             if subspec.name is None:
-                sub_builder = builder_dt.get(dt)
-                if sub_builder is not None:
-                    sub_builder = self.__flatten(sub_builder, subspec, manager)
-                    ret[subspec] = sub_builder
+                matched = builder_dt.get(dt)
+                if matched is not None:
+                    for b in matched:
+                        self.__set_matched_spec(b, subspec)
+                    ret[subspec] = self.__flatten(matched, subspec, manager)
             else:
                 sub_builder = sub_builders.get(subspec.name)
                 if sub_builder is None:
                     continue
+                self.__set_matched_spec(sub_builder, subspec)
                 if dt is None:
                     # recurse
                     ret.update(self.__get_subspec_values(sub_builder, subspec, manager))
                 else:
                     ret[subspec] = manager.construct(sub_builder)
+
+    @staticmethod
+    def __set_matched_spec(builder, subspec):
+        """Record the matched subspec on the builder if not already set.
+
+        The matcher pairs each sub-builder to one subspec per `__get_subspec_values`
+        call, so under normal flows this assigns once. The guard tolerates any
+        future read-time path that would otherwise hit the write-once setter.
+        """
+        if builder.matched_spec is None:
+            builder.matched_spec = subspec
 
     def __flatten(self, sub_builder, subspec, manager):
         tmp = [manager.construct(b) for b in sub_builder]
