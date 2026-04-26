@@ -90,6 +90,7 @@ nitpick_ignore = [('py:class', 'Intracomm'),
                   ('py:class', 'h5py._hl.dataset.Dataset'),
                   ('py:class', 'function'),
                   ('py:class', 'unittest.case.TestCase'),
+                  ('py:class', 'optional'),
                   ]
 
 suppress_warnings = ["config.cache"]
