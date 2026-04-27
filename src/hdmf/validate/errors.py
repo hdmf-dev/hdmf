@@ -216,11 +216,9 @@ class IncorrectDataType(Error):
         super().__init__(name, reason, location=loc)
 
 
-class ValidationWarning(Error):
+class ValidationWarning(UserWarning):
     """Base class for validation warnings."""
-    @property
-    def message(self):
-        return self.reason
+    pass
 
 class ExtraFieldWarning(ValidationWarning):
     """Warning for fields found in data but not defined in any applicable spec."""
