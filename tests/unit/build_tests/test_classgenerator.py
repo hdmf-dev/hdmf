@@ -1,3 +1,4 @@
+import datetime
 import numpy as np
 import shutil
 import tempfile
@@ -10,7 +11,7 @@ from hdmf.spec import (
     GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec, RefSpec
 )
 from hdmf.testing import TestCase
-from hdmf.utils import get_docval, docval
+from hdmf.utils import get_docval, docval, popargs
 
 from .test_io_map import Bar
 from tests.unit.helpers.utils import CORE_NAMESPACE, create_test_type_map, create_load_namespace_yaml
@@ -526,6 +527,67 @@ class TestDynamicContainer(TestCase):
             attr3=5.
         )
         assert len(multi.bars) == 1
+
+    def test_get_class_include_scalar_datetime_attribute(self):
+        """Test that get_class resolves a scalar datetime attribute."""
+        goo_spec = GroupSpec(
+            doc='A test group that has a scalar datetime attribute',
+            data_type_def='Goo',
+            attributes=[
+                AttributeSpec(
+                    name='attr1',
+                    doc='a scalar datetime attribute',
+                    dtype='datetime',
+                ),
+            ]
+        )
+        self.spec_catalog.register_spec(goo_spec, 'extension.yaml')
+        goo_cls = self.type_map.get_dt_container_cls('Goo', CORE_NAMESPACE)
+        goo = goo_cls(name='my_goo', attr1=datetime.datetime(2020, 1, 1, 0, 0, 0))
+        self.assertEqual(goo.attr1, datetime.datetime(2020, 1, 1, 0, 0, 0))
+
+    def test_get_class_include_scalar_datetime_dataset(self):
+        """Test that get_class resolves a scalar datetime dataset."""
+        goo_spec = DatasetSpec(
+            doc='A test dataset with dtype datetime',
+            data_type_def='Goo',
+            dtype='datetime',
+        )
+        self.spec_catalog.register_spec(goo_spec, 'extension.yaml')
+        goo_cls = self.type_map.get_dt_container_cls('Goo', CORE_NAMESPACE)
+        goo = goo_cls(name='my_goo', data=datetime.datetime(2020, 1, 1, 0, 0, 0))
+        self.assertEqual(goo.data, datetime.datetime(2020, 1, 1, 0, 0, 0))
+
+    def test_get_class_dataset_preserves_parent_data_default(self):
+        """Inheriting from a parent that gives `data` a default (e.g., VectorData -> []) should
+        not turn `data` into a required arg in the generated subclass.
+        """
+        class DefaultedData(Data):
+            @docval({'name': 'name', 'type': str, 'doc': 'name'},
+                    {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'data', 'default': list()})
+            def __init__(self, **kwargs):
+                data = popargs('data', kwargs)
+                super().__init__(data=data, **kwargs)
+
+        parent_spec = DatasetSpec(
+            doc='parent with a defaulted data arg',
+            data_type_def='DefaultedData',
+            dims=('num_data',),
+            shape=(None,),
+        )
+        goo_spec = DatasetSpec(
+            doc='a DefaultedData subtype with dtype datetime',
+            data_type_def='Goo',
+            data_type_inc='DefaultedData',
+            dtype='isodatetime',
+        )
+        self.spec_catalog.register_spec(parent_spec, 'extension.yaml')
+        self.spec_catalog.register_spec(goo_spec, 'extension.yaml')
+        self.type_map.register_container_type(CORE_NAMESPACE, 'DefaultedData', DefaultedData)
+        goo_cls = self.type_map.get_dt_container_cls('Goo', CORE_NAMESPACE)
+
+        goo_data_arg = next(a for a in get_docval(goo_cls.__init__) if a['name'] == 'data')
+        self.assertEqual(goo_data_arg['default'], list())
 
 
 class TestDynamicContainerFixedValue(TestCase):
