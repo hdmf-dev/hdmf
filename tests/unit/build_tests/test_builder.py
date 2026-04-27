@@ -55,6 +55,34 @@ class TestGroupBuilder(TestCase):
         gb1.location = 'new location'
         self.assertEqual(gb1.location, 'new location')
 
+    def test_matched_spec_default_none(self):
+        gb = GroupBuilder('gb')
+        db = DatasetBuilder('db', list(range(3)))
+        lb = LinkBuilder(gb, 'lb')
+        self.assertIsNone(gb.matched_spec)
+        self.assertIsNone(db.matched_spec)
+        self.assertIsNone(lb.matched_spec)
+
+    def test_set_matched_spec(self):
+        gb = GroupBuilder('gb')
+        sentinel = object()
+        gb.matched_spec = sentinel
+        self.assertIs(gb.matched_spec, sentinel)
+
+    def test_overwrite_matched_spec_raises(self):
+        gb = GroupBuilder('gb')
+        gb.matched_spec = object()
+        with self.assertRaisesRegex(AttributeError, 'Cannot overwrite matched_spec.'):
+            gb.matched_spec = object()
+
+    def test_matched_spec_independent_per_builder(self):
+        gb1 = GroupBuilder('gb1')
+        gb2 = GroupBuilder('gb2')
+        spec1 = object()
+        gb1.matched_spec = spec1
+        self.assertIs(gb1.matched_spec, spec1)
+        self.assertIsNone(gb2.matched_spec)
+
 
 class TestGroupBuilderSetters(TestCase):
 
