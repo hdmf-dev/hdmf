@@ -95,6 +95,17 @@ def _ascii(s):
         raise ValueError("Expected unicode or ascii string, got %s" % type(s))
 
 
+def _isoformat(s):
+    """Convert datetime/date/str to ASCII-encoded ISO 8601 bytes; pass through bytes unchanged."""
+    if isinstance(s, (datetime.datetime, datetime.date)):
+        return s.isoformat().encode('ascii')
+    if isinstance(s, str):
+        return s.encode('ascii')
+    if isinstance(s, bytes):
+        return s
+    raise ValueError("Expected datetime, date, str, or bytes, got %s" % type(s))
+
+
 def _parse_isoformat(value: str | bytes | datetime.datetime | datetime.date):
     """Parse an ISO 8601 str/bytes back into a datetime or date.
 
@@ -150,8 +161,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         "utf-8": _unicode,
         "ascii": _ascii,
         "bytes": _ascii,
-        "isodatetime": _ascii,
-        "datetime": _ascii,
+        "isodatetime": _isoformat,
+        "datetime": _isoformat,
     }
 
     __no_convert = set()
@@ -251,7 +262,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 # Zarr stores strings as objects, so we cannot convert to unicode dtype
                 ret = value
                 ret_dtype = "utf8"
-            elif spec_dtype_type is _ascii:
+            elif spec_dtype_type in (_ascii, _isoformat):
                 # Zarr stores strings as objects, so we cannot convert to ascii dtype
                 ret = value
                 ret_dtype = "ascii"
@@ -269,7 +280,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 else:
                     ret = value.astype('U')
                 ret_dtype = "utf8"
-            elif spec_dtype_type is _ascii:
+            elif spec_dtype_type in (_ascii, _isoformat):
+                # numpy.astype('S') on an object array of datetime/date produces ISO-formatted ASCII bytes
                 ret = value.astype('S')
                 ret_dtype = "ascii"
             else:
@@ -284,7 +296,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if len(value) == 0:
                 if spec_dtype_type is _unicode:
                     ret_dtype = 'utf8'
-                elif spec_dtype_type is _ascii:
+                elif spec_dtype_type in (_ascii, _isoformat):
                     ret_dtype = 'ascii'
                 else:
                     ret_dtype = spec_dtype_type
@@ -300,12 +312,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
             ret = value
             if spec_dtype_type is _unicode:
                 ret_dtype = "utf8"
-            elif spec_dtype_type is _ascii:
+            elif spec_dtype_type in (_ascii, _isoformat):
                 ret_dtype = "ascii"
             else:
                 ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
         else:
-            if spec_dtype_type in (_unicode, _ascii):
+            if spec_dtype_type in (_unicode, _ascii, _isoformat):
                 ret_dtype = 'ascii'
                 if spec_dtype_type is _unicode:
                     ret_dtype = 'utf8'
