@@ -5,7 +5,6 @@ import warnings
 from collections import OrderedDict
 from copy import copy
 
-import h5py
 import numpy as np
 
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, ReferenceBuilder, BaseBuilder
@@ -24,7 +23,7 @@ from ..utils import _is_collection, _get_length, _unwrap_scalar
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
 from ..spec.spec import BaseStorageSpec
-from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape, is_zarr_array, StrDataset
+from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape, is_array_like, is_zarr_array, StrDataset
 
 
 _const_arg = '__constructor_arg'
@@ -1396,7 +1395,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             elif isinstance(attr_val, ReferenceBuilder):
                 ret[attr_spec] = manager.construct(attr_val.builder)
             else:
-                ret[attr_spec] = self.__parse_datetime_on_read(attr_val, attr_spec)
+                ret[attr_spec] = self.__parse_if_datetime(attr_val, attr_spec)
         if isinstance(spec, GroupSpec):
             if not isinstance(builder, GroupBuilder):  # pragma: no cover
                 raise ValueError("__get_subspec_values - must pass GroupBuilder with GroupSpec")
@@ -1443,7 +1442,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             # matched_spec is set by the parent matcher when this builder was paired to a subspec
             # position; fall back to spec for top-level / direct-construct callers that bypass it.
             data_spec = builder.matched_spec or spec
-            ret[spec] = self.__parse_datetime_on_read(self.__check_ref_resolver(builder.data), data_spec)
+            ret[spec] = self.__parse_if_datetime(self.__check_ref_resolver(builder.data), data_spec)
         return ret
 
     @staticmethod
@@ -1456,14 +1455,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return data
 
     @staticmethod
-    def __parse_datetime_on_read(value, spec):
+    def __parse_if_datetime(value, spec):
         """For specs with isodatetime/datetime dtype, parse stored ISO str/bytes back to datetime/date.
 
-        Handles scalars, lists/tuples, numpy arrays, and h5py datasets (eagerly materialized).
-        Idempotent: values whose elements are already parsed (or whose container type is
-        unknown, e.g., a DataIO wrapper) pass through unchanged.
+        Returns ``value`` unchanged when ``spec`` is not an attribute or dataset spec, or when its
+        dtype is not isodatetime/datetime — so callers can invoke this unconditionally on every
+        attribute/dataset value without first inspecting the dtype.
 
-        TODO: implement lazy decoder for large datasets.
+        Handles scalars, lists/tuples, numpy arrays, h5py datasets, and zarr arrays (eagerly
+        materialized via the numpy array protocol). Idempotent: values whose elements are already
+        parsed (or whose container type is unknown, e.g., a DataIO wrapper) pass through unchanged.
         """
         if not isinstance(spec, (AttributeSpec, DatasetSpec)):
             return value
@@ -1473,9 +1474,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
             return _parse_isoformat(value)
         if isinstance(value, (list, tuple)):
             return type(value)(_parse_isoformat(v) for v in value)
-        if isinstance(value, np.ndarray) or isinstance(value, h5py.Dataset) or is_zarr_array(value):
+        if is_array_like(value):
             # Use the numpy array protocol so this works uniformly across numpy ndarrays,
             # h5py datasets, and zarr v2/v3 arrays without per-backend slicing.
+            # TODO: wrap the dataset to parse values on read instead of materializing the whole
+            # dataset in memory here. This becomes important for large isodatetime VectorData
+            # columns.
             materialized = np.asarray(value).tolist()
             if isinstance(materialized, list):
                 return [_parse_isoformat(v) for v in materialized]
@@ -1557,7 +1561,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             # matched_spec is set by the parent matcher when this builder was paired to a subspec
             # position; fall back to self.spec for top-level / direct-construct callers that bypass it.
             data_spec = builder.matched_spec or self.spec
-            const_args['data'] = self.__parse_datetime_on_read(
+            const_args['data'] = self.__parse_if_datetime(
                 self.__check_ref_resolver(builder.data), data_spec
             )
         for subspec, value in subspecs.items():
