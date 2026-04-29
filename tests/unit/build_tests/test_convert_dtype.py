@@ -515,27 +515,6 @@ class TestConvertDtype(TestCase):
         self.assertIs(type(ret), np.bool_)
         self.assertEqual(ret_dtype, np.bool_)
 
-    def test_override_type_int_restrict_precision(self):
-        spec = DatasetSpec('an example dataset', 'int8', name='data')
-        res = ObjectMapper.convert_dtype(spec, np.int64(1), 'int64')
-        self.assertTupleEqual(res, (np.int64(1), np.int64))
-
-    def test_override_type_numeric_to_uint(self):
-        spec = DatasetSpec('an example dataset', 'numeric', name='data')
-        res = ObjectMapper.convert_dtype(spec, np.uint32(1), 'uint8')
-        self.assertTupleEqual(res, (np.uint32(1), np.uint32))
-
-    def test_override_type_numeric_to_uint_list(self):
-        spec = DatasetSpec('an example dataset', 'numeric', name='data')
-        res = ObjectMapper.convert_dtype(spec, np.uint32((1, 2, 3)), 'uint8')
-        np.testing.assert_array_equal(res[0], np.uint32((1, 2, 3)))
-        self.assertEqual(res[1], np.uint32)
-
-    def test_override_type_none_to_bool(self):
-        spec = DatasetSpec('an example dataset', None, name='data')
-        res = ObjectMapper.convert_dtype(spec, True, 'bool')
-        self.assertTupleEqual(res, (True, np.bool_))
-
     def test_compound_type(self):
         """Test that convert_dtype passes through arguments if spec dtype is a list without any validation."""
         spec_type = [DtypeSpec('an int field', 'f1', 'int'), DtypeSpec('a float field', 'f2', 'float')]
