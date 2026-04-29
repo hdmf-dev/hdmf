@@ -26,6 +26,11 @@ except ImportError:
 def is_zarr_array(value):
     return ZARR_INSTALLED and isinstance(value, ZarrArray)
 
+
+def is_array_like(value):
+    """Return True if ``value`` is a numpy ndarray, h5py Dataset, or zarr Array."""
+    return isinstance(value, np.ndarray) or isinstance(value, h5py.Dataset) or is_zarr_array(value)
+
 if ZARR_INSTALLED:
     # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
     __macros['array_data'].append(ZarrArray)
