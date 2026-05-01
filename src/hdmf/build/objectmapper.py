@@ -280,8 +280,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 else:
                     ret = value.astype('U')
                 ret_dtype = "utf8"
-            elif spec_dtype_type in (_ascii, _isoformat):
-                # numpy.astype('S') on an object array of datetime/date produces ISO-formatted ASCII bytes
+            elif spec_dtype_type is _isoformat:
+                if value.dtype.kind == 'O':
+                    # Apply _isoformat elementwise so datetime/date objects use the ISO 8601
+                    # 'T' separator. numpy's astype('S') would fall back to str(dt), which
+                    # produces a space-separated form.
+                    flat = np.array([_isoformat(v) for v in value.ravel()], dtype='S')
+                    ret = flat.reshape(value.shape)
+                else:
+                    ret = value.astype('S')
+                ret_dtype = "ascii"
+            elif spec_dtype_type is _ascii:
                 ret = value.astype('S')
                 ret_dtype = "ascii"
             else:
@@ -713,6 +722,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     string_type = bytes
                 elif 'isodatetime' in spec.dtype:
                     def string_type(x):
+                        if isinstance(x, (str, bytes)):
+                            return x  # already an ISO 8601 string, pass through
                         return x.isoformat()  # method works for both date and datetime
                 if string_type is not None:
                     if spec.shape is not None or spec.dims is not None:

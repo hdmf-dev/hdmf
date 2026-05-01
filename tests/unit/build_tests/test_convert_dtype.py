@@ -548,6 +548,72 @@ class TestConvertDtype(TestCase):
         self.assertIs(type(ret), bytes)
         self.assertEqual(ret_dtype, 'ascii')
 
+    def test_isodatetime_spec_datetime_value(self):
+        """Raw datetime/date values must convert directly (typed-dataset path skips __convert_string)."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data')
+
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, datetime(2020, 11, 10))
+        self.assertEqual(ret, b'2020-11-10T00:00:00')
+        self.assertEqual(ret_dtype, 'ascii')
+
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, date(2020, 11, 10))
+        self.assertEqual(ret, b'2020-11-10')
+        self.assertEqual(ret_dtype, 'ascii')
+
+    def test_isodatetime_spec_bytes_value(self):
+        """Bytes input passes through _isoformat unchanged."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, b'2020-11-10T00:00:00')
+        self.assertEqual(ret, b'2020-11-10T00:00:00')
+        self.assertEqual(ret_dtype, 'ascii')
+
+    def test_isodatetime_spec_invalid_type(self):
+        """Non-datetime/str/bytes input to _isoformat raises ValueError."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data')
+        with self.assertRaisesRegex(ValueError, "Expected datetime, date, str, or bytes"):
+            ObjectMapper.convert_dtype(spec, 12345)
+
+    def test_isodatetime_spec_empty_list(self):
+        """Empty list/tuple branch returns 'ascii' for isodatetime spec."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, [])
+        self.assertEqual(ret, [])
+        self.assertEqual(ret_dtype, 'ascii')
+
+    def test_isodatetime_spec_ndarray_object(self):
+        """ndarray(dtype=object) of datetimes goes through the elementwise _isoformat branch."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        value = np.array([datetime(2020, 11, 10), datetime(2020, 11, 11)], dtype=object)
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(list(ret), [b'2020-11-10T00:00:00', b'2020-11-11T00:00:00'])
+        self.assertEqual(ret_dtype, 'ascii')
+
+    def test_isodatetime_spec_ndarray_string(self):
+        """ndarray of pre-formatted ISO strings takes the non-object astype('S') branch."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        value = np.array(['2020-11-10T00:00:00', '2020-11-11T00:00:00'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(list(ret), [b'2020-11-10T00:00:00', b'2020-11-11T00:00:00'])
+        self.assertEqual(ret_dtype, 'ascii')
+
+    def test_isodatetime_spec_data_chunk_iterator(self):
+        """DataChunkIterator with isodatetime spec returns 'ascii' ret_dtype."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        value = DataChunkIterator(data=[datetime(2020, 11, 10), datetime(2020, 11, 11)])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertIs(ret, value)
+        self.assertEqual(ret_dtype, 'ascii')
+
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_isodatetime_spec_zarr_array(self):
+        """Zarr arrays with isodatetime spec pass through with 'ascii' ret_dtype."""
+        import zarr
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        value = zarr.array(['2020-11-10T00:00:00', '2020-11-11T00:00:00'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertEqual(ret_dtype, 'ascii')
+
     @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
     def test_zarr_array_spec_vlen_utf8(self):
         """Test that converting a zarr array with utf8 dtype for a variable length utf8 dtype spec
