@@ -95,6 +95,22 @@ def _ascii(s):
         raise ValueError("Expected unicode or ascii string, got %s" % type(s))
 
 
+def _isoformat(s):
+    """Convert datetime/date/str to ASCII-encoded ISO 8601 bytes; pass through bytes unchanged.
+
+    Strings are encoded with strict ASCII (no error handler) since ISO 8601 values are
+    always ASCII. Non-ASCII input raises UnicodeEncodeError, in contrast to ``_ascii`` which
+    uses ``'backslashreplace'`` to preserve general string content.
+    """
+    if isinstance(s, (datetime.datetime, datetime.date)):
+        return s.isoformat().encode('ascii')
+    if isinstance(s, str):
+        return s.encode('ascii')
+    if isinstance(s, bytes):
+        return s
+    raise ValueError("Expected datetime, date, str, or bytes, got %s" % type(s))
+
+
 def _parse_isoformat(value: str | bytes | datetime.datetime | datetime.date):
     """Parse an ISO 8601 str/bytes back into a datetime or date.
 
@@ -150,8 +166,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         "utf-8": _unicode,
         "ascii": _ascii,
         "bytes": _ascii,
-        "isodatetime": _ascii,
-        "datetime": _ascii,
+        "isodatetime": _isoformat,
+        "datetime": _isoformat,
     }
 
     __no_convert = set()
@@ -251,7 +267,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 # Zarr stores strings as objects, so we cannot convert to unicode dtype
                 ret = value
                 ret_dtype = "utf8"
-            elif spec_dtype_type is _ascii:
+            elif spec_dtype_type in (_ascii, _isoformat):
                 # Zarr stores strings as objects, so we cannot convert to ascii dtype
                 ret = value
                 ret_dtype = "ascii"
@@ -269,6 +285,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 else:
                     ret = value.astype('U')
                 ret_dtype = "utf8"
+            elif spec_dtype_type is _isoformat:
+                if value.dtype.kind == 'O':
+                    # Apply _isoformat elementwise so datetime/date objects use the ISO 8601
+                    # 'T' separator. numpy's astype('S') would fall back to str(dt), which
+                    # produces a space-separated form.
+                    flat = np.array([_isoformat(v) for v in value.ravel()], dtype='S')
+                    ret = flat.reshape(value.shape)
+                else:
+                    ret = value.astype('S')
+                ret_dtype = "ascii"
             elif spec_dtype_type is _ascii:
                 ret = value.astype('S')
                 ret_dtype = "ascii"
@@ -284,7 +310,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if len(value) == 0:
                 if spec_dtype_type is _unicode:
                     ret_dtype = 'utf8'
-                elif spec_dtype_type is _ascii:
+                elif spec_dtype_type in (_ascii, _isoformat):
                     ret_dtype = 'ascii'
                 else:
                     ret_dtype = spec_dtype_type
@@ -300,12 +326,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
             ret = value
             if spec_dtype_type is _unicode:
                 ret_dtype = "utf8"
-            elif spec_dtype_type is _ascii:
+            elif spec_dtype_type in (_ascii, _isoformat):
                 ret_dtype = "ascii"
             else:
                 ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
         else:
-            if spec_dtype_type in (_unicode, _ascii):
+            if spec_dtype_type in (_unicode, _ascii, _isoformat):
                 ret_dtype = 'ascii'
                 if spec_dtype_type is _unicode:
                     ret_dtype = 'utf8'
@@ -701,6 +727,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     string_type = bytes
                 elif 'isodatetime' in spec.dtype:
                     def string_type(x):
+                        if isinstance(x, (str, bytes)):
+                            return x  # already an ISO 8601 string, pass through
                         return x.isoformat()  # method works for both date and datetime
                 if string_type is not None:
                     if spec.shape is not None or spec.dims is not None:
