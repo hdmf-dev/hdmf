@@ -312,7 +312,7 @@ class CustomClassGenerator:
             cls._update_data_docval_arg(docval_args, spec)
 
     @classmethod
-    def _update_data_docval_arg(cls, docval_args, spec):
+    def _update_data_docval_arg(cls, docval_args: list, spec: DatasetSpec) -> None:
         """Update the inherited 'data' docval arg in place to reflect the dataset spec.
 
         Updates `type`, `doc`, `shape` (when the spec declares one), and `default` (when
@@ -322,6 +322,9 @@ class CustomClassGenerator:
 
         Fixed values (`value` on the spec) on dataset types are not yet applied to
         generated classes.
+
+        :param docval_args: The list of docval arguments to update in place.
+        :param spec: The DatasetSpec for the container class to generate.
         """
         if spec.shape is None and spec.dims is None:
             if spec.dtype is not None:
