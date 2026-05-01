@@ -147,9 +147,14 @@ class TestCase(unittest.TestCase):
         """
         self.assertTrue(isinstance(data1, Data), message)
         self.assertTrue(isinstance(data2, Data), message)
-        # Only compare lengths when both inner values are collections. Data containers can wrap
-        # scalar values (e.g., a single datetime) for which len() is not defined.
-        if _is_collection(data1.data) and _is_collection(data2.data):
+        # Data containers can wrap a scalar (e.g., a single datetime) for which len() is not
+        # defined, so check collection-ness on both sides first. If they disagree, fail; if both
+        # are collections, compare lengths; if both are scalars, fall through to value comparison.
+        is_collection1 = _is_collection(data1.data)
+        is_collection2 = _is_collection(data2.data)
+        self.assertEqual(is_collection1, is_collection2,
+                         message or "One Data wraps a scalar, the other a collection")
+        if is_collection1:
             self.assertEqual(len(data1), len(data2), message)
         self._assert_array_equal(data1.data, data2.data,
                                  ignore_hdmf_attrs=ignore_hdmf_attrs,

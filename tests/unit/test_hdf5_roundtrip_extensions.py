@@ -147,5 +147,6 @@ class TestExtensionDatetime(TestCase):
             f.write(group)
         with HDF5IO(h5_path, 'r', manager=self.manager) as f:
             group_read = f.read()
+            self.assertContainerEqual(group_read, group, ignore_hdmf_attrs=True)
             self.assertEqual(list(group_read.my_array_data.data), times)
             self.assertEqual(list(group_read.my_untyped_array), times)
