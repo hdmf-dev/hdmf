@@ -96,7 +96,12 @@ def _ascii(s):
 
 
 def _isoformat(s):
-    """Convert datetime/date/str to ASCII-encoded ISO 8601 bytes; pass through bytes unchanged."""
+    """Convert datetime/date/str to ASCII-encoded ISO 8601 bytes; pass through bytes unchanged.
+
+    Strings are encoded with strict ASCII (no error handler) since ISO 8601 values are
+    always ASCII. Non-ASCII input raises UnicodeEncodeError, in contrast to ``_ascii`` which
+    uses ``'backslashreplace'`` to preserve general string content.
+    """
     if isinstance(s, (datetime.datetime, datetime.date)):
         return s.isoformat().encode('ascii')
     if isinstance(s, str):
