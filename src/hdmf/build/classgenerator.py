@@ -1,7 +1,6 @@
 from copy import deepcopy
 from datetime import datetime, date
 from collections.abc import Callable
-import warnings
 
 import numpy as np
 
@@ -316,22 +315,14 @@ class CustomClassGenerator:
     def _update_data_docval_arg(cls, docval_args, spec):
         """Update the inherited 'data' docval arg in place to reflect the dataset spec.
 
-        Updates only `type`, `doc`, and `shape` (when the spec declares one). Other keys
-        like `default` are preserved from the parent class's docval, so subclasses don't
-        accidentally lose, e.g., VectorData's empty-list default.
-        """
-        # fixed and default values on dataset specs are not yet applied to generated classes
-        if spec.value is not None:
-            warnings.warn(
-                f"Ignoring fixed value on dataset spec for type '{spec.data_type_def}' when generating class: "
-                f"fixed values are not yet applied to generated classes."
-            )
-        if spec.default_value is not None:
-            warnings.warn(
-                f"Ignoring default value on dataset spec for type '{spec.data_type_def}' when generating class: "
-                f"default values are not yet applied to generated classes."
-            )
+        Updates `type`, `doc`, `shape` (when the spec declares one), and `default` (when
+        the spec declares a `default_value`). Other keys are preserved from the parent
+        class's docval, so subclasses don't accidentally lose, e.g., VectorData's
+        empty-list default when the spec doesn't override it.
 
+        Fixed values (`value` on the spec) on dataset types are not yet applied to
+        generated classes.
+        """
         if spec.shape is None and spec.dims is None:
             if spec.dtype is not None:
                 dtype = cls._get_type_from_spec_dtype(spec.dtype)
@@ -346,10 +337,14 @@ class CustomClassGenerator:
             existing_data_arg['doc'] = spec.doc
             if spec.shape is not None:
                 existing_data_arg['shape'] = spec.shape
+            if spec.default_value is not None:
+                existing_data_arg['default'] = spec.default_value
         else:
             new_arg = dict(name='data', doc=spec.doc, type=dtype)
             if spec.shape is not None:
                 new_arg['shape'] = spec.shape
+            if spec.default_value is not None:
+                new_arg['default'] = spec.default_value
             docval_args.append(new_arg)
 
     @classmethod

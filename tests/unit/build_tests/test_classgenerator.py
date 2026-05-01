@@ -593,17 +593,21 @@ class TestDynamicContainer(TestCase):
 class TestUpdateDataDocvalArg(TestCase):
     """Direct unit tests for CustomClassGenerator._update_data_docval_arg."""
 
-    def test_warns_on_fixed_value(self):
-        spec = DatasetSpec(doc='a fixed-value dataset', data_type_def='Foo', dtype='int', value=42)
-        docval_args = [dict(name='data', type='int', doc='data', default=None)]
-        with self.assertWarnsRegex(UserWarning, "Ignoring fixed value on dataset spec for type 'Foo'"):
-            CustomClassGenerator._update_data_docval_arg(docval_args, spec)
-
-    def test_warns_on_default_value(self):
+    def test_default_value_applied_to_existing_data_arg(self):
+        """spec.default_value should be carried onto the existing 'data' docval arg as `default`."""
         spec = DatasetSpec(doc='a defaulted dataset', data_type_def='Foo', dtype='int', default_value=42)
         docval_args = [dict(name='data', type='int', doc='data', default=None)]
-        with self.assertWarnsRegex(UserWarning, "Ignoring default value on dataset spec for type 'Foo'"):
-            CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+        CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+        data_arg = next(a for a in docval_args if a['name'] == 'data')
+        self.assertEqual(data_arg['default'], 42)
+
+    def test_default_value_applied_to_appended_data_arg(self):
+        """spec.default_value should be carried onto a freshly appended 'data' docval arg."""
+        spec = DatasetSpec(doc='a defaulted dataset', data_type_def='Foo', dtype='int', default_value=42)
+        docval_args = [dict(name='name', type=str, doc='name')]
+        CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+        data_arg = next(a for a in docval_args if a['name'] == 'data')
+        self.assertEqual(data_arg['default'], 42)
 
     def test_appends_data_arg_when_missing_with_shape(self):
         """If the parent's docval lacks a 'data' arg, _update_data_docval_arg appends one,
