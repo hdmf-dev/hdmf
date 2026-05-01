@@ -590,6 +590,51 @@ class TestDynamicContainer(TestCase):
         self.assertEqual(goo_data_arg['default'], list())
 
 
+class TestUpdateDataDocvalArg(TestCase):
+    """Direct unit tests for CustomClassGenerator._update_data_docval_arg."""
+
+    def test_warns_on_fixed_value(self):
+        spec = DatasetSpec(doc='a fixed-value dataset', data_type_def='Foo', dtype='int', value=42)
+        docval_args = [dict(name='data', type='int', doc='data', default=None)]
+        with self.assertWarnsRegex(UserWarning, "Ignoring fixed value on dataset spec for type 'Foo'"):
+            CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+
+    def test_warns_on_default_value(self):
+        spec = DatasetSpec(doc='a defaulted dataset', data_type_def='Foo', dtype='int', default_value=42)
+        docval_args = [dict(name='data', type='int', doc='data', default=None)]
+        with self.assertWarnsRegex(UserWarning, "Ignoring default value on dataset spec for type 'Foo'"):
+            CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+
+    def test_appends_data_arg_when_missing_with_shape(self):
+        """If the parent's docval lacks a 'data' arg, _update_data_docval_arg appends one,
+        carrying the spec's shape onto the new arg.
+        """
+        spec = DatasetSpec(doc='a dataset', data_type_def='Foo', dtype='int', dims=('num_data',), shape=(None,))
+        docval_args = [dict(name='name', type=str, doc='name')]
+        CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+        new_arg = next(a for a in docval_args if a['name'] == 'data')
+        self.assertEqual(new_arg['type'], ('array_data', 'data'))
+        self.assertEqual(new_arg['doc'], 'a dataset')
+        self.assertEqual(new_arg['shape'], (None,))
+
+    def test_scalar_dtypeless_spec_uses_scalar_data_macro(self):
+        """A spec with no shape/dims and no dtype gets ('scalar_data', 'array_data', 'data')."""
+        spec = DatasetSpec(doc='dtypeless dataset', data_type_def='Foo')
+        docval_args = [dict(name='data', type=('array_data', 'data'), doc='data', default=None)]
+        CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+        data_arg = next(a for a in docval_args if a['name'] == 'data')
+        self.assertEqual(data_arg['type'], ('scalar_data', 'array_data', 'data'))
+
+    def test_appends_data_arg_when_missing_without_shape(self):
+        """Missing 'data' arg + spec without shape: append a 'data' arg with no 'shape' key."""
+        spec = DatasetSpec(doc='a scalar dataset', data_type_def='Foo', dtype='int')
+        docval_args = [dict(name='name', type=str, doc='name')]
+        CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+        new_arg = next(a for a in docval_args if a['name'] == 'data')
+        self.assertIn(int, new_arg['type'])
+        self.assertNotIn('shape', new_arg)
+
+
 class TestDynamicContainerFixedValue(TestCase):
 
     def setUp(self):
