@@ -3,13 +3,13 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 from hdmf import Container, Data, TermSet, TermSetWrapper
 from hdmf.common import VectorData, get_type_map
-from hdmf.build import ObjectMapper, BuildManager, TypeMap, GroupBuilder, DatasetBuilder
+from hdmf.build import ObjectMapper, BuildManager, GroupBuilder, DatasetBuilder, ReferenceBuilder
 from hdmf.build.warnings import DtypeConversionWarning, IncorrectDatasetShapeBuildWarning
-from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, Spec
+from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec, RefSpec, Spec
 from hdmf.testing import TestCase
 from hdmf.utils import docval, getargs
 
-from tests.unit.helpers.utils import CORE_NAMESPACE
+from tests.unit.helpers.utils import CORE_NAMESPACE, create_test_type_map
 
 try:
     import linkml_runtime  # noqa: F401
@@ -124,29 +124,23 @@ class ExtBarMapper(ObjectMapper):
                 return container.ext_attr
         return super().get_attr_value(**kwargs)
 
+    @ObjectMapper.constructor_arg('ext_attr')
+    def ext_attr_carg(self, builder, manager):
+        # ext_attr lives on the inc-site spec, so it is not in BarMapper's def-site spec. Read it
+        # straight from the builder's attributes when constructing a Bar inside an extended context.
+        return builder.attributes.get('ext_attr')
+
 
 class BuildGroupExtAttrsMixin(TestCase, metaclass=ABCMeta):
 
     def setUp(self):
         self.setUpBarSpec()
         self.setUpBarHolderSpec()
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(self.bar_spec, 'test.yaml')
-        spec_catalog.register_spec(self.bar_holder_spec, 'test.yaml')
-        namespace = SpecNamespace(
-            doc='a test namespace',
-            name=CORE_NAMESPACE,
-            schema=[{'source': 'test.yaml'}],
-            version='0.1.0',
-            catalog=spec_catalog
+        type_map = create_test_type_map(
+            specs=[self.bar_spec, self.bar_holder_spec],
+            container_classes={'Bar': Bar, 'BarHolder': BarHolder},
+            mappers={'Bar': ExtBarMapper},
         )
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'Bar', Bar)
-        type_map.register_container_type(CORE_NAMESPACE, 'BarHolder', BarHolder)
-        type_map.register_map(Bar, ExtBarMapper)
-        type_map.register_map(BarHolder, ObjectMapper)
         self.manager = BuildManager(type_map)
 
     def setUpBarSpec(self):
@@ -237,6 +231,34 @@ class TestBuildGroupAddedAttr(BuildGroupExtAttrsMixin, TestCase):
         builder = self.manager.build(bar_holder_inst, source='test.h5')
         self.assertDictEqual(builder, expected)
 
+    def test_construct_added_attr(self):
+        """
+        Test construct of BarHolder containing an extended Bar with the inc-site ext_attr set.
+        """
+        ext_bar_inst = Bar(
+            name='my_bar',
+            attr1='a string',
+            attr2=10,
+            ext_attr=False,
+        )
+        bar_holder_inst = BarHolder(
+            name='my_bar_holder',
+            bars=[ext_bar_inst],
+        )
+
+        # build then construct to round-trip through builders
+        builder = self.manager.build(bar_holder_inst, source='test.h5')
+        self.manager.clear_cache()
+        constructed = self.manager.construct(builder)
+
+        self.assertEqual(constructed.name, 'my_bar_holder')
+        self.assertEqual(len(constructed.bars), 1)
+        constructed_bar = constructed.bars[0]
+        self.assertEqual(constructed_bar.name, 'my_bar')
+        self.assertEqual(constructed_bar.attr1, 'a string')
+        self.assertEqual(constructed_bar.attr2, 10)
+        self.assertEqual(constructed_bar.ext_attr, False)
+
 
 class TestBuildGroupRefinedAttr(BuildGroupExtAttrsMixin, TestCase):
     """
@@ -302,45 +324,43 @@ class TestBuildGroupRefinedAttr(BuildGroupExtAttrsMixin, TestCase):
         builder = self.manager.build(bar_holder_inst, source='test.h5')
         self.assertDictEqual(builder, expected)
 
-    # def test_build_refined_attr_wrong_type(self):
-    #     """
-    #     Test build of BarHolder which contains a Bar that has the wrong dtype for an attr.
-    #     """
-    #     ext_bar_inst = Bar(
-    #         name='my_bar',
-    #         attr1='a string',
-    #         attr2=10,  # spec specifies attr2 should be an int64 for Bars within BarHolder
-    #     )
-    #     bar_holder_inst = BarHolder(
-    #         name='my_bar_holder',
-    #         bars=[ext_bar_inst],
-    #     )
-    #
-    #     expected_inner = GroupBuilder(
-    #         name='my_bar',
-    #         attributes={
-    #             'attr1': 'a string',
-    #             'attr2': np.int64(10),
-    #             'data_type': 'Bar',
-    #             'namespace': CORE_NAMESPACE,
-    #             'object_id': ext_bar_inst.object_id,
-    #         }
-    #     )
-    #     expected = GroupBuilder(
-    #         name='my_bar_holder',
-    #         groups={'my_bar': expected_inner},
-    #         attributes={
-    #             'data_type': 'BarHolder',
-    #             'namespace': CORE_NAMESPACE,
-    #             'object_id': bar_holder_inst.object_id,
-    #         },
-    #     )
-    #
-    #     # the object mapper automatically maps the spec of extended Bars to the 'BarMapper.bars' field
-    #
-    #     # TODO build should raise a conversion warning for converting 10 (int32) to np.int64
-    #     builder = self.manager.build(bar_holder_inst, source='test.h5')
-    #     self.assertDictEqual(builder, expected)
+    def test_build_refined_attr_wrong_type(self):
+        """
+        Test build of BarHolder which contains a Bar that has the wrong dtype for an attr.
+        """
+        ext_bar_inst = Bar(
+            name='my_bar',
+            attr1='a string',
+            attr2=10,  # spec specifies attr2 should be an int64 for Bars within BarHolder
+        )
+        bar_holder_inst = BarHolder(
+            name='my_bar_holder',
+            bars=[ext_bar_inst],
+        )
+
+        expected_inner = GroupBuilder(
+            name='my_bar',
+            attributes={
+                'attr1': 'a string',
+                'attr2': np.int64(10),
+                'data_type': 'Bar',
+                'namespace': CORE_NAMESPACE,
+                'object_id': ext_bar_inst.object_id,
+            }
+        )
+        expected = GroupBuilder(
+            name='my_bar_holder',
+            groups={'my_bar': expected_inner},
+            attributes={
+                'data_type': 'BarHolder',
+                'namespace': CORE_NAMESPACE,
+                'object_id': bar_holder_inst.object_id,
+            },
+        )
+
+        # TODO build should raise a conversion warning for converting 10 (int32) to np.int64
+        builder = self.manager.build(bar_holder_inst, source='test.h5')
+        self.assertDictEqual(builder, expected)
 
 
 class BarData(Data):
@@ -355,7 +375,7 @@ class BarData(Data):
         super().__init__(name=name, data=data)
         self.__attr1 = attr1
         self.__attr2 = attr2
-        self.__ext_attr = kwargs['ext_attr']
+        self.__ext_attr = ext_attr
 
     @property
     def data_type(self):
@@ -411,29 +431,22 @@ class ExtBarDataMapper(ObjectMapper):
                 return container.ext_attr
         return super().get_attr_value(**kwargs)
 
+    @ObjectMapper.constructor_arg('ext_attr')
+    def ext_attr_carg(self, builder, manager):
+        # ext_attr lives on the inc-site spec, so it is not in BarDataMapper's def-site spec. Read it
+        # straight from the builder's attributes when constructing a BarData inside an extended context.
+        return builder.attributes.get('ext_attr')
+
 
 class BuildDatasetExtAttrsMixin(TestCase, metaclass=ABCMeta):
 
     def setUp(self):
         self.set_up_specs()
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(self.bar_data_spec, 'test.yaml')
-        spec_catalog.register_spec(self.bar_data_holder_spec, 'test.yaml')
-        namespace = SpecNamespace(
-            doc='a test namespace',
-            name=CORE_NAMESPACE,
-            schema=[{'source': 'test.yaml'}],
-            version='0.1.0',
-            catalog=spec_catalog
+        type_map = create_test_type_map(
+            specs=[self.bar_data_spec, self.bar_data_holder_spec],
+            container_classes={'BarData': BarData, 'BarDataHolder': BarDataHolder},
+            mappers={'BarData': ExtBarDataMapper},
         )
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        namespace_catalog.resolve_all_specs()
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'BarData', BarData)
-        type_map.register_container_type(CORE_NAMESPACE, 'BarDataHolder', BarDataHolder)
-        type_map.register_map(BarData, ExtBarDataMapper)
-        type_map.register_map(BarDataHolder, ObjectMapper)
         self.manager = BuildManager(type_map)
 
     def set_up_specs(self):
@@ -529,6 +542,36 @@ class TestBuildDatasetAddedAttrs(BuildDatasetExtAttrsMixin, TestCase):
         # the object mapper automatically maps the spec of extended Bars to the 'BarMapper.bars' field
         builder = self.manager.build(bar_data_holder_inst, source='test.h5')
         self.assertDictEqual(builder, expected)
+
+    def test_construct_added_attr(self):
+        """
+        Test construct of BarDataHolder containing an extended BarData with the inc-site ext_attr set.
+        """
+        ext_bar_data_inst = BarData(
+            name='my_bar',
+            data=list(range(10)),
+            attr1='a string',
+            attr2=10,
+            ext_attr=False,
+        )
+        bar_data_holder_inst = BarDataHolder(
+            name='my_bar_holder',
+            bar_datas=[ext_bar_data_inst],
+        )
+
+        # build then construct to round-trip through builders
+        builder = self.manager.build(bar_data_holder_inst, source='test.h5')
+        self.manager.clear_cache()
+        constructed = self.manager.construct(builder)
+
+        self.assertEqual(constructed.name, 'my_bar_holder')
+        self.assertEqual(len(constructed.bar_datas), 1)
+        constructed_bar = constructed.bar_datas[0]
+        self.assertEqual(constructed_bar.name, 'my_bar')
+        self.assertEqual(list(constructed_bar.data), list(range(10)))
+        self.assertEqual(constructed_bar.attr1, 'a string')
+        self.assertEqual(constructed_bar.attr2, 10)
+        self.assertEqual(constructed_bar.ext_attr, False)
 
 
 class TestBuildDatasetRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
@@ -672,28 +715,166 @@ class TestBuildDatasetNotRefinedDtype(BuildDatasetExtAttrsMixin, TestCase):
             self.manager.build(bar_data_holder_inst, source='test.h5')
 
 
+class BarRefDataset(Data):
+    """A Data subclass whose data is a list of BarData references."""
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this BarRefDataset'},
+            {'name': 'data', 'type': ('data', 'array_data'), 'doc': 'a list of BarData references'})
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class BarDataRefHolder(Container):
+    """A holder with both a direct extended BarData and a typed reference dataset to BarData."""
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of this BarDataRefHolder'},
+            {'name': 'bar_data', 'type': BarData, 'doc': 'a BarData', 'default': None},
+            {'name': 'bar_data_ref', 'type': BarRefDataset,
+             'doc': 'a typed reference dataset pointing to BarData', 'default': None})
+    def __init__(self, **kwargs):
+        name, bar_data, bar_data_ref = getargs('name', 'bar_data', 'bar_data_ref', kwargs)
+        super().__init__(name=name)
+        self.__bar_data = bar_data
+        self.__bar_data_ref = bar_data_ref
+        if bar_data is not None and bar_data.parent is None:
+            bar_data.parent = self
+        if bar_data_ref is not None and bar_data_ref.parent is None:
+            bar_data_ref.parent = self
+
+    @property
+    def data_type(self):
+        return 'BarDataRefHolder'
+
+    @property
+    def bar_data(self):
+        return self.__bar_data
+
+    @property
+    def bar_data_ref(self):
+        return self.__bar_data_ref
+
+
+class ExtBarDataRefHolderMapper(ObjectMapper):
+    """Mapper for BarData in BarDataRefHolder context. Pulls inc-site ext_attr from the container."""
+
+    @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
+            {"name": "container", "type": BarData, "doc": "the container to get the attribute value from"},
+            {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
+            returns='the value of the attribute')
+    def get_attr_value(self, **kwargs):
+        spec, container, manager = getargs('spec', 'container', 'manager', kwargs)
+        if isinstance(container.parent, BarDataRefHolder) and spec.name == 'ext_attr':
+            return container.ext_attr
+        return super().get_attr_value(**kwargs)
+
+    @ObjectMapper.constructor_arg('ext_attr')
+    def ext_attr_carg(self, builder, manager):
+        return builder.attributes.get('ext_attr')
+
+
+class TestBuildDatasetAddedAttrsWithRef(TestCase):
+    """
+    Inc-site attribute extension must hold up when the same dataset container is reachable through a
+    separate reference field. Mirrors PR #283's TestExtendDatasetAttrsWithRef: the holder's spec has both
+    a direct named BarData (with inc-site ext_attr) and a sibling typed reference dataset that lists the
+    same BarData. Build must apply ext_attr to the BarData builder, and the reference dataset must point
+    at that same memoized builder.
+    """
+
+    def setUp(self):
+        attr1_attr = AttributeSpec(name='attr1', dtype='text', doc='an example string attribute')
+        attr2_attr = AttributeSpec(name='attr2', dtype='int', doc='an example int attribute')
+        self.bar_data_spec = DatasetSpec(
+            doc='A test dataset specification with a data type',
+            data_type_def='BarData',
+            dtype='int',
+            shape=[None],
+            attributes=[attr1_attr, attr2_attr],
+        )
+        self.bar_ref_dataset_spec = DatasetSpec(
+            doc='A typed dataset of references to BarData',
+            data_type_def='BarRefDataset',
+            dtype=RefSpec(target_type='BarData', reftype='object'),
+            shape=[None],
+        )
+        ext_attr_spec = AttributeSpec(name='ext_attr', dtype='bool', doc='a boolean attribute')
+        ext_bar_data_spec = DatasetSpec(
+            doc='An extended BarData with inc-site ext_attr',
+            data_type_inc='BarData',
+            quantity='?',
+            name='bar_data',
+            attributes=[ext_attr_spec],
+        )
+        # Reference dataset is listed before the direct dataset so the BarData container is reached first
+        # via the reference path; the queued reference resolution then needs the BarData builder to have
+        # ext_attr applied even though it was first encountered through the reference field.
+        ref_inc_spec = DatasetSpec(
+            doc='An included BarRefDataset',
+            data_type_inc='BarRefDataset',
+            quantity='?',
+            name='bar_data_ref',
+        )
+        self.bar_data_ref_holder_spec = GroupSpec(
+            doc='A holder with a direct extended BarData and a reference dataset',
+            data_type_def='BarDataRefHolder',
+            datasets=[ref_inc_spec, ext_bar_data_spec],
+        )
+
+        type_map = create_test_type_map(
+            specs=[self.bar_data_spec, self.bar_ref_dataset_spec, self.bar_data_ref_holder_spec],
+            container_classes={
+                'BarData': BarData,
+                'BarRefDataset': BarRefDataset,
+                'BarDataRefHolder': BarDataRefHolder,
+            },
+            mappers={'BarData': ExtBarDataRefHolderMapper},
+        )
+        self.manager = BuildManager(type_map)
+
+    def test_build_added_attr_with_ref(self):
+        bar_data_inst = BarData(
+            name='bar_data',
+            data=[1, 2, 3],
+            attr1='a string',
+            attr2=10,
+            ext_attr=False,
+        )
+        bar_ref_inst = BarRefDataset(
+            name='bar_data_ref',
+            data=[bar_data_inst],
+        )
+        holder_inst = BarDataRefHolder(
+            name='my_holder',
+            bar_data=bar_data_inst,
+            bar_data_ref=bar_ref_inst,
+        )
+
+        builder = self.manager.build(holder_inst, source='test.h5', root=True)
+
+        # The direct bar_data builder must carry the inc-site ext_attr
+        self.assertIn('bar_data', builder.datasets)
+        bar_data_builder = builder.datasets['bar_data']
+        self.assertEqual(bar_data_builder.attributes['ext_attr'], False)
+        self.assertEqual(bar_data_builder.attributes['attr1'], 'a string')
+        self.assertEqual(bar_data_builder.attributes['attr2'], 10)
+
+        # The reference dataset must point to the same memoized bar_data builder
+        self.assertIn('bar_data_ref', builder.datasets)
+        ref_builder = builder.datasets['bar_data_ref']
+        self.assertEqual(len(ref_builder.data), 1)
+        self.assertIsInstance(ref_builder.data[0], ReferenceBuilder)
+        self.assertIs(ref_builder.data[0].builder, bar_data_builder)
+
+
 class BuildDatasetShapeMixin(TestCase, metaclass=ABCMeta):
 
     def setUp(self):
         self.set_up_specs()
-        spec_catalog = SpecCatalog()
-        spec_catalog.register_spec(self.bar_data_spec, 'test.yaml')
-        spec_catalog.register_spec(self.bar_data_holder_spec, 'test.yaml')
-        namespace = SpecNamespace(
-            doc='a test namespace',
-            name=CORE_NAMESPACE,
-            schema=[{'source': 'test.yaml'}],
-            version='0.1.0',
-            catalog=spec_catalog
+        type_map = create_test_type_map(
+            specs=[self.bar_data_spec, self.bar_data_holder_spec],
+            container_classes={'BarData': BarData, 'BarDataHolder': BarDataHolder},
+            mappers={'BarData': ExtBarDataMapper},
         )
-        namespace_catalog = NamespaceCatalog()
-        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
-        namespace_catalog.resolve_all_specs()
-        type_map = TypeMap(namespace_catalog)
-        type_map.register_container_type(CORE_NAMESPACE, 'BarData', BarData)
-        type_map.register_container_type(CORE_NAMESPACE, 'BarDataHolder', BarDataHolder)
-        type_map.register_map(BarData, ExtBarDataMapper)
-        type_map.register_map(BarDataHolder, ObjectMapper)
         self.manager = BuildManager(type_map)
 
     def set_up_specs(self):
