@@ -182,7 +182,7 @@ jobs:
           environment-file: environment-ros3.yml
           python-version: ${{ matrix.python-ver }}
           channels: conda-forge
-          auto-activate-base: false
+          auto-activate: false
 
       - name: Install run dependencies
         run: |
