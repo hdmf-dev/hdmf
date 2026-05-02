@@ -5,7 +5,7 @@ from collections.abc import Callable
 import numpy as np
 
 from ..container import Container, Data, MultiContainerInterface
-from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec
+from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec, DatasetSpec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from ..utils import docval, getargs, ExtenderMeta, get_docval, popargs, AllowPositional
 
@@ -252,7 +252,7 @@ class CustomClassGenerator:
         docval_arg = dict(
             name=attr_name,
             doc=field_spec.doc,
-            type=cls._get_type(field_spec, type_map)
+            type=dtype,
         )
         shape = getattr(field_spec, 'shape', None)
         if shape is not None:
@@ -307,6 +307,48 @@ class CustomClassGenerator:
 
         # set default name in docval args if provided
         cls._set_default_name(docval_args, spec.default_name)
+
+        if isinstance(spec, DatasetSpec):
+            cls._update_data_docval_arg(docval_args, spec)
+
+    @classmethod
+    def _update_data_docval_arg(cls, docval_args: list, spec: DatasetSpec) -> None:
+        """Update the inherited 'data' docval arg in place to reflect the dataset spec.
+
+        Updates `type`, `doc`, `shape` (when the spec declares one), and `default` (when
+        the spec declares a `default_value`). Other keys are preserved from the parent
+        class's docval, so subclasses don't accidentally lose, e.g., VectorData's
+        empty-list default when the spec doesn't override it.
+
+        Fixed values (`value` on the spec) on dataset types are not yet applied to
+        generated classes.
+
+        :param docval_args: The list of docval arguments to update in place.
+        :param spec: The DatasetSpec for the container class to generate.
+        """
+        if spec.shape is None and spec.dims is None:
+            if spec.dtype is not None:
+                dtype = cls._get_type_from_spec_dtype(spec.dtype)
+            else:
+                dtype = ('scalar_data', 'array_data', 'data')
+        else:
+            dtype = ('array_data', 'data')
+
+        existing_data_arg = next((a for a in docval_args if a['name'] == 'data'), None)
+        if existing_data_arg is not None:
+            existing_data_arg['type'] = dtype
+            existing_data_arg['doc'] = spec.doc
+            if spec.shape is not None:
+                existing_data_arg['shape'] = spec.shape
+            if spec.default_value is not None:
+                existing_data_arg['default'] = spec.default_value
+        else:
+            new_arg = dict(name='data', doc=spec.doc, type=dtype)
+            if spec.shape is not None:
+                new_arg['shape'] = spec.shape
+            if spec.default_value is not None:
+                new_arg['default'] = spec.default_value
+            docval_args.append(new_arg)
 
     @classmethod
     def _get_attrs_not_to_set_init(cls, classdict, parent_docval_args):
