@@ -72,7 +72,7 @@ class TestRos3(TestCase):
         ns_builder.export(self.ns_filename, outdir=self.output_dir)
         ns_path = os.path.join(self.output_dir, self.ns_filename)
 
-        ns_catalog = NamespaceCatalog(NWBGroupSpec, NWBDatasetSpec, NWBNamespace)
+        ns_catalog = NamespaceCatalog(NWBGroupSpec, NWBDatasetSpec, NWBNamespace, core_namespaces=["core"])
         type_map = TypeMap(ns_catalog)
         type_map.merge(get_type_map(), ns_catalog=True)
         type_map.load_namespaces(ns_path)
@@ -123,22 +123,37 @@ class TestRos3(TestCase):
         namespaces = HDF5IO.get_namespaces(s3_path, driver="ros3", aws_region="us-east-2")
         self.assertEqual(namespaces, {'core': '2.3.0', 'hdmf-common': '1.5.0', 'hdmf-experimental': '0.1.0'})
 
+    # The setUp loads a stub "core" namespace at version 0.1.0 to mimic PyNWB. The remote test
+    # file caches "core" at 2.3.0, so loading its namespaces emits a UserWarning that the cached
+    # core is being ignored because another version is already loaded.
+    _ignored_core_re = (
+        r"Ignoring the following cached namespace\(s\) because another version is already loaded:"
+        r"\ncore - cached version: 2\.3\.0, loaded version: 0\.1\.0"
+    )
+
     def test_load_namespaces(self):
         s3_path = "https://dandiarchive.s3.amazonaws.com/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
 
-        HDF5IO.load_namespaces(self.manager.namespace_catalog, path=s3_path, driver="ros3")
+        with self.assertWarnsRegex(UserWarning, self._ignored_core_re):
+            HDF5IO.load_namespaces(self.manager.namespace_catalog, path=s3_path, driver="ros3")
         assert set(self.manager.namespace_catalog.namespaces) == set(["core", "hdmf-common", "hdmf-experimental"])
 
     def test_load_namespaces_with_aws_region(self):
         s3_path = "https://dandiarchive.s3.amazonaws.com/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
 
-        HDF5IO.load_namespaces(self.manager.namespace_catalog, path=s3_path, driver="ros3", aws_region="us-east-2")
+        with self.assertWarnsRegex(UserWarning, self._ignored_core_re):
+            HDF5IO.load_namespaces(
+                self.manager.namespace_catalog, path=s3_path, driver="ros3", aws_region="us-east-2"
+            )
         assert set(self.manager.namespace_catalog.namespaces) == set(["core", "hdmf-common", "hdmf-experimental"])
 
     def test_load_namespaces_s3_with_aws_region(self):
         s3_path = "s3://dandiarchive/blobs/11e/c89/11ec8933-1456-4942-922b-94e5878bb991"
 
-        HDF5IO.load_namespaces(self.manager.namespace_catalog, path=s3_path, driver="ros3", aws_region="us-east-2")
+        with self.assertWarnsRegex(UserWarning, self._ignored_core_re):
+            HDF5IO.load_namespaces(
+                self.manager.namespace_catalog, path=s3_path, driver="ros3", aws_region="us-east-2"
+            )
         assert set(self.manager.namespace_catalog.namespaces) == set(["core", "hdmf-common", "hdmf-experimental"])
 
 
