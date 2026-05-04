@@ -9,10 +9,12 @@ from enum import Enum
 
 import h5py
 import numpy as np
+import pandas as pd
+from pandas.api.extensions import ExtensionArray as _PandasExtensionArray
 
 
 __macros = {
-    'array_data': [np.ndarray, list, tuple, h5py.Dataset],
+    'array_data': [np.ndarray, list, tuple, h5py.Dataset, pd.Series, _PandasExtensionArray],
     'scalar_data': [str, int, float, bytes, bool, datetime.datetime, datetime.date],
     'data': []
 }
@@ -31,6 +33,56 @@ def is_zarr_array(value):
 def is_array_like(value):
     """Return True if ``value`` is a numpy ndarray, h5py Dataset, or zarr Array."""
     return isinstance(value, np.ndarray) or isinstance(value, h5py.Dataset) or is_zarr_array(value)
+
+
+# Pandas nullable dtypes whose ``.to_numpy()`` silently widens or changes the dtype
+# (nullable int -> float64, nullable bool -> object). We refuse these and ask the
+# user to cast explicitly.
+_PANDAS_LOSSY_ARRAY_TYPES = ('IntegerArray', 'BooleanArray', 'FloatingArray')
+
+
+def coerce_pandas_data(data):
+    """Convert a pandas Series or ExtensionArray to a numpy array for HDMF storage.
+
+    HDMF stores dataset values as numpy arrays (or array-likes such as h5py.Dataset).
+    Pandas Series and ExtensionArray inputs are normalized at the construction
+    boundary so that downstream code only has to handle numpy/list/tuple data.
+
+    Raises:
+        TypeError: if the input contains missing values (pd.NA / np.nan), which
+            cannot be serialized to HDF5 variable-length string datasets, or if
+            the input is a pandas nullable numeric/boolean dtype where conversion
+            to numpy would silently change the dtype.
+    """
+    if isinstance(data, pd.Series):
+        underlying = data.array
+    elif isinstance(data, _PandasExtensionArray):
+        underlying = data
+    else:
+        return data
+
+    if pd.isna(underlying).any():
+        raise TypeError(
+            "Cannot construct an HDMF dataset from pandas data containing missing "
+            "values (pd.NA or NaN). HDF5 cannot serialize missing values in "
+            "variable-length string datasets, and HDMF does not yet support "
+            "missing values for other dtypes. Replace missing values with a "
+            "sentinel (e.g., empty string) before passing the data to HDMF."
+        )
+
+    cls_name = type(underlying).__name__
+    if cls_name in _PANDAS_LOSSY_ARRAY_TYPES:
+        raise TypeError(
+            "Cannot construct an HDMF dataset from a pandas %s without an "
+            "explicit dtype cast: converting to numpy would silently change "
+            "the dtype (nullable int -> float64, nullable bool -> object). "
+            "Cast first, e.g. ``series.astype('int64').to_numpy()`` or "
+            "``array.to_numpy(dtype=np.int64)``." % cls_name
+        )
+
+    if isinstance(data, pd.Series):
+        return data.to_numpy()
+    return np.asarray(data)
 
 if ZARR_INSTALLED:
     # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
