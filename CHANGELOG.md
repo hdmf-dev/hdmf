@@ -1,6 +1,12 @@
 # HDMF Changelog
 
-## Unreleased
+## HDMF 6.0.1 (May 5, 2026)
+
+### Fixed
+- Fixed ROS3 streaming tests that failed against libhdf5 >= 2.0, which now requires `aws_region` for ROS3. Updated `tests/unit/test_io_hdf5_streaming.py` to always pass `aws_region` and bumped `environment-ros3.yml` to install libhdf5 >= 2.0 so CI exercises the new behavior. @rly [#1471](https://github.com/hdmf-dev/hdmf/pull/1471)
+
+
+## HDMF 6.0.0 (May 4, 2026)
 
 ### Breaking changes
 - `HDF5IO` `expandable` argument is now a list of data type names instead of a boolean. The default is `("VectorData", "ElementIdentifiers")`, so only `DynamicTable` columns and id are expandable out of the box — previously every dataset with a matching spec shape was expanded. Datasets of types outside this list that previously were expandable by default will now default to fixed-shape on-disk layout; add the relevant type to `expandable` to restore prior behavior. Replace `expandable=True` with an explicit list (e.g. `["VectorData", "ElementIdentifiers", "MyType"]`) and `expandable=False` with `[]`; passing `True`/`False` now raises a `TypeError`. @bendichter @rly [#1439](https://github.com/hdmf-dev/hdmf/pull/1439)

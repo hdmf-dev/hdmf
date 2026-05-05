@@ -182,12 +182,12 @@ jobs:
           environment-file: environment-ros3.yml
           python-version: ${{ matrix.python-ver }}
           channels: conda-forge
-          auto-activate-base: false
+          auto-activate: false
 
       - name: Install run dependencies
         run: |
-          pip install .
-          pip list
+          python -m pip install .
+          python -m pip list
 
       - name: Conda reporting
         run: |
@@ -197,4 +197,4 @@ jobs:
 
       - name: Run ros3 tests  # TODO include gallery tests after they are written
         run: |
-          pytest tests/unit/test_io_hdf5_streaming.py
+          python -m pytest tests/unit/test_io_hdf5_streaming.py
