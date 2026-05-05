@@ -7,7 +7,7 @@ dependencies:
   - python==3.14
   - pip
   - h5py==3.16.0
-  - hdf5>=2.0
+  - hdf5==2.1.0
   - matplotlib==3.10.8
   - numpy==2.4.2
   - pandas==2.3.3
