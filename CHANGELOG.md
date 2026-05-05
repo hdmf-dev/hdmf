@@ -1,5 +1,11 @@
 # HDMF Changelog
 
+## HDMF 6.0.1 (Upcoming)
+
+### Fixed
+- Fixed ROS3 streaming tests that failed against libhdf5 >= 2.0, which now requires `aws_region` for ROS3. Updated `tests/unit/test_io_hdf5_streaming.py` to always pass `aws_region` and bumped `environment-ros3.yml` to install libhdf5 >= 2.0 so CI exercises the new behavior. @rly [#1470](https://github.com/hdmf-dev/hdmf/issues/1470)
+
+
 ## HDMF 6.0.0 (May 4, 2026)
 
 ### Breaking changes
