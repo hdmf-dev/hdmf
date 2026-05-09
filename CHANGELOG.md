@@ -8,9 +8,26 @@
 ### Enhancements
 - Set sensible default chunk sizes (~4 MB, in the recommended 2-16 MB range for cloud-hosted files) when `chunks=True`, replacing h5py's much smaller defaults. Added public `HDF5IO.compute_default_chunk_shape()` so users can inspect or override the chunk shape that would be used. @bendichter [#1440](https://github.com/hdmf-dev/hdmf/pull/1440)
 
+## HDMF 6.0.1 (May 5, 2026)
+
+### Fixed
+- Fixed ROS3 streaming tests that failed against libhdf5 >= 2.0, which now requires `aws_region` for ROS3. Updated `tests/unit/test_io_hdf5_streaming.py` to always pass `aws_region` and bumped `environment-ros3.yml` to install libhdf5 >= 2.0 so CI exercises the new behavior. @rly [#1471](https://github.com/hdmf-dev/hdmf/pull/1471)
+
+
+## HDMF 6.0.0 (May 4, 2026)
+
+### Breaking changes
+- `HDF5IO` `expandable` argument is now a list of data type names instead of a boolean. The default is `("VectorData", "ElementIdentifiers")`, so only `DynamicTable` columns and id are expandable out of the box — previously every dataset with a matching spec shape was expanded. Datasets of types outside this list that previously were expandable by default will now default to fixed-shape on-disk layout; add the relevant type to `expandable` to restore prior behavior. Replace `expandable=True` with an explicit list (e.g. `["VectorData", "ElementIdentifiers", "MyType"]`) and `expandable=False` with `[]`; passing `True`/`False` now raises a `TypeError`. @bendichter @rly [#1439](https://github.com/hdmf-dev/hdmf/pull/1439)
+- Renamed the `spec_ext` kwarg to `matched_spec` on `BuildManager.build`, `TypeMap.build`, and `ObjectMapper.build` to reflect that it now records the matched subspec on the resulting builder via the new `Builder.matched_spec` slot. Removed the now-unused `spec_dtype` kwarg from `ObjectMapper.convert_dtype`. Callers passing these kwargs will get a `TypeError`. @rly [#1458](https://github.com/hdmf-dev/hdmf/pull/1458)
+
+### Enhancements
+- Set sensible default chunk sizes (~4 MB, in the recommended 2-16 MB range for cloud-hosted files) when `chunks=True`, replacing h5py's much smaller defaults. Added public `HDF5IO.compute_default_chunk_shape()` so users can inspect or override the chunk shape that would be used. @bendichter [#1440](https://github.com/hdmf-dev/hdmf/pull/1440)
+- Added end-to-end support for `isodatetime`/`datetime` dtype on datasets and attributes, including extension specs that refine an inherited type. Reading now parses stored ISO 8601 values back into Python `datetime`/`date` objects, and `get_class`-generated classes accept `datetime`/`date` values (scalar and array) for the `data` arg, which is now derived from the spec's dtype and shape. Introduced a new write-once `Builder.matched_spec` slot that records the subspec each builder was matched to, populated by both the read-path matcher and the write-path build sites in `ObjectMapper`. @rly [#1458](https://github.com/hdmf-dev/hdmf/pull/1458)
+
 ### Fixed
 - Added missing validation for dataset reference target types to ensure correct `RefSpec.target_type` matching. @sejalpunwatkar [#1429](https://github.com/hdmf-dev/hdmf/pull/1429)
 - Fixed reading a `DynamicTable` that contains a named link to a `VectorData` (e.g., `MeaningsTable.target`). The link target was being picked up as an extra column, causing a `"Columns must be the same length"` error when the target column's row count differed from the table's own row count. @rly [#1445](https://github.com/hdmf-dev/hdmf/pull/1445)
+- Fixed building typed datasets whose inc-site spec declares `dtype: isodatetime` or `dtype: datetime` (e.g., a `VectorData` column refined as a date column), which previously raised `Expected unicode or ascii string, got <class 'datetime.date'>`. @rly [#1458](https://github.com/hdmf-dev/hdmf/pull/1458)
 
 
 ## HDMF 5.1.0 (March 24, 2026)
