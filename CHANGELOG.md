@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 6.0.2 (Unreleased)
+
+### Fixed
+- Added `numpy.generic` to the `scalar_data` docval macro so that numpy scalar types (e.g. `numpy.uint64`) are accepted as scalar data values. This fixes a compatibility issue with numpy 2.0, which removed `__iter__` from numpy scalars and caused them to be rejected by `DatasetBuilder`. @rly [#1474](https://github.com/hdmf-dev/hdmf/pull/1474)
+
 ## HDMF 6.0.1 (May 5, 2026)
 
 ### Fixed

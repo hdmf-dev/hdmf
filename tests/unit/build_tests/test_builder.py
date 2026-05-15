@@ -1,3 +1,5 @@
+import numpy as np
+
 from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from hdmf.testing import TestCase
 
@@ -379,6 +381,14 @@ class TestDatasetBuilder(TestCase):
         msg = 'Cannot overwrite parent.'
         with self.assertRaisesWith(AttributeError, msg):
             db1.parent = gb1
+
+    def test_constructor_numpy_scalar_data(self):
+        """DatasetBuilder must accept numpy scalar types as data (numpy 2.x removed __iter__ from scalars)."""
+        for dtype in (np.uint8, np.uint16, np.uint32, np.uint64, np.int32, np.int64, np.float32, np.float64, np.bool_):
+            with self.subTest(dtype=dtype):
+                val = dtype(5)
+                db = DatasetBuilder(name='db', data=val)
+                self.assertIs(db.data, val)
 
     def test_repr(self):
         gb1 = GroupBuilder('gb1')

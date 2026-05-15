@@ -13,7 +13,7 @@ import numpy as np
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float, bytes, bool, datetime.datetime, datetime.date],
+    'scalar_data': [str, int, float, bytes, bool, datetime.datetime, datetime.date, np.generic],
     'data': []
 }
 
