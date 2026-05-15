@@ -1086,7 +1086,7 @@ class TestMacro(TestCase):
 
         self.assertTupleEqual(
             get_docval_macro('scalar_data'),
-            (str, int, float, bytes, bool, datetime.datetime, datetime.date),
+            (str, int, float, bytes, bool, datetime.datetime, datetime.date, np.generic),
         )
 
         @docval_macro('scalar_data')
@@ -1095,7 +1095,7 @@ class TestMacro(TestCase):
 
         self.assertTupleEqual(
             get_docval_macro('scalar_data'),
-            (str, int, float, bytes, bool, datetime.datetime, datetime.date, Dummy1),
+            (str, int, float, bytes, bool, datetime.datetime, datetime.date, np.generic, Dummy1),
         )
 
         @docval_macro('dummy')
