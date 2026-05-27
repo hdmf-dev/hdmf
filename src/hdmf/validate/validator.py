@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 
 from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
-from .errors import ExpectedArrayError, IncorrectQuantityError
+from .errors import ExpectedArrayError, IncorrectQuantityError, ValidationResult
 from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
@@ -270,7 +270,7 @@ class ValidatorMap:
             raise ValueError(msg)
 
     @docval({'name': 'builder', 'type': BaseBuilder, 'doc': 'the builder to validate'},
-            returns="a list of errors found", rtype=list)
+            returns="a list of errors found", rtype=(list, ValidationResult))
     def validate(self, **kwargs):
         """Validate a builder against a Spec
 
@@ -283,7 +283,8 @@ class ValidatorMap:
             msg = "builder must have data type defined with attribute '%s'" % self.__type_key
             raise ValueError(msg)
         validator = self.get_validator(dt)
-        return validator.validate(builder)
+        errors_list = validator.validate(builder)
+        return ValidationResult(errors=errors_list, warnings=[])
 
 
 class Validator(metaclass=ABCMeta):

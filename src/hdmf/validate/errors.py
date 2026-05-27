@@ -85,6 +85,78 @@ class Error:
         return hash(self) == hash(other)
 
 
+class ValidationWarning:
+
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
+            {'name': 'reason', 'type': str, 'doc': 'the reason for the warning'},
+            {'name': 'location', 'type': str, 'doc': 'the location of the warning', 'default': None})
+    def __init__(self, **kwargs):
+        self.__name = getargs('name', kwargs)
+        self.__reason = getargs('reason', kwargs)
+        self.__location = getargs('location', kwargs)
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def reason(self):
+        return self.__reason
+
+    @property
+    def location(self):
+        return self.__location
+
+    @location.setter
+    def location(self, loc):
+        self.__location = loc
+
+    def __str__(self):
+        return self.__format_str(self.name, self.location, self.reason)
+
+    @staticmethod
+    def __format_str(name, location, reason):
+        if location is not None:
+            return "%s (%s): %s" % (name, location, reason)
+        else:
+            return "%s: %s" % (name, reason)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __hash__(self):
+        return hash(self.__equatable_str())
+
+    def __equatable_str(self):
+        if self.location is not None:
+            equatable_name = self.name.split('/')[-1]
+        else:
+            equatable_name = self.name
+        return self.__format_str(equatable_name, self.location, self.reason)
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+    
+
+class ValidationResult:
+    
+    def __init__(self, errors = None, warnings = None):
+        self.errors = list(errors) if errors is not None else []
+        self.warnings = list(warnings) if errors is not None else []
+
+    def __iter__(self):
+        return iter(self.errors)
+    
+    def __len__(self):
+        return len(self.errors)
+    
+    def __bool__(self):
+        return bool(self.errors)
+    
+    def __getitem__(self, i):
+        return self.errors[i]
+
+
 class DtypeError(Error):
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
