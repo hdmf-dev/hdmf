@@ -136,23 +136,23 @@ class ValidationWarning:
 
     def __eq__(self, other):
         return hash(self) == hash(other)
-    
+
 
 class ValidationResult:
-    
+
     def __init__(self, errors = None, warnings = None):
         self.errors = list(errors) if errors is not None else []
         self.warnings = list(warnings) if errors is not None else []
 
     def __iter__(self):
         return iter(self.errors)
-    
+
     def __len__(self):
         return len(self.errors)
-    
+
     def __bool__(self):
         return bool(self.errors)
-    
+
     def __getitem__(self, i):
         return self.errors[i]
 
