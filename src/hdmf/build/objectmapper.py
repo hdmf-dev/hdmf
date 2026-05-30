@@ -1,3 +1,4 @@
+import datetime
 import logging
 import re
 import warnings
@@ -18,10 +19,11 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from ..container import AbstractContainer, Data
 from ..term_set import TermSetWrapper
 from ..data_utils import DataIO, AbstractDataChunkIterator
+from ..utils import _is_collection, _get_length, _unwrap_scalar
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
 from ..spec.spec import BaseStorageSpec
-from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape, is_zarr_array, StrDataset
+from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape, is_array_like, is_zarr_array, StrDataset
 
 
 _const_arg = '__constructor_arg'
@@ -93,6 +95,44 @@ def _ascii(s):
         raise ValueError("Expected unicode or ascii string, got %s" % type(s))
 
 
+def _isoformat(s):
+    """Convert datetime/date/str to ASCII-encoded ISO 8601 bytes; pass through bytes unchanged.
+
+    Strings are encoded with strict ASCII (no error handler) since ISO 8601 values are
+    always ASCII. Non-ASCII input raises UnicodeEncodeError, in contrast to ``_ascii`` which
+    uses ``'backslashreplace'`` to preserve general string content.
+    """
+    if isinstance(s, (datetime.datetime, datetime.date)):
+        return s.isoformat().encode('ascii')
+    if isinstance(s, str):
+        return s.encode('ascii')
+    if isinstance(s, bytes):
+        return s
+    raise ValueError("Expected datetime, date, str, or bytes, got %s" % type(s))
+
+
+def _parse_isoformat(value: str | bytes | datetime.datetime | datetime.date):
+    """Parse an ISO 8601 str/bytes back into a datetime or date.
+
+    Returns a datetime if the string carries a time component (contains 'T' or a space),
+    otherwise a date. Non-str/bytes inputs pass through unchanged so the helper is
+    idempotent when a value has already been parsed.
+
+    :param value: the value to parse. ASCII-encoded bytes are decoded first; str values are
+        parsed via ``datetime.fromisoformat`` or ``date.fromisoformat``; anything else
+        (e.g., a ``datetime``/``date`` already produced by an earlier call) is returned as-is.
+    :return: a ``datetime.datetime`` or ``datetime.date`` for parseable str/bytes input; the
+        unchanged ``value`` otherwise.
+    """
+    if isinstance(value, bytes):
+        value = value.decode('ascii')
+    if not isinstance(value, str):
+        return value
+    if 'T' in value or ' ' in value:
+        return datetime.datetime.fromisoformat(value)
+    return datetime.date.fromisoformat(value)
+
+
 class ObjectMapper(metaclass=ExtenderMeta):
     '''A class for mapping between Spec objects and AbstractContainer attributes
 
@@ -126,8 +166,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         "utf-8": _unicode,
         "ascii": _ascii,
         "bytes": _ascii,
-        "isodatetime": _ascii,
-        "datetime": _ascii,
+        "isodatetime": _isoformat,
+        "datetime": _isoformat,
     }
 
     __no_convert = set()
@@ -186,7 +226,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         cls.__no_convert.add(obj_type)
 
     @classmethod
-    def convert_dtype(cls, spec, value, spec_dtype=None) -> tuple:  # noqa: C901
+    def convert_dtype(cls, spec, value) -> tuple:  # noqa: C901
         """
         Convert values to the specified dtype. For example, if a literal int
         is passed in to a field that is specified as a unsigned integer, this function
@@ -194,17 +234,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
 
         :param spec: The DatasetSpec or AttributeSpec to which this value is being applied
         :param value: The value being converted to the spec dtype
-        :param spec_dtype: Optional override of the dtype in spec.dtype. Used to specify the parent dtype when the given
-                           extended spec lacks a dtype.
 
         :return: The function returns a tuple consisting of 1) the value, and 2) the data type.
                  The value is returned as the function may convert the input value to comply
                  with the dtype specified in the schema.
         """
-        if spec_dtype is None:
-            spec_dtype = spec.dtype
         # Disallow structured arrays (compound dtypes) if the spec has no dtype
-        if spec_dtype is None:
+        if spec.dtype is None:
             if isinstance(value, np.ndarray) and value.dtype.fields is not None:
                 """
                 value.dtype.fields is not None will check to see if the array
@@ -216,11 +252,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     f"but no dtype was specified in the spec. "
                     f"Structured dtypes must be explicitly defined in the schema or a extension."
                 )
-        ret, ret_dtype = cls.__check_edgecases(spec, value, spec_dtype)
+        ret, ret_dtype = cls.__check_edgecases(spec, value)
         if ret is not None or ret_dtype is not None:
             return ret, ret_dtype
-        # spec_dtype is a string, spec_dtype_type is a type or the conversion helper functions _unicode or _ascii
-        spec_dtype_type = cls.__dtypes[spec_dtype]
+        # spec.dtype is a string, spec_dtype_type is a type or the conversion helper functions _unicode or _ascii
+        spec_dtype_type = cls.__dtypes[spec.dtype]
         warning_msg = None
         # Numpy Array or Zarr array
         # NOTE: Numpy < 2.0 has only fixed-length strings.
@@ -231,7 +267,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 # Zarr stores strings as objects, so we cannot convert to unicode dtype
                 ret = value
                 ret_dtype = "utf8"
-            elif spec_dtype_type is _ascii:
+            elif spec_dtype_type in (_ascii, _isoformat):
                 # Zarr stores strings as objects, so we cannot convert to ascii dtype
                 ret = value
                 ret_dtype = "ascii"
@@ -249,6 +285,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 else:
                     ret = value.astype('U')
                 ret_dtype = "utf8"
+            elif spec_dtype_type is _isoformat:
+                if value.dtype.kind == 'O':
+                    # Apply _isoformat elementwise so datetime/date objects use the ISO 8601
+                    # 'T' separator. numpy's astype('S') would fall back to str(dt), which
+                    # produces a space-separated form.
+                    flat = np.array([_isoformat(v) for v in value.ravel()], dtype='S')
+                    ret = flat.reshape(value.shape)
+                else:
+                    ret = value.astype('S')
+                ret_dtype = "ascii"
             elif spec_dtype_type is _ascii:
                 ret = value.astype('S')
                 ret_dtype = "ascii"
@@ -264,14 +310,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
             if len(value) == 0:
                 if spec_dtype_type is _unicode:
                     ret_dtype = 'utf8'
-                elif spec_dtype_type is _ascii:
+                elif spec_dtype_type in (_ascii, _isoformat):
                     ret_dtype = 'ascii'
                 else:
                     ret_dtype = spec_dtype_type
                 return value, ret_dtype
             ret = list()
             for elem in value:
-                tmp, tmp_dtype = cls.convert_dtype(spec, elem, spec_dtype)
+                tmp, tmp_dtype = cls.convert_dtype(spec, elem)
                 ret.append(tmp)
             ret = type(value)(ret)
             ret_dtype = tmp_dtype
@@ -280,12 +326,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
             ret = value
             if spec_dtype_type is _unicode:
                 ret_dtype = "utf8"
-            elif spec_dtype_type is _ascii:
+            elif spec_dtype_type in (_ascii, _isoformat):
                 ret_dtype = "ascii"
             else:
                 ret_dtype, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
         else:
-            if spec_dtype_type in (_unicode, _ascii):
+            if spec_dtype_type in (_unicode, _ascii, _isoformat):
                 ret_dtype = 'ascii'
                 if spec_dtype_type is _unicode:
                     ret_dtype = 'utf8'
@@ -326,7 +372,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 cls.__check_for_complex_numbers(item)
 
     @classmethod
-    def __check_edgecases(cls, spec, value, spec_dtype):  # noqa: C901
+    def __check_edgecases(cls, spec, value):  # noqa: C901
         """
         Check edge cases in converting data to a dtype
         """
@@ -334,14 +380,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
         cls.__check_for_complex_numbers(value)
         if value is None:
             # Data is missing. Determine dtype from spec
-            dt = spec_dtype
+            dt = spec.dtype
             if isinstance(dt, RefSpec):
                 dt = dt.reftype
             return None, dt
-        if isinstance(spec_dtype, list):
+        if isinstance(spec.dtype, list):
             # compound dtype - Since the I/O layer needs to determine how to handle these,
             # return the list of DtypeSpecs
-            return value, spec_dtype
+            return value, spec.dtype
         if isinstance(value, DataIO):
             # data is wrapped for I/O via DataIO
             if value.data is None:
@@ -349,11 +395,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 return value, value.dtype
             else:
                 # Determine the dtype from the DataIO.data
-                return value, cls.convert_dtype(spec, value.data, spec_dtype)[1]
-        if spec_dtype is None or spec_dtype == 'numeric' or type(value) in cls.__no_convert:
+                return value, cls.convert_dtype(spec, value.data)[1]
+        if spec.dtype is None or spec.dtype == 'numeric' or type(value) in cls.__no_convert:
             # infer type from value
             if hasattr(value, 'dtype'):  # covers numpy types, Zarr Array, AbstractDataChunkIterator
-                if spec_dtype == 'numeric':
+                if spec.dtype == 'numeric':
                     cls.__check_convert_numeric(value.dtype.type)
                 if np.issubdtype(value.dtype, np.str_):
                     ret_dtype = 'utf8'
@@ -370,22 +416,22 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if len(value) == 0:
                     msg = "Cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
                     raise ValueError(msg)
-                return value, cls.__check_edgecases(spec, value[0], spec_dtype)[1]  # infer dtype from first element
+                return value, cls.__check_edgecases(spec, value[0])[1]  # infer dtype from first element
             ret_dtype = type(value)
-            if spec_dtype == 'numeric':
+            if spec.dtype == 'numeric':
                 cls.__check_convert_numeric(ret_dtype)
             if ret_dtype is str:
                 ret_dtype = 'utf8'
             elif ret_dtype is bytes:
                 ret_dtype = 'ascii'
             return value, ret_dtype
-        if isinstance(spec_dtype, RefSpec):
+        if isinstance(spec.dtype, RefSpec):
             if not isinstance(value, ReferenceBuilder):
                 msg = "got RefSpec for value of type %s" % type(value)
                 raise ValueError(msg)
-            return value, spec_dtype
-        if spec_dtype is not None and spec_dtype not in cls.__dtypes:  # pragma: no cover
-            msg = "unrecognized dtype: %s -- cannot convert value" % spec_dtype
+            return value, spec.dtype
+        if spec.dtype is not None and spec.dtype not in cls.__dtypes:  # pragma: no cover
+            msg = "unrecognized dtype: %s -- cannot convert value" % spec.dtype
             raise ValueError(msg)
         return None, None
 
@@ -681,6 +727,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     string_type = bytes
                 elif 'isodatetime' in spec.dtype:
                     def string_type(x):
+                        if isinstance(x, (str, bytes)):
+                            return x  # already an ISO 8601 string, pass through
                         return x.isoformat()  # method works for both date and datetime
                 if string_type is not None:
                     if spec.shape is not None or spec.dims is not None:
@@ -763,7 +811,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
             {"name": "source", "type": str,
              "doc": "the source of container being built i.e. file path", 'default': None},
             {"name": "builder", "type": BaseBuilder, "doc": "the Builder to build on", 'default': None},
-            {"name": "spec_ext", "type": BaseStorageSpec, "doc": "a spec extension", 'default': None},
+            {"name": "matched_spec", "type": BaseStorageSpec,
+             "doc": ("the position-resolved subspec for this container in its parent's spec tree, used to compute "
+                     "dtype/shape for the new dataset builder before it exists. Stored on the resulting builder as "
+                     "`builder.matched_spec` so post-creation consumers can read it without re-deriving the match."),
+             'default': None},
             returns="the Builder representing the given AbstractContainer", rtype=Builder)
     def build(self, **kwargs):
         '''Convert an AbstractContainer to a Builder representation.
@@ -771,13 +823,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
         References are not added but are queued to be added in the BuildManager.
         '''
         container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
-        builder, spec_ext = getargs('builder', 'spec_ext', kwargs)
+        builder, matched_spec = getargs('builder', 'matched_spec', kwargs)
         name = manager.get_builder_name(container)
         if isinstance(self.__spec, GroupSpec):
             self.logger.debug("Building %s '%s' as a group (source: %s)"
                               % (container.__class__.__name__, container.name, repr(source)))
             if builder is None:
                 builder = GroupBuilder(name, parent=parent, source=source)
+            if matched_spec is not None:
+                self.__set_matched_spec(builder, matched_spec)
             self.__add_datasets(builder, self.__spec.datasets, container, manager, source)
             self.__add_groups(builder, self.__spec.groups, container, manager, source)
             self.__add_links(builder, self.__spec.links, container, manager, source)
@@ -786,9 +840,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if not isinstance(container, Data):
                     msg = "'container' must be of type Data with DatasetSpec"
                     raise ValueError(msg)
-                spec_dtype, spec_shape, spec_dims, spec = self.__check_dset_spec(self.spec, spec_ext)
-                dimension_labels = self.__get_dimension_labels_from_spec(container.data, spec_shape, spec_dims)
-                if isinstance(spec_dtype, RefSpec):
+                # Position override info has to be consumed before the dataset builder is created.
+                # After creation, downstream code reads the override from builder.matched_spec instead.
+                # The position subspec (when given) already has dtype/shape/dims merged from the def-site
+                # type via namespace resolution at load time, so we just pick whichever spec is more specific.
+                spec = matched_spec if matched_spec is not None else self.spec
+                dimension_labels, matched_shape = self.__get_spec_info(container.data, spec)
+                if isinstance(spec.dtype, RefSpec):
                     self.logger.debug("Building %s '%s' as a dataset of references (source: %s)"
                                       % (container.__class__.__name__, container.name, repr(source)))
                     # create dataset builder with data=None as a placeholder. fill in with refs later
@@ -797,11 +855,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         data=None,
                         parent=parent,
                         source=source,
-                        dtype=spec_dtype.reftype,
+                        dtype=spec.dtype.reftype,
+                        matched_spec_shape=matched_shape,
                         dimension_labels=dimension_labels,
                     )
-                    manager.queue_ref(self.__set_dataset_to_refs(builder, spec_dtype, spec_shape, container, manager))
-                elif isinstance(spec_dtype, list):
+                    manager.queue_ref(self.__set_dataset_to_refs(builder, spec, container, manager))
+                elif isinstance(spec.dtype, list):
                     # a compound dataset
                     self.logger.debug("Building %s '%s' as a dataset of compound dtypes (source: %s)"
                                       % (container.__class__.__name__, container.name, repr(source)))
@@ -811,14 +870,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         data=None,
                         parent=parent,
                         source=source,
-                        dtype=spec_dtype,
+                        dtype=spec.dtype,
+                        matched_spec_shape=matched_shape,
                         dimension_labels=dimension_labels,
                     )
-                    manager.queue_ref(self.__set_compound_dataset_to_refs(builder, spec, spec_dtype, container,
-                                                                          manager))
+                    manager.queue_ref(self.__set_compound_dataset_to_refs(builder, spec, container, manager))
                 else:
                     # a regular dtype
-                    if spec_dtype is None and self.__is_reftype(container.data):
+                    if spec.dtype is None and self.__is_reftype(container.data):
                         self.logger.debug("Building %s '%s' containing references as a dataset of unspecified dtype "
                                           "(source: %s)"
                                           % (container.__class__.__name__, container.name, repr(source)))
@@ -830,6 +889,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             parent=parent,
                             source=source,
                             dtype="object",
+                            matched_spec_shape=matched_shape,
                             dimension_labels=dimension_labels,
                         )
                         manager.queue_ref(self.__set_untyped_dataset_to_refs(builder, container, manager))
@@ -838,12 +898,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         self.logger.debug("Building %s '%s' as a dataset (source: %s)"
                                           % (container.__class__.__name__, container.name, repr(source)))
                         try:
-                            # use spec_dtype from self.spec when spec_ext does not specify dtype
                             if isinstance(container.data, TermSetWrapper):
                                 data = container.data.value
                             else:
                                 data = container.data
-                            bldr_data, dtype = self.convert_dtype(spec, data, spec_dtype=spec_dtype)
+                            bldr_data, dtype = self.convert_dtype(spec, data)
                         except Exception as ex:
                             msg = f"could not resolve dtype for {type(container).__name__} '{container.name}'"
                             full_msg = f"{msg}: {str(ex)}"
@@ -855,87 +914,144 @@ class ObjectMapper(metaclass=ExtenderMeta):
                             parent=parent,
                             source=source,
                             dtype=dtype,
+                            matched_spec_shape=matched_shape,
                             dimension_labels=dimension_labels,
                         )
+                if matched_spec is not None:
+                    self.__set_matched_spec(builder, matched_spec)
 
-        # Add attributes from the specification extension to the list of attributes
-        all_attrs = self.__spec.attributes + getattr(spec_ext, 'attributes', tuple())
-        # If the spec_ext refines an existing attribute it will now appear twice in the list. The
-        # refinement should only be relevant for validation (not for write). To avoid problems with the
-        # write we here remove duplicates and keep the original spec of the two to make write work.
+        # Combine def-site attrs with any inc-site additions from matched_spec. When an attribute
+        # name appears in both (an inc-site refinement of a def-site attr), the dedup below keeps
+        # the def-site spec object: the mapper's __spec2attr map is built at mapper init time from
+        # self.__spec.attributes, so the inc-site refined spec object is not registered there
+        # and `get_attribute(refined_spec)` would return None — silently dropping the attribute.
+        # This means refinements like dtype=int8 are validation-only at write time today.
+        # Two follow-ups would let refinements bind the write:
+        #   - #1461: make namespace resolution recurse into named-untyped GroupSpec subspecs so
+        #     matched_spec.attributes is complete for nested-typed subspecs.
+        #   - #1462: fix __spec2attr's object-identity coupling so inc-site refined specs resolve
+        #     to a container attribute name.
+        # After both land, the def-site fallback below can be replaced with just matched_spec.
         # TODO: We should add validation in the AttributeSpec to make sure refinements are valid
-        # TODO: Check the BuildManager as refinements should probably be resolved rather than be passed in via spec_ext
+        all_attrs = self.__spec.attributes + getattr(builder.matched_spec, 'attributes', tuple())
         all_attrs = list({a.name: a for a in all_attrs[::-1]}.values())
         self.__add_attributes(builder, all_attrs, container, manager)
         return builder
 
-    def __check_dset_spec(self, orig, ext):
+    def __get_matched_dimension(self, data_shape, spec_shape):
         """
-        Check a dataset spec against a refining spec to see which dtype and shape should be used
-        """
-        dtype = orig.dtype
-        shape = orig.shape
-        dims = orig.dims
-        spec = orig
-        if ext is not None:
-            if ext.dtype is not None:
-                dtype = ext.dtype
-            if ext.shape is not None:
-                shape = ext.shape
-                dims = ext.dims
-            spec = ext
-        return dtype, shape, dims, spec
+        Determine which allowed shapes match the given data shape.
 
-    def __get_dimension_labels_from_spec(self, data, spec_shape, spec_dims) -> tuple:
-        if spec_shape is None or spec_dims is None:
-            return None
-        data_shape = get_data_shape(data)
-        # if shape is a list of allowed shapes, find the index of the shape that matches the data
-        if isinstance(spec_shape[0], list):
-            match_shape_inds = list()
-            for i, s in enumerate(spec_shape):
-                # skip this shape if it has a different number of dimensions from the data
-                if len(s) != len(data_shape):
-                    continue
-                # check each dimension. None means any length is allowed
-                match = True
-                for j, d in enumerate(data_shape):
-                    if s[j] is not None and s[j] != d:
-                        match = False
-                        break
-                if match:
-                    match_shape_inds.append(i)
-            # use the most specific match -- the one with the fewest Nones
-            if match_shape_inds:
-                if len(match_shape_inds) == 1:
-                    return tuple(spec_dims[match_shape_inds[0]])
+        Parameters
+        ----------
+        data_shape : tuple or list of int
+            The shape of the data being validated.
+        spec_shape : list of list
+            A list of alternative shapes, where each element is itself a shape
+            specification (a list of dimension lengths or ``None``, where ``None``
+            means any length is allowed for that dimension).
+
+        Returns
+        -------
+        list of int
+            A list of indices into ``spec_shape`` whose shape specifications match
+            ``data_shape``. Returns an empty list if no shapes match.
+        """
+        match_shape_inds = list()
+        for i, s in enumerate(spec_shape):
+            # skip this shape if it has a different number of dimensions from the data
+            if len(s) != len(data_shape):
+                continue
+            # check each dimension. None means any length is allowed
+            match = True
+            for j, d in enumerate(data_shape):
+                if s[j] is not None and s[j] != d:
+                    match = False
+                    break
+            if match:
+                match_shape_inds.append(i)
+        return match_shape_inds
+
+    def __get_spec_info(self, data, spec):
+        """
+        Determine the dimension labels and shape for data based on the allowed shapes in the spec.
+
+        This method compares the shape of ``data`` against the allowed shapes defined in
+        ``spec.shape`` and, if possible, selects the best-matching shape and corresponding
+        dimension labels from ``spec.dims``.
+
+        Parameters
+        ----------
+        data
+            The data object whose shape is to be matched against the specification. This may be
+            any array-like object supported by :func:`get_data_shape`.
+        spec
+            The DatasetSpec or AttributeSpec providing ``shape``, ``dims``, and ``dtype`` to
+            match against. When ``spec.dtype`` is a list (compound dtype), the data is treated
+            as 1D with length equal to ``len(data)`` for the purpose of shape matching.
+
+        Returns
+        -------
+        tuple
+            A 2-tuple ``(dims, shape)`` where:
+
+            * ``dims`` is either ``None`` or a tuple of selected dimension labels.
+            * ``shape`` is either ``None`` or a tuple of dimension lengths corresponding to
+              the best-matching allowed shape.
+
+            If no matching shape is found, or if ``spec.shape`` is ``None``, the method
+            returns ``(None, None)``.
+        """
+        spec_shape = spec.shape
+        spec_dims = spec.dims
+        if spec_shape is None:
+            return None, None
+        else:
+            if isinstance(spec.dtype, list):
+                data_shape = (_get_length(data),)
+            else:
+                data_shape = get_data_shape(data)
+
+            if isinstance(spec_shape[0], list):
+                match_shape_inds = self.__get_matched_dimension(data_shape, spec_shape)
+                if len(match_shape_inds) == 0:
+                    # no matches found
+                    msg = "Shape of data does not match any allowed shapes in spec '%s'" % self.spec.path
+                    warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
+                    return None, None
+                elif len(match_shape_inds) == 1:
+                    if spec_dims is not None:
+                        return tuple(spec_dims[match_shape_inds[0]]), tuple(spec_shape[match_shape_inds[0]])
+                    else:
+                        return spec_dims, tuple(spec_shape[match_shape_inds[0]])
                 else:
                     count_nones = [len([x for x in spec_shape[k] if x is None]) for k in match_shape_inds]
                     index_min_count = count_nones.index(min(count_nones))
                     best_match_ind = match_shape_inds[index_min_count]
-                    return tuple(spec_dims[best_match_ind])
+                    if spec_dims is not None:
+                        return tuple(spec_dims[best_match_ind]), tuple(spec_shape[best_match_ind])
+                    else:
+                        return spec_dims, tuple(spec_shape[best_match_ind])
             else:
-                # no matches found
-                msg = "Shape of data does not match any allowed shapes in spec '%s'" % self.spec.path
-                warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
-                return None
-        else:
-            if len(data_shape) != len(spec_shape):
-                msg = "Shape of data does not match shape in spec '%s'" % self.spec.path
-                warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
-                return None
-            # check each dimension. None means any length is allowed
-            match = True
-            for j, d in enumerate(data_shape):
-                if spec_shape[j] is not None and spec_shape[j] != d:
-                    match = False
-                    break
-            if not match:
-                msg = "Shape of data does not match shape in spec '%s'" % self.spec.path
-                warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
-                return None
-            # shape is a single list of allowed dimension lengths
-            return tuple(spec_dims)
+                if len(data_shape) != len(spec_shape):
+                    msg = "Shape of data does not match shape in spec '%s'" % self.spec.path
+                    warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
+                    return None, None
+                # check each dimension. None means any length is allowed
+                match = True
+                for j, d in enumerate(data_shape):
+                    if spec_shape[j] is not None and spec_shape[j] != d:
+                        match = False
+                        break
+                if not match:
+                    msg = "Shape of data does not match shape in spec '%s'" % self.spec.path
+                    warnings.warn(msg, IncorrectDatasetShapeBuildWarning)
+                    return None, None
+                # shape is a single list of allowed dimension lengths
+                if spec_dims is not None:
+                    return tuple(spec_dims), tuple(spec_shape)
+                else:
+                    return None, tuple(spec_shape)
 
     def __is_reftype(self, data):
         if (isinstance(data, AbstractDataChunkIterator) or
@@ -943,19 +1059,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
             return False
 
         tmp = data
-        while hasattr(tmp, '__len__') and not isinstance(tmp, (AbstractContainer, str, bytes)):
+        while _is_collection(tmp) and not isinstance(tmp, AbstractContainer):
             tmptmp = None
             for t in tmp:
                 # In case of a numeric array stop the iteration at the first element to avoid long-running loop
-                if isinstance(t, (int, float, complex, bool)):
+                if isinstance(_unwrap_scalar(t), (int, float, complex, bool)):
                     break
-                if hasattr(t, '__len__') and len(t) > 0 and not isinstance(t, (AbstractContainer, str, bytes)):
+                if _is_collection(t) and _get_length(t) > 0 and not isinstance(t, AbstractContainer):
                     tmptmp = tmp[0]
                     break
             if tmptmp is not None:
                 break
             else:
-                if len(tmp) == 0:
+                if _get_length(tmp) == 0:
                     tmp = None
                 else:
                     tmp = tmp[0]
@@ -964,16 +1080,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
         else:
             return False
 
-    def __set_dataset_to_refs(self, builder, dtype, shape, container, build_manager):
+    def __set_dataset_to_refs(self, builder, spec, container, build_manager):
         self.logger.debug("Queueing set dataset of references %s '%s' to reference builder(s)"
                           % (builder.__class__.__name__, builder.name))
 
         def _filler():
-            builder.data = self.__get_ref_builder(builder, dtype, shape, container, build_manager)
+            builder.data = self.__get_ref_builder(builder, spec.dtype, spec.shape, container, build_manager)
 
         return _filler
 
-    def __set_compound_dataset_to_refs(self, builder, spec, spec_dtype, container, build_manager):
+    def __set_compound_dataset_to_refs(self, builder, spec, container, build_manager):
         self.logger.debug("Queueing convert compound dataset %s '%s' and set any references to reference builders"
                           % (builder.__class__.__name__, builder.name))
 
@@ -981,9 +1097,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
             self.logger.debug("Converting compound dataset %s '%s' and setting any references to reference builders"
                               % (builder.__class__.__name__, builder.name))
             # convert the reference part(s) of a compound dataset to ReferenceBuilders, row by row
-            refs = [(i, subt) for i, subt in enumerate(spec_dtype) if isinstance(subt.dtype, RefSpec)]
+            refs = [(i, subt) for i, subt in enumerate(spec.dtype) if isinstance(subt.dtype, RefSpec)]
             bldr_data = list()
             for i, row in enumerate(container.data):
+                row = _unwrap_scalar(row)
                 tmp = list(row)
                 for j, subt in refs:
                     tmp[j] = self.__get_ref_builder(builder, subt.dtype, None, row[j], build_manager)
@@ -1161,8 +1278,20 @@ class ObjectMapper(metaclass=ExtenderMeta):
                         raise BuildError(builder, msg) from ex
                     self.logger.debug("        Adding untyped dataset for spec name %s and adding attributes"
                                       % repr(spec.name))
-                    sub_builder = DatasetBuilder(spec.name, data, parent=builder, source=source, dtype=dtype)
+
+                    dimension_labels, matched_shape = self.__get_spec_info(data, spec)
+
+                    sub_builder = DatasetBuilder(
+                        spec.name,
+                        data,
+                        parent=builder,
+                        source=source,
+                        dtype=dtype,
+                        matched_spec_shape=matched_shape,
+                        dimension_labels=dimension_labels
+                    )
                     builder.set_dataset(sub_builder)
+                self.__set_matched_spec(sub_builder, spec)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager)
             else:
                 self.logger.debug("        Adding typed dataset for spec name: %s, %s: %s, %s: %s"
@@ -1183,6 +1312,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 sub_builder = builder.groups.get(spec.name)
                 if sub_builder is None:
                     sub_builder = GroupBuilder(spec.name, source=source)
+                self.__set_matched_spec(sub_builder, spec)
                 self.__add_attributes(sub_builder, spec.attributes, container, build_manager)
                 self.__add_datasets(sub_builder, spec.datasets, container, build_manager, source)
                 self.__add_links(sub_builder, spec.links, container, build_manager, source)
@@ -1219,7 +1349,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 # instantiated (in_export_mode=True)
                 self.logger.debug("    Building newly instantiated %s '%s'" % (value.__class__.__name__, value.name))
                 if isinstance(spec, BaseStorageSpec):
-                    new_builder = build_manager.build(value, source=source, spec_ext=spec)
+                    new_builder = build_manager.build(value, source=source, matched_spec=spec)
                 else:
                     new_builder = build_manager.build(value, source=source)
                 # use spec to determine what kind of HDF5 object this AbstractContainer corresponds to
@@ -1244,7 +1374,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     self.logger.debug("    Building %s '%s' (container source: %s) and adding a link to it"
                                       % (value.__class__.__name__, value.name, value.container_source))
                     if isinstance(spec, BaseStorageSpec):
-                        new_builder = build_manager.build(value, source=source, spec_ext=spec)
+                        new_builder = build_manager.build(value, source=source, matched_spec=spec)
                     else:
                         new_builder = build_manager.build(value, source=source)
                     builder.set_link(LinkBuilder(new_builder, name=spec.name, parent=builder))
@@ -1276,7 +1406,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             elif isinstance(attr_val, ReferenceBuilder):
                 ret[attr_spec] = manager.construct(attr_val.builder)
             else:
-                ret[attr_spec] = attr_val
+                ret[attr_spec] = self.__parse_if_datetime(attr_val, attr_spec)
         if isinstance(spec, GroupSpec):
             if not isinstance(builder, GroupBuilder):  # pragma: no cover
                 raise ValueError("__get_subspec_values - must pass GroupBuilder with GroupSpec")
@@ -1296,13 +1426,20 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if dt is not None:
                     link_dt.setdefault(dt, list()).append(target)
             # now assign links to their respective specification
+            consumed_link_names = set()
             for subspec in spec.links:
                 if subspec.name is not None and subspec.name in links:
                     ret[subspec] = manager.construct(links[subspec.name].builder)
+                    consumed_link_names.add(subspec.name)
                 else:
                     sub_builder = link_dt.get(subspec.target_type)
                     if sub_builder is not None:
                         ret[subspec] = self.__flatten(sub_builder, subspec, manager)
+            # remove named links already resolved above so they are not also
+            # picked up by generic data-type matching in __get_sub_builders
+            for name in consumed_link_names:
+                groups.pop(name, None)
+                datasets.pop(name, None)
             # now process groups and datasets
             self.__get_sub_builders(groups, spec.groups, manager, ret)
             self.__get_sub_builders(datasets, spec.datasets, manager, ret)
@@ -1313,7 +1450,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     type(builder.data[0]) is not np.void):
                 # if a scalar dataset is expected and a 1-element non-compound dataset is given, then read the dataset
                 builder['data'] = builder.data[0]  # use dictionary reference instead of .data to bypass error
-            ret[spec] = self.__check_ref_resolver(builder.data)
+            # matched_spec is set by the parent matcher when this builder was paired to a subspec
+            # position; fall back to spec for top-level / direct-construct callers that bypass it.
+            data_spec = builder.matched_spec or spec
+            ret[spec] = self.__parse_if_datetime(self.__check_ref_resolver(builder.data), data_spec)
         return ret
 
     @staticmethod
@@ -1324,6 +1464,39 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if isinstance(data, ReferenceResolver):
             return data.invert()
         return data
+
+    @staticmethod
+    def __parse_if_datetime(value, spec):
+        """For specs with isodatetime/datetime dtype, parse stored ISO str/bytes back to datetime/date.
+
+        Returns ``value`` unchanged when ``spec`` is not an attribute or dataset spec, or when its
+        dtype is not isodatetime/datetime — so callers can invoke this unconditionally on every
+        attribute/dataset value without first inspecting the dtype.
+
+        Handles scalars, lists/tuples, numpy arrays, h5py datasets, and zarr arrays (eagerly
+        materialized via the numpy array protocol). Idempotent: values whose elements are already
+        parsed (or whose container type is unknown, e.g., a DataIO wrapper) pass through unchanged.
+        """
+        if not isinstance(spec, (AttributeSpec, DatasetSpec)):
+            return value
+        if getattr(spec, 'dtype', None) not in ('isodatetime', 'datetime'):
+            return value
+        if isinstance(value, (str, bytes)):
+            return _parse_isoformat(value)
+        if isinstance(value, (list, tuple)):
+            return type(value)(_parse_isoformat(v) for v in value)
+        if is_array_like(value):
+            # Use the numpy array protocol so this works uniformly across numpy ndarrays,
+            # h5py datasets, and zarr v2/v3 arrays without per-backend slicing.
+            # TODO: wrap the dataset to parse values on read instead of materializing the whole
+            # dataset in memory here. This becomes important for large isodatetime VectorData
+            # columns.
+            materialized = np.asarray(value).tolist()
+            if isinstance(materialized, list):
+                return [_parse_isoformat(v) for v in materialized]
+            # 0-d array: tolist() returns a Python scalar, not a list.
+            return _parse_isoformat(materialized)
+        return value
 
     def __get_sub_builders(self, sub_builders, subspecs, manager, ret):
         # index builders by data_type
@@ -1345,19 +1518,32 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 dt = None
             # use name if we can, otherwise use data_data
             if subspec.name is None:
-                sub_builder = builder_dt.get(dt)
-                if sub_builder is not None:
-                    sub_builder = self.__flatten(sub_builder, subspec, manager)
-                    ret[subspec] = sub_builder
+                matched = builder_dt.get(dt)
+                if matched is not None:
+                    for b in matched:
+                        self.__set_matched_spec(b, subspec)
+                    ret[subspec] = self.__flatten(matched, subspec, manager)
             else:
                 sub_builder = sub_builders.get(subspec.name)
                 if sub_builder is None:
                     continue
+                self.__set_matched_spec(sub_builder, subspec)
                 if dt is None:
                     # recurse
                     ret.update(self.__get_subspec_values(sub_builder, subspec, manager))
                 else:
                     ret[subspec] = manager.construct(sub_builder)
+
+    @staticmethod
+    def __set_matched_spec(builder, subspec):
+        """Record the matched subspec on the builder if not already set.
+
+        The matcher pairs each sub-builder to one subspec per `__get_subspec_values`
+        call, so under normal flows this assigns once. The guard tolerates any
+        future read-time path that would otherwise hit the write-once setter.
+        """
+        if builder.matched_spec is None:
+            builder.matched_spec = subspec
 
     def __flatten(self, sub_builder, subspec, manager):
         tmp = [manager.construct(b) for b in sub_builder]
@@ -1383,7 +1569,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if issubclass(cls, Data):
             if not isinstance(builder, DatasetBuilder):  # pragma: no cover
                 raise ValueError('Can only construct a Data object from a DatasetBuilder - got %s' % type(builder))
-            const_args['data'] = self.__check_ref_resolver(builder.data)
+            # matched_spec is set by the parent matcher when this builder was paired to a subspec
+            # position; fall back to self.spec for top-level / direct-construct callers that bypass it.
+            data_spec = builder.matched_spec or self.spec
+            const_args['data'] = self.__parse_if_datetime(
+                self.__check_ref_resolver(builder.data), data_spec
+            )
         for subspec, value in subspecs.items():
             const_arg = self.get_const_arg(subspec)
             if const_arg is not None:

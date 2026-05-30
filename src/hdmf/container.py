@@ -1,4 +1,5 @@
 import types
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
 from uuid import uuid4
@@ -11,7 +12,7 @@ import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator
 from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict,
-                    get_basic_array_info, generate_array_html_repr)
+                    get_basic_array_info, generate_array_html_repr, _is_collection, _get_length, _unwrap_scalar)
 
 from .term_set import TermSet, TermSetWrapper
 
@@ -31,20 +32,64 @@ def _exp_warn_msg(cls):
     return msg
 
 
-class HERDManager:
+class HERDManager(ABC):
+    """An abstract mixin interface for containers that support external resources.
+
+    Container subclasses that inherit from this mixin must declare
+    ``external_resources`` in their ``__fields__`` (or equivalent, e.g.,
+    ``__nwbfields__``) with ``'child': True`` so that the auto-generated
+    property satisfies the abstract interface. The subclass must also create
+    an ObjectMapper mapping so that the ``external_resources`` value is
+    written to a file on write and populated from a file on read.
+
+    Example::
+
+        class MyFile(HERDManager, Container):
+            __fields__ = (
+                {'name': 'external_resources', 'child': True, 'required_name': 'external_resources'},
+            )
+
+    This class serves as a marker for ``isinstance`` checks throughout
+    hdmf (e.g., in HERD and HDMFIO) to identify containers that support
+    external resources.
     """
-    When this class is used as a mixin for a Container, it enables setting and getting an instance of HERD.
-    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._linked_external_resources = None
 
     @property
+    @abstractmethod
     def external_resources(self):
-        return self._herd if hasattr(self, "_herd") else None
+        pass
 
     @external_resources.setter
-    def external_resources(self, herd):
-        if hasattr(self, "_herd"):
-            warn("Reassigning external_resources may lead to unexpected behavior.")
-        self._herd = herd
+    @abstractmethod
+    def external_resources(self, val):
+        pass
+
+    def link_resources(self, external_resources):
+        """Link an external HERD object as the external resources for this container.
+
+        The linked HERD will not be written on export; the original HERD
+        (if any) is preserved in the exported file. Use
+        ``get_external_resources(linked=True)`` to access the linked HERD.
+        """
+        self._linked_external_resources = external_resources
+
+    def get_external_resources(self, linked=False):
+        """Return the HERD external resources object for this container.
+
+        Parameters
+        ----------
+        linked : bool
+            If True, return the linked HERD set via ``link_resources``.
+            If False (default), return the HERD set via ``__init__`` or the
+            ``external_resources`` attribute.
+        """
+        if linked:
+            return self._linked_external_resources
+        return self.external_resources
 
 
 class AbstractContainer(metaclass=ExtenderMeta):
@@ -256,14 +301,23 @@ class AbstractContainer(metaclass=ExtenderMeta):
                         base_fields_conf_to_add.append(pconf)
                 all_fields_conf[0:0] = base_fields_conf_to_add
 
-        # create getter and setter if attribute does not already exist
+        # create getter and setter if attribute does not already exist or is abstract
         # if 'doc' not specified in __fields__, use doc from docval of __init__
         docs = {dv['name']: dv['doc'] for dv in get_docval(cls.__init__)}
+        abstracts_overridden = set()
         for field_conf in all_fields_conf:
             pname = field_conf['name']
             field_conf.setdefault('doc', docs.get(pname))
-            if not hasattr(cls, pname):
+            existing = getattr(cls, pname, None)
+            if existing is None or getattr(existing, '__isabstractmethod__', False):
+                if getattr(existing, '__isabstractmethod__', False):
+                    abstracts_overridden.add(pname)
                 setattr(cls, pname, property(cls._getter(field_conf), cls._setter(field_conf)))
+
+        # update __abstractmethods__ to remove any that were satisfied by auto-generated properties
+        if abstracts_overridden:
+            remaining = getattr(cls, '__abstractmethods__', frozenset()) - abstracts_overridden
+            cls.__abstractmethods__ = remaining
 
         cls._set_fields(tuple(field_conf['name'] for field_conf in all_fields_conf))
         cls.__fieldsconf = tuple(all_fields_conf)
@@ -626,7 +680,7 @@ class Container(AbstractContainer):
             template += "\nFields:\n"
         for k in sorted(self.fields):  # sorted to enable tests
             v = self.fields[k]
-            if hasattr(v, '__len__'):
+            if _is_collection(v):
                 if isinstance(v, (np.ndarray, list, tuple)) or v:
                     template += "  {}: {}\n".format(k, self.__smart_str(v, 1))
             else:
@@ -679,12 +733,35 @@ class Container(AbstractContainer):
         </script>
         """
 
+    def _file_is_closed(self) -> bool:
+        """Check if the backing file for this container is closed.
+
+        Returns True if the read IO has an is_open method and it returns False.
+        Returns False if there is no read IO or the IO does not have is_open.
+        """
+        read_io = self.get_read_io()
+        # TODO: After is_open() is implemented across all backends (and added as
+        # an abstractmethod on HDMFIO), remove the hasattr check.
+        return read_io is not None and hasattr(read_io, "is_open") and not read_io.is_open()
+
+    def _closed_file_warning_html(self) -> str:
+        """Return an HTML warning banner if the backing file is closed, or empty string otherwise."""
+        if self._file_is_closed():
+            return (
+                "<div style='padding: 10px; margin: 10px 0; background-color: #fff3cd; "
+                "border: 1px solid #ffc107; border-radius: 4px; color: #856404;'>"
+                "<b>Warning:</b> The file backing this object is closed. "
+                "Some data may not be rendered below.</div>"
+            )
+        return ""
+
     def _repr_html_(self) -> str:
         """Generates the HTML representation of the object."""
         header_text = self.name if self.name == self.__class__.__name__ else f"{self.name} ({self.__class__.__name__})"
         html_repr = self.css_style + self.js_script
         html_repr += "<div class='container-wrap'>"
         html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
+        html_repr += self._closed_file_warning_html()
         html_repr += self._generate_html_repr(self.fields, is_field=True)
         html_repr += "</div>"
         return html_repr
@@ -717,28 +794,35 @@ class Container(AbstractContainer):
 
         """
 
+        value = _unwrap_scalar(value)
         if isinstance(value, (int, float, str, bool)):
             return f'<div style="margin-left: {level * 20}px;" class="container-fields"><span class="field-key"' \
                    f' title="{access_code}">{key}: </span><span class="field-value">{value}</span></div>'
 
-        # Detects array-like objects that conform to the Array Interface specification
-        # (e.g., NumPy arrays, HDF5 datasets, DataIO objects). Objects must have both
-        # 'shape' and 'dtype' attributes. Iterators are excluded as they lack 'shape'.
-        # This approach keeps the implementation generic without coupling to specific backends methods
-        is_array_data = hasattr(value, "shape") and hasattr(value, "dtype")
+        try:
+            # Detects array-like objects that conform to the Array Interface specification
+            # (e.g., NumPy arrays, HDF5 datasets, DataIO objects). Objects must have both
+            # 'shape' and 'dtype' attributes. Iterators are excluded as they lack 'shape'.
+            # This approach keeps the implementation generic without coupling to specific backends methods
+            is_array_data = hasattr(value, "shape") and hasattr(value, "dtype")
 
-        if is_array_data:
-            html_content = self._generate_array_html(value, level + 1)
-        elif hasattr(value, "generate_html_repr"):
-            html_content = value.generate_html_repr(level + 1, access_code)
-        elif hasattr(value, '__repr_html__'):
-            html_content = value.__repr_html__()
-        elif hasattr(value, "fields"):  # Note that h5py.Dataset has a fields attribute so there is an implicit order
-            html_content = self._generate_html_repr(value.fields, level + 1, access_code, is_field=True)
-        elif isinstance(value, (list, dict, np.ndarray)):
-            html_content = self._generate_html_repr(value, level + 1, access_code, is_field=False)
-        else:
-            html_content = f'<span class="field-key">{value}</span>'
+            if is_array_data:
+                html_content = self._generate_array_html(value, level + 1)
+            elif hasattr(value, "generate_html_repr"):
+                html_content = value.generate_html_repr(level + 1, access_code)
+            elif hasattr(value, '__repr_html__'):
+                html_content = value.__repr_html__()
+            # Note: h5py.Dataset has a fields attribute so there is an implicit order
+            elif hasattr(value, "fields"):
+                html_content = self._generate_html_repr(value.fields, level + 1, access_code, is_field=True)
+            elif isinstance(value, (list, dict, np.ndarray)):
+                html_content = self._generate_html_repr(value, level + 1, access_code, is_field=False)
+            else:
+                html_content = f'<span class="field-key">{value}</span>'
+        except Exception as e:
+            object_class = type(value).__name__
+            reason = "the file backing this object is closed" if self._file_is_closed() else str(e)
+            html_content = f'<span class="field-key">{object_class} (unable to render: {reason})</span>'
 
         display_name = str(key)
         if isinstance(value, AbstractContainer):   # Excludes things like LabelledDict, ndarray, etc
@@ -976,7 +1060,7 @@ class Data(AbstractContainer):
         return False
 
     def __len__(self):
-        return len(self.__data)
+        return _get_length(self.__data)
 
     def __getitem__(self, args):
         return self.get(args)

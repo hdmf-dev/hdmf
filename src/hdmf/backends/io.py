@@ -12,12 +12,6 @@ from warnings import warn
 
 class HDMFIO(metaclass=ABCMeta):
 
-    @staticmethod
-    @abstractmethod
-    def can_read(path):
-        """Determines whether a given path is readable by this HDMFIO class"""
-        pass
-
     @docval({'name': 'manager', 'type': BuildManager,
              'doc': 'the BuildManager to use for I/O', 'default': None},
             {"name": "source", "type": (str, Path),
@@ -35,7 +29,6 @@ class HDMFIO(metaclass=ABCMeta):
             source = os.path.abspath(source)
 
         self.__manager = manager
-        self.__built = dict()
         self.__source = source
         self.herd_path = herd_path
         self.herd = None
@@ -187,6 +180,12 @@ class HDMFIO(metaclass=ABCMeta):
     @abstractmethod
     def close(self):
         ''' Close this HDMFIO object to further reading/writing'''
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def can_read(path):
+        """Determines whether a given path is readable by this HDMFIO class"""
         pass
 
     @classmethod

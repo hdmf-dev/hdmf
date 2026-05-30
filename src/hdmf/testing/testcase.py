@@ -9,7 +9,7 @@ from ..backends.hdf5 import HDF5IO
 from ..build import Builder
 from ..common import validate as common_validate, get_manager
 from ..container import AbstractContainer, Container, Data
-from ..utils import get_docval_macro
+from ..utils import _is_collection, get_docval_macro
 from ..data_utils import AbstractDataChunkIterator
 
 
@@ -147,7 +147,15 @@ class TestCase(unittest.TestCase):
         """
         self.assertTrue(isinstance(data1, Data), message)
         self.assertTrue(isinstance(data2, Data), message)
-        self.assertEqual(len(data1), len(data2), message)
+        # Data containers can wrap a scalar (e.g., a single datetime) for which len() is not
+        # defined, so check collection-ness on both sides first. If they disagree, fail; if both
+        # are collections, compare lengths; if both are scalars, fall through to value comparison.
+        is_collection1 = _is_collection(data1.data)
+        is_collection2 = _is_collection(data2.data)
+        self.assertEqual(is_collection1, is_collection2,
+                         message or "One Data wraps a scalar, the other a collection")
+        if is_collection1:
+            self.assertEqual(len(data1), len(data2), message)
         self._assert_array_equal(data1.data, data2.data,
                                  ignore_hdmf_attrs=ignore_hdmf_attrs,
                                  ignore_string_to_byte=ignore_string_to_byte,
@@ -195,9 +203,9 @@ class TestCase(unittest.TestCase):
                 self.assertEqual(arr1, arr2, message)  # scalar
         else:
             self.assertEqual(len(arr1), len(arr2), message)
-            if isinstance(arr1, np.ndarray) and len(arr1.dtype) > 1:  # compound type
+            if isinstance(arr1, np.ndarray) and arr1.dtype.names is not None:  # compound type
                 arr1 = arr1.tolist()
-            if isinstance(arr2, np.ndarray) and len(arr2.dtype) > 1:  # compound type
+            if isinstance(arr2, np.ndarray) and arr2.dtype.names is not None:  # compound type
                 arr2 = arr2.tolist()
             if isinstance(arr1, np.ndarray) and isinstance(arr2, np.ndarray):
                 if np.issubdtype(arr1.dtype, np.number):

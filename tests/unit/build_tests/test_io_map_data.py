@@ -107,6 +107,7 @@ class TestDataMap(BazSpecMixin, TestCase):
         baz_inc_spec = DatasetSpec(doc='doc', data_type_inc='Baz', quantity=ZERO_OR_MANY)
         baz_holder_spec = GroupSpec(doc='doc', data_type_def='BazHolder', datasets=[baz_inc_spec])
         self.spec_catalog.register_spec(baz_holder_spec, 'test.yaml')
+        self.namespace_catalog.resolve_all_specs()
         self.type_map.register_container_type(CORE_NAMESPACE, 'BazHolder', BazHolder)
         self.holder_mapper = ObjectMapper(baz_holder_spec)
 

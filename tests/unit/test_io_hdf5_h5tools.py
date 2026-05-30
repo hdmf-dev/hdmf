@@ -10,29 +10,37 @@ from glob import glob
 import zipfile
 
 import h5py
-import numpy as np
 from h5py import SoftLink, HardLink, ExternalLink, File
 from h5py import filters as h5py_filters
+
+import numpy as np
+import numpy.testing as npt
+
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.hdf5.h5tools import HDF5IO, SPEC_LOC_ATTR, H5PY_3
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
-from hdmf.container import Container
+from hdmf.container import Container, HERDManager
 from hdmf import Data, docval
+from hdmf.common import (DynamicTable, VectorData, SimpleMultiContainer, get_hdf5io, get_manager,
+                         get_type_map)
 from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator, InvalidDataIOError, append_data
+from hdmf.spec import DatasetSpec
 from hdmf.spec.catalog import SpecCatalog
 from hdmf.spec.namespace import NamespaceCatalog, SpecNamespace
 from hdmf.spec.spec import GroupSpec, DtypeSpec
-from hdmf.testing import TestCase, remove_test_file
+from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
 from hdmf.common.resources import HERD
 from hdmf.term_set import TermSet, TermSetWrapper
-
+from hdmf.utils import get_data_shape
 
 from tests.unit.helpers.utils import (Foo, FooBucket, FooFile, get_foo_buildmanager,
                               Baz, BazData, BazCpdData, BazBucket, get_baz_buildmanager,
-                              CORE_NAMESPACE, get_temp_filepath, CacheSpecTestHelper,
-                              CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace)
+                              CORE_NAMESPACE, create_load_namespace_yaml, get_temp_filepath,
+                              CacheSpecTestHelper,
+                              CustomGroupSpec, CustomDatasetSpec, CustomSpecNamespace,
+                              QuxData, QuxBucket, get_qux_buildmanager)
 from tests.unit.helpers.io import DoNothingIO
 
 try:
@@ -134,6 +142,21 @@ class H5IOTest(TestCase):
         self.assertTupleEqual(dset.shape, ())
         self.assertEqual(dset[()], a)
 
+    def test_write_dataset_0d_ndarray(self):
+        """Regression: writing a 0-d ndarray as a scalar dataset should work.
+
+        A user computing a scalar attribute (e.g. a sampling rate) with an
+        array-API-conforming library gets a 0-d array back. Converting to
+        numpy via np.asarray() produces a 0-d ndarray, which they then pass
+        to hdmf to store as an HDF5 dataset. Previously this crashed because
+        the __len__ heuristic misidentified 0-d ndarrays as collections.
+        """
+        sampling_rate = np.asarray(30000.0)
+        self.io.write_dataset(self.f, DatasetBuilder('test_dataset', sampling_rate, attributes={}))
+        dset = self.f['test_dataset']
+        self.assertTupleEqual(dset.shape, ())
+        self.assertEqual(dset[()], 30000.0)
+
     def test_write_dataset_string(self):
         a = 'test string'
         self.io.write_dataset(self.f, DatasetBuilder('test_dataset', a, attributes={}))
@@ -199,6 +222,23 @@ class H5IOTest(TestCase):
         dset = self.f['test_dataset']
         for field in a.dtype.names:
             self.assertTrue(np.all(dset[field][:] == a[field]))
+
+    def test_write_dataset_list_single_field_compound_datatype(self):
+        """Test that a compound dtype with a single field can be written."""
+        a = np.array([('val1',), ('val2',)], dtype=[('key', 'O')])
+        dset_builder = DatasetBuilder(
+            name='test_dataset',
+            data=a.tolist(),
+            attributes={},
+            dtype=[
+                DtypeSpec('key', doc='key', dtype='text'),
+            ],
+        )
+        self.io.write_dataset(self.f, dset_builder)
+        dset = self.f['test_dataset']
+        self.assertEqual(dset.shape, (2,))
+        self.assertEqual(dset['key'][0].decode('utf-8'), 'val1')
+        self.assertEqual(dset['key'][1].decode('utf-8'), 'val2')
 
     def test_write_dataset_list_compress_gzip(self):
         a = H5DataIO(np.arange(30).reshape(5, 2, 3),
@@ -840,6 +880,30 @@ class TestRoundTrip(TestCase):
             self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
+    def test_roundtrip_basic_append(self):
+        # Foo.my_data is an anonymous (untyped) dataset, so the default `expandable` list does
+        # not cover it. Wrap its data in H5DataIO with an explicit maxshape to make it expandable.
+        foo1 = Foo('foo1', H5DataIO(data=[1, 2, 3, 4, 5], maxshape=(None,)), "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile)
+
+        with h5py.File(self.path, 'r') as f:
+            self.assertEqual(f['buckets/bucket1/foo_holder/foo1/my_data'].maxshape, (None,))
+
+        with HDF5IO(self.path, manager=self.manager, mode='a') as io:
+            read_foofile = io.read()
+            data = read_foofile.buckets['bucket1'].foos['foo1'].my_data
+            shape = list(data.shape)
+            shape[0] += 1
+            data.resize(shape)
+            data[-1] = 6
+            self.assertListEqual(read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist(),
+                                 [1, 2, 3, 4, 5, 6])
+
+
     def test_roundtrip_empty_dataset(self):
         foo1 = Foo('foo1', [], "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
@@ -940,6 +1004,24 @@ class TestHDF5IO(TestCase):
         with HDF5IO(self.path, manager=self.manager, mode='w') as io:
             self.assertEqual(io.manager, self.manager)
             self.assertEqual(io.source, self.path)
+
+    def test_is_open_true(self):
+        """Test that is_open returns True when the file is open."""
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            self.assertTrue(io.is_open())
+
+    def test_is_open_false_after_close(self):
+        """Test that is_open returns False after the file is closed."""
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        io.close()
+        self.assertFalse(io.is_open())
+
+    def test_is_open_false_before_open(self):
+        """Test that is_open returns False before the file is opened."""
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        io.close()
+        io._HDF5IO__file = None
+        self.assertFalse(io.is_open())
 
     def test_delete_with_incomplete_construction_missing_file(self):
         """
@@ -1162,6 +1244,48 @@ class TestHERDIO(TestCase):
             (0, read_foofile.object_id, 'FooFile', '', ''))
 
         self.remove_er_files()
+
+    def test_write_herd_as_child(self):
+        """Test writing and reading HERD as a child group of a
+        SimpleMultiContainer so that the Data is written and the
+        link from HERD to the data can be verified."""
+
+        class _HERDManagerContainer(SimpleMultiContainer, HERDManager):
+            __fields__ = (
+                {'name': 'external_resources', 'child': True, 'required_name': 'external_resources'},
+            )
+
+        species = Data(name='species', data=['Homo sapiens'])
+        herd = HERD()
+        container = _HERDManagerContainer(name='root', containers=[species, herd])
+
+        container.external_resources = herd
+        herd.add_ref(
+            file=container,
+            container=species,
+            key='Homo sapiens',
+            entity_id='NCBI:9606',
+            entity_uri='https://example.com',
+        )
+
+        path = get_temp_filepath()
+        try:
+            with get_hdf5io(path=path, mode='w') as io:
+                io.write(container)
+
+            with get_hdf5io(path=path, mode='r') as io:
+                read_container = io.read()
+                read_herd = read_container.get_container('external_resources')
+                self.assertIsInstance(read_herd, HERD)
+                read_keys = read_herd.keys[:]
+                self.assertEqual(read_keys.shape, (1,))
+                self.assertEqual(read_keys[0][0], 'Homo sapiens')
+
+                read_objects = read_herd.objects[:]
+                self.assertEqual(read_objects.shape, (1,))
+                self.assertEqual(read_objects[0][1], species.object_id)
+        finally:
+            remove_test_file(path)
 
 
 class TestMultiWrite(TestCase):
@@ -3622,7 +3746,7 @@ class TestWriteHDF5withZarrInput(TestCase):
 
     def test_roundtrip_basic(self):
         # Setup all the data we need
-        zarr.save(self.zarr_path, np.arange(50).reshape(5, 10))
+        zarr.save(self.zarr_path, np.arange(50))
         zarr_data = zarr.open(self.zarr_path, 'r')
         foo1 = Foo(name='foo1',
                    my_data=zarr_data,
@@ -3655,7 +3779,7 @@ class TestWriteHDF5withZarrInput(TestCase):
             self.assertListEqual([], read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
     def test_write_zarr_int32_dataset(self):
-        base_data = np.arange(50).reshape(5, 10).astype('int32')
+        base_data = np.arange(50).astype('int32')
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
@@ -3669,7 +3793,7 @@ class TestWriteHDF5withZarrInput(TestCase):
                              base_data.tolist())
 
     def test_write_zarr_float32_dataset(self):
-        base_data = np.arange(50).reshape(5, 10).astype('float32')
+        base_data = np.arange(50).astype('float32')
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
@@ -3799,7 +3923,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         np.testing.assert_array_equal(dset[:].astype(bytes), zarr_data[:])
 
     def test_write_zarr_dataset_compress_gzip(self):
-        base_data = np.arange(50).reshape(5, 10).astype('float32')
+        base_data = np.arange(50).astype('float32')
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         a = H5DataIO(zarr_data,
@@ -3888,6 +4012,23 @@ class HDF5IOClassmethodTests(TestCase):
         HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
         with self.assertRaisesRegex(Exception, "Could not create dataset foo in /"):
             HDF5IO.__setup_empty_dset__(self.f, 'foo', {'shape': (3, 3), 'dtype': 'float'})
+
+    def test_get_type_0d_ndarray(self):
+        """Regression: get_type should handle 0-d ndarrays.
+
+        The Python array API standard requires reductions (mean, sum, etc.)
+        to return 0-d arrays, not scalars. When results from array-API-
+        conforming libraries (zarr v3, cupy, etc.) are converted to numpy
+        via np.asarray(), the result is a 0-d ndarray. A 0-d ndarray has
+        __len__ defined but len() raises TypeError, which previously
+        crashed get_type. We use np.asarray(scalar) to produce a 0-d
+        ndarray without requiring any array library as a test dependency.
+        """
+        zero_d = np.asarray(3.14)
+        self.assertIsInstance(zero_d, np.ndarray)
+        self.assertEqual(zero_d.ndim, 0)
+        result = HDF5IO.get_type(zero_d)
+        self.assertIs(result, np.float64)
 
 
 class H5DataIOTests(TestCase):
@@ -4023,3 +4164,315 @@ class TestDataSetDataIO(TestCase):
         self.assertIsInstance(my_data.data, H5DataIO)
         self.assertEqual(my_data.data.io_settings["chunks"], (2,))
         file.close()
+
+
+class TestExpand(TestCase):
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_expand_false(self):
+        # Setup all the data we need
+        foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
+        foobucket = FooBucket('bucket1', [foo1])
+        foofile = FooFile(buckets=[foobucket])
+
+        with HDF5IO(self.path, manager=self.manager, mode='w') as io:
+            io.write(foofile, expandable=[])
+
+        with HDF5IO(self.path, manager=self.manager, mode='r') as io:
+            read_foofile = io.read()
+            self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data,
+                                 read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
+            self.assertEqual(get_data_shape(read_foofile.buckets['bucket1'].foos['foo1'].my_data),
+                            (5,))
+
+    def test_multi_shape_no_labels(self):
+        qux = QuxData(name='my_qux', data=[[1, 2, 3], [4, 5, 6]])
+        quxbucket = QuxBucket('bucket1', qux)
+
+        manager = get_qux_buildmanager([[None, None], [None, 3]])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(quxbucket, expandable=['QuxData'])
+
+        with HDF5IO(self.path, manager=manager, mode='r') as io:
+            read_quxbucket = io.read()
+            self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None, 3))
+
+    def test_expand_set_shape(self):
+        qux = QuxData(name='my_qux', data=[[1, 2, 3], [4, 5, 6]])
+        quxbucket = QuxBucket('bucket1', qux)
+
+        manager = get_qux_buildmanager([None, 3])
+
+        with HDF5IO(self.path, manager=manager, mode='w') as io:
+            io.write(quxbucket, expandable=['QuxData'])
+
+        with HDF5IO(self.path, manager=manager, mode='r+') as io:
+            read_quxbucket = io.read()
+            read_quxbucket.qux_data.append([7, 8, 9])
+
+            expected = np.array([[1, 2, 3],
+                                 [4, 5, 6],
+                                 [7, 8, 9]])
+            npt.assert_array_equal(read_quxbucket.qux_data.data[:], expected)
+            self.assertEqual(read_quxbucket.qux_data.data.maxshape, (None, 3))
+
+
+class TestComputeChunkShape(TestCase):
+
+    def test_target_chunk_size(self):
+        """Computed chunks should be close to the target size."""
+        # 10000x100 float64: 8 bytes/element, target 4 MB
+        shape = (10000, 100)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.float64)
+        chunk_bytes = np.prod(chunks) * np.dtype(np.float64).itemsize
+        self.assertGreater(chunk_bytes, 1 * 1024 * 1024)  # > 1 MB
+        self.assertLessEqual(chunk_bytes, 8 * 1024 * 1024)  # <= 8 MB
+        # Second dimension should be preserved
+        self.assertEqual(chunks[1], 100)
+
+    def test_small_dataset_uses_data_shape(self):
+        """Datasets smaller than the target should use their full shape as chunks."""
+        shape = (100,)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.float64)
+        self.assertEqual(chunks, (100,))
+
+    def test_empty_dataset(self):
+        """Empty datasets should get chunk shape with 1 in first dimension."""
+        shape = (0,)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.int32)
+        self.assertEqual(chunks, (1,))
+
+    def test_zero_trailing_dimension_falls_back(self):
+        """A zero-length trailing dimension can't be chunked by us — fall back to h5py auto-chunking."""
+        # bytes_per_row == 0 branch: product of trailing dims is 0
+        shape = (10, 0, 5)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.float64)
+        self.assertIs(chunks, True)
+
+    def test_1d_large(self):
+        """Large 1D dataset should get chunks targeting ~4 MB."""
+        shape = (10_000_000,)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.float64)
+        chunk_bytes = chunks[0] * 8
+        self.assertGreater(chunk_bytes, 2 * 1024 * 1024)
+        self.assertLessEqual(chunk_bytes, 8 * 1024 * 1024)
+
+    def test_custom_target(self):
+        """Custom target_chunk_bytes should be respected."""
+        shape = (10_000_000,)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.float64, target_chunk_bytes=16 * 1024 * 1024)
+        chunk_bytes = chunks[0] * 8
+        self.assertGreater(chunk_bytes, 8 * 1024 * 1024)
+        self.assertLessEqual(chunk_bytes, 32 * 1024 * 1024)
+
+    def test_large_trailing_dims_get_split(self):
+        """When a single first-dim slice exceeds the target, trailing dims are reduced."""
+        # (1000, 4096, 4096) uint16 -> a single (1, 4096, 4096) slice is 32 MB, way over target
+        shape = (1000, 4096, 4096)
+        chunks = HDF5IO.compute_default_chunk_shape(shape, np.uint16)
+        chunk_bytes = int(np.prod(chunks)) * np.dtype(np.uint16).itemsize
+        # Should stay within the recommended 2-16 MB range, not balloon to 32 MB
+        self.assertLessEqual(chunk_bytes, 8 * 1024 * 1024)
+        self.assertGreater(chunk_bytes, 1 * 1024 * 1024)
+        # First dim must stay at 1 since even one full slice was already over target
+        self.assertEqual(chunks[0], 1)
+
+
+class TestDefaultExpandable(H5RoundTripMixin, TestCase):
+    """Test that VectorData, VectorIndex, and ElementIdentifiers datasets are expandable by default."""
+
+    def setUpContainer(self):
+        table = DynamicTable(name='table0', description='an example table')
+        table.add_column(name='foo', description='an int column')
+        table.add_column(name='bar', description='an indexed column', index=True)
+        table.add_row(foo=1, bar=[1, 2, 3])
+        table.add_row(foo=2, bar=[4, 5])
+        return table
+
+    def test_roundtrip(self):
+        super().test_roundtrip()
+
+        with h5py.File(self.filename, 'r') as f:
+            # VectorData columns should be expandable (maxshape has None in first dim)
+            self.assertEqual(f['foo'].maxshape, (None,))
+            self.assertIsNotNone(f['foo'].chunks)
+
+            # VectorIndex columns should be expandable
+            self.assertEqual(f['bar_index'].maxshape, (None,))
+            self.assertIsNotNone(f['bar_index'].chunks)
+
+            # Indexed VectorData should be expandable
+            self.assertEqual(f['bar'].maxshape, (None,))
+            self.assertIsNotNone(f['bar'].chunks)
+
+            # ElementIdentifiers (id column) should be expandable
+            self.assertEqual(f['id'].maxshape, (None,))
+            self.assertIsNotNone(f['id'].chunks)
+
+
+class TestDefaultExpandableWithReferences(H5RoundTripMixin, TestCase):
+    """Test that a VectorData column of references is expandable by default."""
+
+    def setUpContainer(self):
+        group1 = Container('group1')
+        group2 = Container('group2')
+
+        table = DynamicTable(name='table0', description='an example table')
+        table.add_column(name='ref', description='a reference column')
+        table.add_row(ref=group1)
+        table.add_row(ref=group2)
+
+        multi = SimpleMultiContainer(name='multi')
+        multi.add_container(group1)
+        multi.add_container(group2)
+        multi.add_container(table)
+        return multi
+
+    def test_roundtrip(self):
+        super().test_roundtrip()
+
+        with h5py.File(self.filename, 'r') as f:
+            ref_ds = f['table0/ref']
+            self.assertEqual(ref_ds.maxshape, (None,))
+            self.assertIsNotNone(ref_ds.chunks)
+            # Reference dtype should not bypass the expandable branch.
+            self.assertTrue(h5py.check_ref_dtype(ref_ds.dtype))
+            # Stored refs resolve to the expected target groups.
+            self.assertIsInstance(ref_ds[0], h5py.Reference)
+            self.assertEqual(f[ref_ds[0]].name, '/group1')
+            self.assertEqual(f[ref_ds[1]].name, '/group2')
+
+
+class TestDefaultExpandableExplicitOverride(H5RoundTripMixin, TestCase):
+    """Test that explicit H5DataIO settings are not overridden by the default expandable behavior."""
+
+    def setUpContainer(self):
+        # User explicitly sets maxshape — should be respected
+        foo = VectorData(
+            name='foo',
+            description='a column with explicit maxshape',
+            data=H5DataIO(data=[1, 2, 3], maxshape=(10,)),
+        )
+        table = DynamicTable(name='table0', description='an example table', columns=[foo])
+        return table
+
+    def test_roundtrip(self):
+        super().test_roundtrip()
+
+        with h5py.File(self.filename, 'r') as f:
+            # User's explicit maxshape should be preserved, not overridden
+            self.assertEqual(f['foo'].maxshape, (10,))
+
+
+class TestExpandableArg(TestCase):
+    """Test explicit values of the `expandable` argument to HDF5IO.write."""
+
+    def setUp(self):
+        self.filename = get_temp_filepath()
+
+    def tearDown(self):
+        remove_test_file(self.filename)
+
+    def _make_table(self):
+        table = DynamicTable(name='table0', description='an example table')
+        table.add_column(name='foo', description='an int column')
+        table.add_row(foo=1)
+        table.add_row(foo=2)
+        return table
+
+    def test_empty_disables_expansion(self):
+        with HDF5IO(self.filename, manager=get_manager(), mode='w') as io:
+            io.write(self._make_table(), expandable=[])
+
+        with h5py.File(self.filename, 'r') as f:
+            # With an empty expandable list, non-scalar datasets get a fixed shape, not (None,).
+            self.assertEqual(f['foo'].maxshape, (2,))
+            self.assertEqual(f['id'].maxshape, (2,))
+
+    def test_custom_list_expands_only_listed(self):
+        with HDF5IO(self.filename, manager=get_manager(), mode='w') as io:
+            io.write(self._make_table(), expandable=['VectorData'])
+
+        with h5py.File(self.filename, 'r') as f:
+            # VectorData column 'foo' is in the list → expandable.
+            self.assertEqual(f['foo'].maxshape, (None,))
+            # ElementIdentifiers 'id' is NOT in the list → fixed shape.
+            self.assertEqual(f['id'].maxshape, (2,))
+
+    def test_bool_raises_type_error(self):
+        """Passing the old boolean API must fail loudly, per the 5.2.0 breaking change."""
+        with HDF5IO(self.filename, manager=get_manager(), mode='w') as io:
+            with self.assertRaises(TypeError):
+                io.write(self._make_table(), expandable=True)
+            with self.assertRaises(TypeError):
+                io.write(self._make_table(), expandable=False)
+
+
+class TestDefaultExpandableSubclasses(TestCase):
+    """Test that subclasses of VectorData and ElementIdentifiers are expandable by default."""
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+
+        custom_ei_spec = DatasetSpec(
+            data_type_def='CustomElementIdentifiers',
+            data_type_inc='ElementIdentifiers',
+            doc='a custom ElementIdentifiers subclass',
+        )
+        custom_vd_spec = DatasetSpec(
+            data_type_def='CustomVectorData',
+            data_type_inc='VectorData',
+            doc='a custom VectorData subclass',
+        )
+
+        self.type_map = get_type_map()
+        create_load_namespace_yaml(
+            namespace_name=CORE_NAMESPACE,
+            specs=[custom_ei_spec, custom_vd_spec],
+            output_dir=self.test_dir,
+            incl_types={'hdmf-common': ['ElementIdentifiers', 'VectorData', 'DynamicTable']},
+            type_map=self.type_map,
+        )
+        self.manager = BuildManager(self.type_map)
+
+        self.CustomElementIdentifiers = self.type_map.get_dt_container_cls(
+            'CustomElementIdentifiers', CORE_NAMESPACE
+        )
+        self.CustomVectorData = self.type_map.get_dt_container_cls(
+            'CustomVectorData', CORE_NAMESPACE
+        )
+
+        self.filename = os.path.join(self.test_dir, 'test_expandable_subclasses.h5')
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir)
+
+    def test_subclasses_are_expandable(self):
+        custom_ids = self.CustomElementIdentifiers(name='id', data=[10, 20])
+        custom_col = self.CustomVectorData(
+            name='custom_col', description='a custom column', data=[1.0, 2.0]
+        )
+        table = DynamicTable(
+            name='table0',
+            description='an example table',
+            id=custom_ids,
+            columns=[custom_col],
+        )
+
+        with HDF5IO(self.filename, manager=self.manager, mode='w') as write_io:
+            write_io.write(table)
+
+        with h5py.File(self.filename, 'r') as f:
+            # ElementIdentifiers subclass (id) should be expandable
+            self.assertEqual(f['id'].maxshape, (None,))
+            self.assertIsNotNone(f['id'].chunks)
+            # VectorData subclass (custom_col) should be expandable
+            self.assertEqual(f['custom_col'].maxshape, (None,))
+            self.assertIsNotNone(f['custom_col'].chunks)

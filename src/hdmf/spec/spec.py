@@ -384,6 +384,8 @@ class AttributeSpec(Spec):
             self['default_value'] = default_value
             self['required'] = False
         if shape is not None:
+            if len(shape) == 0:
+                raise ValueError("'shape' must not be empty")
             self['shape'] = shape
             if dims is None:  # set dummy dims "dim_0", "dim_1", ... if shape is specified but dims is not
                 self['dims'] = tuple(['dim_%d' % i for i in range(len(shape))])
@@ -846,6 +848,8 @@ class DatasetSpec(BaseStorageSpec):
         doc, shape, dims, dtype = popargs('doc', 'shape', 'dims', 'dtype', kwargs)
         default_value, value = popargs('default_value', 'value', kwargs)
         if shape is not None:
+            if len(shape) == 0:
+                raise ValueError("'shape' must not be empty")
             self['shape'] = shape
             if dims is None:  # set dummy dims "dim_0", "dim_1", ... if shape is specified but dims is not
                 self['dims'] = tuple(['dim_%d' % i for i in range(len(shape))])
