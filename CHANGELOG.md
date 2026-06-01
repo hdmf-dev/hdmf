@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 6.0.3 (Upcoming)
+
+### Fixed
+- Fixed reading an anonymous (unnamed) typed link whose target is a subtype of the link's `target_type`. During construct, links were matched to their spec by exact data type, so a subtype target (e.g. a `Device` subtype linked through `ndx-pose`'s `PoseEstimation.devices`) was dropped and the field came back as `None`. Links are now indexed across their full type hierarchy, matching the behavior already used for sub-groups. @rly [#1482](https://github.com/hdmf-dev/hdmf/pull/1482)
+
 ## HDMF 6.0.2 (May 15, 2026)
 
 ### Fixed
