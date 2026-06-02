@@ -1,3 +1,4 @@
+import datetime
 import numpy as np
 import shutil
 import tempfile
@@ -5,13 +6,12 @@ from warnings import warn
 
 from hdmf.build import TypeMap, CustomClassGenerator
 from hdmf.build.classgenerator import ClassGeneratorManager, MCIClassGenerator
-from hdmf.build.manager import TypeSource
 from hdmf.container import Container, Data, MultiContainerInterface, AbstractContainer
 from hdmf.spec import (
     GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, LinkSpec, RefSpec
 )
 from hdmf.testing import TestCase
-from hdmf.utils import get_docval, docval
+from hdmf.utils import get_docval, docval, popargs
 
 from .test_io_map import Bar
 from tests.unit.helpers.utils import CORE_NAMESPACE, create_test_type_map, create_load_namespace_yaml
@@ -528,6 +528,116 @@ class TestDynamicContainer(TestCase):
         )
         assert len(multi.bars) == 1
 
+    def test_get_class_include_scalar_datetime_attribute(self):
+        """Test that get_class resolves a scalar datetime attribute."""
+        goo_spec = GroupSpec(
+            doc='A test group that has a scalar datetime attribute',
+            data_type_def='Goo',
+            attributes=[
+                AttributeSpec(
+                    name='attr1',
+                    doc='a scalar datetime attribute',
+                    dtype='datetime',
+                ),
+            ]
+        )
+        self.spec_catalog.register_spec(goo_spec, 'extension.yaml')
+        goo_cls = self.type_map.get_dt_container_cls('Goo', CORE_NAMESPACE)
+        goo = goo_cls(name='my_goo', attr1=datetime.datetime(2020, 1, 1, 0, 0, 0))
+        self.assertEqual(goo.attr1, datetime.datetime(2020, 1, 1, 0, 0, 0))
+
+    def test_get_class_include_scalar_datetime_dataset(self):
+        """Test that get_class resolves a scalar datetime dataset."""
+        goo_spec = DatasetSpec(
+            doc='A test dataset with dtype datetime',
+            data_type_def='Goo',
+            dtype='datetime',
+        )
+        self.spec_catalog.register_spec(goo_spec, 'extension.yaml')
+        goo_cls = self.type_map.get_dt_container_cls('Goo', CORE_NAMESPACE)
+        goo = goo_cls(name='my_goo', data=datetime.datetime(2020, 1, 1, 0, 0, 0))
+        self.assertEqual(goo.data, datetime.datetime(2020, 1, 1, 0, 0, 0))
+
+    def test_get_class_dataset_preserves_parent_data_default(self):
+        """Inheriting from a parent that gives `data` a default (e.g., VectorData -> []) should
+        not turn `data` into a required arg in the generated subclass.
+        """
+        class DefaultedData(Data):
+            @docval({'name': 'name', 'type': str, 'doc': 'name'},
+                    {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'data', 'default': list()})
+            def __init__(self, **kwargs):
+                data = popargs('data', kwargs)
+                super().__init__(data=data, **kwargs)
+
+        parent_spec = DatasetSpec(
+            doc='parent with a defaulted data arg',
+            data_type_def='DefaultedData',
+            dims=('num_data',),
+            shape=(None,),
+        )
+        goo_spec = DatasetSpec(
+            doc='a DefaultedData subtype with dtype datetime',
+            data_type_def='Goo',
+            data_type_inc='DefaultedData',
+            dtype='isodatetime',
+        )
+        self.spec_catalog.register_spec(parent_spec, 'extension.yaml')
+        self.spec_catalog.register_spec(goo_spec, 'extension.yaml')
+        self.type_map.register_container_type(CORE_NAMESPACE, 'DefaultedData', DefaultedData)
+        goo_cls = self.type_map.get_dt_container_cls('Goo', CORE_NAMESPACE)
+
+        goo_data_arg = next(a for a in get_docval(goo_cls.__init__) if a['name'] == 'data')
+        self.assertEqual(goo_data_arg['default'], list())
+
+
+class TestUpdateDataDocvalArg(TestCase):
+    """Direct unit tests for CustomClassGenerator._update_data_docval_arg."""
+
+    def test_default_value_applied_to_existing_data_arg(self):
+        """spec.default_value should be carried onto the existing 'data' docval arg as `default`."""
+        spec = DatasetSpec(doc='a defaulted dataset', data_type_def='Foo', dtype='int', default_value=42)
+        docval_args = [dict(name='data', type='int', doc='data', default=None)]
+        CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+        data_arg = next(a for a in docval_args if a['name'] == 'data')
+        self.assertEqual(data_arg['default'], 42)
+
+    def test_default_value_applied_to_appended_data_arg(self):
+        """spec.default_value should be carried onto a freshly appended 'data' docval arg."""
+        spec = DatasetSpec(doc='a defaulted dataset', data_type_def='Foo', dtype='int', default_value=42)
+        docval_args = [dict(name='name', type=str, doc='name')]
+        CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+        data_arg = next(a for a in docval_args if a['name'] == 'data')
+        self.assertEqual(data_arg['default'], 42)
+
+    def test_appends_data_arg_when_missing_with_shape(self):
+        """If the parent's docval lacks a 'data' arg, _update_data_docval_arg appends one,
+        carrying the spec's shape onto the new arg.
+        """
+        spec = DatasetSpec(doc='a dataset', data_type_def='Foo', dtype='int', dims=('num_data',), shape=(None,))
+        docval_args = [dict(name='name', type=str, doc='name')]
+        CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+        new_arg = next(a for a in docval_args if a['name'] == 'data')
+        self.assertEqual(new_arg['type'], ('array_data', 'data'))
+        self.assertEqual(new_arg['doc'], 'a dataset')
+        self.assertEqual(new_arg['shape'], (None,))
+
+    def test_scalar_dtypeless_spec_uses_scalar_data_macro(self):
+        """A spec with no shape/dims and no dtype gets ('scalar_data', 'array_data', 'data')."""
+        spec = DatasetSpec(doc='dtypeless dataset', data_type_def='Foo')
+        docval_args = [dict(name='data', type=('array_data', 'data'), doc='data', default=None)]
+        CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+        data_arg = next(a for a in docval_args if a['name'] == 'data')
+        self.assertEqual(data_arg['type'], ('scalar_data', 'array_data', 'data'))
+
+    def test_appends_data_arg_when_missing_without_shape(self):
+        """Missing 'data' arg + spec without shape: append a 'data' arg with no 'shape' key."""
+        spec = DatasetSpec(doc='a scalar dataset', data_type_def='Foo', dtype='int')
+        docval_args = [dict(name='name', type=str, doc='name')]
+        CustomClassGenerator._update_data_docval_arg(docval_args, spec)
+        new_arg = next(a for a in docval_args if a['name'] == 'data')
+        self.assertIn(int, new_arg['type'])
+        self.assertNotIn('shape', new_arg)
+
 
 class TestDynamicContainerFixedValue(TestCase):
 
@@ -888,9 +998,8 @@ class TestGetClassObjectReferences(TestCase):
             incl_types={},
             type_map=self.type_map
         )
-        # the type map should contain only TypeSource entries at this point
-        assert len(self.type_map.get_container_classes('ndx-test')) == 2
-        assert all([isinstance(c, TypeSource) for c in self.type_map.get_container_classes('ndx-test')])
+        # no classes should be resolved yet
+        assert len(self.type_map.get_container_classes('ndx-test')) == 0
 
         self.type_map.get_dt_container_cls('Moo', 'ndx-test')
         # now, Moo and Qux should be resolved
@@ -922,9 +1031,8 @@ class TestGetClassObjectReferences(TestCase):
             incl_types={},
             type_map=self.type_map
         )
-        # the type map should contain only TypeSource entries at this point
-        assert len(self.type_map.get_container_classes('ndx-test')) == 2
-        assert all([isinstance(c, TypeSource) for c in self.type_map.get_container_classes('ndx-test')])
+        # no classes should be resolved yet
+        assert len(self.type_map.get_container_classes('ndx-test')) == 0
 
         self.type_map.get_dt_container_cls('Woo', 'ndx-test')
         # now, Woo and Qux should be resolved
@@ -965,9 +1073,8 @@ class TestGetClassObjectReferences(TestCase):
             incl_types={},
             type_map=self.type_map
         )
-        # the type map should contain only TypeSource entries at this point
-        assert len(self.type_map.get_container_classes('ndx-test')) == 3
-        assert all([isinstance(c, TypeSource) for c in self.type_map.get_container_classes('ndx-test')])
+        # no classes should be resolved yet
+        assert len(self.type_map.get_container_classes('ndx-test')) == 0
 
         self.type_map.get_dt_container_cls('Goo', 'ndx-test')
         # now, Goo, Spam, and Qux should be resolved
@@ -1011,9 +1118,8 @@ class TestGetClassObjectReferences(TestCase):
             incl_types={},
             type_map=self.type_map
         )
-        # the type map should contain only TypeSource entries at this point
-        assert len(self.type_map.get_container_classes('ndx-test')) == 3
-        assert all([isinstance(c, TypeSource) for c in self.type_map.get_container_classes('ndx-test')])
+        # no classes should be resolved yet
+        assert len(self.type_map.get_container_classes('ndx-test')) == 0
 
         self.type_map.get_dt_container_cls('Boo', 'ndx-test')
         # now, Boo, Bam, and Qux should be resolved

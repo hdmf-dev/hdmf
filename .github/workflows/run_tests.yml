@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload distribution as a workspace artifact
         if: ${{ matrix.upload-wheels }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: distributions
           path: dist
@@ -136,7 +136,7 @@ jobs:
           python-version: '3.14'
 
       - name: Download wheel and source distributions from artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: distributions
           path: dist
@@ -175,19 +175,19 @@ jobs:
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@v4
         with:
           auto-update-conda: true
           activate-environment: ros3
           environment-file: environment-ros3.yml
           python-version: ${{ matrix.python-ver }}
           channels: conda-forge
-          auto-activate-base: false
+          auto-activate: false
 
       - name: Install run dependencies
         run: |
-          pip install .
-          pip list
+          python -m pip install .
+          python -m pip list
 
       - name: Conda reporting
         run: |
@@ -197,4 +197,4 @@ jobs:
 
       - name: Run ros3 tests  # TODO include gallery tests after they are written
         run: |
-          pytest tests/unit/test_io_hdf5_streaming.py
+          python -m pytest tests/unit/test_io_hdf5_streaming.py

@@ -2,7 +2,7 @@ import json
 import os
 
 from h5py import File
-import yaml
+from ruamel.yaml import YAML
 
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.common import Container, get_manager, get_hdf5io
@@ -70,8 +70,9 @@ class TestCacheSpec(TestCase):
                     cached = json.loads(cached_json)
 
                     yaml_path = os.path.join(schema_dir, f'{spec_file}.yaml')
+                    yaml_obj = YAML(typ='safe', pure=True)
                     with open(yaml_path, 'r') as yaml_file:
-                        original = yaml.safe_load(yaml_file)
+                        original = yaml_obj.load(yaml_file)
 
                     # Compare specs recursively (including subspecs)
                     self._compare_spec_dicts(cached, original, f'{spec_file}.yaml')

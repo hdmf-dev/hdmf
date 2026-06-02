@@ -1,5 +1,6 @@
 import collections
 import copy as _copy
+import datetime
 import re
 import types
 import warnings
@@ -12,7 +13,7 @@ import numpy as np
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float, bytes, bool],
+    'scalar_data': [str, int, float, bytes, bool, datetime.datetime, datetime.date, np.generic],
     'data': []
 }
 
@@ -25,6 +26,11 @@ except ImportError:
 
 def is_zarr_array(value):
     return ZARR_INSTALLED and isinstance(value, ZarrArray)
+
+
+def is_array_like(value):
+    """Return True if ``value`` is a numpy ndarray, h5py Dataset, or zarr Array."""
+    return isinstance(value, np.ndarray) or isinstance(value, h5py.Dataset) or is_zarr_array(value)
 
 if ZARR_INSTALLED:
     # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
@@ -829,9 +835,10 @@ def get_data_shape(data, strict_no_data_load=False):
 
     def __get_shape_helper(local_data):
         shape = list()
-        if hasattr(local_data, '__len__'):
-            shape.append(len(local_data))
-            if len(local_data):
+        if _is_collection(local_data):
+            length = _get_length(local_data)
+            shape.append(length)
+            if length:
                 el = next(iter(local_data))
                 # If local_data is a list/tuple of Data, do not iterate into the objects
                 if not isinstance(el, (str, bytes, Data)):
@@ -843,17 +850,68 @@ def get_data_shape(data, strict_no_data_load=False):
     if isinstance(data, Data):
         data = data.data
 
-    # NOTE: data.maxshape will fail on empty h5py.Dataset without shape or maxshape. this will be fixed in h5py 3.0
-    if hasattr(data, 'maxshape'):
-        return data.maxshape
     if hasattr(data, 'shape') and data.shape is not None:
         return data.shape
+    if hasattr(data, 'maxshape'):
+        return data.maxshape
     if isinstance(data, dict):
         return None
-    if hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
+    if _is_collection(data):
         if not strict_no_data_load or isinstance(data, (list, tuple, set)):
             return __get_shape_helper(data)
     return None
+
+
+def _is_collection(data):
+    """Check if data is a collection (array-like with elements) vs a scalar.
+
+    Checks ndim first because the Python array API standard requires conforming
+    arrays to have ndim and shape but does not require __len__. This handles
+    array libraries like zarr v3 that follow the standard. Falls back to
+    __len__ for plain Python containers (list, tuple). Strings and bytes
+    are treated as scalars.
+    """
+    if isinstance(data, (str, bytes)):
+        return False
+    try:
+        ndim = data.ndim
+        return ndim > 0
+    except AttributeError:
+        # No ndim attribute (e.g. list, tuple, dict). Fall back to __len__.
+        return hasattr(data, "__len__")
+    except Exception:
+        # Accessing ndim on a closed h5py dataset raises RuntimeError.
+        # Treat inaccessible data as non-collection.
+        return False
+
+
+def _get_length(data) -> int:
+    """Get the first dimension of an array or a Sized object (``collections.abc.Sized`` such as list or tuple).
+
+    Uses ``shape[0]`` for objects that expose a ``shape`` attribute (numpy
+    arrays, h5py datasets, zarr arrays) and falls back to ``len()`` for
+    Sized objects.
+
+    This exists because the Python array API standard does not require
+    ``__len__``, so libraries like zarr v3 may omit it. Accessing
+    ``shape[0]`` works universally for array-API-conforming objects.
+    """
+    if hasattr(data, "shape") and data.shape is not None:
+        return data.shape[0]
+    return len(data)
+
+
+def _unwrap_scalar(value):
+    """If value is a 0-d ndarray, extract the numpy scalar via .item().
+
+    Array-API-conforming libraries (e.g., zarr v3) return 0-d ndarrays from
+    scalar indexing instead of numpy scalars. This converts them so that
+    isinstance checks against Python/numpy scalar types work correctly.
+    """
+    if isinstance(value, np.ndarray) and value.ndim == 0:
+        return value.item()
+    return value
+
 
 
 def pystr(s):

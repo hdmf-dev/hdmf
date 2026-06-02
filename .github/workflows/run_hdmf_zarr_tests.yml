@@ -31,7 +31,7 @@ jobs:
           python -m pip list
           git clone https://github.com/hdmf-dev/hdmf-zarr.git
           cd hdmf-zarr
-          python -m pip install ".[test]"  # this will install a different version of hdmf from the current one
+          python -m pip install . --group test  # this will install a different version of hdmf from the current one
           cd ..
           python -m pip uninstall -y hdmf  # uninstall the other version of hdmf
           python -m pip install .  # reinstall current branch of hdmf

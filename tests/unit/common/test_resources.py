@@ -21,6 +21,11 @@ except ImportError:
 
 
 class HERDManagerContainer(Container, HERDManager):
+
+    __fields__ = (
+        {'name': 'external_resources', 'child': True, 'required_name': 'external_resources'},
+    )
+
     def __init__(self, **kwargs):
         kwargs['name'] = 'HERDManagerContainer'
         super().__init__(**kwargs)

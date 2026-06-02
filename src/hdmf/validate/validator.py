@@ -13,6 +13,7 @@ from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
 from ..spec import SpecNamespace
 from ..spec.spec import BaseStorageSpec, DtypeHelper
+from ..utils import _is_collection, _get_length
 from ..utils import docval, getargs, pystr, get_data_shape
 from ..query import ReferenceResolver
 
@@ -90,6 +91,50 @@ def get_string_format(data):
     return None
 
 
+def has_timezone(data: str) -> bool:
+    """Check if a scalar ISO datetime string includes timezone information."""
+    s = pystr(data)
+    if s.endswith("Z"):
+        return True
+    # Timezone offsets only valid if there is a time component
+    if "T" not in s:
+        return False
+    # Check for a '+' offset or a '-' offset that appears after the 'T'
+    # (to avoid confusing a '-' in the date with a '-' for the timezone)
+    if "+" in s or (s.rfind("-") > s.find("T")):
+        return True
+    return False
+
+
+def _is_missing_timezone(data: str | bytes | np.ndarray | list | tuple) -> bool:
+    """Utility to check if isodatetime data is missing timezone info.
+    Supports scalars, multi-dimensional numpy arrays, and nested lists/tuples.
+    isodatetime objects are not supported. The build process should always convert
+    isodatetime objects to strings/bytes before they reach the builder.
+    """
+    # 1. Handle single strings/bytes (Scalars)
+    if isinstance(data, (str, bytes)):
+        return not has_timezone(data)
+
+    # 2. Handle Numpy arrays of any dimension (1D, 2D, 3D+)
+    if isinstance(data, np.ndarray):
+        # np.nditer efficiently visits every single element regardless of shape
+        for x in np.nditer(data, flags=['refs_ok', 'multi_index']):
+            # x.item() converts the numpy scalar back to a python string
+            val = x.item()
+            if isinstance(val, (str, bytes)) and not has_timezone(val):
+                return True
+
+    # 3. Handle nested Python lists or tuples
+    elif isinstance(data, (list, tuple)):
+        for item in data:
+            # Recursively call this function to handle nested levels
+            if _is_missing_timezone(item):
+                return True
+
+    return False
+
+
 class EmptyArrayError(Exception):
     pass
 
@@ -112,17 +157,16 @@ def _get_type_from_dtype_attr(data: Any, builder_dtype: list | None) -> tuple[st
     """Helper function to get type from data with dtype attribute (h5py.Dataset, zarr.Array, etc.)."""
     # Handle variable-length data with vlen metadata (HDF5 style)
     if data.dtype.metadata is not None and data.dtype.metadata.get('vlen') is not None:
-        if len(data) > 0:
+        if _get_length(data) > 0:
             return get_type(data[0], builder_dtype)
         # Empty string array
         if data.dtype.metadata["vlen"] is str:
             return "utf", None
         # Undetermined variable length data type
         raise EmptyArrayError()  # pragma: no cover
-
     # Handle object dtype (zarr style variable-length strings)
     if data.dtype.kind == 'O':
-        if len(data) > 0:
+        if _get_length(data) > 0:
             return get_type(data[0], builder_dtype)
         return "utf", None
 
@@ -147,12 +191,23 @@ def get_type(data, builder_dtype=None):
     # Numpy nd-array data
     elif isinstance(data, np.ndarray) and len(data.dtype) <= 1:
         if data.size > 0:
-            return get_type(data[0], builder_dtype)
+            if data.ndim == 0:
+                return get_type(data.item(), builder_dtype)
+            else:
+                return get_type(data[0], builder_dtype)
         raise EmptyArrayError()
     # Numpy bool data
     elif isinstance(data, np.bool_):
         return 'bool', None
-    if not hasattr(data, '__len__'):
+    # Numpy 0-d structured array with compound dtype (ndim=0 but has named fields)
+    if isinstance(data, np.ndarray) and data.ndim == 0 and data.dtype.names is not None:
+        if builder_dtype and isinstance(builder_dtype, list):
+            return _get_type_compound_dtype(data, builder_dtype)
+    if not _is_collection(data):
+        if type(data) is float:  # Python float is 64-bit
+            return 'float64', None
+        if type(data) is int:  # Python int is 64-bit (or larger)
+            return 'int64', None
         return type(data).__name__, None
     # Case for h5py.Dataset, zarr.Array, and other I/O specific array types
     # Compound dtype
@@ -164,7 +219,7 @@ def get_type(data, builder_dtype=None):
         return _get_type_from_dtype_attr(data, builder_dtype)
 
     # If all else has failed, try to determine the datatype from the first element of the array
-    if len(data) > 0:
+    if _get_length(data) > 0:
         return get_type(data[0], builder_dtype)
     raise EmptyArrayError()
 
@@ -338,6 +393,7 @@ class AttributeValidator(Validator):
         value = getargs('value', kwargs)
         ret = list()
         spec = self.spec
+
         if spec.required and value is None:
             ret.append(MissingError(self.get_spec_loc(spec)))
         else:
@@ -355,23 +411,35 @@ class AttributeValidator(Validator):
                 else:
                     target_spec = self.vmap.namespace.catalog.get_spec(spec.dtype.target_type)
                     data_type = value.attributes.get(target_spec.type_key())
-                    hierarchy = self.vmap.namespace.catalog.get_hierarchy(data_type)
+                    hierarchy = self.vmap.namespace.get_hierarchy(data_type)
                     if spec.dtype.target_type not in hierarchy:
                         ret.append(IncorrectDataType(self.get_spec_loc(spec), spec.dtype.target_type, data_type))
+
             else:
                 try:
                     dtype, string_format = get_type(value)
+
+                    if spec.dtype == "isodatetime" and string_format == "isodatetime" and _is_missing_timezone(value):
+                        ret.append(
+                            Error(
+                                self.get_spec_loc(spec),
+                                "Datetime is missing required timezone information.",
+                            )
+                        )
+
                     if not check_type(spec.dtype, dtype, string_format):
                         ret.append(DtypeError(self.get_spec_loc(spec), spec.dtype, dtype))
                 except EmptyArrayError:
                     # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                     pass
+
             shape = get_data_shape(value)
             if not check_shape(spec.shape, shape):
                 if shape is None:
                     ret.append(ExpectedArrayError(self.get_spec_loc(self.spec), self.spec.shape, str(value)))
                 else:
                     ret.append(ShapeError(self.get_spec_loc(spec), spec.shape, shape))
+
         return ret
 
 
@@ -414,6 +482,27 @@ class DatasetValidator(BaseStorageValidator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def _check_ref_target_type(self, val, expected_type, type_key, builder, ret):
+        """Helper to recursively validate reference target types and hierarchy."""
+        if isinstance(val, ReferenceBuilder):
+            target = val.builder
+            ref_type = target.attributes.get(type_key)
+
+            if expected_type is not None and ref_type is not None:
+                hierarchy = self.vmap.namespace.get_hierarchy(ref_type)
+                if expected_type not in hierarchy:
+                    ret.append(
+                        IncorrectDataType(
+                            self.get_spec_loc(self.spec),
+                            f"{expected_type} (or subtype)",
+                            ref_type,
+                            location=self.get_builder_loc(builder)
+                        )
+                    )
+        elif isinstance(val, (list, tuple, np.ndarray)):
+            for v in val:
+                self._check_ref_target_type(v, expected_type, type_key, builder, ret)
+
     @docval({"name": "builder", "type": DatasetBuilder, "doc": "the builder to validate"},
             returns='a list of Errors', rtype=list)
     def validate(self, **kwargs):
@@ -423,16 +512,45 @@ class DatasetValidator(BaseStorageValidator):
         if self.spec.dtype is not None:
             try:
                 dtype, string_format = get_type(data, builder.dtype)
-                if not check_type(self.spec.dtype, dtype, string_format):
-                    if isinstance(self.spec.dtype, RefSpec):
-                        expected = f'{self.spec.dtype.reftype} reference'
-                    else:
+                if self.spec.dtype == "isodatetime" and string_format == "isodatetime" and _is_missing_timezone(data):
+                    ret.append(
+                        Error(
+                            self.get_spec_loc(self.spec),
+                            "Datetime is missing required timezone information.",
+                            location=self.get_builder_loc(builder)
+                        )
+                    )
+
+                if not isinstance(self.spec.dtype, RefSpec):
+                    if not check_type(self.spec.dtype, dtype, string_format):
                         expected = self.spec.dtype
-                    ret.append(DtypeError(self.get_spec_loc(self.spec), expected, dtype,
-                                          location=self.get_builder_loc(builder)))
+                        ret.append(
+                            DtypeError(
+                                self.get_spec_loc(self.spec),
+                                expected,
+                                dtype,
+                                location=self.get_builder_loc(builder)
+                            )
+                        )
+
+                else:
+                    if dtype != 'object':
+                        ret.append(
+                            DtypeError(
+                                self.get_spec_loc(self.spec),
+                                "object reference",
+                                dtype,
+                                location=self.get_builder_loc(builder)
+                            )
+                        )
+                    expected_target = self.spec.dtype.target_type
+                    type_key = self.spec.type_key()
+                    self._check_ref_target_type(data, expected_target, type_key, builder, ret)
+
             except EmptyArrayError:
                 # do not validate dtype of empty array. HDMF does not yet set dtype when writing a list/tuple
                 pass
+
         if isinstance(builder.dtype, list) and len(np.shape(builder.data)) == 0:
             shape = ()  # scalar compound dataset
         elif isinstance(builder.dtype, list):
