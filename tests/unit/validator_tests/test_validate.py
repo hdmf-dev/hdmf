@@ -12,7 +12,8 @@ from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
-                                  IncorrectQuantityError, IllegalLinkError, ShapeError,IncorrectDataType, ValidationWarning, ValidationResult, Error)
+                                  IncorrectQuantityError, IllegalLinkError, ShapeError,IncorrectDataType, 
+                                  ValidationWarning, ValidationResult, Error)
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.utils import ZARR_INSTALLED, StrDataset
 from hdmf.validate.errors import Error
