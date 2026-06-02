@@ -16,7 +16,6 @@ from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, 
                                   ValidationWarning, ValidationResult, Error)
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.utils import ZARR_INSTALLED, StrDataset
-from hdmf.validate.errors import Error
 
 CORE_NAMESPACE = 'test_core'
 
