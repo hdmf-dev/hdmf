@@ -13,6 +13,7 @@
 - Deprecated `BaseStorageSpec.add_attribute`, `GroupSpec.add_group`, `GroupSpec.add_dataset`, and `GroupSpec.add_link`. Use `set_attribute`, `set_group`, `set_dataset`, and `set_link` instead. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 - Deprecated unused `BaseStorageSpec.get_data_type_spec` and `BaseStorageSpec.get_namespace_spec`. @rly [#1333](https://github.com/hdmf-dev/hdmf/pull/1333)
 - Moved `test`, `docs`, and `min-reqs` from `[project.optional-dependencies]` to `[dependency-groups]` (PEP 735). `min-reqs` was renamed to `test-min-deps`. @rly [#1395](https://github.com/hdmf-dev/hdmf/pull/1395)
+- Refactored validator return type to `ValidationResult` to support upcoming validation warnings. @sejalpunwatkar [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
 
 ### Removed
 - Dropped support for Python 3.9. The minimum supported version is now Python 3.10. @rly [#xxx](https://github.com/hdmf-dev/hdmf/pull/xxx)

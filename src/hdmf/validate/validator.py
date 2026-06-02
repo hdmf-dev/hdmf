@@ -270,7 +270,7 @@ class ValidatorMap:
             raise ValueError(msg)
 
     @docval({'name': 'builder', 'type': BaseBuilder, 'doc': 'the builder to validate'},
-            returns="a list of errors found", rtype=(list, ValidationResult))
+            returns="A ValidationResult containing the errors and warnings found", rtype=ValidationResult)
     def validate(self, **kwargs):
         """Validate a builder against a Spec
 

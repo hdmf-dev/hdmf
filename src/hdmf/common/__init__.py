@@ -14,7 +14,7 @@ from ..spec import NamespaceCatalog  # noqa: E402
 from ..utils import docval, getargs, get_docval, AllowPositional  # noqa: E402
 from ..backends.io import HDMFIO  # noqa: E402
 from ..backends.hdf5 import HDF5IO  # noqa: E402
-from ..validate import ValidatorMap  # noqa: E402
+from ..validate import ValidatorMap, ValidationResult  # noqa: E402
 from ..build import BuildManager, TypeMap  # noqa: E402
 from ..container import _set_exp  # noqa: E402
 
@@ -207,10 +207,13 @@ def get_manager(**kwargs):
          'doc': 'the namespace to validate against', 'default': CORE_NAMESPACE},
         {'name': 'experimental', 'type': bool,
          'doc': 'data type is an experimental data type', 'default': False},
-        returns="errors in the file", rtype=list,
+        returns="errors and warnings in the file", rtype=ValidationResult,
         is_method=False)
 def validate(**kwargs):
-    """Validate an file against a namespace"""
+    """Validate an file against a namespace.
+    Returns:
+        ValidationResult: A ValidationResult object containing the errors and warnings found.
+    """
     io, namespace, experimental = getargs('io', 'namespace', 'experimental', kwargs)
     if experimental:
         namespace = EXP_NAMESPACE

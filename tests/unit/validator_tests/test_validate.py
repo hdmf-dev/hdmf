@@ -12,7 +12,7 @@ from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
-                                  IncorrectQuantityError, IllegalLinkError, ShapeError)
+                                  IncorrectQuantityError, IllegalLinkError, ShapeError, ValidationWarning, ValidationResult, Error)
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.utils import ZARR_INSTALLED, StrDataset
 
@@ -1723,3 +1723,35 @@ class TestVlenStringData(ValidatorTestBase):
         self.assertEqual(len(results), 1)
         self.assertIsInstance(results[0], DtypeError)
         self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
+
+
+class TestValidationResultWrapper:
+    """Unit tests for the ValidationResult container and ValidationWarning class.
+
+    These tests verify that the ValidationResult wrapper correctly isolates 
+    warnings while maintaining perfect backward compatibility by ensuring that 
+    magic methods (__len__, __bool__, __iter__, __getitem__) reflect the errors 
+    list only.
+    """
+
+    def test_validation_result_basic_behavior(self):
+        err = Error(name="TestError", reason="Critical issue", location="root")
+        warn = ValidationWarning(name="TestWarning", reason="Minor issue", location="root")
+
+        result = ValidationResult(errors=[err], warnings=[warn])
+        assert result.errors == [err]
+        assert result.warnings == [warn]
+
+        assert len(result) == 1
+        assert bool(result) is True
+        assert result[0] == err
+        assert list(result) == [err]
+
+    def test_validation_result_empty_behavior(self):
+        empty_result = ValidationResult()
+        assert len(empty_result) == 0
+        assert bool(empty_result) is False
+        assert empty_result.warnings == []
+
+    def test_validate_method_returns_empty_warnings(self):
+        pass

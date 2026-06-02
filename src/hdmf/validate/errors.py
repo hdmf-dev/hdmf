@@ -12,7 +12,9 @@ __all__ = [
     "MissingDataType",
     "IllegalLinkError",
     "IncorrectDataType",
-    "IncorrectQuantityError"
+    "IncorrectQuantityError",
+    "ValidationWarning",
+    "ValidationResult"
 ]
 
 
@@ -142,7 +144,7 @@ class ValidationResult:
     
     def __init__(self, errors = None, warnings = None):
         self.errors = list(errors) if errors is not None else []
-        self.warnings = list(warnings) if errors is not None else []
+        self.warnings = list(warnings) if warnings is not None else []
 
     def __iter__(self):
         return iter(self.errors)
@@ -155,6 +157,9 @@ class ValidationResult:
     
     def __getitem__(self, i):
         return self.errors[i]
+    
+    def __repr__(self):
+        return "ValidationResult(errors=%r, warnings=%r)" % (self.errors, self.warnings)
 
 
 class DtypeError(Error):
