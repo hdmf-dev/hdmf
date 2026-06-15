@@ -46,6 +46,7 @@ If you use HDMF in your research, please use the following citation:
    export
    validation
    spec_language_support
+   linkml_mapping
 
 .. toctree::
    :hidden:
