@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 6.0.3 (Upcoming)
+
+### Documentation
+- Added documentation of the conventions for mapping HDMF schema language constructs to LinkML, scoped to the `base.yaml` and `CSRMatrix` types. @rly [#1492](https://github.com/hdmf-dev/hdmf/pull/1492)
+
 ## HDMF 6.0.2 (May 15, 2026)
 
 ### Fixed
