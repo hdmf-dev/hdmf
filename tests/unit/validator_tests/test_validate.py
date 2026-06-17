@@ -12,7 +12,7 @@ from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.validate import ValidatorMap
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
-                                  IncorrectQuantityError, IllegalLinkError, ShapeError, IncorrectDataType, 
+                                  IncorrectQuantityError, IllegalLinkError, ShapeError, IncorrectDataType,
                                   ValidationWarning, ValidationResult, Error)
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.utils import ZARR_INSTALLED, StrDataset
@@ -2048,9 +2048,9 @@ class TestISODateTimeTimezone(ValidatorTestBase):
 class TestValidationResultWrapper(TestCase):
     """Unit tests for the ValidationResult container and ValidationWarning class.
 
-    These tests verify that the ValidationResult wrapper correctly isolates 
-    warnings while maintaining perfect backward compatibility by ensuring that 
-    magic methods (__len__, __bool__, __iter__, __getitem__) reflect the errors 
+    These tests verify that the ValidationResult wrapper correctly isolates
+    warnings while maintaining perfect backward compatibility by ensuring that
+    magic methods (__len__, __bool__, __iter__, __getitem__) reflect the errors
     list only.
     """
 

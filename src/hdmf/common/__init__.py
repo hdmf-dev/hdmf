@@ -211,7 +211,7 @@ def get_manager(**kwargs):
         is_method=False)
 def validate(**kwargs):
     """Validate an file against a namespace."""
-    
+
     io, namespace, experimental = getargs('io', 'namespace', 'experimental', kwargs)
     if experimental:
         namespace = EXP_NAMESPACE

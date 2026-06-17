@@ -157,7 +157,7 @@ class ValidationResult:
 
     def __getitem__(self, i):
         return self.errors[i]
-    
+
     def __repr__(self):
         return "ValidationResult(errors=%r, warnings=%r)" % (self.errors, self.warnings)
 
