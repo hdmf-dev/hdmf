@@ -137,7 +137,7 @@ class ValidationWarning:
         return self.__format_str(equatable_name, self.location, self.reason)
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return type(self) is type(other) and hash(self) == hash(other)
 
 
 class ValidationResult:
