@@ -2059,13 +2059,12 @@ class TestValidationResultWrapper(TestCase):
         warn = ValidationWarning(name="TestWarning", reason="Minor issue", location="root")
 
         result = ValidationResult(errors=[err], warnings=[warn])
-        assert result.errors == [err]
-        assert result.warnings == [warn]
-
-        assert len(result) == 1
-        assert bool(result) is True
-        assert result[0] == err
-        assert list(result) == [err]
+        self.assertEqual(result.errors, [err])
+        self.assertEqual(result.warnings, [warn])
+        self.assertEqual(len(result), 1)
+        self.assertTrue(bool(result))
+        self.assertEqual(result[0], err)
+        self.assertEqual(list(result), [err])
 
     def test_validation_result_empty_behavior(self):
         empty_result = ValidationResult()
@@ -2077,15 +2076,11 @@ class TestValidationResultWrapper(TestCase):
         """Test that the validate method returns a ValidationResult with empty warnings for clean data."""
 
         catalog = SpecCatalog()
-        namespace = SpecNamespace(
-            'test ns', 'test_ns',
-            [],
-            version='0.1.0',
-            catalog=catalog
-        )
+        catalog.register_spec(GroupSpec('A dummy spec', data_type_def='Dummy'), 'test.yaml')
+        namespace = SpecNamespace('test ns', 'test_ns', [{'source': 'test.yaml'}], version='0.1.0', catalog=catalog)
         vmap = ValidatorMap(namespace)
 
-        builder = GroupBuilder('root')
+        builder = GroupBuilder('root', attributes={'data_type': 'Dummy'})
 
         result = vmap.validate(builder)
 
