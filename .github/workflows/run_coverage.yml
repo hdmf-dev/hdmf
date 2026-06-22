@@ -34,7 +34,7 @@ jobs:
       PYTHON: '3.13'  # TODO: Update to 3.14 when linkml and its deps support 3.14
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -89,7 +89,7 @@ jobs:
           - { name: linux-python3.14-ros3  , python-ver: "3.14", os: ubuntu-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
