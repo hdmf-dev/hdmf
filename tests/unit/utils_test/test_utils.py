@@ -429,15 +429,24 @@ class TestCoercePandasData(TestCase):
         with self.assertRaisesRegex(TypeError, 'missing values'):
             coerce_pandas_data(s)
 
-    def test_integer_array_raises(self):
+    def test_integer_array_lossless(self):
         ia = pd.array([1, 2, 3], dtype='Int64')
-        with self.assertRaisesRegex(TypeError, 'IntegerArray'):
-            coerce_pandas_data(ia)
+        out = coerce_pandas_data(ia)
+        self.assertIsInstance(out, np.ndarray)
+        self.assertEqual(out.dtype, np.int64)
+        np.testing.assert_array_equal(out, [1, 2, 3])
 
-    def test_boolean_array_raises(self):
+    def test_boolean_array_lossless(self):
         ba = pd.array([True, False, True], dtype='boolean')
-        with self.assertRaisesRegex(TypeError, 'BooleanArray'):
-            coerce_pandas_data(ba)
+        out = coerce_pandas_data(ba)
+        self.assertIsInstance(out, np.ndarray)
+        self.assertEqual(out.dtype, np.bool_)
+        np.testing.assert_array_equal(out, [True, False, True])
+
+    def test_integer_array_with_na_raises(self):
+        ia = pd.array([1, None, 3], dtype='Int64')
+        with self.assertRaisesRegex(TypeError, 'missing values'):
+            coerce_pandas_data(ia)
 
 
 class TestDataAcceptsPandas(TestCase):
