@@ -673,7 +673,6 @@ class HERD(Container):
             # for this entity and key combination.
             check_entity_key = True
             if entity_uri is not None:
-                entity_uri = entity.entity_uri
                 msg = 'This entity already exists. Ignoring new entity uri'
                 warn(msg, stacklevel=3)
 
@@ -947,8 +946,9 @@ class HERD(Container):
         result_df.reset_index(inplace=True, drop=True)
         # ADD files
         file_id_col = []
+        files_df = self.files.to_dataframe()
         for idx in result_df['files_idx']:
-            file_id_val = self.files.to_dataframe().iloc[int(idx)]['file_object_id']
+            file_id_val = files_df.iloc[int(idx)]['file_object_id']
             file_id_col.append(file_id_val)
 
         result_df['file_object_id'] = file_id_col
