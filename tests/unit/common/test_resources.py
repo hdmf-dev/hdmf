@@ -131,6 +131,27 @@ class TestHERD(TestCase):
                                           'entities_idx': 'uint32'})
         pd.testing.assert_frame_equal(result_df, expected_df)
 
+    def test_repr_empty(self):
+        er = HERD()
+        # repr and HTML repr must not raise on an empty HERD (to_dataframe raises when empty)
+        self.assertIn('0 key(s)', repr(er))
+        html = er._repr_html_()
+        self.assertIn('No external resource references', html)
+
+    def test_repr_populated(self):
+        er = HERD()
+        er.add_ref(file=HERDManagerContainer(name='file'),
+                   container=Container(name='Container'),
+                   key='Mus musculus',
+                   entity_id='NCBI_TAXON:10090',
+                   entity_uri='http://x')
+        text = repr(er)
+        self.assertIn('1 key(s), 1 entity(ies), 1 object(s), 1 file(s)', text)
+        # the HTML repr surfaces the flattened table content
+        html = er._repr_html_()
+        self.assertIn('NCBI_TAXON:10090', html)
+        self.assertIn('http://x', html)
+
     def test_assert_external_resources_equal(self):
         file = HERDManagerContainer(name='file')
         ref_container_1 = Container(name='Container_1')
@@ -538,6 +559,48 @@ class TestHERD(TestCase):
         self.assertEqual(er.keys.data, [('key1',)])
         self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
+
+    def test_add_ref_default_key_from_scalar_attribute(self):
+        # key defaults to the value of a scalar string attribute when not provided
+        table = DynamicTable(name='table', description='a table description')
+        file = HERDManagerContainer(name='file')
+
+        er = HERD()
+        er.add_ref(file=file,
+                   container=table,
+                   attribute='description',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        self.assertEqual(er.keys.data, [('a table description',)])
+        self.assertEqual(er.objects.data, [(0, table.object_id, 'DynamicTable', 'description', '')])
+
+    def test_add_ref_explicit_key_overrides_attribute_value(self):
+        table = DynamicTable(name='table', description='a table description')
+        file = HERDManagerContainer(name='file')
+
+        er = HERD()
+        er.add_ref(file=file,
+                   container=table,
+                   attribute='description',
+                   key='explicit',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        self.assertEqual(er.keys.data, [('explicit',)])
+
+    def test_add_ref_default_key_non_scalar_attribute_error(self):
+        # a column (non-scalar) attribute cannot supply a key; require it explicitly
+        table = DynamicTable(name='table', description='a table description')
+        table.add_column(name='col1', description='column')
+        table.add_row(id=0, col1='data')
+        file = HERDManagerContainer(name='file')
+
+        er = HERD()
+        with self.assertRaises(ValueError):
+            er.add_ref(file=file,
+                       container=table,
+                       attribute='col1',
+                       entity_id='entity_id1',
+                       entity_uri='entity1')
 
     def test_get_object_type(self):
         er = HERD()
