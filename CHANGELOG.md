@@ -3,7 +3,7 @@
 ## HDMF 6.0.3 (Upcoming)
 
 ### Fixed
-- Fixed `HERD.get_object_entities` (and other `_check_object_field(create=False)` paths) failing on a `HERD` read from a file. The `HERD` table row index columns (e.g. `files_idx`) are declared with schema dtype `uint`, so they come back as numpy unsigned integers, which the row column specs (typed `int`) rejected. The index column specs now also accept numpy integers, and `get_object_entities` coerces read-back entity rows (numpy structured-array `numpy.void`) to tuples so they expand into columns. @rly [#1496](https://github.com/hdmf-dev/hdmf/issues/1496)
+- Fixed `HERD.get_object_entities` (and other `_check_object_field(create=False)` paths) failing on a `HERD` read from a file. The `HERD` table row index columns (e.g. `files_idx`) are declared with schema dtype `uint`, so they come back as numpy unsigned integers, which the row column specs (typed `int`) rejected. The index column specs now also accept numpy integers, and `get_object_entities` coerces read-back entity rows (numpy structured-array `numpy.void`) to tuples so they expand into columns. @rly [#1497](https://github.com/hdmf-dev/hdmf/pull/1497)
 - Fixed reading an anonymous (unnamed) typed link whose target is a subtype of the link's `target_type`. During construct, links were matched to their spec by exact data type, so a subtype target (e.g. a `Device` subtype linked through `ndx-pose`'s `PoseEstimation.devices`) was dropped and the field came back as `None`. Links are now indexed across their full type hierarchy, matching the behavior already used for sub-groups. @rly [#1482](https://github.com/hdmf-dev/hdmf/pull/1482)
 
 ## HDMF 6.0.2 (May 15, 2026)
