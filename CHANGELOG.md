@@ -2,7 +2,12 @@
 
 ## HDMF 6.0.3 (Upcoming)
 
+### Enhancements
+- Added a `HERD`-specific `__repr__` and `_repr_html_` that surface the references as a flattened table, so a `HERD` (especially one read back from a file) no longer appears empty in its default display. @rly [#1510](https://github.com/hdmf-dev/hdmf/pull/1510)
+- `HERD.add_ref` now defaults `key` to the value of a scalar string `attribute` when `key` is not provided, removing the redundant argument in the common case. @rly [#1511](https://github.com/hdmf-dev/hdmf/pull/1511)
+
 ### Fixed
+- Fixed `HERD.from_zip` ignoring the type map. It now constructs the result with `cls` (so subclasses such as `pynwb.resources.HERD` get their own type map) and accepts an optional `type_map` argument. Previously a HERD loaded from a zip archive always used the default type map, so attribute-based `add_ref` on containers of non-default types (e.g. NWB types via pynwb) raised `AttributeError: 'NoneType' object has no attribute 'parent'`. @rly [#1506](https://github.com/hdmf-dev/hdmf/pull/1506)
 - Fixed reading an anonymous (unnamed) typed link whose target is a subtype of the link's `target_type`. During construct, links were matched to their spec by exact data type, so a subtype target (e.g. a `Device` subtype linked through `ndx-pose`'s `PoseEstimation.devices`) was dropped and the field came back as `None`. Links are now indexed across their full type hierarchy, matching the behavior already used for sub-groups. @rly [#1482](https://github.com/hdmf-dev/hdmf/pull/1482)
 - `HERD.add_ref` now raises a clear error when the file cannot be resolved from the container because the container has not been added to a file. Previously `HERD._get_file_from_container` only raised when the container had no parent at all; if the container had a parent chain that did not include a file, it silently returned `None`, leading to confusing downstream errors. The error message now instructs the user to add the container to the file before adding an external reference. @bendichter
 
