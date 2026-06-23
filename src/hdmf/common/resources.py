@@ -202,7 +202,7 @@ class HERD(Container):
     @staticmethod
     def assert_external_resources_equal(left, right, check_dtype=True):
         """
-        Compare that the keys, resources, entities, objects, and object_keys tables match
+        Compare that the keys, files, entities, objects, object_keys, and entity_keys tables match
 
         :param left: HERD object to compare with right
         :param right: HERD object to compare with left
@@ -243,6 +243,12 @@ class HERD(Container):
         try:
             pd.testing.assert_frame_equal(left.object_keys.to_dataframe(),
                                           right.object_keys.to_dataframe(),
+                                          check_dtype=check_dtype)
+        except AssertionError as e:
+            errors.append(e)
+        try:
+            pd.testing.assert_frame_equal(left.entity_keys.to_dataframe(),
+                                          right.entity_keys.to_dataframe(),
                                           check_dtype=check_dtype)
         except AssertionError as e:
             errors.append(e)
@@ -409,16 +415,14 @@ class HERD(Container):
             return file
         else:
             parent = container.parent
-            if parent is not None:
-                while parent is not None:
-                    if isinstance(parent, HERDManager):
-                        file = parent
-                        return file
-                    else:
-                        parent = parent.parent
-            else:
-                msg = 'Could not find file. Add container to the file.'
-                raise ValueError(msg)
+            while parent is not None:
+                if isinstance(parent, HERDManager):
+                    file = parent
+                    return file
+                else:
+                    parent = parent.parent
+            msg = 'Could not find file. Add container to the file.'
+            raise ValueError(msg)
 
     @docval({'name': 'objects', 'type': list,
              'doc': 'List of objects to check for TermSetWrapper within the fields.'})
