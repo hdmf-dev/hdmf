@@ -744,6 +744,40 @@ class TestHERD(TestCase):
 
         self.remove_er_files()
 
+    def test_from_zip_with_type_map(self):
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=HERDManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_zip(path='./HERD.zip')
+
+        type_map = get_type_map()
+        er_read = HERD.from_zip(path='./HERD.zip', type_map=type_map)
+        self.assertIs(er_read.type_map, type_map)
+
+        self.remove_er_files()
+
+    def test_from_zip_uses_cls(self):
+        class SubHERD(HERD):
+            pass
+
+        er = SubHERD()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=HERDManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_zip(path='./HERD.zip')
+
+        er_read = SubHERD.from_zip(path='./HERD.zip')
+        self.assertIsInstance(er_read, SubHERD)
+
+        self.remove_er_files()
+
     def test_get_zip_directory(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])

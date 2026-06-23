@@ -1001,12 +1001,14 @@ class HERD(Container):
         return directory
 
     @classmethod
-    @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
+    @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'},
+            {'name': 'type_map', 'type': TypeMap, 'default': None,
+             'doc': 'The TypeMap to use for the returned HERD. If None, the default TypeMap is used.'})
     def from_zip(cls, **kwargs):  # noqa: C901
         """
         Method to read in zipped tsv files to populate HERD.
         """
-        zip_file = kwargs['path']
+        zip_file, type_map = popargs('path', 'type_map', kwargs)
         directory = cls.get_zip_directory(zip_file)
 
         with zipfile.ZipFile(zip_file, 'r') as zip:
@@ -1077,12 +1079,13 @@ class HERD(Container):
                 msg = "Key Index out of range in EntityKeyTable. Please check for alterations."
                 raise ValueError(msg)
 
-        er = HERD(
+        er = cls(
             files=files,
             keys=keys,
             entities=entities,
             entity_keys=entity_keys,
             objects=objects,
-            object_keys=object_keys
+            object_keys=object_keys,
+            type_map=type_map,
         )
         return er
