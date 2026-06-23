@@ -755,8 +755,8 @@ class TestHERD(TestCase):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens'])
         file = HERDManagerContainer(name='file')
-        er.add_ref(file=file,
-                   container=data,
+        data.parent = file
+        er.add_ref(container=data,
                    key='Homo sapiens',
                    entity_id='NCBI_TAXON:9606',
                    entity_uri='http://x')
