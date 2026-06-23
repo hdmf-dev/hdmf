@@ -131,6 +131,27 @@ class TestHERD(TestCase):
                                           'entities_idx': 'uint32'})
         pd.testing.assert_frame_equal(result_df, expected_df)
 
+    def test_repr_empty(self):
+        er = HERD()
+        # repr and HTML repr must not raise on an empty HERD (to_dataframe raises when empty)
+        self.assertIn('0 key(s)', repr(er))
+        html = er._repr_html_()
+        self.assertIn('No external resource references', html)
+
+    def test_repr_populated(self):
+        er = HERD()
+        er.add_ref(file=HERDManagerContainer(name='file'),
+                   container=Container(name='Container'),
+                   key='Mus musculus',
+                   entity_id='NCBI_TAXON:10090',
+                   entity_uri='http://x')
+        text = repr(er)
+        self.assertIn('1 key(s), 1 entity(ies), 1 object(s), 1 file(s)', text)
+        # the HTML repr surfaces the flattened table content
+        html = er._repr_html_()
+        self.assertIn('NCBI_TAXON:10090', html)
+        self.assertIn('http://x', html)
+
     def test_assert_external_resources_equal(self):
         file = HERDManagerContainer(name='file')
         ref_container_1 = Container(name='Container_1')
