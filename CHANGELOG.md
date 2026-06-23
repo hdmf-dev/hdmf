@@ -2,6 +2,9 @@
 
 ## HDMF 6.0.3 (Upcoming)
 
+### Breaking changes
+- Removed the `file` argument from `HERD.add_ref` and `HERD.add_ref_termset`. The file is now always resolved automatically from the container's parent hierarchy, so a reference can only be added to a container that has already been added to a file. This enforces that an external reference cannot be attached to a container that is not yet in a file. Callers passing `file=...` to these methods should remove that argument and ensure the container has been added to its file first. @bendichter
+
 ### Enhancements
 - Added a `HERD`-specific `__repr__` and `_repr_html_` that surface the references as a flattened table, so a `HERD` (especially one read back from a file) no longer appears empty in its default display. @rly [#1510](https://github.com/hdmf-dev/hdmf/pull/1510)
 - `HERD.add_ref` now defaults `key` to the value of a scalar string `attribute` when `key` is not provided, removing the redundant argument in the common case. @rly [#1511](https://github.com/hdmf-dev/hdmf/pull/1511)
