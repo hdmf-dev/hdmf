@@ -1,8 +1,9 @@
 import pandas as pd
 import unittest
-from hdmf.common import DynamicTable, VectorData, get_type_map
+from hdmf.common import DynamicTable, VectorData, get_type_map, get_manager
 from hdmf.common import CORE_NAMESPACE as HDMF_COMMON_NAMESPACE
 from hdmf import TermSet, TermSetWrapper
+from hdmf.backends.hdf5 import HDF5IO
 from hdmf.common.resources import HERD, Key
 from hdmf import Data, Container, HERDManager
 from hdmf.testing import TestCase, remove_test_file
@@ -632,6 +633,42 @@ class TestHERD(TestCase):
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
+        pd.testing.assert_frame_equal(df, expected_df)
+
+    def test_get_obj_entities_hdf5_roundtrip(self):
+        """Regression test for #1496: idx columns are read back as numpy unsigned ints.
+
+        After an HDF5 round-trip the objects table's ``files_idx`` (schema dtype ``uint``)
+        comes back as a numpy ``uint``. Building an ``Object`` row from it, as
+        ``get_object_entities`` does via ``_check_object_field(create=False)``, must accept
+        the numpy integer rather than rejecting it as not a Python ``int``.
+        """
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens'])
+        file = HERDManagerContainer(name='file')
+        er.add_ref(file=file,
+                   container=data,
+                   key='Homo sapiens',
+                   entity_id='NCBI_TAXON:9606',
+                   entity_uri='http://x')
+
+        path = 'test_HERD_hdf5_roundtrip.h5'
+        try:
+            with HDF5IO(path, manager=get_manager(), mode='w') as io:
+                io.write(er)
+            with HDF5IO(path, manager=get_manager(), mode='r') as io:
+                read_er = io.read()
+                # files_idx is read back as a numpy unsigned int (schema dtype is uint)
+                self.assertIsInstance(read_er.objects['files_idx', 0], np.unsignedinteger)
+                # the same file and container (matched by object_id) resolve the persisted rows
+                df = read_er.get_object_entities(file=file, container=data)
+        finally:
+            remove_test_file(path)
+
+        expected_df = pd.DataFrame.from_dict(
+            {'entity_id': {0: 'NCBI_TAXON:9606'},
+             'entity_uri': {0: 'http://x'}}
+        )
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_obj_entities_file_none_container(self):
