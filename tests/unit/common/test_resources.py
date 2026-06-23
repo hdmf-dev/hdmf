@@ -1,8 +1,9 @@
 import pandas as pd
 import unittest
-from hdmf.common import DynamicTable, VectorData, get_type_map
+from hdmf.common import DynamicTable, VectorData, get_type_map, get_manager
 from hdmf.common import CORE_NAMESPACE as HDMF_COMMON_NAMESPACE
 from hdmf import TermSet, TermSetWrapper
+from hdmf.backends.hdf5 import HDF5IO
 from hdmf.common.resources import HERD, Key
 from hdmf import Data, Container, HERDManager
 from hdmf.testing import TestCase, remove_test_file
@@ -130,6 +131,27 @@ class TestHERD(TestCase):
                                           'files_idx': 'uint32',
                                           'entities_idx': 'uint32'})
         pd.testing.assert_frame_equal(result_df, expected_df)
+
+    def test_repr_empty(self):
+        er = HERD()
+        # repr and HTML repr must not raise on an empty HERD (to_dataframe raises when empty)
+        self.assertIn('0 key(s)', repr(er))
+        html = er._repr_html_()
+        self.assertIn('No external resource references', html)
+
+    def test_repr_populated(self):
+        er = HERD()
+        er.add_ref(file=HERDManagerContainer(name='file'),
+                   container=Container(name='Container'),
+                   key='Mus musculus',
+                   entity_id='NCBI_TAXON:10090',
+                   entity_uri='http://x')
+        text = repr(er)
+        self.assertIn('1 key(s), 1 entity(ies), 1 object(s), 1 file(s)', text)
+        # the HTML repr surfaces the flattened table content
+        html = er._repr_html_()
+        self.assertIn('NCBI_TAXON:10090', html)
+        self.assertIn('http://x', html)
 
     def test_assert_external_resources_equal(self):
         file = HERDManagerContainer(name='file')
@@ -539,6 +561,48 @@ class TestHERD(TestCase):
         self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
 
+    def test_add_ref_default_key_from_scalar_attribute(self):
+        # key defaults to the value of a scalar string attribute when not provided
+        table = DynamicTable(name='table', description='a table description')
+        file = HERDManagerContainer(name='file')
+
+        er = HERD()
+        er.add_ref(file=file,
+                   container=table,
+                   attribute='description',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        self.assertEqual(er.keys.data, [('a table description',)])
+        self.assertEqual(er.objects.data, [(0, table.object_id, 'DynamicTable', 'description', '')])
+
+    def test_add_ref_explicit_key_overrides_attribute_value(self):
+        table = DynamicTable(name='table', description='a table description')
+        file = HERDManagerContainer(name='file')
+
+        er = HERD()
+        er.add_ref(file=file,
+                   container=table,
+                   attribute='description',
+                   key='explicit',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        self.assertEqual(er.keys.data, [('explicit',)])
+
+    def test_add_ref_default_key_non_scalar_attribute_error(self):
+        # a column (non-scalar) attribute cannot supply a key; require it explicitly
+        table = DynamicTable(name='table', description='a table description')
+        table.add_column(name='col1', description='column')
+        table.add_row(id=0, col1='data')
+        file = HERDManagerContainer(name='file')
+
+        er = HERD()
+        with self.assertRaises(ValueError):
+            er.add_ref(file=file,
+                       container=table,
+                       attribute='col1',
+                       entity_id='entity_id1',
+                       entity_uri='entity1')
+
     def test_get_object_type(self):
         er = HERD()
         file = HERDManagerContainer(name='file')
@@ -632,6 +696,42 @@ class TestHERD(TestCase):
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
+        pd.testing.assert_frame_equal(df, expected_df)
+
+    def test_get_obj_entities_hdf5_roundtrip(self):
+        """Regression test for #1496: idx columns are read back as numpy unsigned ints.
+
+        After an HDF5 round-trip the objects table's ``files_idx`` (schema dtype ``uint``)
+        comes back as a numpy ``uint``. Building an ``Object`` row from it, as
+        ``get_object_entities`` does via ``_check_object_field(create=False)``, must accept
+        the numpy integer rather than rejecting it as not a Python ``int``.
+        """
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens'])
+        file = HERDManagerContainer(name='file')
+        er.add_ref(file=file,
+                   container=data,
+                   key='Homo sapiens',
+                   entity_id='NCBI_TAXON:9606',
+                   entity_uri='http://x')
+
+        path = 'test_HERD_hdf5_roundtrip.h5'
+        try:
+            with HDF5IO(path, manager=get_manager(), mode='w') as io:
+                io.write(er)
+            with HDF5IO(path, manager=get_manager(), mode='r') as io:
+                read_er = io.read()
+                # files_idx is read back as a numpy unsigned int (schema dtype is uint)
+                self.assertIsInstance(read_er.objects['files_idx', 0], np.unsignedinteger)
+                # the same file and container (matched by object_id) resolve the persisted rows
+                df = read_er.get_object_entities(file=file, container=data)
+        finally:
+            remove_test_file(path)
+
+        expected_df = pd.DataFrame.from_dict(
+            {'entity_id': {0: 'NCBI_TAXON:9606'},
+             'entity_uri': {0: 'http://x'}}
+        )
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_obj_entities_file_none_container(self):
@@ -741,6 +841,40 @@ class TestHERD(TestCase):
 
         er_read = HERD.from_zip(path='./HERD.zip')
         HERD.assert_external_resources_equal(er_read, er, check_dtype=False)
+
+        self.remove_er_files()
+
+    def test_from_zip_with_type_map(self):
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=HERDManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_zip(path='./HERD.zip')
+
+        type_map = get_type_map()
+        er_read = HERD.from_zip(path='./HERD.zip', type_map=type_map)
+        self.assertIs(er_read.type_map, type_map)
+
+        self.remove_er_files()
+
+    def test_from_zip_uses_cls(self):
+        class SubHERD(HERD):
+            pass
+
+        er = SubHERD()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        er.add_ref(file=HERDManagerContainer(name='file'),
+                   container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_zip(path='./HERD.zip')
+
+        er_read = SubHERD.from_zip(path='./HERD.zip')
+        self.assertIsInstance(er_read, SubHERD)
 
         self.remove_er_files()
 

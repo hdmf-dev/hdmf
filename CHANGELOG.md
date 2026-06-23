@@ -4,8 +4,12 @@
 
 ### Enhancements
 - Accept pandas `Series` and `ExtensionArray` (including `StringArray` and `ArrowStringArray`) as `data` in `Data` and its subclasses (e.g., `VectorData`), normalizing to numpy at construction. This restores compatibility with pandas 3.0, where DataFrame string columns are PyArrow-backed by default and previously failed HDMF's type validation. Inputs containing missing values (`pd.NA`/`NaN`) raise an informative `TypeError` rather than silently failing at HDF5 write time. The `pandas<3` cap has been lifted from the dependency pin. @rly [#1384](https://github.com/hdmf-dev/hdmf/issues/1384)
+- Added a `HERD`-specific `__repr__` and `_repr_html_` that surface the references as a flattened table, so a `HERD` (especially one read back from a file) no longer appears empty in its default display. @rly [#1510](https://github.com/hdmf-dev/hdmf/pull/1510)
+- `HERD.add_ref` now defaults `key` to the value of a scalar string `attribute` when `key` is not provided, removing the redundant argument in the common case. @rly [#1511](https://github.com/hdmf-dev/hdmf/pull/1511)
 
 ### Fixed
+- Fixed `HERD.get_object_entities` failing on a `HERD` read from a file, where index columns come back as numpy unsigned integers. @rly [#1497](https://github.com/hdmf-dev/hdmf/pull/1497)
+- Fixed `HERD.from_zip` ignoring the type map. It now constructs the result with `cls` (so subclasses such as `pynwb.resources.HERD` get their own type map) and accepts an optional `type_map` argument. Previously a HERD loaded from a zip archive always used the default type map, so attribute-based `add_ref` on containers of non-default types (e.g. NWB types via pynwb) raised `AttributeError: 'NoneType' object has no attribute 'parent'`. @rly [#1506](https://github.com/hdmf-dev/hdmf/pull/1506)
 - Fixed reading an anonymous (unnamed) typed link whose target is a subtype of the link's `target_type`. During construct, links were matched to their spec by exact data type, so a subtype target (e.g. a `Device` subtype linked through `ndx-pose`'s `PoseEstimation.devices`) was dropped and the field came back as `None`. Links are now indexed across their full type hierarchy, matching the behavior already used for sub-groups. @rly [#1482](https://github.com/hdmf-dev/hdmf/pull/1482)
 
 ## HDMF 6.0.2 (May 15, 2026)
