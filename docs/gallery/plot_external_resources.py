@@ -186,7 +186,7 @@ herd.add_ref(
 # How add_ref resolves the file
 # ------------------------------------------------------
 # A reference can only be added to a container that has already been added to a file
-# (or more accurately to a :py:class:`~hdmf.container.Container` that is a 
+# (or more accurately to a :py:class:`~hdmf.container.Container` that is a
 # :py:class:`hdmf.container.HERDManager`, which in most practical cases is the file).
 # :py:func:`~hdmf.common.resources.HERD.add_ref` automatically resolves the file by walking
 # up the container's parent hierarchy to find the enclosing
