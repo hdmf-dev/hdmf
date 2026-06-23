@@ -1,5 +1,18 @@
 # HDMF Changelog
 
+## HDMF 6.0.3 (Upcoming)
+
+### Enhancements
+- Accept pandas `Series` and `ExtensionArray` (including `StringArray` and `ArrowStringArray`) as `data` in `Data` and its subclasses (e.g., `VectorData`), normalizing to numpy at construction. This restores compatibility with pandas 3.0, where DataFrame string columns are PyArrow-backed by default and previously failed HDMF's type validation. Inputs containing missing values (`pd.NA`/`NaN`) raise an informative `TypeError` rather than silently failing at HDF5 write time, and pandas nullable numeric/boolean dtypes (`IntegerArray`, `BooleanArray`, `FloatingArray`) raise with guidance to cast explicitly. The `pandas<3` cap has been lifted from the dependency pin. @rly [#1384](https://github.com/hdmf-dev/hdmf/issues/1384)
+
+### Fixed
+- Fixed reading an anonymous (unnamed) typed link whose target is a subtype of the link's `target_type`. During construct, links were matched to their spec by exact data type, so a subtype target (e.g. a `Device` subtype linked through `ndx-pose`'s `PoseEstimation.devices`) was dropped and the field came back as `None`. Links are now indexed across their full type hierarchy, matching the behavior already used for sub-groups. @rly [#1482](https://github.com/hdmf-dev/hdmf/pull/1482)
+
+## HDMF 6.0.2 (May 15, 2026)
+
+### Fixed
+- Added `numpy.generic` to the `scalar_data` docval macro so that numpy scalar types (e.g. `numpy.uint64`) are accepted as scalar data values. This fixes a compatibility issue with numpy 2.0, which removed `__iter__` from numpy scalars and caused them to be rejected by `DatasetBuilder`. @rly [#1476](https://github.com/hdmf-dev/hdmf/pull/1476)
+
 ## HDMF 6.0.1 (May 5, 2026)
 
 ### Fixed
@@ -15,7 +28,6 @@
 ### Enhancements
 - Set sensible default chunk sizes (~4 MB, in the recommended 2-16 MB range for cloud-hosted files) when `chunks=True`, replacing h5py's much smaller defaults. Added public `HDF5IO.compute_default_chunk_shape()` so users can inspect or override the chunk shape that would be used. @bendichter [#1440](https://github.com/hdmf-dev/hdmf/pull/1440)
 - Added end-to-end support for `isodatetime`/`datetime` dtype on datasets and attributes, including extension specs that refine an inherited type. Reading now parses stored ISO 8601 values back into Python `datetime`/`date` objects, and `get_class`-generated classes accept `datetime`/`date` values (scalar and array) for the `data` arg, which is now derived from the spec's dtype and shape. Introduced a new write-once `Builder.matched_spec` slot that records the subspec each builder was matched to, populated by both the read-path matcher and the write-path build sites in `ObjectMapper`. @rly [#1458](https://github.com/hdmf-dev/hdmf/pull/1458)
-- Accept pandas `Series` and `ExtensionArray` (including `StringArray` and `ArrowStringArray`) as `data` in `Data` and its subclasses (e.g., `VectorData`), normalizing to numpy at construction. This restores compatibility with pandas 3.0, where DataFrame string columns are PyArrow-backed by default and previously failed HDMF's type validation. Inputs containing missing values (`pd.NA`/`NaN`) raise an informative `TypeError` rather than silently failing at HDF5 write time, and pandas nullable numeric/boolean dtypes (`IntegerArray`, `BooleanArray`, `FloatingArray`) raise with guidance to cast explicitly. The `pandas<3` cap has been lifted from the dependency pin. @rly [#1384](https://github.com/hdmf-dev/hdmf/issues/1384)
 
 ### Fixed
 - Added missing validation for dataset reference target types to ensure correct `RefSpec.target_type` matching. @sejalpunwatkar [#1429](https://github.com/hdmf-dev/hdmf/pull/1429)

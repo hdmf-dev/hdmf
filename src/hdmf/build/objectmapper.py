@@ -1422,9 +1422,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     datasets[link_builder.name] = target
                 else:
                     groups[link_builder.name] = target
-                dt = manager.get_builder_dt(target)
-                if dt is not None:
-                    link_dt.setdefault(dt, list()).append(target)
+                self.__index_link_target(link_dt, target, manager)
             # now assign links to their respective specification
             consumed_link_names = set()
             for subspec in spec.links:
@@ -1455,6 +1453,21 @@ class ObjectMapper(metaclass=ExtenderMeta):
             data_spec = builder.matched_spec or spec
             ret[spec] = self.__parse_if_datetime(self.__check_ref_resolver(builder.data), data_spec)
         return ret
+
+    @staticmethod
+    def __index_link_target(link_dt, target, manager):
+        """Index a link target builder under its data type and all of its parent data types.
+
+        Indexing across the full type hierarchy lets an anonymous link spec (matched by
+        ``target_type``) also match targets that are subtypes of ``target_type``, mirroring the
+        behavior used for sub-groups in ``__get_sub_builders``.
+        """
+        dt = manager.get_builder_dt(target)
+        ns = manager.get_builder_ns(target)
+        if dt is None or ns is None:
+            return
+        for parent_dt in manager.namespace_catalog.get_hierarchy(ns, dt):
+            link_dt.setdefault(parent_dt, list()).append(target)
 
     @staticmethod
     def __check_ref_resolver(data):

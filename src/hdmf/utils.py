@@ -15,7 +15,7 @@ from pandas.api.extensions import ExtensionArray as _PandasExtensionArray
 
 __macros = {
     'array_data': [np.ndarray, list, tuple, h5py.Dataset, pd.Series, _PandasExtensionArray],
-    'scalar_data': [str, int, float, bytes, bool, datetime.datetime, datetime.date],
+    'scalar_data': [str, int, float, bytes, bool, datetime.datetime, datetime.date, np.generic],
     'data': []
 }
 

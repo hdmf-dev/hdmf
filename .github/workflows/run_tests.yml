@@ -35,7 +35,7 @@ jobs:
           - { name: macos-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -95,7 +95,7 @@ jobs:
           - { name: windows-gallery-python3.13-upgraded-optional , test-tox-env: gallery-py313-upgraded-optional , python-ver: "3.13", os: windows-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -125,7 +125,7 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
@@ -169,7 +169,7 @@ jobs:
           - { name: linux-python3.14-ros3  , python-ver: "3.14", os: ubuntu-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
