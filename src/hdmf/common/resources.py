@@ -544,13 +544,14 @@ class HERD(Container):
         if len(missing_terms)>0:
             return {"missing_terms": missing_terms}
 
-    def _validate_object(self, container, attribute, field, file):
+    def _validate_object(self, container, attribute, field, file, create=True):
         if attribute is None:  # Trivial Case
             relative_path = ''
             object_field = self._check_object_field(file=file,
                                                     container=container,
                                                     relative_path=relative_path,
-                                                    field=field)
+                                                    field=field,
+                                                    create=create)
         else:  # DataType Attribute Case
             attribute_object = getattr(container, attribute)  # returns attribute object
             if isinstance(attribute_object, AbstractContainer):
@@ -558,7 +559,8 @@ class HERD(Container):
                 object_field = self._check_object_field(file=file,
                                                         container=attribute_object,
                                                         relative_path=relative_path,
-                                                        field=field)
+                                                        field=field,
+                                                        create=create)
             else:  # Non-DataType Attribute Case:
                 obj_mapper = self.type_map.get_map(container)
                 spec = obj_mapper.get_attr_spec(attr_name=attribute)
@@ -575,7 +577,8 @@ class HERD(Container):
                         object_field = self._check_object_field(file=file,
                                                                 container=parent,
                                                                 relative_path=relative_path,
-                                                                field=field)
+                                                                field=field,
+                                                                create=create)
                     else:
                         msg = 'Container not the nearest data_type'
                         raise ValueError(msg)
@@ -587,7 +590,8 @@ class HERD(Container):
                     object_field = self._check_object_field(file=file,
                                                             container=parent,
                                                             relative_path=relative_path,
-                                                            field=field)
+                                                            field=field,
+                                                            create=create)
         return object_field
 
 
@@ -880,11 +884,13 @@ class HERD(Container):
                                                     field=field,
                                                     create=False)
         else:
-            object_field = self._check_object_field(file=file,
-                                                    container=container[attribute],
-                                                    relative_path=relative_path,
-                                                    field=field,
-                                                    create=False)
+            # resolve the attribute the same way add_ref does so that a reference added with an
+            # attribute can be retrieved with the same attribute
+            object_field = self._validate_object(container=container,
+                                                 attribute=attribute,
+                                                 field=field,
+                                                 file=file,
+                                                 create=False)
         # Find all keys associated with the object
         for row_idx in self.object_keys.which(objects_idx=object_field.idx):
             keys.append(self.object_keys['keys_idx', row_idx])

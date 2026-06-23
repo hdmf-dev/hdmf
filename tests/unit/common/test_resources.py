@@ -729,6 +729,33 @@ class TestHERD(TestCase):
 
         pd.testing.assert_frame_equal(df, expected_df)
 
+    def test_get_obj_entities_non_datatype_attribute(self):
+        # a reference added with a non-DataType attribute (stored with a computed relative_path)
+        # must be retrievable with the same attribute
+        table = DynamicTable(name='table', description='table')
+        table.add_column(name='col1', description="column")
+        table.add_row(id=0, col1='data')
+
+        file = HERDManagerContainer(name='file')
+
+        er = HERD()
+        er.add_ref(file=file,
+                   container=table,
+                   attribute='description',
+                   key='key1',
+                   entity_id='entity_0',
+                   entity_uri='entity_0_uri')
+        df = er.get_object_entities(file=file,
+                                    container=table,
+                                    attribute='description')
+
+        expected_df_data = \
+            {'entity_id': {0: 'entity_0'},
+             'entity_uri': {0: 'entity_0_uri'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+
+        pd.testing.assert_frame_equal(df, expected_df)
+
     def test_to_and_from_zip(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
