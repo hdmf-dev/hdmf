@@ -599,7 +599,9 @@ class HERD(Container):
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')},
             {'name': 'key', 'type': (str, Key), 'default': None,
-             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
+             'doc': ('The name of the key or the Key object from the KeyTable for the key to add a resource for. '
+                     'If not provided and ``attribute`` names a scalar string attribute, the value of that '
+                     'attribute is used as the key.')},
             {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None},
             {'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
@@ -625,6 +627,21 @@ class HERD(Container):
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
         file = kwargs['file']
+
+        ##########################################
+        # Default the key from a scalar attribute
+        ##########################################
+        if key is None and attribute is not None:
+            if not isinstance(container, AbstractContainer):
+                msg = ("Cannot default 'key' from attribute '%s' because 'container' is not a "
+                       "Container/Data object. Provide 'key' explicitly." % attribute)
+                raise ValueError(msg)
+            attribute_value = getattr(container, attribute)
+            if not isinstance(attribute_value, str):
+                msg = ("Cannot default 'key' from attribute '%s' because its value is not a single "
+                       "string. Provide 'key' explicitly." % attribute)
+                raise ValueError(msg)
+            key = attribute_value
 
         ##################
         # Set File if None
