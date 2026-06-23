@@ -407,16 +407,19 @@ class HERD(Container):
         if isinstance(container, HERDManager):
             return container
 
-        # Walk up the parent chain looking for the file (a HERDManager).
+        # Walk up the parent chain looking for the parent HERDManager.
+        # In most practical cases, this will be the root file, however, it is
+        # possible to construct a file that stores multiple Container objects
+        # that each act as separate HERDManager for their child objects
         parent = container.parent
         while parent is not None:
             if isinstance(parent, HERDManager):
                 return parent
             parent = parent.parent
 
-        # No file was found in the container's ancestry. This happens when the
-        # container has not been added to a file, either because it has no parent
-        # or because none of its ancestors is a file.
+        # No HERDManager was found in the container's ancestry. This happens when the
+        # container has no parent (e.g., if it is has not been added to a file yet)  or because
+        # none of its ancestors are a HERDManager
         msg = ("Could not find the file associated with container '%s'. Please add the container "
                "to the file before adding an external reference." % getattr(container, 'name', container))
         raise ValueError(msg)
