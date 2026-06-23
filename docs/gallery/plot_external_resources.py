@@ -188,7 +188,7 @@ herd.add_ref(
 # A reference can only be added to a container that has already been added to a file.
 # :py:func:`~hdmf.common.resources.HERD.add_ref` automatically resolves the file by walking
 # up the container's parent hierarchy to find the enclosing
-# :py:class:`~hdmf.common.resources.HERDManager` (the file). If the container is not yet in a
+# :py:class:`~hdmf.container.HERDManager` (the file). If the container is not yet in a
 # file, ``add_ref`` raises an informative error. In the example below the column is reachable
 # from the file because its parent table has been added to the file.
 
