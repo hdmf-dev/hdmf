@@ -152,16 +152,20 @@ class TestHERD(TestCase):
                                                                           er_right))
 
     def test_invalid_keys_assert_external_resources_equal(self):
+        # use the same file and container so that only the keys table differs
+        file = HERDManagerContainer(name='file')
+        container = Container(name='Container')
+
         er_left = HERD()
-        er_left.add_ref(file=HERDManagerContainer(name='file'),
-                        container=Container(name='Container'),
+        er_left.add_ref(file=file,
+                        container=container,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
 
         er_right = HERD()
-        er_right.add_ref(file=HERDManagerContainer(name='file'),
-                         container=Container(name='Container'),
+        er_right.add_ref(file=file,
+                         container=container,
                          key='invalid',
                          entity_id="id11",
                          entity_uri='url11')
@@ -171,16 +175,19 @@ class TestHERD(TestCase):
                                                               er_right)
 
     def test_invalid_objects_assert_external_resources_equal(self):
+        # use the same file but different containers so that only the objects table differs
+        file = HERDManagerContainer(name='file')
+
         er_left = HERD()
-        er_left.add_ref(file=HERDManagerContainer(name='file'),
-                        container=Container(name='Container'),
+        er_left.add_ref(file=file,
+                        container=Container(name='Container1'),
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
 
         er_right = HERD()
-        er_right.add_ref(file=HERDManagerContainer(name='file'),
-                         container=Container(name='Container'),
+        er_right.add_ref(file=file,
+                         container=Container(name='Container2'),
                          key='key1',
                          entity_id="id11",
                          entity_uri='url11')
@@ -190,16 +197,20 @@ class TestHERD(TestCase):
                                                               er_right)
 
     def test_invalid_entity_assert_external_resources_equal(self):
+        # use the same file and container so that only the entities table differs
+        file = HERDManagerContainer(name='file')
+        container = Container(name='Container')
+
         er_left = HERD()
-        er_left.add_ref(file=HERDManagerContainer(name='file'),
-                        container=Container(name='Container'),
+        er_left.add_ref(file=file,
+                        container=container,
                         key='key1',
                         entity_id="invalid",
                         entity_uri='invalid')
 
         er_right = HERD()
-        er_right.add_ref(file=HERDManagerContainer(name='file'),
-                         container=Container(name='Container'),
+        er_right.add_ref(file=file,
+                         container=container,
                          key='key1',
                          entity_id="id11",
                          entity_uri='url11')
@@ -209,20 +220,25 @@ class TestHERD(TestCase):
                                                               er_right)
 
     def test_invalid_object_keys_assert_external_resources_equal(self):
+        # use the same file and container so that only the object_keys table differs
+        file = HERDManagerContainer(name='file')
+        container = Container(name='Container')
+
         er_left = HERD()
-        er_left.add_ref(file=HERDManagerContainer(name='file'),
-                        container=Container(name='Container'),
-                        key='invalid',
+        er_left.add_ref(file=file,
+                        container=container,
+                        key='key1',
                         entity_id="id11",
                         entity_uri='url11')
 
         er_right = HERD()
-        er_right._add_key('key')
-        er_right.add_ref(file=HERDManagerContainer(name='file'),
-                         container=Container(name='Container'),
+        er_right.add_ref(file=file,
+                         container=container,
                          key='key1',
                          entity_id="id11",
                          entity_uri='url11')
+        # add a spurious object-key relationship so that only the object_keys table differs
+        er_right._add_object_key(er_right.objects.row[0], er_right.keys.row[0])
 
         with self.assertRaises(AssertionError):
             HERD.assert_external_resources_equal(er_left,
