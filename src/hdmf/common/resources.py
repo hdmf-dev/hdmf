@@ -987,6 +987,50 @@ class HERD(Container):
         # return the result
         return result_df
 
+    def __flattened_dataframe_or_none(self):
+        """Return the flattened ``to_dataframe()`` view, or None when there are no references.
+
+        ``to_dataframe`` raises when the HERD holds no object-key relationships and may fail if the
+        backing file is closed. The repr methods use this helper so they never raise on display.
+        """
+        if len(self.object_keys) == 0:
+            return None
+        try:
+            return self.to_dataframe()
+        except Exception:
+            return None
+
+    def __summary_line(self):
+        """Return a one-line summary of the table sizes."""
+        return ("%d key(s), %d entity(ies), %d object(s), %d file(s)"
+                % (len(self.keys), len(self.entities), len(self.objects), len(self.files)))
+
+    def __repr__(self):
+        cls = self.__class__
+        template = "%s %s.%s at 0x%d" % (self.name, cls.__module__, cls.__name__, id(self))
+        template += "\n  " + self.__summary_line()
+        df = self.__flattened_dataframe_or_none()
+        if df is not None and len(df) > 0:
+            template += "\n" + repr(df)
+        return template
+
+    def _repr_html_(self):
+        """Generate an HTML representation that surfaces the references as a flattened table."""
+        header_text = self.name if self.name == self.__class__.__name__ else \
+            f"{self.name} ({self.__class__.__name__})"
+        html_repr = self.css_style + self.js_script
+        html_repr += "<div class='container-wrap'>"
+        html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
+        html_repr += self._closed_file_warning_html()
+        html_repr += f"<p class='container-fields'>{self.__summary_line()}</p>"
+        df = self.__flattened_dataframe_or_none()
+        if df is None or len(df) == 0:
+            html_repr += "<p class='container-fields'>No external resource references.</p>"
+        else:
+            html_repr += df.to_html()
+        html_repr += "</div>"
+        return html_repr
+
     @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
     def to_zip(self, **kwargs):
         """

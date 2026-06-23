@@ -3,6 +3,7 @@
 ## HDMF 6.0.3 (Upcoming)
 
 ### Enhancements
+- Added a `HERD`-specific `__repr__` and `_repr_html_` that surface the references as a flattened table, so a `HERD` (especially one read back from a file) no longer appears empty in its default display. @rly [#1510](https://github.com/hdmf-dev/hdmf/pull/1510)
 - `HERD.add_ref` now defaults `key` to the value of a scalar string `attribute` when `key` is not provided, removing the redundant argument in the common case. @rly [#1511](https://github.com/hdmf-dev/hdmf/pull/1511)
 
 ### Fixed
