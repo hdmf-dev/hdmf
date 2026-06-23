@@ -5,6 +5,7 @@
 ### Enhancements
 - Added a `HERD`-specific `__repr__` and `_repr_html_` that surface the references as a flattened table, so a `HERD` (especially one read back from a file) no longer appears empty in its default display. @rly [#1510](https://github.com/hdmf-dev/hdmf/pull/1510)
 - `HERD.add_ref` now defaults `key` to the value of a scalar string `attribute` when `key` is not provided, removing the redundant argument in the common case. @rly [#1511](https://github.com/hdmf-dev/hdmf/pull/1511)
+- `HERD.add_ref` no longer warns when an `entity_uri` is provided for an already-existing `entity_id` and the URI matches the stored one. The entity tables are normalized, so re-passing the same `entity_uri` (common when annotating many objects or files with the same entity) is harmless; a warning is now emitted only when a *different* `entity_uri` is provided, in which case the existing URI is kept. @bendichter
 
 ### Fixed
 - Fixed `HERD.get_object_entities` failing on a `HERD` read from a file, where index columns come back as numpy unsigned integers. @rly [#1497](https://github.com/hdmf-dev/hdmf/pull/1497)

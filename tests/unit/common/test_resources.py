@@ -1,5 +1,6 @@
 import pandas as pd
 import unittest
+import warnings
 from hdmf.common import DynamicTable, VectorData, get_type_map, get_manager
 from hdmf.common import CORE_NAMESPACE as HDMF_COMMON_NAMESPACE
 from hdmf import TermSet, TermSetWrapper
@@ -1223,7 +1224,8 @@ class TestHERD(TestCase):
                        key='Mus musculus',
                        entity_id='NCBI:txid10090')
 
-    def test_entity_uri_warning(self):
+    def test_entity_uri_warning_on_mismatch(self):
+        # providing a *different* entity_uri for an existing entity_id warns and keeps the existing uri
         er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
@@ -1231,18 +1233,50 @@ class TestHERD(TestCase):
         data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
+        existing_uri = 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
         er.add_ref(file=HERDManagerContainer(name='file'),
                    container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
-                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+                   entity_uri=existing_uri)
         existing_key = er.get_key('Mus musculus')
-        with self.assertWarns(Warning):
+        msg = ("The provided entity_uri 'https://example.com/different' does not match the existing "
+               "entity_uri '%s' for entity_id 'NCBI:txid10090'. The existing entity_uri is kept."
+               % existing_uri)
+        with self.assertWarnsWith(UserWarning, msg):
             er.add_ref(file=HERDManagerContainer(name='file'),
                        container=data_2,
                        key=existing_key,
                        entity_id='NCBI:txid10090',
-                       entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+                       entity_uri='https://example.com/different')
+        # the existing entity is reused (not duplicated) and its uri is unchanged
+        self.assertEqual(er.entities.data, [('NCBI:txid10090', existing_uri)])
+
+    def test_entity_uri_no_warning_when_same(self):
+        # re-passing the *same* entity_uri for an existing entity_id does not warn and does not duplicate
+        er = HERD()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        uri = 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
+        er.add_ref(file=HERDManagerContainer(name='file'),
+                   container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri=uri)
+        existing_key = er.get_key('Mus musculus')
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # any warning becomes an error
+            er.add_ref(file=HERDManagerContainer(name='file'),
+                       container=data_2,
+                       key=existing_key,
+                       entity_id='NCBI:txid10090',
+                       entity_uri=uri)
+        # the entity table is still normalized (a single row), no duplicate added
+        self.assertEqual(er.entities.data, [('NCBI:txid10090', uri)])
 
     def test_key_without_entity_error(self):
         er = HERD()
