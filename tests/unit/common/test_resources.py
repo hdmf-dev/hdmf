@@ -519,12 +519,37 @@ class TestHERD(TestCase):
 
         self.assertEqual(file.name, retrieved.name)
 
+    def test_get_file_from_container_nested(self):
+        # The file should be resolved even when it is not the direct parent.
+        file = HERDManagerContainer(name='file')
+        middle = Container(name='middle')
+        middle.parent = file
+        container = Container(name='name')
+        container.parent = middle
+        er = HERD()
+        retrieved = er._get_file_from_container(container)
 
-    def test_get_file_from_container_error(self):
+        self.assertEqual(file.name, retrieved.name)
+
+    def test_get_file_from_container_no_parent_error(self):
         container = Container(name='name')
         er = HERD()
 
-        with self.assertRaises(ValueError):
+        msg = ("Could not find the file associated with container 'name'. Please add the container "
+               "to the file before adding an external reference.")
+        with self.assertRaisesWith(ValueError, msg):
+            er._get_file_from_container(container)
+
+    def test_get_file_from_container_no_file_ancestor_error(self):
+        # The container has a parent chain, but none of the ancestors is a file.
+        middle = Container(name='middle')
+        container = Container(name='name')
+        container.parent = middle
+        er = HERD()
+
+        msg = ("Could not find the file associated with container 'name'. Please add the container "
+               "to the file before adding an external reference.")
+        with self.assertRaisesWith(ValueError, msg):
             er._get_file_from_container(container)
 
     def test_add_ref(self):

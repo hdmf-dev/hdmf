@@ -4,6 +4,7 @@
 
 ### Fixed
 - Fixed reading an anonymous (unnamed) typed link whose target is a subtype of the link's `target_type`. During construct, links were matched to their spec by exact data type, so a subtype target (e.g. a `Device` subtype linked through `ndx-pose`'s `PoseEstimation.devices`) was dropped and the field came back as `None`. Links are now indexed across their full type hierarchy, matching the behavior already used for sub-groups. @rly [#1482](https://github.com/hdmf-dev/hdmf/pull/1482)
+- `HERD.add_ref` now raises a clear error when the file cannot be resolved from the container because the container has not been added to a file. Previously `HERD._get_file_from_container` only raised when the container had no parent at all; if the container had a parent chain that did not include a file, it silently returned `None`, leading to confusing downstream errors. The error message now instructs the user to add the container to the file before adding an external reference. @bendichter
 
 ## HDMF 6.0.2 (May 15, 2026)
 

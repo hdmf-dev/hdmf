@@ -405,20 +405,21 @@ class HERD(Container):
         container = kwargs['container']
 
         if isinstance(container, HERDManager):
-            file = container
-            return file
-        else:
-            parent = container.parent
-            if parent is not None:
-                while parent is not None:
-                    if isinstance(parent, HERDManager):
-                        file = parent
-                        return file
-                    else:
-                        parent = parent.parent
-            else:
-                msg = 'Could not find file. Add container to the file.'
-                raise ValueError(msg)
+            return container
+
+        # Walk up the parent chain looking for the file (a HERDManager).
+        parent = container.parent
+        while parent is not None:
+            if isinstance(parent, HERDManager):
+                return parent
+            parent = parent.parent
+
+        # No file was found in the container's ancestry. This happens when the
+        # container has not been added to a file, either because it has no parent
+        # or because none of its ancestors is a file.
+        msg = ("Could not find the file associated with container '%s'. Please add the container "
+               "to the file before adding an external reference." % getattr(container, 'name', container))
+        raise ValueError(msg)
 
     @docval({'name': 'objects', 'type': list,
              'doc': 'List of objects to check for TermSetWrapper within the fields.'})
