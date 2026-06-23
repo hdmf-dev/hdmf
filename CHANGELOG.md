@@ -3,6 +3,8 @@
 ## HDMF 6.0.3 (Upcoming)
 
 ### Fixed
+- Fixed `HERD.assert_external_resources_equal` not comparing the `entity_keys` table, so HERDs differing only in entity-key relationships compared as equal. @rly [#1498](https://github.com/hdmf-dev/hdmf/issues/1498)
+- Fixed `HERD._get_file_from_container` returning `None` instead of raising `ValueError` when a container has ancestors but none is a `HERDManager`. @rly [#1499](https://github.com/hdmf-dev/hdmf/issues/1499)
 - Fixed reading an anonymous (unnamed) typed link whose target is a subtype of the link's `target_type`. During construct, links were matched to their spec by exact data type, so a subtype target (e.g. a `Device` subtype linked through `ndx-pose`'s `PoseEstimation.devices`) was dropped and the field came back as `None`. Links are now indexed across their full type hierarchy, matching the behavior already used for sub-groups. @rly [#1482](https://github.com/hdmf-dev/hdmf/pull/1482)
 
 ## HDMF 6.0.2 (May 15, 2026)

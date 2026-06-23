@@ -228,6 +228,31 @@ class TestHERD(TestCase):
             HERD.assert_external_resources_equal(er_left,
                                                               er_right)
 
+    def test_invalid_entity_keys_assert_external_resources_equal(self):
+        # use the same file and container so that every table except entity_keys is identical
+        file = HERDManagerContainer(name='file')
+        container = Container(name='Container')
+
+        er_left = HERD()
+        er_left.add_ref(file=file,
+                        container=container,
+                        key='key1',
+                        entity_id="id11",
+                        entity_uri='url11')
+
+        er_right = HERD()
+        er_right.add_ref(file=file,
+                         container=container,
+                         key='key1',
+                         entity_id="id11",
+                         entity_uri='url11')
+        # add a spurious entity-key relationship so that only the entity_keys table differs
+        er_right._add_entity_key(er_right.entities.row[0], er_right.keys.row[0])
+
+        with self.assertRaises(AssertionError):
+            HERD.assert_external_resources_equal(er_left,
+                                                              er_right)
+
     def test_add_ref_search_for_file(self):
         em = HERDManagerContainer()
         er = HERD()
@@ -526,6 +551,16 @@ class TestHERD(TestCase):
 
         with self.assertRaises(ValueError):
             er._get_file_from_container(container)
+
+    def test_get_file_from_container_no_herdmanager_ancestor_error(self):
+        # container has a parent chain but no HERDManager ancestor
+        parent = Container(name='parent')
+        child = Container(name='child')
+        child.parent = parent
+        er = HERD()
+
+        with self.assertRaises(ValueError):
+            er._get_file_from_container(child)
 
     def test_add_ref(self):
         er = HERD()
