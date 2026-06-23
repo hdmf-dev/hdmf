@@ -2,6 +2,10 @@
 
 ## HDMF 6.0.3 (Upcoming)
 
+### Enhancements
+- Added a `HERD`-specific `__repr__` and `_repr_html_` that surface the references as a flattened table, so a `HERD` (especially one read back from a file) no longer appears empty in its default display. @rly [#1510](https://github.com/hdmf-dev/hdmf/pull/1510)
+- `HERD.add_ref` now defaults `key` to the value of a scalar string `attribute` when `key` is not provided, removing the redundant argument in the common case. @rly [#1511](https://github.com/hdmf-dev/hdmf/pull/1511)
+
 ### Fixed
 - Fixed reading an anonymous (unnamed) typed link whose target is a subtype of the link's `target_type`. During construct, links were matched to their spec by exact data type, so a subtype target (e.g. a `Device` subtype linked through `ndx-pose`'s `PoseEstimation.devices`) was dropped and the field came back as `None`. Links are now indexed across their full type hierarchy, matching the behavior already used for sub-groups. @rly [#1482](https://github.com/hdmf-dev/hdmf/pull/1482)
 
