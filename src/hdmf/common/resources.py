@@ -88,7 +88,7 @@ class ObjectTable(Table):
     __defaultname__ = 'objects'
 
     __columns__ = (
-        {'name': 'files_idx', 'type': int,
+        {'name': 'files_idx', 'type': (int, np.integer),
          'doc': 'The row idx for the file_object_id in FileTable containing the object.'},
         {'name': 'object_id', 'type': str,
          'doc': 'The object ID for the Container/Data.'},
@@ -119,9 +119,9 @@ class ObjectKeyTable(Table):
     __defaultname__ = 'object_keys'
 
     __columns__ = (
-        {'name': 'objects_idx', 'type': (int, Object),
+        {'name': 'objects_idx', 'type': (int, np.integer, Object),
          'doc': 'The index into the objects table for the Object that uses the Key.'},
-        {'name': 'keys_idx', 'type': (int, Key),
+        {'name': 'keys_idx', 'type': (int, np.integer, Key),
          'doc': 'The index into the keys table that is used to make an external resource reference.'}
     )
 
@@ -134,9 +134,9 @@ class EntityKeyTable(Table):
     __defaultname__ = 'entity_keys'
 
     __columns__ = (
-        {'name': 'entities_idx', 'type': (int, Entity),
+        {'name': 'entities_idx', 'type': (int, np.integer, Entity),
          'doc': 'The index into the EntityTable for the Entity that associated with the Key.'},
-        {'name': 'keys_idx', 'type': (int, Key),
+        {'name': 'keys_idx', 'type': (int, np.integer, Key),
          'doc': 'The index into the KeyTable that is used to make an external resource reference.'}
     )
 
@@ -289,7 +289,7 @@ class HERD(Container):
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
-            {'name': 'files_idx', 'type': int,
+            {'name': 'files_idx', 'type': (int, np.integer),
              'doc': 'The file_object_id row idx.'},
             {'name': 'object_type', 'type': str, 'default': None,
              'doc': ('The type of the object. This is also the parent in relative_path. If omitted, '
@@ -317,8 +317,8 @@ class HERD(Container):
         obj = Object(files_idx, container, object_type, relative_path, field, table=self.objects)
         return obj
 
-    @docval({'name': 'obj', 'type': (int, Object), 'doc': 'The Object that uses the Key.'},
-            {'name': 'key', 'type': (int, Key), 'doc': 'The Key that the Object uses.'})
+    @docval({'name': 'obj', 'type': (int, np.integer, Object), 'doc': 'The Object that uses the Key.'},
+            {'name': 'key', 'type': (int, np.integer, Key), 'doc': 'The Key that the Object uses.'})
     def _add_object_key(self, **kwargs):
         """
         Specify that an object (i.e. container and relative_path) uses a key to reference
@@ -327,8 +327,8 @@ class HERD(Container):
         obj, key = popargs('obj', 'key', kwargs)
         return ObjectKey(obj, key, table=self.object_keys)
 
-    @docval({'name': 'entity', 'type': (int, Entity), 'doc': 'The Entity associated with the Key.'},
-            {'name': 'key', 'type': (int, Key), 'doc': 'The Key that the connected to the Entity.'})
+    @docval({'name': 'entity', 'type': (int, np.integer, Entity), 'doc': 'The Entity associated with the Key.'},
+            {'name': 'key', 'type': (int, np.integer, Key), 'doc': 'The Key that the connected to the Entity.'})
     def _add_entity_key(self, **kwargs):
         """
         Add entity-key relationship to the EntityKeyTable.
@@ -909,7 +909,9 @@ class HERD(Container):
             entity_key_row_idx = self.entity_keys.which(keys_idx=key_idx)
             for row_idx in entity_key_row_idx:
                 entity_idx = self.entity_keys['entities_idx', row_idx]
-                entities.append(self.entities.__getitem__(entity_idx))
+                # coerce the row to a tuple so a read-back numpy structured-array row
+                # (numpy.void) expands into columns the same as an in-memory list row
+                entities.append(tuple(self.entities[entity_idx]))
         df = pd.DataFrame(entities, columns=['entity_id', 'entity_uri'])
         return df
 
