@@ -63,6 +63,14 @@ def coerce_pandas_data(data):
             "sentinel (e.g., empty string) before passing the data to HDMF."
         )
 
+    # pandas nullable masked dtypes (e.g. Int64, boolean, Float64) expose the
+    # backing numpy dtype. Convert through it so the result keeps that dtype on
+    # all supported pandas versions; a plain to_numpy()/np.asarray() returns an
+    # object array on pandas < 2.2.
+    numpy_dtype = getattr(underlying.dtype, "numpy_dtype", None)
+    if numpy_dtype is not None:
+        return underlying.to_numpy(dtype=numpy_dtype)
+
     if isinstance(data, pd.Series):
         return data.to_numpy()
     return np.asarray(data)
