@@ -1437,7 +1437,8 @@ class TestHERD(TestCase):
         _dict = er._check_object_field(file=file,
                                container=data,
                                relative_path='',
-                               field='')
+                               field='',
+                               create=True)
         expected = {'file_object_id': file.object_id,
                     'files_idx': None,
                     'container': data,
@@ -1734,6 +1735,17 @@ class TestHERDGetKey(TestCase):
         msg = "No key found with that container."
         with self.assertRaisesWith(ValueError, msg):
             _ = self.er.get_key(key_name='key2', container=container1, file=file)
+
+    def test_get_key_container_not_in_table(self):
+        # a container that has never been added must raise a clear error rather than failing
+        # while resolving the (non-existent) object's idx
+        file = HERDManagerContainer()
+        container1 = Container(name='Container')
+        container1.parent = file
+
+        msg = "Object not in Object Table."
+        with self.assertRaisesWith(ValueError, msg):
+            _ = self.er.get_key(key_name='key1', container=container1, file=file)
 
 
 class TestHERDNamespace(TestCase):

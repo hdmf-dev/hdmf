@@ -352,15 +352,20 @@ class HERD(Container):
              'default': ''},
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')},
-            {'name': 'create', 'type': bool, 'default': True})
+            {'name': 'create', 'type': bool, 'default': False,
+             'doc': ('If the object is missing, create and return a dict that add_ref can use to add it to the '
+                     'tables. The created dict misses the idx key since the entry does not yet exist in HERD.')})
     def _check_object_field(self, **kwargs):
         """
         Check if a container, relative path, and field have been added.
 
-        The container can be either an object_id string or an AbstractContainer.
+        The following cases may occur:
+          1. If a single, corresponding object is found, then return that object from ``self.objects.row``.
+          2. If the container, relative_path, and field have not been added yet and ``create`` is True, then
+             return a new dict that add_ref can use to create the object. The returned dict misses the idx key
+             since the object has not been created yet.
 
-        If the container, relative_path, and field have not been added, add them
-        and return the corresponding Object. Otherwise, just return the Object.
+        :raises ValueError: If the object is missing and ``create`` is False, or if multiple matching objects exist.
         """
         file = kwargs['file']
         container = kwargs['container']
@@ -547,7 +552,24 @@ class HERD(Container):
         if len(missing_terms)>0:
             return {"missing_terms": missing_terms}
 
-    def _validate_object(self, container, attribute, field, file, create=True):
+    def _validate_object(self, container, attribute, field, file, create=False):
+        """
+        Resolve the object that an external reference is attached to and return it via ``_check_object_field``.
+
+        The ``attribute`` is resolved to the container and relative_path that identify the referenced object:
+          - ``attribute`` is None: the reference is on the container itself (relative_path '').
+          - ``attribute`` names a DataType (an AbstractContainer): the reference is on that sub-container.
+          - ``attribute`` names a non-DataType attribute (e.g. ``DynamicTable.description``): the reference is on the
+            nearest container ancestor of the attribute spec, with the relative_path computed from the spec path.
+
+        :param container: The Container/Data object that the reference is attached to.
+        :param attribute: The name of the attribute on the container, or None for the container itself.
+        :param field: The field of a compound data type using an external resource, or '' if not applicable.
+        :param file: The HERDManager file associated with the container.
+        :param create: Passed to ``_check_object_field``. If True and the object is missing, return a dict that
+                       add_ref can use to add it; if False, a missing object raises a ValueError.
+        :returns: The matching object from ``self.objects.row``, or (when ``create`` is True) a dict for add_ref.
+        """
         if attribute is None:  # Trivial Case
             relative_path = ''
             object_field = self._check_object_field(file=file,
@@ -698,7 +720,7 @@ class HERD(Container):
                        % (entity_uri, entity.entity_uri, entity_id))
                 warn(msg, stacklevel=3)
 
-        object_field = self._validate_object(container, attribute, field, file)
+        object_field = self._validate_object(container, attribute, field, file, create=True)
 
         #######################################
         # Validate Parameters and Populate HERD
@@ -898,16 +920,14 @@ class HERD(Container):
             object_field = self._check_object_field(file=file,
                                                     container=container,
                                                     relative_path=relative_path,
-                                                    field=field,
-                                                    create=False)
+                                                    field=field)
         else:
             # resolve the attribute the same way add_ref does so that a reference added with an
             # attribute can be retrieved with the same attribute
             object_field = self._validate_object(container=container,
                                                  attribute=attribute,
                                                  field=field,
-                                                 file=file,
-                                                 create=False)
+                                                 file=file)
         # Find all keys associated with the object
         for row_idx in self.object_keys.which(objects_idx=object_field.idx):
             keys.append(self.object_keys['keys_idx', row_idx])
