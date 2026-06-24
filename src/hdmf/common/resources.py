@@ -685,8 +685,13 @@ class HERD(Container):
             # The entity exists and so we need to check if an entity_key exists
             # for this entity and key combination.
             check_entity_key = True
-            if entity_uri is not None:
-                msg = 'This entity already exists. Ignoring new entity uri'
+            # The existing entity_uri is always kept. Re-passing the same entity_uri is
+            # harmless and common when annotating many objects/files with the same entity,
+            # so only warn when a *different* entity_uri is provided.
+            if entity_uri is not None and entity_uri != entity.entity_uri:
+                msg = ("The provided entity_uri '%s' does not match the existing entity_uri '%s' "
+                       "for entity_id '%s'. The existing entity_uri is kept."
+                       % (entity_uri, entity.entity_uri, entity_id))
                 warn(msg, stacklevel=3)
 
         object_field = self._validate_object(container, attribute, field, file)
