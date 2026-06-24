@@ -408,18 +408,24 @@ class HERD(Container):
         container = kwargs['container']
 
         if isinstance(container, HERDManager):
-            file = container
-            return file
-        else:
-            parent = container.parent
-            while parent is not None:
-                if isinstance(parent, HERDManager):
-                    file = parent
-                    return file
-                else:
-                    parent = parent.parent
-            msg = 'Could not find file. Add container to the file.'
-            raise ValueError(msg)
+            return container
+
+        # Walk up the parent chain looking for the parent HERDManager.
+        # In most practical cases, this will be the root file, however, it is
+        # possible to construct a file that stores multiple Container objects
+        # that each act as separate HERDManager for their child objects
+        parent = container.parent
+        while parent is not None:
+            if isinstance(parent, HERDManager):
+                return parent
+            parent = parent.parent
+
+        # No HERDManager was found in the container's ancestry. This happens when the
+        # container has no parent (e.g., if it is has not been added to a file yet)  or because
+        # none of its ancestors are a HERDManager
+        msg = ("Could not find the file associated with container '%s'. Please add the container "
+               "to the file before adding an external reference." % getattr(container, 'name', container))
+        raise ValueError(msg)
 
     @docval({'name': 'objects', 'type': list,
              'doc': 'List of objects to check for TermSetWrapper within the fields.'})
@@ -470,16 +476,13 @@ class HERD(Container):
                 term_info = wrapper.termset[term]
                 entity_id = term_info[0]
                 entity_uri = term_info[2]
-                self.add_ref(file=root_container,
-                             container=container,
+                self.add_ref(container=container,
                              attribute=attr_name,
                              key=term,
                              entity_id=entity_id,
                              entity_uri=entity_uri)
 
-    @docval({'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
-             'default': None},
-            {'name': 'container', 'type': AbstractContainer, 'default': None,
+    @docval({'name': 'container', 'type': AbstractContainer, 'default': None,
              'doc': 'The Container/Data object that uses the key.'},
             {'name': 'attribute', 'type': str,
              'doc': 'The attribute of the container for the external reference.', 'default': None},
@@ -498,15 +501,12 @@ class HERD(Container):
         in the TermSet. If valid, it will proceed to call add_ref. Otherwise, the method will return a dict of
         missing terms (terms not found in the TermSet).
         """
-        file = kwargs['file']
         container = kwargs['container']
         attribute = kwargs['attribute']
         key = kwargs['key']
         field = kwargs['field']
         termset = kwargs['termset']
 
-        if file is None:
-            file = self._get_file_from_container(container=container)
         # if key is provided then add_ref proceeds as normal
         if key is not None:
             data = [key]
@@ -534,8 +534,7 @@ class HERD(Container):
                 continue
             entity_id = term_info[0]
             entity_uri = term_info[2]
-            self.add_ref(file=file,
-                         container=container,
+            self.add_ref(container=container,
                          attribute=attribute,
                          key=term,
                          field=field,
@@ -603,8 +602,6 @@ class HERD(Container):
                      'attribute is used as the key.')},
             {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None},
-            {'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
-             'default': None},
             )
     def add_ref(self, **kwargs):  # noqa: C901
         """
@@ -625,7 +622,6 @@ class HERD(Container):
         field = kwargs['field']
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
-        file = kwargs['file']
 
         ##########################################
         # Default the key from a scalar attribute
@@ -643,16 +639,12 @@ class HERD(Container):
             key = attribute_value
 
         ##################
-        # Set File if None
+        # Resolve the file
         ##################
-        if file is None:
-            file = self._get_file_from_container(container=container)
-        # TODO: Add this once you've created a HDMF_file to rework testing
-        # else:
-        #     file_from_container = self._get_file_from_container(container=container)
-        #     if file.object_id != file_from_container.object_id:
-        #         msg = "The file given does not match the file in which the container is stored."
-        #         raise ValueError(msg)
+        # The file is always resolved from the container so that a reference can only be
+        # added to a container that has already been added to a file. This raises a clear
+        # error when the container is not in a file.
+        file = self._get_file_from_container(container=container)
 
         ################
         # Set Key Checks
