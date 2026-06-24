@@ -344,8 +344,7 @@ class HERD(Container):
 
     @docval({'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.'},
             {'name': 'container', 'type': AbstractContainer,
-             'doc': ('The Container/Data object that uses the key or '
-                     'the object id for the Container/Data object that uses the key.')},
+             'doc': 'The Container/Data object that uses the key.'},
             {'name': 'relative_path', 'type': str,
              'doc': ('The relative_path of the attribute of the object that uses ',
                      'an external resource reference key. Use an empty string if not applicable.'),
@@ -490,9 +489,8 @@ class HERD(Container):
                              entity_id=entity_id,
                              entity_uri=entity_uri)
 
-    @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
-             'doc': ('The Container/Data object that uses the key or '
-                     'the object_id for the Container/Data object that uses the key.')},
+    @docval({'name': 'container', 'type': AbstractContainer, 'default': None,
+             'doc': 'The Container/Data object that uses the key.'},
             {'name': 'attribute', 'type': str,
              'doc': 'The attribute of the container for the external reference.', 'default': None},
             {'name': 'field', 'type': str, 'default': '',
@@ -620,9 +618,8 @@ class HERD(Container):
         return object_field
 
 
-    @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
-             'doc': ('The Container/Data object that uses the key or '
-                     'the object_id for the Container/Data object that uses the key.')},
+    @docval({'name': 'container', 'type': AbstractContainer, 'default': None,
+             'doc': 'The Container/Data object that uses the key.'},
             {'name': 'attribute', 'type': str,
              'doc': 'The attribute of the container for the external reference.', 'default': None},
             {'name': 'field', 'type': str, 'default': '',
@@ -803,9 +800,8 @@ class HERD(Container):
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
             {'name': 'file', 'type': HERDManager, 'doc': 'The file associated with the container.',
              'default': None},
-            {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
-             'doc': ('The Container/Data object that uses the key or '
-                     'the object id for the Container/Data object that uses the key.')},
+            {'name': 'container', 'type': AbstractContainer, 'default': None,
+             'doc': 'The Container/Data object that uses the key.'},
             {'name': 'relative_path', 'type': str,
              'doc': ('The relative_path of the attribute of the object that uses ',
                      'an external resource reference key. Use an empty string if not applicable.'),
@@ -891,7 +887,7 @@ class HERD(Container):
 
     @docval({'name': 'file',  'type': HERDManager, 'doc': 'The file.',
              'default': None},
-            {'name': 'container', 'type': (str, AbstractContainer),
+            {'name': 'container', 'type': AbstractContainer,
              'doc': 'The Container/data object that is linked to resources/entities.'},
             {'name': 'attribute', 'type': str,
              'doc': 'The attribute of the container for the external reference.', 'default': None},
