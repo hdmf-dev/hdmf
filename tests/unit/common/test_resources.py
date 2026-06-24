@@ -783,7 +783,7 @@ class TestHERD(TestCase):
 
         After an HDF5 round-trip the objects table's ``files_idx`` (schema dtype ``uint``)
         comes back as a numpy ``uint``. Building an ``Object`` row from it, as
-        ``get_object_entities`` does via ``_check_object_field(create=False)``, must accept
+        ``get_object_entities`` does via ``_find_object``, must accept
         the numpy integer rather than rejecting it as not a Python ``int``.
         """
         er = HERD()
@@ -1430,52 +1430,70 @@ class TestHERD(TestCase):
                        key=key,
                        entity_id='entity1')
 
-    def test_check_object_field_add(self):
+    def test_find_or_add_object_add(self):
+        # for a missing object, _find_or_add_object adds the object and its file entry and returns the new row
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         file = HERDManagerContainer(name='file')
-        _dict = er._check_object_field(file=file,
-                               container=data,
-                               relative_path='',
-                               field='',
-                               create=True)
-        expected = {'file_object_id': file.object_id,
-                    'files_idx': None,
-                    'container': data,
-                    'relative_path': '',
-                    'field': ''}
-        self.assertEqual(_dict, expected)
+        obj = er._find_or_add_object(file, data, '', '')
+        self.assertEqual(len(er.files), 1)
+        self.assertEqual(er.files['file_object_id', 0], file.object_id)
+        self.assertEqual(len(er.objects), 1)
+        self.assertEqual(obj.idx, 0)
+        self.assertEqual(er.objects['object_id', 0], data.object_id)
+        self.assertEqual(er.objects['relative_path', 0], '')
+        self.assertEqual(er.objects['field', 0], '')
 
-    def test_check_object_field_multi_files(self):
+    def test_find_or_add_object_reuses_existing(self):
+        # a second call for the same file/object returns the existing row rather than adding a duplicate
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file = HERDManagerContainer(name='file')
+        first = er._find_or_add_object(file, data, '', '')
+        second = er._find_or_add_object(file, data, '', '')
+        self.assertEqual(first.idx, second.idx)
+        self.assertEqual(len(er.objects), 1)
+
+    def test_find_object_disambiguates_by_file(self):
+        # the same object_id under two different files (e.g. a copied, modified file) resolves per file
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens'])
+        file1 = HERDManagerContainer(name='file1')
+        file2 = HERDManagerContainer(name='file2')
+        er._add_file(file1.object_id)
+        er._add_file(file2.object_id)
+        obj1 = er._add_object(files_idx=0, container=data, relative_path='', field='')
+        obj2 = er._add_object(files_idx=1, container=data, relative_path='', field='')
+
+        self.assertEqual(er._find_object(file1, data, '', '').idx, obj1.idx)
+        self.assertEqual(er._find_object(file2, data, '', '').idx, obj2.idx)
+
+    def test_find_or_add_object_multi_files(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         file = HERDManagerContainer(name='file')
         er._add_file(file.object_id)
         er._add_file(file.object_id)
 
+        # adding the missing object hits the duplicate-file guard
         with self.assertRaises(ValueError):
-            er._check_object_field(file=file, container=data, relative_path='', field='')
+            er._find_or_add_object(file, data, '', '')
 
-    def test_check_object_field_multi_error(self):
+    def test_find_object_multi_error(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file = HERDManagerContainer(name='file')
+        er._add_file(file.object_id)
         er._add_object(files_idx=0, container=data, relative_path='', field='')
         er._add_object(files_idx=0, container=data, relative_path='', field='')
         with self.assertRaises(ValueError):
-            er._check_object_field(file=HERDManagerContainer(name='file'),
-                                   container=data,
-                                   relative_path='',
-                                   field='')
+            er._find_object(file, data, '', '')
 
-    def test_check_object_field_not_in_obj_table(self):
+    def test_find_object_not_in_obj_table(self):
+        # _find_object returns None when no object matches; callers turn None into an error
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        with self.assertRaises(ValueError):
-            er._check_object_field(file=HERDManagerContainer(name='file'),
-                                   container=data,
-                                   relative_path='',
-                                   field='',
-                                   create=False)
+        self.assertIsNone(er._find_object(HERDManagerContainer(name='file'), data, '', ''))
 
     def test_add_ref_attribute(self):
         # Test to make sure the attribute object is being used for the id
@@ -1718,9 +1736,12 @@ class TestHERDGetKey(TestCase):
                         entity_id="id11",
                         entity_uri='url11')
 
-        # A container that is not in any file cannot have its file resolved.
+        # A container that is not in any file cannot have its file resolved. This is its own distinct
+        # error, separate from a container that is in a file but has no entry in the object table.
         unparented = Container(name='Container')
-        with self.assertRaises(ValueError):
+        msg = ("Could not find the file associated with container 'Container'. Please add the container "
+               "to the file before adding an external reference.")
+        with self.assertRaisesWith(ValueError, msg):
             _ = self.er.get_key(key_name='key1', container=unparented)
 
     def test_get_key_no_key_found(self):

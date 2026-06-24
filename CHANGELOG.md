@@ -10,6 +10,9 @@
 - `HERD.add_ref` now defaults `key` to the value of a scalar string `attribute` when `key` is not provided, removing the redundant argument in the common case. @rly [#1511](https://github.com/hdmf-dev/hdmf/pull/1511)
 - `HERD.add_ref` no longer warns when an `entity_uri` is provided for an already-existing `entity_id` and the URI matches the stored one. The entity tables are normalized, so re-passing the same `entity_uri` (common when annotating many objects or files with the same entity) is harmless; a warning is now emitted only when a *different* `entity_uri` is provided, in which case the existing URI is kept. @bendichter [#1513](https://github.com/hdmf-dev/hdmf/pull/1513)
 
+### Changed
+- Refactored `HERD` internals. The object lookup now identifies an object by its file together with its object_id, relative_path, and field, so a shared object_id across files (e.g. a copied, modified file) resolves to the correct object instead of colliding. @rly [#1515](https://github.com/hdmf-dev/hdmf/pull/1515)
+
 ### Fixed
 - Removed the broken `str` (object_id) option from the `container` argument of `HERD.add_ref`, `HERD.add_ref_termset`, `HERD.get_key`, and `HERD.get_object_entities`; these methods now require an `AbstractContainer` and reject a string with a clear type error. @rly [#1514](https://github.com/hdmf-dev/hdmf/pull/1514)
 - Fixed `HERD.get_object_entities(attribute=...)` not finding references added with `HERD.add_ref(attribute=...)`, which raised `KeyError`/`TypeError` for non-DataType attributes. Both methods now resolve the attribute the same way. @rly [#1504](https://github.com/hdmf-dev/hdmf/pull/1504)
