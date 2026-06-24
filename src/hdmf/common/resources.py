@@ -313,7 +313,7 @@ class HERD(Container):
         entity, key = popargs('entity', 'key', kwargs)
         return EntityKey(entity, key, table=self.entity_keys)
 
-    def _object_row(self, file, container, relative_path, field):
+    def _find_object(self, file, container, relative_path, field):
         """
         Return the Object row matching ``file``, ``container``, ``relative_path``, and ``field``, or None.
 
@@ -344,23 +344,12 @@ class HERD(Container):
                              "and field in objects table.")
         return None
 
-    def _find_object(self, file, container, relative_path, field):
-        """
-        Return the existing Object row for ``file``, ``container``, ``relative_path``, and ``field``.
-
-        :raises ValueError: If the object has not been added to the ObjectTable.
-        """
-        object_field = self._object_row(file, container, relative_path, field)
-        if object_field is None:
-            raise ValueError("Object not in Object Table.")
-        return object_field
-
     def _find_or_add_object(self, file, container, relative_path, field):
         """
         Return the Object row for ``file``, ``container``, ``relative_path``, and ``field``, adding it
         (along with its file entry, if needed) when it is not already present.
         """
-        object_field = self._object_row(file, container, relative_path, field)
+        object_field = self._find_object(file, container, relative_path, field)
         if object_field is not None:
             return object_field
 
@@ -759,10 +748,9 @@ class HERD(Container):
                 file = self._get_file_from_container(container=container)
             # if same key is used multiple times, determine
             # which instance based on the Container
-            object_field = self._find_object(file=file,
-                                             container=container,
-                                             relative_path=relative_path,
-                                             field=field)
+            object_field = self._find_object(file, container, relative_path, field)
+            if object_field is None:
+                raise ValueError("Object not in Object Table.")
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
@@ -851,6 +839,8 @@ class HERD(Container):
             # attribute can be retrieved with the same attribute
             target_container, target_relative_path = self._resolve_object_target(container, attribute)
         object_field = self._find_object(file, target_container, target_relative_path, field)
+        if object_field is None:
+            raise ValueError("Object not in Object Table.")
         # Find all keys associated with the object
         for row_idx in self.object_keys.which(objects_idx=object_field.idx):
             keys.append(self.object_keys['keys_idx', row_idx])

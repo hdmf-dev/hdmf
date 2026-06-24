@@ -1490,10 +1490,10 @@ class TestHERD(TestCase):
             er._find_object(file, data, '', '')
 
     def test_find_object_not_in_obj_table(self):
+        # _find_object returns None when no object matches; callers turn None into an error
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        with self.assertRaises(ValueError):
-            er._find_object(HERDManagerContainer(name='file'), data, '', '')
+        self.assertIsNone(er._find_object(HERDManagerContainer(name='file'), data, '', ''))
 
     def test_add_ref_attribute(self):
         # Test to make sure the attribute object is being used for the id
