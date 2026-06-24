@@ -11,7 +11,7 @@
 - `HERD.add_ref` no longer warns when an `entity_uri` is provided for an already-existing `entity_id` and the URI matches the stored one. The entity tables are normalized, so re-passing the same `entity_uri` (common when annotating many objects or files with the same entity) is harmless; a warning is now emitted only when a *different* `entity_uri` is provided, in which case the existing URI is kept. @bendichter [#1513](https://github.com/hdmf-dev/hdmf/pull/1513)
 
 ### Fixed
-- Removed the never-functional `str` (object_id) option from the `container` argument of `HERD.add_ref`, `HERD.add_ref_termset`, `HERD.get_key`, and `HERD.get_object_entities`; these methods now require an `AbstractContainer` and reject a string with a clear type error. @rly [#1514](https://github.com/hdmf-dev/hdmf/pull/1514)
+- Removed the broken `str` (object_id) option from the `container` argument of `HERD.add_ref`, `HERD.add_ref_termset`, `HERD.get_key`, and `HERD.get_object_entities`; these methods now require an `AbstractContainer` and reject a string with a clear type error. @rly [#1514](https://github.com/hdmf-dev/hdmf/pull/1514)
 - Fixed `HERD.assert_external_resources_equal` not comparing the `entity_keys` table, so HERDs differing only in entity-key relationships compared as equal. @rly [#1500](https://github.com/hdmf-dev/hdmf/pull/1500)
 - Fixed `HERD._get_file_from_container` returning `None` instead of raising `ValueError` when a container has ancestors but none is a `HERDManager`. @rly [#1500](https://github.com/hdmf-dev/hdmf/pull/1500)
 - Fixed `HERD.get_object_entities` failing on a `HERD` read from a file, where index columns come back as numpy unsigned integers. @rly [#1497](https://github.com/hdmf-dev/hdmf/pull/1497)
