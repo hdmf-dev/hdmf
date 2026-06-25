@@ -107,8 +107,10 @@ jobs:
           - { name: windows-gallery-python3.14-upgraded-optional   , test-tox-env: gallery-py314-upgraded-optional   , python-ver: "3.14", os: windows-latest }
           - { name: windows-gallery-python3.14-prerelease-optional , test-tox-env: gallery-py314-prerelease-optional , python-ver: "3.14", os: windows-latest }
           - { name: macos-gallery-python3.10-minimum               , test-tox-env: gallery-py310-minimum             , python-ver: "3.10", os: macos-15-intel }
-          - { name: macos-gallery-python3.14-upgraded-optional     , test-tox-env: gallery-py314-upgraded-optional   , python-ver: "3.14", os: macos-latest }
-          - { name: macos-gallery-python3.14-prerelease-optional   , test-tox-env: gallery-py314-prerelease-optional , python-ver: "3.14", os: macos-latest }
+          # numcodecs==0.15.1 (pulled in by the zarr optional extra) has no Python 3.14 wheel and cannot be
+          # built on macos-latest, so the optional gallery tests stay on 3.13 there. See https://github.com/hdmf-dev/hdmf/pull/1367
+          - { name: macos-gallery-python3.13-upgraded-optional     , test-tox-env: gallery-py313-upgraded-optional   , python-ver: "3.13", os: macos-latest }
+          - { name: macos-gallery-python3.13-prerelease-optional   , test-tox-env: gallery-py313-prerelease-optional , python-ver: "3.13", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v7
