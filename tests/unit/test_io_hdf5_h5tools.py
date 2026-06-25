@@ -1237,7 +1237,7 @@ class TestHERDIO(TestCase):
 
             self.assertEqual(read_herd.keys.data, [('special',), ('Homo sapiens',)])
             self.assertEqual(read_herd.entities.data[0], ('id11', 'url11'))
-            self.assertEqual(read_herd.entities.data[1], ('NCBI_TAXON:9606',
+            self.assertEqual(read_herd.entities.data[1], ('NCBITaxon:9606',
             'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'))
             self.assertEqual(read_herd.objects.data[0],
             (0, read_foofile.object_id, 'FooFile', '', ''))

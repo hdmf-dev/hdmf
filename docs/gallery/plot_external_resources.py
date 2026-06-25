@@ -139,14 +139,14 @@ data.parent = file
 herd.add_ref(
     container=data,
     key='Homo sapiens',
-    entity_id='NCBI_TAXON:9606',
+    entity_id='NCBITaxon:9606',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
 )
 
 herd.add_ref(
     container=data,
     key='Mus musculus',
-    entity_id='NCBI_TAXON:10090',
+    entity_id='NCBITaxon:10090',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
 
@@ -208,7 +208,7 @@ herd.add_ref(
     container=species,
     attribute='Species_Data',
     key='Ursus arctos horribilis',
-    entity_id='NCBI_TAXON:116960',
+    entity_id='NCBITaxon:116960',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id'
 )
 
@@ -316,7 +316,7 @@ herd.add_ref(
     container=data,
     field='species',
     key='Mus musculus',
-    entity_id='NCBI_TAXON:txid10090',
+    entity_id='NCBITaxon:txid10090',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
 

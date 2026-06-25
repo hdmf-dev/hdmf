@@ -145,13 +145,13 @@ class TestHERD(TestCase):
         container.parent = file
         er.add_ref(container=container,
                    key='Mus musculus',
-                   entity_id='NCBI_TAXON:10090',
+                   entity_id='NCBITaxon:10090',
                    entity_uri='http://x')
         text = repr(er)
         self.assertIn('1 key(s), 1 entity(ies), 1 object(s), 1 file(s)', text)
         # the HTML repr surfaces the flattened table content
         html = er._repr_html_()
-        self.assertIn('NCBI_TAXON:10090', html)
+        self.assertIn('NCBITaxon:10090', html)
         self.assertIn('http://x', html)
 
     def test_assert_external_resources_equal(self):
@@ -390,7 +390,7 @@ class TestHERD(TestCase):
 
         er.add_ref_container(root_container=em)
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
@@ -413,7 +413,7 @@ class TestHERD(TestCase):
 
         er.add_ref_container(root_container=em)
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', 'description', '')])
 
@@ -437,7 +437,7 @@ class TestHERD(TestCase):
                     termset=terms
                    )
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
@@ -475,7 +475,7 @@ class TestHERD(TestCase):
                     termset=terms
                    )
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
@@ -498,7 +498,7 @@ class TestHERD(TestCase):
                     termset=terms
                    )
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, species.object_id, 'DynamicTable', 'colnames', '')])
 
@@ -521,9 +521,9 @@ class TestHERD(TestCase):
                     termset=terms
                    )
         self.assertEqual(er.keys.data, [('Homo sapiens',), ('Mus musculus',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'),
-        ('NCBI_TAXON:10090',
+        ('NCBITaxon:10090',
          'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=10090')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
@@ -546,7 +546,7 @@ class TestHERD(TestCase):
                                             termset=terms
                                            )
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
         self.assertEqual(missing_terms, {'missing_terms': ['missing_term']})
@@ -792,7 +792,7 @@ class TestHERD(TestCase):
         data.parent = file
         er.add_ref(container=data,
                    key='Homo sapiens',
-                   entity_id='NCBI_TAXON:9606',
+                   entity_id='NCBITaxon:9606',
                    entity_uri='http://x')
 
         path = 'test_HERD_hdf5_roundtrip.h5'
@@ -809,7 +809,7 @@ class TestHERD(TestCase):
             remove_test_file(path)
 
         expected_df = pd.DataFrame.from_dict(
-            {'entity_id': {0: 'NCBI_TAXON:9606'},
+            {'entity_id': {0: 'NCBITaxon:9606'},
              'entity_uri': {0: 'http://x'}}
         )
         pd.testing.assert_frame_equal(df, expected_df)
