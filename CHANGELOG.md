@@ -2,12 +2,22 @@
 
 ## HDMF 6.0.3 (Upcoming)
 
+### Breaking changes
+- Removed the `file` argument from `HERD.add_ref` and `HERD.add_ref_termset`. The file is now always resolved automatically from the container's parent hierarchy, so a reference can only be added to a container that has already been added to a file. This enforces that an external reference cannot be attached to a container that is not yet in a file. Callers passing `file=...` to these methods should remove that argument and ensure the container has been added to its file first. @bendichter
+
 ### Enhancements
 - Accept pandas `Series` and `ExtensionArray` (including `StringArray` and `ArrowStringArray`) as `data` in `Data` and its subclasses (e.g., `VectorData`), normalizing to numpy at construction. This restores compatibility with pandas 3.0, where DataFrame string columns are PyArrow-backed by default and previously failed HDMF's type validation. Inputs containing missing values (`pd.NA`/`NaN`) raise an informative `TypeError` rather than silently failing at HDF5 write time. The `pandas<3` cap has been lifted from the dependency pin. @rly [#1384](https://github.com/hdmf-dev/hdmf/issues/1384)
 - Added a `HERD`-specific `__repr__` and `_repr_html_` that surface the references as a flattened table, so a `HERD` (especially one read back from a file) no longer appears empty in its default display. @rly [#1510](https://github.com/hdmf-dev/hdmf/pull/1510)
 - `HERD.add_ref` now defaults `key` to the value of a scalar string `attribute` when `key` is not provided, removing the redundant argument in the common case. @rly [#1511](https://github.com/hdmf-dev/hdmf/pull/1511)
+- `HERD.add_ref` no longer warns when an `entity_uri` is provided for an already-existing `entity_id` and the URI matches the stored one. The entity tables are normalized, so re-passing the same `entity_uri` (common when annotating many objects or files with the same entity) is harmless; a warning is now emitted only when a *different* `entity_uri` is provided, in which case the existing URI is kept. @bendichter [#1513](https://github.com/hdmf-dev/hdmf/pull/1513)
+
+### Changed
+- Refactored `HERD` internals. The object lookup now identifies an object by its file together with its object_id, relative_path, and field, so a shared object_id across files (e.g. a copied, modified file) resolves to the correct object instead of colliding. @rly [#1515](https://github.com/hdmf-dev/hdmf/pull/1515)
 
 ### Fixed
+- Removed the broken `str` (object_id) option from the `container` argument of `HERD.add_ref`, `HERD.add_ref_termset`, `HERD.get_key`, and `HERD.get_object_entities`; these methods now require an `AbstractContainer` and reject a string with a clear type error. @rly [#1514](https://github.com/hdmf-dev/hdmf/pull/1514)
+- Fixed `HERD.get_object_entities(attribute=...)` not finding references added with `HERD.add_ref(attribute=...)`, which raised `KeyError`/`TypeError` for non-DataType attributes. Both methods now resolve the attribute the same way. @rly [#1504](https://github.com/hdmf-dev/hdmf/pull/1504)
+- Fixed `HERD.get_key` failing with an `AttributeError` instead of a clear error when called with a container that has not been added to the object table. It now raises `ValueError("Object not in Object Table.")`. @rly [#1504](https://github.com/hdmf-dev/hdmf/pull/1504)
 - Fixed `HERD.assert_external_resources_equal` not comparing the `entity_keys` table, so HERDs differing only in entity-key relationships compared as equal. @rly [#1500](https://github.com/hdmf-dev/hdmf/pull/1500)
 - Fixed `HERD._get_file_from_container` returning `None` instead of raising `ValueError` when a container has ancestors but none is a `HERDManager`. @rly [#1500](https://github.com/hdmf-dev/hdmf/pull/1500)
 - Fixed `HERD.get_object_entities` failing on a `HERD` read from a file, where index columns come back as numpy unsigned integers. @rly [#1497](https://github.com/hdmf-dev/hdmf/pull/1497)
