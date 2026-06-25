@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 6.0.3 (Upcoming)
+## HDMF 6.1.0 (June 24, 2026)
 
 ### Breaking changes
 - Removed the `file` argument from `HERD.add_ref` and `HERD.add_ref_termset`. The file is now always resolved automatically from the container's parent hierarchy, so a reference can only be added to a container that has already been added to a file. This enforces that an external reference cannot be attached to a container that is not yet in a file. Callers passing `file=...` to these methods should remove that argument and ensure the container has been added to its file first. @bendichter
