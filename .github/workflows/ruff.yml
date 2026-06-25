@@ -13,4 +13,6 @@ jobs:
         with:
           persist-credentials: false
       - name: Run ruff
-        uses: astral-sh/ruff-action@0ce1b0bf8b818ef400413f810f8a11cdbda0034b  # v4.0.0
+        # astral-sh/ruff-action publishes immutable releases, so it is pinned to a version tag
+        # (allowed by the unpinned-uses policy in .github/zizmor.yml).
+        uses: astral-sh/ruff-action@v4.0.0

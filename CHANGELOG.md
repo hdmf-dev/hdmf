@@ -15,7 +15,7 @@
 - Refactored `HERD` internals. The object lookup now identifies an object by its file together with its object_id, relative_path, and field, so a shared object_id across files (e.g. a copied, modified file) resolves to the correct object instead of colliding. @rly [#1515](https://github.com/hdmf-dev/hdmf/pull/1515)
 
 ### Internal improvements
-- Hardened the GitHub Actions CI: added least-privilege `permissions` blocks, pinned all actions to commit SHAs, deduplicated the test setup into a composite action, passed untrusted inputs through environment variables, and added a zizmor security audit of the workflows. @rly [#1518](https://github.com/hdmf-dev/hdmf/pull/1518)
+- Hardened the GitHub Actions CI: added least-privilege `permissions` blocks, pinned actions to commit SHAs (or immutable release tags), deduplicated the test setup into a composite action, passed untrusted inputs through environment variables, and added a zizmor security audit of the workflows. @rly [#1518](https://github.com/hdmf-dev/hdmf/pull/1518)
 
 ### Fixed
 - Removed the broken `str` (object_id) option from the `container` argument of `HERD.add_ref`, `HERD.add_ref_termset`, `HERD.get_key`, and `HERD.get_object_entities`; these methods now require an `AbstractContainer` and reject a string with a clear type error. @rly [#1514](https://github.com/hdmf-dev/hdmf/pull/1514)
