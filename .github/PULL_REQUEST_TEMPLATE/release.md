@@ -27,8 +27,8 @@ Prepare for release of HDMF [version]
 
 ### After merging:
 1. Create release by following steps in `docs/source/make_a_release.rst` or use alias `git pypi-release [tag]` if set up
-2. After the CI bot creates the new release (wait ~10 min), update the release notes on the
-   [GitHub releases page](https://github.com/hdmf-dev/hdmf/releases) with the changelog
+2. After the CI bot creates the new release (wait ~10 min), verify that the release notes on the
+   [GitHub releases page](https://github.com/hdmf-dev/hdmf/releases) include the changelog for this version
 3. Check that the readthedocs "stable" build runs and succeeds
 4. Either monitor [conda-forge/hdmf-feedstock](https://github.com/conda-forge/hdmf-feedstock) for the
    regro-cf-autotick-bot bot to create a PR updating the version of HDMF to the latest PyPI release, usually within
