@@ -13,6 +13,7 @@
 - Refactored `HERD` internals. The object lookup now identifies an object by its file together with its object_id, relative_path, and field, so a shared object_id across files (e.g. a copied, modified file) resolves to the correct object instead of colliding. @rly [#1515](https://github.com/hdmf-dev/hdmf/pull/1515)
 
 ### Internal improvements
+- Switched the release pipeline to PyPI OIDC trusted publishing and the `gh` CLI, and now build the GitHub release notes from the changelog. @rly [#1517](https://github.com/hdmf-dev/hdmf/pull/1517)
 - Hardened the GitHub Actions CI: added least-privilege `permissions` blocks, pinned actions to commit SHAs (or immutable release tags), deduplicated the test setup into a composite action, passed untrusted inputs through environment variables, and added a zizmor security audit of the workflows. @rly [#1518](https://github.com/hdmf-dev/hdmf/pull/1518)
 
 ### Fixed
