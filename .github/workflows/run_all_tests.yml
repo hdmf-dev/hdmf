@@ -98,14 +98,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # TODO: Update to 3.14 when linkml and its deps support 3.14
           - { name: linux-gallery-python3.10-minimum               , test-tox-env: gallery-py310-minimum             , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-gallery-python3.13-upgraded-optional     , test-tox-env: gallery-py313-upgraded-optional   , python-ver: "3.13", os: ubuntu-latest }
-          - { name: linux-gallery-python3.13-prerelease-optional   , test-tox-env: gallery-py313-prerelease-optional , python-ver: "3.13", os: ubuntu-latest }
+          - { name: linux-gallery-python3.14-upgraded-optional     , test-tox-env: gallery-py314-upgraded-optional   , python-ver: "3.14", os: ubuntu-latest }
+          - { name: linux-gallery-python3.14-prerelease-optional   , test-tox-env: gallery-py314-prerelease-optional , python-ver: "3.14", os: ubuntu-latest }
           - { name: windows-gallery-python3.10-minimum             , test-tox-env: gallery-py310-minimum             , python-ver: "3.10", os: windows-latest }
-          - { name: windows-gallery-python3.13-upgraded-optional   , test-tox-env: gallery-py313-upgraded-optional   , python-ver: "3.13", os: windows-latest }
-          - { name: windows-gallery-python3.13-prerelease-optional , test-tox-env: gallery-py313-prerelease-optional , python-ver: "3.13", os: windows-latest }
+          - { name: windows-gallery-python3.14-upgraded-optional   , test-tox-env: gallery-py314-upgraded-optional   , python-ver: "3.14", os: windows-latest }
+          - { name: windows-gallery-python3.14-prerelease-optional , test-tox-env: gallery-py314-prerelease-optional , python-ver: "3.14", os: windows-latest }
           - { name: macos-gallery-python3.10-minimum               , test-tox-env: gallery-py310-minimum             , python-ver: "3.10", os: macos-15-intel }
+          # numcodecs==0.15.1 (pulled in by the zarr optional extra) has no Python 3.14 wheel and cannot be
+          # built on macos-latest, so the optional gallery tests stay on 3.13 there. See https://github.com/hdmf-dev/hdmf/pull/1367
           - { name: macos-gallery-python3.13-upgraded-optional     , test-tox-env: gallery-py313-upgraded-optional   , python-ver: "3.13", os: macos-latest }
           - { name: macos-gallery-python3.13-prerelease-optional   , test-tox-env: gallery-py313-prerelease-optional , python-ver: "3.13", os: macos-latest }
     steps:
