@@ -13,6 +13,5 @@ jobs:
         with:
           persist-credentials: false
       - name: Run ruff
-        # astral-sh/ruff-action publishes immutable releases, so it is pinned to a version tag
-        # (allowed by the unpinned-uses policy in .github/zizmor.yml).
+        # immutable release (see .github/zizmor.yml for the policy exception)
         uses: astral-sh/ruff-action@v4.0.0
