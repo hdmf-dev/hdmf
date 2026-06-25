@@ -18,6 +18,7 @@ jobs:
       - name: Checkout repo with submodules
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
+          persist-credentials: false
           submodules: 'recursive'
           fetch-depth: 0  # tags are required for versioneer to determine the version
 
@@ -61,7 +62,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" dist/* \
-            --repo hdmf-dev/hdmf \
-            --title "${{ github.ref_name }}" \
-            --generate-notes
+          # Use this version's CHANGELOG.md section as the release notes, falling back to
+          # auto-generated notes if no matching section is found (e.g. a heading/tag mismatch).
+          awk -v hdr="## HDMF ${GITHUB_REF_NAME}" '
+            index($0, hdr) == 1 { f = 1; next }
+            f && /^## / { exit }
+            f { print }
+          ' CHANGELOG.md > release_notes.md
+          if [ -s release_notes.md ]; then
+            gh release create "${GITHUB_REF_NAME}" dist/* \
+              --repo hdmf-dev/hdmf \
+              --title "${GITHUB_REF_NAME}" \
+              --notes-file release_notes.md
+          else
+            echo "No CHANGELOG.md section found for ${GITHUB_REF_NAME}; using auto-generated notes."
+            gh release create "${GITHUB_REF_NAME}" dist/* \
+              --repo hdmf-dev/hdmf \
+              --title "${GITHUB_REF_NAME}" \
+              --generate-notes
+          fi
