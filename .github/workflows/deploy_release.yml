@@ -72,7 +72,7 @@ jobs:
           if grep -q '[^[:space:]]' release_notes.md; then
             notes_args=(--notes-file release_notes.md)
           else
-            echo "No CHANGELOG.md section found for ${GITHUB_REF_NAME}; using auto-generated notes."
+            echo "No release notes found in CHANGELOG.md for ${GITHUB_REF_NAME}; using auto-generated notes."
             notes_args=(--generate-notes)
           fi
           # Create the release, or upload the artifacts to it if a re-run finds it already exists,

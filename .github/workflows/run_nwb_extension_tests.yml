@@ -142,9 +142,9 @@ jobs:
         run: |
           cd extension_repo
 
-          # Test basic import functionality
-          extension_import_name=$(echo "$EXTENSION_NAME" | sed 's/-/_/g')
-          python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')"
+          # Test basic import functionality. Read the name from the environment and pass it to
+          # importlib as a string so it cannot be interpreted as Python code.
+          python -c "import importlib, os; name = os.environ['EXTENSION_NAME'].replace('-', '_'); importlib.import_module(name); print('Successfully imported', name)"
 
           # Install test dependencies in case they were not already installed
           python -m pip install pytest pytest-cov
