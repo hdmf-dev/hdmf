@@ -8,6 +8,12 @@ jobs:
   deploy-release:
     name: Deploy release from tag
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/hdmf
+    permissions:
+      id-token: write  # mint the OIDC token for PyPI trusted publishing
+      contents: write  # create the GitHub release
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v7
@@ -44,15 +50,18 @@ jobs:
           tox -e wheelinstall --installpkg dist/*.tar.gz
 
       - name: Upload wheel and source distributions to PyPI
-        run: |
-          python -m pip install twine
-          ls -1 dist
-          # twine upload --repository-url https://test.pypi.org/legacy/ -u ${{ secrets.BOT_PYPI_USER }} -p ${{ secrets.BOT_TEST_PYPI_PASSWORD }} --skip-existing dist/*
-          twine upload -u ${{ secrets.BOT_PYPI_USER }} -p ${{ secrets.BOT_PYPI_PASSWORD }} --skip-existing dist/*
+        # Publishes to PyPI via OIDC trusted publishing. The hdmf project on PyPI must have a trusted
+        # publisher configured for the hdmf-dev/hdmf repository, the deploy_release.yml workflow, and the
+        # pypi environment.
+        uses: pypa/gh-action-pypi-publish@v1.14.0
+        with:
+          skip-existing: true
 
       - name: Publish wheel and source distributions as a GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python -m pip install "githubrelease>=1.5.9"
-          githubrelease --github-token ${{ secrets.BOT_GITHUB_TOKEN }} release hdmf-dev/hdmf \
-            create ${{ github.ref_name }} --name ${{ github.ref_name }} \
-            --publish dist/*
+          gh release create "${{ github.ref_name }}" dist/* \
+            --repo hdmf-dev/hdmf \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
