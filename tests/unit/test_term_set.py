@@ -36,24 +36,24 @@ class TestTermSet(TestCase):
     def test_termset_setup(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         self.assertEqual(termset.name, 'Species')
-        self.assertEqual(list(termset.sources), ['NCBI_TAXON'])
+        self.assertEqual(list(termset.sources), ['NCBITaxon'])
 
     def test_repr_short(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set2.yaml')
-        output = ('Schema Path: tests/unit/example_test_term_set2.yaml\nSources: NCBI_TAXON\nTerms: \n'
+        output = ('Schema Path: tests/unit/example_test_term_set2.yaml\nSources: NCBITaxon\nTerms: \n'
                   '   - Homo sapiens\n   - Mus musculus\n   - Ursus arctos horribilis\nNumber of terms: 3')
         self.assertEqual(repr(termset), output)
 
     def test_repr_html_short(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set2.yaml')
         output = ('<b>Schema Path: </b>tests/unit/example_test_term_set2.yaml<br><b>Sources:'
-                  ' </b>NCBI_TAXON<br><b> Terms: </b><li> Homo sapiens </li><li> Mus musculus'
+                  ' </b>NCBITaxon<br><b> Terms: </b><li> Homo sapiens </li><li> Mus musculus'
                   ' </li><li> Ursus arctos horribilis </li><i> Number of terms:</i> 3')
         self.assertEqual(termset._repr_html_(), output)
 
     def test_repr_long(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        output = ('Schema Path: tests/unit/example_test_term_set.yaml\nSources: NCBI_TAXON\nTerms: \n'
+        output = ('Schema Path: tests/unit/example_test_term_set.yaml\nSources: NCBITaxon\nTerms: \n'
                   '   - Homo sapiens\n   - Mus musculus\n   - Ursus arctos horribilis\n   ... ... \n'
                   '   - Ailuropoda melanoleuca\nNumber of terms: 5')
         self.assertEqual(repr(termset), output)
@@ -61,7 +61,7 @@ class TestTermSet(TestCase):
     def test_repr_html_long(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         output = ('<b>Schema Path: </b>tests/unit/example_test_term_set.yaml<br><b>Sources:'
-                  ' </b>NCBI_TAXON<br><b> Terms: </b><li> Homo sapiens </li><li> Mus musculus'
+                  ' </b>NCBITaxon<br><b> Terms: </b><li> Homo sapiens </li><li> Mus musculus'
                   ' </li><li> Ursus arctos horribilis </li>... ...<li> Ailuropoda melanoleuca'
                   ' </li><i> Number of terms:</i> 5')
         self.assertEqual(termset._repr_html_(), output)
@@ -83,7 +83,7 @@ class TestTermSet(TestCase):
 
     def test_get_item(self):
         termset = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
-        self.assertEqual(termset['Homo sapiens'].id, 'NCBI_TAXON:9606')
+        self.assertEqual(termset['Homo sapiens'].id, 'NCBITaxon:9606')
         self.assertEqual(termset['Homo sapiens'].description, 'the species is human')
         self.assertEqual(
             termset['Homo sapiens'].meaning,
