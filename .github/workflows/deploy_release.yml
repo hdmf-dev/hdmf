@@ -63,21 +63,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Use this version's CHANGELOG.md section as the release notes, falling back to
-          # auto-generated notes if no matching section is found (e.g. a heading/tag mismatch).
+          # auto-generated notes if no matching section with content is found (e.g. a heading/tag mismatch).
           awk -v hdr="## HDMF ${GITHUB_REF_NAME}" '
             index($0, hdr) == 1 { f = 1; next }
             f && /^## / { exit }
             f { print }
           ' CHANGELOG.md > release_notes.md
-          if [ -s release_notes.md ]; then
-            gh release create "${GITHUB_REF_NAME}" dist/* \
-              --repo hdmf-dev/hdmf \
-              --title "${GITHUB_REF_NAME}" \
-              --notes-file release_notes.md
+          if grep -q '[^[:space:]]' release_notes.md; then
+            notes_args=(--notes-file release_notes.md)
           else
-            echo "No CHANGELOG.md section found for ${GITHUB_REF_NAME}; using auto-generated notes."
+            echo "No release notes found in CHANGELOG.md for ${GITHUB_REF_NAME}; using auto-generated notes."
+            notes_args=(--generate-notes)
+          fi
+          # Create the release, or upload the artifacts to it if a re-run finds it already exists,
+          # so the step can be re-run safely.
+          if gh release view "${GITHUB_REF_NAME}" --repo hdmf-dev/hdmf > /dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" dist/* --repo hdmf-dev/hdmf --clobber
+          else
             gh release create "${GITHUB_REF_NAME}" dist/* \
               --repo hdmf-dev/hdmf \
               --title "${GITHUB_REF_NAME}" \
-              --generate-notes
+              "${notes_args[@]}"
           fi
