@@ -12,7 +12,8 @@ import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator
 from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict,
-                    get_basic_array_info, generate_array_html_repr, _is_collection, _get_length, _unwrap_scalar)
+                    get_basic_array_info, generate_array_html_repr, _is_collection, _get_length, _unwrap_scalar,
+                    coerce_pandas_data)
 
 from .term_set import TermSet, TermSetWrapper
 
@@ -991,6 +992,7 @@ class Data(AbstractContainer):
         data = popargs('data', kwargs)
         super().__init__(**kwargs)
 
+        data = coerce_pandas_data(data)
         self._validate_new_data(data)
         self.__data = data
 
@@ -1084,6 +1086,7 @@ class Data(AbstractContainer):
 
         :param arg: The iterable to add to the end of this VectorData
         """
+        arg = coerce_pandas_data(arg)
         self._validate_new_data(arg)
         self.__data = extend_data(self.__data, arg)
 
