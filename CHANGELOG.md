@@ -1,9 +1,6 @@
 # HDMF Changelog
 
-## HDMF 6.1.0 (June 24, 2026)
-
-### Breaking changes
-- Removed the `file` argument from `HERD.add_ref` and `HERD.add_ref_termset`. The file is now always resolved automatically from the container's parent hierarchy, so a reference can only be added to a container that has already been added to a file. This enforces that an external reference cannot be attached to a container that is not yet in a file. Callers passing `file=...` to these methods should remove that argument and ensure the container has been added to its file first. @bendichter
+## HDMF 6.1.0 (June 25, 2026)
 
 ### Enhancements
 - Accept pandas `Series` and `ExtensionArray` (including `StringArray` and `ArrowStringArray`) as `data` in `Data` and its subclasses (e.g., `VectorData`), normalizing to numpy at construction. This restores compatibility with pandas 3.0, where DataFrame string columns are PyArrow-backed by default and previously failed HDMF's type validation. Inputs containing missing values (`pd.NA`/`NaN`) raise an informative `TypeError` rather than silently failing at HDF5 write time. The `pandas<3` cap has been lifted from the dependency pin. @rly [#1384](https://github.com/hdmf-dev/hdmf/issues/1384)
@@ -12,6 +9,7 @@
 - `HERD.add_ref` no longer warns when an `entity_uri` is provided for an already-existing `entity_id` and the URI matches the stored one. The entity tables are normalized, so re-passing the same `entity_uri` (common when annotating many objects or files with the same entity) is harmless; a warning is now emitted only when a *different* `entity_uri` is provided, in which case the existing URI is kept. @bendichter [#1513](https://github.com/hdmf-dev/hdmf/pull/1513)
 
 ### Changed
+- Removed the `file` argument from `HERD.add_ref` and `HERD.add_ref_termset`. The file is now always resolved automatically from the container's parent hierarchy, so a reference can only be added to a container that has already been added to a file. This enforces that an external reference cannot be attached to a container that is not yet in a file. This is technically a breaking change, but the `file` argument was not yet used publicly. @bendichter [#1512](https://github.com/hdmf-dev/hdmf/pull/1512)
 - Refactored `HERD` internals. The object lookup now identifies an object by its file together with its object_id, relative_path, and field, so a shared object_id across files (e.g. a copied, modified file) resolves to the correct object instead of colliding. @rly [#1515](https://github.com/hdmf-dev/hdmf/pull/1515)
 
 ### Internal improvements
