@@ -3,6 +3,9 @@ Prepare for release of HDMF [version]
 ### Before merging:
 - [ ] Make sure all PRs to be included in this release have been merged to `dev`.
 - [ ] Major and minor releases: Update dependency ranges in `pyproject.toml` as needed.
+- [ ] Update the GitHub Actions used in the workflows to their latest versions. Pin each action to a
+  full commit SHA, except actions that publish immutable releases, which may use a version tag (see
+  `.github/zizmor.yml` for the policy).
 - [ ] Check legal file dates and information in `Legal.txt`, `license.txt`, `README.rst`, `docs/source/conf.py`,
   and any other locations as needed
 - [ ] Update `pyproject.toml` as needed
