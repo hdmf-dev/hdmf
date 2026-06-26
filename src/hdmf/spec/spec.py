@@ -480,10 +480,35 @@ class BaseStorageSpec(Spec):
             else:
                 self['default_name'] = default_name
         self.__attributes = dict()
-        if quantity in (ONE_OR_MANY, ZERO_OR_MANY):
-            if name is not None:
-                raise ValueError("Cannot give specific name to something that can "
-                                 "exist multiple times: name='%s', quantity='%s'" % (name, quantity))
+
+        def validate_quantity(qty):
+            invalid_name = (f"Cannot give specific name to something that can "
+                            f"exist multiple times: name='{name}', quantity='{qty}'")
+            invalid_int = f"Invalid quantity '{qty}': must be greater than or equal to 1 or in '{FLAGS}'"
+            # Check FLAGS
+            if isinstance(qty, str) and ((qty in FLAGS.values()) or (qty in FLAGS)):
+                if qty in (ONE_OR_MANY, ZERO_OR_MANY):
+                    if name is not None:
+                        raise ValueError(invalid_name)
+                return qty
+
+            # Convert numeric strings
+            if isinstance(qty, str):
+                try:
+                    qty = int(qty)
+                except (TypeError, ValueError):
+                    raise ValueError(invalid_int)
+
+            # Validate integers
+            if isinstance(qty, int):
+                if qty < 1:
+                    raise ValueError(invalid_int)
+                return qty
+
+            raise ValueError(invalid_int)
+
+        # Validate Quantity
+        quantity = validate_quantity(quantity)
         if quantity != DEF_QUANTITY:
             self['quantity'] = quantity
         if not linkable:
