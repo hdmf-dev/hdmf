@@ -302,6 +302,36 @@ class TestNotAllowedConfig(TestCase):
         with self.assertRaisesWith(ValueError, msg):
             GroupSpec(doc='A test group', name='MyGroup', quantity='*')
 
+    def test_quantity_with_string_float(self):
+        msg = ("Invalid quantity '3.5': must be greater than or equal to 1 or in '[?, *, +]'")
+        with self.assertRaisesWith(ValueError, msg):
+            GroupSpec(doc='A test group', name='MyGroup', quantity='3.5')
+            
+    def test_quantity_with_string_zero(self):
+        msg = ("Invalid quantity '0': must be greater than or equal to 1 or in '[?, *, +]'")
+        with self.assertRaisesWith(ValueError, msg):
+            GroupSpec(doc='A test group', name='MyGroup', quantity='0')
+            
+    def test_quantity_with_zero(self):
+        msg = ("Invalid quantity '0': must be greater than or equal to 1 or in '[?, *, +]'")
+        with self.assertRaisesWith(ValueError, msg):
+            GroupSpec(doc='A test group', name='MyGroup', quantity=0)
+            
+    def test_quantity_with_negative(self):
+        msg = ("Invalid quantity '-1': must be greater than or equal to 1 or in '[?, *, +]'")
+        with self.assertRaisesWith(ValueError, msg):
+            GroupSpec(doc='A test group', name='MyGroup', quantity=-1)
+
+    def test_quantity_with_string_negative(self):
+        msg = "Invalid quantity '-1': must be greater than or equal to 1 or in '[?, *, +]'"
+        with self.assertRaisesWith(ValueError, msg):
+            GroupSpec(doc="A test group", name="MyGroup", quantity='-1')
+
+    def test_quantity_with_string_notflags(self):
+        msg = "Invalid quantity 'foo': must be greater than or equal to 1 or in '[?, *, +]'"
+        with self.assertRaisesWith(ValueError, msg):
+            GroupSpec(doc="A test group", name="MyGroup", quantity='foo')
+
     def test_same_data_type_def_inc(self):
         msg = ("data_type_inc and data_type_def cannot be the same: MyType. Ignoring data_type_inc.")
         with self.assertWarnsWith(UserWarning, msg):

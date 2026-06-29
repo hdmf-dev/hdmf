@@ -18,6 +18,7 @@
 - Hardened the GitHub Actions CI: added least-privilege `permissions` blocks, pinned actions to commit SHAs (or immutable release tags), deduplicated the test setup into a composite action, passed untrusted inputs through environment variables, and added a zizmor security audit of the workflows. @rly [#1518](https://github.com/hdmf-dev/hdmf/pull/1518)
 
 ### Fixed
+- Fix #531 Disallow or explicitly allow spec quantity to be specified with a numeric string @jwbear [#1521]
 - Fixed iterative HDF5 writes (e.g. from a `DataChunkIterator`) storing data as `float32` when no explicit dtype was set on the builder. The data's own dtype is now used, so e.g. integer data is stored as integers rather than silently downcast, and an `H5pyDeprecationWarning` is no longer emitted. @rly [#1519](https://github.com/hdmf-dev/hdmf/pull/1519)
 - Removed the broken `str` (object_id) option from the `container` argument of `HERD.add_ref`, `HERD.add_ref_termset`, `HERD.get_key`, and `HERD.get_object_entities`; these methods now require an `AbstractContainer` and reject a string with a clear type error. @rly [#1514](https://github.com/hdmf-dev/hdmf/pull/1514)
 - Fixed `HERD.get_object_entities(attribute=...)` not finding references added with `HERD.add_ref(attribute=...)`, which raised `KeyError`/`TypeError` for non-DataType attributes. Both methods now resolve the attribute the same way. @rly [#1504](https://github.com/hdmf-dev/hdmf/pull/1504)
