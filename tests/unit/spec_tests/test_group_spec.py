@@ -306,17 +306,17 @@ class TestNotAllowedConfig(TestCase):
         msg = ("Invalid quantity '3.5': must be greater than or equal to 1 or in '[?, *, +]'")
         with self.assertRaisesWith(ValueError, msg):
             GroupSpec(doc='A test group', name='MyGroup', quantity='3.5')
-            
+
     def test_quantity_with_string_zero(self):
         msg = ("Invalid quantity '0': must be greater than or equal to 1 or in '[?, *, +]'")
         with self.assertRaisesWith(ValueError, msg):
             GroupSpec(doc='A test group', name='MyGroup', quantity='0')
-            
+
     def test_quantity_with_zero(self):
         msg = ("Invalid quantity '0': must be greater than or equal to 1 or in '[?, *, +]'")
         with self.assertRaisesWith(ValueError, msg):
             GroupSpec(doc='A test group', name='MyGroup', quantity=0)
-            
+
     def test_quantity_with_negative(self):
         msg = ("Invalid quantity '-1': must be greater than or equal to 1 or in '[?, *, +]'")
         with self.assertRaisesWith(ValueError, msg):
