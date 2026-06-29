@@ -519,18 +519,18 @@ class BaseStorageSpec(Spec):
     @staticmethod
     def __validate_quantity(name, qty):
         """
-        Ensure quantity is integer >= 1 or in FLAGS and is a valid name, quantity combination.
+        Ensure quantity is an integer >= 1 or in FLAGS and is a valid name/quantity combination.
 
-        Args:
-            name: name string.
-            qty: quantity string or number.
+        :param name: Name string.
+        :type name: str
+        :param qty: Quantity string or number.
+        :type qty: str | int
 
-        Returns:
-            A validated quantity string.
+        :returns: A validated quantity string.
+        :rtype: str
 
-        Raises:
-            ValueError: If quantity is not in FLAGS or is not >=1.
-            TypeError: If quantity is not an integer.
+        :raises ValueError: If quantity is not in FLAGS or is not >= 1.
+        :raises TypeError: If quantity is not an integer.
         """
         invalid_name = (
             f"Cannot give specific name to something that can exist multiple times: name='{name}', quantity='{qty}'"
@@ -548,7 +548,7 @@ class BaseStorageSpec(Spec):
         if isinstance(qty, str):
             try:
                 qty = int(qty)
-            except (TypeError, ValueError):
+            except (ValueError):
                 raise ValueError(invalid_int)
 
         # Validate integers
