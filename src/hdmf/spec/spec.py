@@ -548,8 +548,8 @@ class BaseStorageSpec(Spec):
         if isinstance(qty, str):
             try:
                 qty = int(qty)
-            except (ValueError):
-                raise ValueError(invalid_int)
+            except ValueError:
+                raise ValueError(invalid_int) from None
 
         # Validate integers
         if isinstance(qty, int):
