@@ -35,8 +35,8 @@ jobs:
           python -m pip list
           git clone https://github.com/NeurodataWithoutBorders/pynwb.git --recurse-submodules
           cd pynwb
-          python -m pip install -r requirements-dev.txt  -r requirements-doc.txt # do not install the pinned install requirements
-          python -m pip install .  # this will install a different version of hdmf from the current one
+          # install PyNWB with the test and docs dependency groups and the gallery extras; this will install a different version of hdmf from the current one
+          python -m pip install --group test --group docs ".[zarr,termset]"
           cd ..
           python -m pip uninstall -y hdmf  # uninstall the other version of hdmf
           python -m pip install .  # reinstall current branch of hdmf
