@@ -1,8 +1,10 @@
 import pandas as pd
 import unittest
-from hdmf.common import DynamicTable, VectorData, get_type_map
+import warnings
+from hdmf.common import DynamicTable, VectorData, get_type_map, get_manager
 from hdmf.common import CORE_NAMESPACE as HDMF_COMMON_NAMESPACE
 from hdmf import TermSet, TermSetWrapper
+from hdmf.backends.hdf5 import HDF5IO
 from hdmf.common.resources import HERD, Key
 from hdmf import Data, Container, HERDManager
 from hdmf.testing import TestCase, remove_test_file
@@ -37,13 +39,11 @@ class TestHERD(TestCase):
         er = HERD()
         file = HERDManagerContainer(name='file')
         file2 = HERDManagerContainer(name='file2')
-        er.add_ref(file=file,
-                   container=file,
+        er.add_ref(container=file,
                    key='special',
                    entity_id="id11",
                    entity_uri='url11')
-        er.add_ref(file=file2,
-                   container=file2,
+        er.add_ref(container=file2,
                    key='key2',
                    entity_id="id12",
                    entity_uri='url12')
@@ -95,14 +95,14 @@ class TestHERD(TestCase):
         file_1 = HERDManagerContainer(name='file_1')
         file_2 = HERDManagerContainer(name='file_2')
 
-        er.add_ref(file=file_1,
-                   container=data1,
+        data1.parent = file_1
+        data2.parent = file_2
+        er.add_ref(container=data1,
                    field='species',
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        er.add_ref(file=file_2,
-                   container=data2,
+        er.add_ref(container=data2,
                    field='species',
                    key='Homo sapiens',
                    entity_id='NCBI:txid9606',
@@ -131,19 +131,41 @@ class TestHERD(TestCase):
                                           'entities_idx': 'uint32'})
         pd.testing.assert_frame_equal(result_df, expected_df)
 
+    def test_repr_empty(self):
+        er = HERD()
+        # repr and HTML repr must not raise on an empty HERD (to_dataframe raises when empty)
+        self.assertIn('0 key(s)', repr(er))
+        html = er._repr_html_()
+        self.assertIn('No external resource references', html)
+
+    def test_repr_populated(self):
+        er = HERD()
+        file = HERDManagerContainer(name='file')
+        container = Container(name='Container')
+        container.parent = file
+        er.add_ref(container=container,
+                   key='Mus musculus',
+                   entity_id='NCBITaxon:10090',
+                   entity_uri='http://x')
+        text = repr(er)
+        self.assertIn('1 key(s), 1 entity(ies), 1 object(s), 1 file(s)', text)
+        # the HTML repr surfaces the flattened table content
+        html = er._repr_html_()
+        self.assertIn('NCBITaxon:10090', html)
+        self.assertIn('http://x', html)
+
     def test_assert_external_resources_equal(self):
         file = HERDManagerContainer(name='file')
         ref_container_1 = Container(name='Container_1')
+        ref_container_1.parent = file
         er_left = HERD()
-        er_left.add_ref(file=file,
-                        container=ref_container_1,
+        er_left.add_ref(container=ref_container_1,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
 
         er_right = HERD()
-        er_right.add_ref(file=file,
-                         container=ref_container_1,
+        er_right.add_ref(container=ref_container_1,
                          key='key1',
                          entity_id="id11",
                          entity_uri='url11')
@@ -152,16 +174,19 @@ class TestHERD(TestCase):
                                                                           er_right))
 
     def test_invalid_keys_assert_external_resources_equal(self):
+        # use the same file and container so that only the keys table differs
+        file = HERDManagerContainer(name='file')
+        container = Container(name='Container')
+        container.parent = file
+
         er_left = HERD()
-        er_left.add_ref(file=HERDManagerContainer(name='file'),
-                        container=Container(name='Container'),
+        er_left.add_ref(container=container,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
 
         er_right = HERD()
-        er_right.add_ref(file=HERDManagerContainer(name='file'),
-                         container=Container(name='Container'),
+        er_right.add_ref(container=container,
                          key='invalid',
                          entity_id="id11",
                          entity_uri='url11')
@@ -171,16 +196,21 @@ class TestHERD(TestCase):
                                                               er_right)
 
     def test_invalid_objects_assert_external_resources_equal(self):
+        # use the same file but different containers so that only the objects table differs
+        file = HERDManagerContainer(name='file')
+        container1 = Container(name='Container1')
+        container2 = Container(name='Container2')
+        container1.parent = file
+        container2.parent = file
+
         er_left = HERD()
-        er_left.add_ref(file=HERDManagerContainer(name='file'),
-                        container=Container(name='Container'),
+        er_left.add_ref(container=container1,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
 
         er_right = HERD()
-        er_right.add_ref(file=HERDManagerContainer(name='file'),
-                         container=Container(name='Container'),
+        er_right.add_ref(container=container2,
                          key='key1',
                          entity_id="id11",
                          entity_uri='url11')
@@ -190,16 +220,19 @@ class TestHERD(TestCase):
                                                               er_right)
 
     def test_invalid_entity_assert_external_resources_equal(self):
+        # use the same file and container so that only the entities table differs
+        file = HERDManagerContainer(name='file')
+        container = Container(name='Container')
+        container.parent = file
+
         er_left = HERD()
-        er_left.add_ref(file=HERDManagerContainer(name='file'),
-                        container=Container(name='Container'),
+        er_left.add_ref(container=container,
                         key='key1',
                         entity_id="invalid",
                         entity_uri='invalid')
 
         er_right = HERD()
-        er_right.add_ref(file=HERDManagerContainer(name='file'),
-                         container=Container(name='Container'),
+        er_right.add_ref(container=container,
                          key='key1',
                          entity_id="id11",
                          entity_uri='url11')
@@ -209,20 +242,48 @@ class TestHERD(TestCase):
                                                               er_right)
 
     def test_invalid_object_keys_assert_external_resources_equal(self):
+        # use the same file and container so that only the object_keys table differs
+        file = HERDManagerContainer(name='file')
+        container = Container(name='Container')
+        container.parent = file
+
         er_left = HERD()
-        er_left.add_ref(file=HERDManagerContainer(name='file'),
-                        container=Container(name='Container'),
-                        key='invalid',
+        er_left.add_ref(container=container,
+                        key='key1',
                         entity_id="id11",
                         entity_uri='url11')
 
         er_right = HERD()
-        er_right._add_key('key')
-        er_right.add_ref(file=HERDManagerContainer(name='file'),
-                         container=Container(name='Container'),
+        er_right.add_ref(container=container,
                          key='key1',
                          entity_id="id11",
                          entity_uri='url11')
+        # add a spurious object-key relationship so that only the object_keys table differs
+        er_right._add_object_key(er_right.objects.row[0], er_right.keys.row[0])
+
+        with self.assertRaises(AssertionError):
+            HERD.assert_external_resources_equal(er_left,
+                                                              er_right)
+
+    def test_invalid_entity_keys_assert_external_resources_equal(self):
+        # use the same file and container so that every table except entity_keys is identical
+        file = HERDManagerContainer(name='file')
+        container = Container(name='Container')
+        container.parent = file
+
+        er_left = HERD()
+        er_left.add_ref(container=container,
+                        key='key1',
+                        entity_id="id11",
+                        entity_uri='url11')
+
+        er_right = HERD()
+        er_right.add_ref(container=container,
+                         key='key1',
+                         entity_id="id11",
+                         entity_uri='url11')
+        # add a spurious entity-key relationship so that only the entity_keys table differs
+        er_right._add_entity_key(er_right.entities.row[0], er_right.keys.row[0])
 
         with self.assertRaises(AssertionError):
             HERD.assert_external_resources_equal(er_left,
@@ -329,7 +390,7 @@ class TestHERD(TestCase):
 
         er.add_ref_container(root_container=em)
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
@@ -352,7 +413,7 @@ class TestHERD(TestCase):
 
         er.add_ref_container(root_container=em)
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', 'description', '')])
 
@@ -367,15 +428,16 @@ class TestHERD(TestCase):
                           data=['Homo sapiens'])
 
         species = DynamicTable(name='species', description='My species', columns=[col1],)
+        species.parent = em
 
-        er.add_ref_termset(file=em,
+        er.add_ref_termset(
                     container=species,
                     attribute='Species_Data',
                     key='Homo sapiens',
                     termset=terms
                    )
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
@@ -406,13 +468,14 @@ class TestHERD(TestCase):
                           data=['Homo sapiens'])
 
         species = DynamicTable(name='species', description='My species', columns=[col1],)
+        species.parent = em
 
-        er.add_ref_termset(file=em,
+        er.add_ref_termset(
                     container=species['Species_Data'],
                     termset=terms
                    )
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
@@ -427,14 +490,15 @@ class TestHERD(TestCase):
                           data=['Homo sapiens'])
 
         species = DynamicTable(name='species', description='My species', columns=[col1],)
+        species.parent = em
 
-        er.add_ref_termset(file=em,
+        er.add_ref_termset(
                     container=species,
                     attribute='colnames',
                     termset=terms
                    )
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, species.object_id, 'DynamicTable', 'colnames', '')])
 
@@ -449,16 +513,17 @@ class TestHERD(TestCase):
                           data=['Homo sapiens', 'Mus musculus'])
 
         species = DynamicTable(name='species', description='My species', columns=[col1],)
+        species.parent = em
 
-        er.add_ref_termset(file=em,
+        er.add_ref_termset(
                     container=species,
                     attribute='Species_Data',
                     termset=terms
                    )
         self.assertEqual(er.keys.data, [('Homo sapiens',), ('Mus musculus',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'),
-        ('NCBI_TAXON:10090',
+        ('NCBITaxon:10090',
          'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=10090')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
@@ -473,14 +538,15 @@ class TestHERD(TestCase):
                           data=['Homo sapiens', 'missing_term'])
 
         species = DynamicTable(name='species', description='My species', columns=[col1],)
+        species.parent = em
 
-        missing_terms = er.add_ref_termset(file=em,
+        missing_terms = er.add_ref_termset(
                                             container=species,
                                             attribute='Species_Data',
                                             termset=terms
                                            )
         self.assertEqual(er.keys.data, [('Homo sapiens',)])
-        self.assertEqual(er.entities.data, [('NCBI_TAXON:9606',
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606')])
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
         self.assertEqual(missing_terms, {'missing_terms': ['missing_term']})
@@ -519,19 +585,55 @@ class TestHERD(TestCase):
 
         self.assertEqual(file.name, retrieved.name)
 
+    def test_get_file_from_container_nested(self):
+        # The file should be resolved even when it is not the direct parent.
+        file = HERDManagerContainer(name='file')
+        middle = Container(name='middle')
+        middle.parent = file
+        container = Container(name='name')
+        container.parent = middle
+        er = HERD()
+        retrieved = er._get_file_from_container(container)
 
-    def test_get_file_from_container_error(self):
+        self.assertEqual(file.name, retrieved.name)
+
+    def test_get_file_from_container_no_parent_error(self):
         container = Container(name='name')
         er = HERD()
 
-        with self.assertRaises(ValueError):
+        msg = ("Could not find the file associated with container 'name'. Please add the container "
+               "to the file before adding an external reference.")
+        with self.assertRaisesWith(ValueError, msg):
             er._get_file_from_container(container)
+
+    def test_get_file_from_container_no_file_ancestor_error(self):
+        # The container has a parent chain, but none of the ancestors is a file.
+        middle = Container(name='middle')
+        container = Container(name='name')
+        container.parent = middle
+        er = HERD()
+
+        msg = ("Could not find the file associated with container 'name'. Please add the container "
+               "to the file before adding an external reference.")
+        with self.assertRaisesWith(ValueError, msg):
+            er._get_file_from_container(container)
+
+    def test_get_file_from_container_no_herdmanager_ancestor_error(self):
+        # container has a parent chain but no HERDManager ancestor
+        parent = Container(name='parent')
+        child = Container(name='child')
+        child.parent = parent
+        er = HERD()
+
+        with self.assertRaises(ValueError):
+            er._get_file_from_container(child)
 
     def test_add_ref(self):
         er = HERD()
+        file = HERDManagerContainer(name='file')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data,
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -539,12 +641,54 @@ class TestHERD(TestCase):
         self.assertEqual(er.entities.data, [('entity_id1', 'entity1')])
         self.assertEqual(er.objects.data, [(0, data.object_id, 'Data', '', '')])
 
+    def test_add_ref_default_key_from_scalar_attribute(self):
+        # key defaults to the value of a scalar string attribute when not provided
+        table = DynamicTable(name='table', description='a table description')
+        file = HERDManagerContainer(name='file')
+        table.parent = file
+
+        er = HERD()
+        er.add_ref(container=table,
+                   attribute='description',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        self.assertEqual(er.keys.data, [('a table description',)])
+        self.assertEqual(er.objects.data, [(0, table.object_id, 'DynamicTable', 'description', '')])
+
+    def test_add_ref_explicit_key_overrides_attribute_value(self):
+        table = DynamicTable(name='table', description='a table description')
+        file = HERDManagerContainer(name='file')
+        table.parent = file
+
+        er = HERD()
+        er.add_ref(container=table,
+                   attribute='description',
+                   key='explicit',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        self.assertEqual(er.keys.data, [('explicit',)])
+
+    def test_add_ref_default_key_non_scalar_attribute_error(self):
+        # a column (non-scalar) attribute cannot supply a key; require it explicitly
+        table = DynamicTable(name='table', description='a table description')
+        table.add_column(name='col1', description='column')
+        table.add_row(id=0, col1='data')
+        file = HERDManagerContainer(name='file')
+        table.parent = file
+
+        er = HERD()
+        with self.assertRaises(ValueError):
+            er.add_ref(container=table,
+                       attribute='col1',
+                       entity_id='entity_id1',
+                       entity_uri='entity1')
+
     def test_get_object_type(self):
         er = HERD()
         file = HERDManagerContainer(name='file')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=file,
-                   container=data,
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -575,8 +719,8 @@ class TestHERD(TestCase):
         er = HERD()
         file = HERDManagerContainer(name='file')
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=file,
-                   container=data,
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -607,8 +751,8 @@ class TestHERD(TestCase):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         file = HERDManagerContainer(name='file')
-        er.add_ref(file=file,
-                   container=data,
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -619,8 +763,8 @@ class TestHERD(TestCase):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         file = HERDManagerContainer(name='file')
-        er.add_ref(file=file,
-                   container=data,
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -632,6 +776,42 @@ class TestHERD(TestCase):
              'entity_uri': {0: 'entity1'}}
         expected_df = pd.DataFrame.from_dict(expected_df_data)
 
+        pd.testing.assert_frame_equal(df, expected_df)
+
+    def test_get_obj_entities_hdf5_roundtrip(self):
+        """Regression test for #1496: idx columns are read back as numpy unsigned ints.
+
+        After an HDF5 round-trip the objects table's ``files_idx`` (schema dtype ``uint``)
+        comes back as a numpy ``uint``. Building an ``Object`` row from it, as
+        ``get_object_entities`` does via ``_find_object``, must accept
+        the numpy integer rather than rejecting it as not a Python ``int``.
+        """
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens'])
+        file = HERDManagerContainer(name='file')
+        data.parent = file
+        er.add_ref(container=data,
+                   key='Homo sapiens',
+                   entity_id='NCBITaxon:9606',
+                   entity_uri='http://x')
+
+        path = 'test_HERD_hdf5_roundtrip.h5'
+        try:
+            with HDF5IO(path, manager=get_manager(), mode='w') as io:
+                io.write(er)
+            with HDF5IO(path, manager=get_manager(), mode='r') as io:
+                read_er = io.read()
+                # files_idx is read back as a numpy unsigned int (schema dtype is uint)
+                self.assertIsInstance(read_er.objects['files_idx', 0], np.unsignedinteger)
+                # the same file and container (matched by object_id) resolve the persisted rows
+                df = read_er.get_object_entities(file=file, container=data)
+        finally:
+            remove_test_file(path)
+
+        expected_df = pd.DataFrame.from_dict(
+            {'entity_id': {0: 'NCBITaxon:9606'},
+             'entity_uri': {0: 'http://x'}}
+        )
         pd.testing.assert_frame_equal(df, expected_df)
 
     def test_get_obj_entities_file_none_container(self):
@@ -696,13 +876,15 @@ class TestHERD(TestCase):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         file = HERDManagerContainer(name='file')
-        er.add_ref(file=file,
-                   container=data,
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
+        # A container that is not in any file cannot have its file resolved.
+        unparented = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         with self.assertRaises(ValueError):
-            _ = er.get_object_entities(container=data)
+            _ = er.get_object_entities(container=unparented)
 
     def test_get_obj_entities_attribute(self):
         table = DynamicTable(name='table', description='table')
@@ -710,10 +892,10 @@ class TestHERD(TestCase):
         table.add_row(id=0, col1='data')
 
         file = HERDManagerContainer(name='file')
+        table.parent = file
 
         er = HERD()
-        er.add_ref(file=file,
-                   container=table,
+        er.add_ref(container=table,
                    attribute='col1',
                    key='key1',
                    entity_id='entity_0',
@@ -729,11 +911,39 @@ class TestHERD(TestCase):
 
         pd.testing.assert_frame_equal(df, expected_df)
 
+    def test_get_obj_entities_non_datatype_attribute(self):
+        # a reference added with a non-DataType attribute (stored with a computed relative_path)
+        # must be retrievable with the same attribute
+        table = DynamicTable(name='table', description='table')
+        table.add_column(name='col1', description="column")
+        table.add_row(id=0, col1='data')
+
+        file = HERDManagerContainer(name='file')
+        table.parent = file
+
+        er = HERD()
+        er.add_ref(container=table,
+                   attribute='description',
+                   key='key1',
+                   entity_id='entity_0',
+                   entity_uri='entity_0_uri')
+        df = er.get_object_entities(file=file,
+                                    container=table,
+                                    attribute='description')
+
+        expected_df_data = \
+            {'entity_id': {0: 'entity_0'},
+             'entity_uri': {0: 'entity_0_uri'}}
+        expected_df = pd.DataFrame.from_dict(expected_df_data)
+
+        pd.testing.assert_frame_equal(df, expected_df)
+
     def test_to_and_from_zip(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data,
+        file = HERDManagerContainer(name='file')
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -744,11 +954,48 @@ class TestHERD(TestCase):
 
         self.remove_er_files()
 
+    def test_from_zip_with_type_map(self):
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file = HERDManagerContainer(name='file')
+        data.parent = file
+        er.add_ref(container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_zip(path='./HERD.zip')
+
+        type_map = get_type_map()
+        er_read = HERD.from_zip(path='./HERD.zip', type_map=type_map)
+        self.assertIs(er_read.type_map, type_map)
+
+        self.remove_er_files()
+
+    def test_from_zip_uses_cls(self):
+        class SubHERD(HERD):
+            pass
+
+        er = SubHERD()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file = HERDManagerContainer(name='file')
+        data.parent = file
+        er.add_ref(container=data,
+                   key='key1',
+                   entity_id='entity_id1',
+                   entity_uri='entity1')
+        er.to_zip(path='./HERD.zip')
+
+        er_read = SubHERD.from_zip(path='./HERD.zip')
+        self.assertIsInstance(er_read, SubHERD)
+
+        self.remove_er_files()
+
     def test_get_zip_directory(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data,
+        file = HERDManagerContainer(name='file')
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -766,8 +1013,9 @@ class TestHERD(TestCase):
     def test_to_and_from_zip_entity_value_error(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data,
+        file = HERDManagerContainer(name='file')
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -789,8 +1037,9 @@ class TestHERD(TestCase):
     def test_to_and_from_zip_entity_key_value_error_key(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data,
+        file = HERDManagerContainer(name='file')
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -812,8 +1061,9 @@ class TestHERD(TestCase):
     def test_to_and_from_zip_entity_key_value_error_entity(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data,
+        file = HERDManagerContainer(name='file')
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -835,8 +1085,9 @@ class TestHERD(TestCase):
     def test_to_and_from_zip_object_value_error(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data,
+        file = HERDManagerContainer(name='file')
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -859,8 +1110,9 @@ class TestHERD(TestCase):
     def test_to_and_from_zip_object_keys_object_idx_value_error(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data,
+        file = HERDManagerContainer(name='file')
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -883,8 +1135,9 @@ class TestHERD(TestCase):
     def test_to_and_from_zip_object_keys_key_idx_value_error(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data,
+        file = HERDManagerContainer(name='file')
+        data.parent = file
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -906,15 +1159,17 @@ class TestHERD(TestCase):
 
     def test_add_ref_two_keys(self):
         er = HERD()
+        file_1 = HERDManagerContainer(name='file')
+        file_2 = HERDManagerContainer(name='file')
         ref_container_1 = Container(name='Container_1')
         ref_container_2 = Container(name='Container_2')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=ref_container_1,
+        ref_container_1.parent = file_1
+        ref_container_2.parent = file_2
+        er.add_ref(container=ref_container_1,
                    key='key1',
                    entity_id="id11",
                    entity_uri='url11')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=ref_container_2,
+        er.add_ref(container=ref_container_2,
                    key='key2',
                    entity_id="id12",
                    entity_uri='url21')
@@ -927,15 +1182,17 @@ class TestHERD(TestCase):
 
     def test_add_ref_same_key_diff_objfield(self):
         er = HERD()
+        file_1 = HERDManagerContainer(name='file')
+        file_2 = HERDManagerContainer(name='file')
         ref_container_1 = Container(name='Container_1')
         ref_container_2 = Container(name='Container_2')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=ref_container_1,
+        ref_container_1.parent = file_1
+        ref_container_2.parent = file_2
+        er.add_ref(container=ref_container_1,
                    key='key1',
                    entity_id="id11",
                    entity_uri='url11')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=ref_container_2,
+        er.add_ref(container=ref_container_2,
                    key='key1',
                    entity_id="id12",
                    entity_uri='url21')
@@ -947,21 +1204,24 @@ class TestHERD(TestCase):
 
     def test_add_ref_same_keyname(self):
         er = HERD()
+        file_1 = HERDManagerContainer(name='file')
+        file_2 = HERDManagerContainer(name='file')
+        file_3 = HERDManagerContainer(name='file')
         ref_container_1 = Container(name='Container_1')
         ref_container_2 = Container(name='Container_2')
         ref_container_3 = Container(name='Container_2')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=ref_container_1,
+        ref_container_1.parent = file_1
+        ref_container_2.parent = file_2
+        ref_container_3.parent = file_3
+        er.add_ref(container=ref_container_1,
                    key='key1',
                    entity_id="id11",
                    entity_uri='url11')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=ref_container_2,
+        er.add_ref(container=ref_container_2,
                    key='key1',
                    entity_id="id12",
                    entity_uri='url21')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=ref_container_3,
+        er.add_ref(container=ref_container_3,
                    key='key1',
                    entity_id="id13",
                    entity_uri='url31')
@@ -979,15 +1239,15 @@ class TestHERD(TestCase):
         er = HERD()
         data = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        file = HERDManagerContainer(name='file')
+        data.parent = file
 
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data,
+        er.add_ref(container=data,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
         existing_key = er.get_key('Mus musculus')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data,
+        er.add_ref(container=data,
                    key=existing_key,
                    entity_id='entity2',
                    entity_uri='entity_uri2')
@@ -1000,15 +1260,17 @@ class TestHERD(TestCase):
 
         data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        file_1 = HERDManagerContainer(name='file')
+        file_2 = HERDManagerContainer(name='file')
+        data_1.parent = file_1
+        data_2.parent = file_2
 
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_1,
+        er.add_ref(container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
         existing_key = er.get_key('Mus musculus')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_2,
+        er.add_ref(container=data_2,
                    key=existing_key,
                    entity_id='entity2',
                    entity_uri='entity_uri2')
@@ -1020,14 +1282,14 @@ class TestHERD(TestCase):
         data_1 = Data(name='data_name',
                       data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0), ('mouse', 3, 27.0)],
                       dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        file = HERDManagerContainer(name='file')
+        data_1.parent = file
 
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_1,
+        er.add_ref(container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_1,
+        er.add_ref(container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090')
 
@@ -1041,14 +1303,16 @@ class TestHERD(TestCase):
 
         data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        file_1 = HERDManagerContainer(name='file')
+        file_2 = HERDManagerContainer(name='file')
+        data_1.parent = file_1
+        data_2.parent = file_2
 
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_1,
+        er.add_ref(container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_2,
+        er.add_ref(container=data_2,
                    key='mouse',
                    entity_id='NCBI:txid10090')
         self.assertEqual(er.entity_keys.data, [(0, 0), (0, 1)])
@@ -1060,20 +1324,21 @@ class TestHERD(TestCase):
 
         data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        file_1 = HERDManagerContainer(name='file')
+        file_2 = HERDManagerContainer(name='file')
+        data_1.parent = file_1
+        data_2.parent = file_2
 
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_1,
+        er.add_ref(container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_1,
+        er.add_ref(container=data_1,
                    key='Mice',
                    entity_id='entity_2',
                    entity_uri='entity_2_uri')
         existing_key = er.get_key('Mus musculus')
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_2,
+        er.add_ref(container=data_2,
                    key=existing_key,
                    entity_id='entity_2')
 
@@ -1083,95 +1348,152 @@ class TestHERD(TestCase):
         er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        file = HERDManagerContainer(name='file')
+        data_1.parent = file
         with self.assertRaises(ValueError):
-            er.add_ref(file=HERDManagerContainer(name='file'),
-                       container=data_1,
+            er.add_ref(container=data_1,
                        key='Mus musculus',
                        entity_id='NCBI:txid10090')
 
-    def test_entity_uri_warning(self):
+    def test_entity_uri_warning_on_mismatch(self):
+        # providing a *different* entity_uri for an existing entity_id warns and keeps the existing uri
         er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
 
         data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        file_1 = HERDManagerContainer(name='file')
+        file_2 = HERDManagerContainer(name='file')
+        data_1.parent = file_1
+        data_2.parent = file_2
 
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_1,
+        existing_uri = 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
+        er.add_ref(container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
-                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+                   entity_uri=existing_uri)
         existing_key = er.get_key('Mus musculus')
-        with self.assertWarns(Warning):
-            er.add_ref(file=HERDManagerContainer(name='file'),
-                       container=data_2,
+        msg = ("The provided entity_uri 'https://example.com/different' does not match the existing "
+               "entity_uri '%s' for entity_id 'NCBI:txid10090'. The existing entity_uri is kept."
+               % existing_uri)
+        with self.assertWarnsWith(UserWarning, msg):
+            er.add_ref(container=data_2,
                        key=existing_key,
                        entity_id='NCBI:txid10090',
-                       entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+                       entity_uri='https://example.com/different')
+        # the existing entity is reused (not duplicated) and its uri is unchanged
+        self.assertEqual(er.entities.data, [('NCBI:txid10090', existing_uri)])
+
+    def test_entity_uri_no_warning_when_same(self):
+        # re-passing the *same* entity_uri for an existing entity_id does not warn and does not duplicate
+        er = HERD()
+        data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+
+        data_2 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                    dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        file_1 = HERDManagerContainer(name='file')
+        file_2 = HERDManagerContainer(name='file')
+        data_1.parent = file_1
+        data_2.parent = file_2
+
+        uri = 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
+        er.add_ref(container=data_1,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri=uri)
+        existing_key = er.get_key('Mus musculus')
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # any warning becomes an error
+            er.add_ref(container=data_2,
+                       key=existing_key,
+                       entity_id='NCBI:txid10090',
+                       entity_uri=uri)
+        # the entity table is still normalized (a single row), no duplicate added
+        self.assertEqual(er.entities.data, [('NCBI:txid10090', uri)])
 
     def test_key_without_entity_error(self):
         er = HERD()
         data_1 = Data(name='data_name', data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
                     dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        file = HERDManagerContainer(name='file')
+        data_1.parent = file
 
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data_1,
+        er.add_ref(container=data_1,
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
         key = er._add_key('key')
         with self.assertRaises(ValueError):
-            er.add_ref(file=HERDManagerContainer(name='file'),
-                       container=data_1,
+            er.add_ref(container=data_1,
                        key=key,
                        entity_id='entity1')
 
-    def test_check_object_field_add(self):
+    def test_find_or_add_object_add(self):
+        # for a missing object, _find_or_add_object adds the object and its file entry and returns the new row
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         file = HERDManagerContainer(name='file')
-        _dict = er._check_object_field(file=file,
-                               container=data,
-                               relative_path='',
-                               field='')
-        expected = {'file_object_id': file.object_id,
-                    'files_idx': None,
-                    'container': data,
-                    'relative_path': '',
-                    'field': ''}
-        self.assertEqual(_dict, expected)
+        obj = er._find_or_add_object(file, data, '', '')
+        self.assertEqual(len(er.files), 1)
+        self.assertEqual(er.files['file_object_id', 0], file.object_id)
+        self.assertEqual(len(er.objects), 1)
+        self.assertEqual(obj.idx, 0)
+        self.assertEqual(er.objects['object_id', 0], data.object_id)
+        self.assertEqual(er.objects['relative_path', 0], '')
+        self.assertEqual(er.objects['field', 0], '')
 
-    def test_check_object_field_multi_files(self):
+    def test_find_or_add_object_reuses_existing(self):
+        # a second call for the same file/object returns the existing row rather than adding a duplicate
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file = HERDManagerContainer(name='file')
+        first = er._find_or_add_object(file, data, '', '')
+        second = er._find_or_add_object(file, data, '', '')
+        self.assertEqual(first.idx, second.idx)
+        self.assertEqual(len(er.objects), 1)
+
+    def test_find_object_disambiguates_by_file(self):
+        # the same object_id under two different files (e.g. a copied, modified file) resolves per file
+        er = HERD()
+        data = Data(name="species", data=['Homo sapiens'])
+        file1 = HERDManagerContainer(name='file1')
+        file2 = HERDManagerContainer(name='file2')
+        er._add_file(file1.object_id)
+        er._add_file(file2.object_id)
+        obj1 = er._add_object(files_idx=0, container=data, relative_path='', field='')
+        obj2 = er._add_object(files_idx=1, container=data, relative_path='', field='')
+
+        self.assertEqual(er._find_object(file1, data, '', '').idx, obj1.idx)
+        self.assertEqual(er._find_object(file2, data, '', '').idx, obj2.idx)
+
+    def test_find_or_add_object_multi_files(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
         file = HERDManagerContainer(name='file')
         er._add_file(file.object_id)
         er._add_file(file.object_id)
 
+        # adding the missing object hits the duplicate-file guard
         with self.assertRaises(ValueError):
-            er._check_object_field(file=file, container=data, relative_path='', field='')
+            er._find_or_add_object(file, data, '', '')
 
-    def test_check_object_field_multi_error(self):
+    def test_find_object_multi_error(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
+        file = HERDManagerContainer(name='file')
+        er._add_file(file.object_id)
         er._add_object(files_idx=0, container=data, relative_path='', field='')
         er._add_object(files_idx=0, container=data, relative_path='', field='')
         with self.assertRaises(ValueError):
-            er._check_object_field(file=HERDManagerContainer(name='file'),
-                                   container=data,
-                                   relative_path='',
-                                   field='')
+            er._find_object(file, data, '', '')
 
-    def test_check_object_field_not_in_obj_table(self):
+    def test_find_object_not_in_obj_table(self):
+        # _find_object returns None when no object matches; callers turn None into an error
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        with self.assertRaises(ValueError):
-            er._check_object_field(file=HERDManagerContainer(name='file'),
-                                   container=data,
-                                   relative_path='',
-                                   field='',
-                                   create=False)
+        self.assertIsNone(er._find_object(HERDManagerContainer(name='file'), data, '', ''))
 
     def test_add_ref_attribute(self):
         # Test to make sure the attribute object is being used for the id
@@ -1180,9 +1502,11 @@ class TestHERD(TestCase):
         table.add_column(name='col1', description="column")
         table.add_row(id=0, col1='data')
 
+        file = HERDManagerContainer(name='file')
+        table.parent = file
+
         er = HERD()
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=table,
+        er.add_ref(container=table,
                    attribute='id',
                    key='key1',
                    entity_id='entity_0',
@@ -1199,9 +1523,11 @@ class TestHERD(TestCase):
         table.add_column(name='col1', description="column")
         table.add_row(id=0, col1='data')
 
+        file = HERDManagerContainer(name='file')
+        table.parent = file
+
         er = HERD()
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=table,
+        er.add_ref(container=table,
                    attribute='col1',
                    key='key1',
                    entity_id='entity_0',
@@ -1219,8 +1545,9 @@ class TestHERD(TestCase):
             data=np.array(
                 [('Mus musculus', 9, 81.0), ('Homo sapiens', 3, 27.0)],
                 dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=data,
+        file = HERDManagerContainer(name='file')
+        data.parent = file
+        er.add_ref(container=data,
                    field='species',
                    key='Mus musculus',
                    entity_id='NCBI:txid10090',
@@ -1265,9 +1592,11 @@ class TestHERDNestedAttributes(TestCase):
         table.add_column(name='col1', description="column")
         table.add_row(id=0, col1='data')
 
+        file = HERDManagerContainer(name='file')
+        table.parent = file
+
         er = HERD()
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=table,
+        er.add_ref(container=table,
                    attribute='description',
                    key='key1',
                    entity_id='entity_0',
@@ -1277,9 +1606,10 @@ class TestHERDNestedAttributes(TestCase):
         self.assertEqual(er.objects.data, [(0, table.object_id, 'DynamicTable', 'description', '')])
 
     def test_add_ref_deep_nested(self):
+        file = HERDManagerContainer(name='file')
+        self.bar.parent = file
         er = HERD(type_map=self.type_map)
-        er.add_ref(file=HERDManagerContainer(name='file'),
-                   container=self.bar,
+        er.add_ref(container=self.bar,
                    attribute='attr2',
                    key='key1',
                    entity_id='entity_0',
@@ -1293,13 +1623,17 @@ class TestHERDGetKey(TestCase):
         self.er = HERD()
 
     def test_get_key_multiple(self):
-        self.er.add_ref(file=HERDManagerContainer(name='file'),
-                        container=Container(name='Container'),
+        file_1 = HERDManagerContainer(name='file')
+        container_1 = Container(name='Container')
+        container_1.parent = file_1
+        file_2 = HERDManagerContainer(name='file')
+        container_2 = Container(name='Container')
+        container_2.parent = file_2
+        self.er.add_ref(container=container_1,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
-        self.er.add_ref(file=HERDManagerContainer(name='file'),
-                        container=Container(name='Container'),
+        self.er.add_ref(container=container_2,
                         key='key1',
                         entity_id="id12",
                         entity_uri='url21')
@@ -1311,8 +1645,10 @@ class TestHERDGetKey(TestCase):
         self.assertEqual(keys[1].idx, 1)
 
     def test_get_key(self):
-        self.er.add_ref(file=HERDManagerContainer(name='file'),
-                        container=Container(name='Container'),
+        file = HERDManagerContainer(name='file')
+        container = Container(name='Container')
+        container.parent = file
+        self.er.add_ref(container=container,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
@@ -1322,8 +1658,10 @@ class TestHERDGetKey(TestCase):
         self.assertEqual(key.idx, 0)
 
     def test_get_key_bad_arg(self):
-        self.er.add_ref(file=HERDManagerContainer(name='file'),
-                        container=Container(name='Container'),
+        file = HERDManagerContainer(name='file')
+        container = Container(name='Container')
+        container.parent = file
+        self.er.add_ref(container=container,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
@@ -1334,13 +1672,14 @@ class TestHERDGetKey(TestCase):
     def test_get_key_file_container_provided(self):
         file = HERDManagerContainer()
         container1 = Container(name='Container')
-        self.er.add_ref(file=file,
-                        container=container1,
+        container1.parent = file
+        container2 = Container(name='Container')
+        container2.parent = file
+        self.er.add_ref(container=container1,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
-        self.er.add_ref(file=file,
-                        container=Container(name='Container'),
+        self.er.add_ref(container=container2,
                         key='key1',
                         entity_id="id12",
                         entity_uri='url21')
@@ -1362,8 +1701,7 @@ class TestHERDGetKey(TestCase):
         container1 = Container(name='Container')
 
         container1.parent = file
-        self.er.add_ref(file=file,
-                        container=container1,
+        self.er.add_ref(container=container1,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
@@ -1380,8 +1718,7 @@ class TestHERDGetKey(TestCase):
         container1.parent = file
         container2.parent = container1
 
-        self.er.add_ref(file=file,
-                        container=container2,
+        self.er.add_ref(container=container2,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
@@ -1393,20 +1730,25 @@ class TestHERDGetKey(TestCase):
     def test_get_key_no_file_error(self):
         file = HERDManagerContainer()
         container1 = Container(name='Container')
-        self.er.add_ref(file=file,
-                        container=container1,
+        container1.parent = file
+        self.er.add_ref(container=container1,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
 
-        with self.assertRaises(ValueError):
-            _ = self.er.get_key(key_name='key1', container=container1)
+        # A container that is not in any file cannot have its file resolved. This is its own distinct
+        # error, separate from a container that is in a file but has no entry in the object table.
+        unparented = Container(name='Container')
+        msg = ("Could not find the file associated with container 'Container'. Please add the container "
+               "to the file before adding an external reference.")
+        with self.assertRaisesWith(ValueError, msg):
+            _ = self.er.get_key(key_name='key1', container=unparented)
 
     def test_get_key_no_key_found(self):
         file = HERDManagerContainer()
         container1 = Container(name='Container')
-        self.er.add_ref(file=file,
-                        container=container1,
+        container1.parent = file
+        self.er.add_ref(container=container1,
                         key='key1',
                         entity_id="id11",
                         entity_uri='url11')
@@ -1414,6 +1756,17 @@ class TestHERDGetKey(TestCase):
         msg = "No key found with that container."
         with self.assertRaisesWith(ValueError, msg):
             _ = self.er.get_key(key_name='key2', container=container1, file=file)
+
+    def test_get_key_container_not_in_table(self):
+        # a container that has never been added must raise a clear error rather than failing
+        # while resolving the (non-existent) object's idx
+        file = HERDManagerContainer()
+        container1 = Container(name='Container')
+        container1.parent = file
+
+        msg = "Object not in Object Table."
+        with self.assertRaisesWith(ValueError, msg):
+            _ = self.er.get_key(key_name='key1', container=container1, file=file)
 
 
 class TestHERDNamespace(TestCase):

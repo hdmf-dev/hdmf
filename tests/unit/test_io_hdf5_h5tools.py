@@ -1155,8 +1155,8 @@ class TestHERDIO(TestCase):
     def test_io_read_herd(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=self.foofile,
-                   container=data,
+        data.parent = self.foofile
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -1170,8 +1170,8 @@ class TestHERDIO(TestCase):
     def test_io_read_herd_file_warn(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=self.foofile,
-                   container=data,
+        data.parent = self.foofile
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -1186,8 +1186,8 @@ class TestHERDIO(TestCase):
     def test_io_read_herd_value_warn(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=self.foofile,
-                   container=data,
+        data.parent = self.foofile
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -1220,8 +1220,7 @@ class TestHERDIO(TestCase):
         foofile = FooFile(buckets=[foobucket])
 
         er = HERD(type_map=self.manager.type_map)
-        er.add_ref(file=foofile,
-                   container=foofile,
+        er.add_ref(container=foofile,
                    key='special',
                    entity_id="id11",
                    entity_uri='url11')
@@ -1238,7 +1237,7 @@ class TestHERDIO(TestCase):
 
             self.assertEqual(read_herd.keys.data, [('special',), ('Homo sapiens',)])
             self.assertEqual(read_herd.entities.data[0], ('id11', 'url11'))
-            self.assertEqual(read_herd.entities.data[1], ('NCBI_TAXON:9606',
+            self.assertEqual(read_herd.entities.data[1], ('NCBITaxon:9606',
             'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'))
             self.assertEqual(read_herd.objects.data[0],
             (0, read_foofile.object_id, 'FooFile', '', ''))
@@ -1261,7 +1260,6 @@ class TestHERDIO(TestCase):
 
         container.external_resources = herd
         herd.add_ref(
-            file=container,
             container=species,
             key='Homo sapiens',
             entity_id='NCBI:9606',

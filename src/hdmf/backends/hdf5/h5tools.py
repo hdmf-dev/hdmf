@@ -1336,9 +1336,11 @@ class HDF5IO(HDMFIO):
         if 'maxshape' not in io_settings:
             io_settings['maxshape'] = data.maxshape
         if 'dtype' not in io_settings:
-            if (options is not None) and ('dtype' in options):
+            if (options is not None) and (options.get('dtype') is not None):
                 io_settings['dtype'] = options['dtype']
             else:
+                # fall back to the data's own dtype; passing dtype=None to create_dataset is deprecated
+                # and silently stores the data as float32
                 io_settings['dtype'] = data.dtype
             if isinstance(io_settings['dtype'], str):
                 # map to real dtype if we were given a string

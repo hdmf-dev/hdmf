@@ -48,6 +48,9 @@ on:
     - cron: '0 6 * * *'  # once per day at 1 AM ET, offset from other daily workflows
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   generate-extension-matrix:
     runs-on: ubuntu-latest
@@ -55,10 +58,12 @@ jobs:
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: '3.11'
 
@@ -91,13 +96,14 @@ jobs:
       fail-fast: false  # Continue testing other extensions even if one fails
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
+          persist-credentials: false
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: '3.11'  # Use 3.11 for better compatibility with extensions
 
@@ -105,15 +111,18 @@ jobs:
         run: python -m pip install --upgrade pip
 
       - name: Install NWB extension from PyPI with current branch of HDMF - ${{ matrix.extension.name }}
+        env:
+          EXTENSION_NAME: ${{ matrix.extension.name }}
+          EXTENSION_REPO: ${{ matrix.extension.repository }}
         run: |
-          echo "Repository: ${{ matrix.extension.repository }}"
+          echo "Repository: $EXTENSION_REPO"
 
           # Clone the extension repository
-          git clone --depth 1 ${{ matrix.extension.repository }} extension_repo
+          git clone --depth 1 "$EXTENSION_REPO" extension_repo
           cd extension_repo
 
           # Try to install the extension
-          echo "Installing extension ${{ matrix.extension.name }}..."
+          echo "Installing extension $EXTENSION_NAME..."
           python -m pip install -r requirements-dev.txt || true  # Continue even if this fails
           python -m pip install -r requirements.txt || true  # Continue even if this fails
           python -m pip install ".[test]"
@@ -128,12 +137,14 @@ jobs:
           python -m pip check
 
       - name: Run tests for NWB extension - ${{ matrix.extension.name }}
+        env:
+          EXTENSION_NAME: ${{ matrix.extension.name }}
         run: |
           cd extension_repo
 
-          # Test basic import functionality
-          extension_import_name=$(echo "${{ matrix.extension.name }}" | sed 's/-/_/g')
-          python -c "import ${extension_import_name}; print('Successfully imported ${extension_import_name}')"
+          # Test basic import functionality. Read the name from the environment and pass it to
+          # importlib as a string so it cannot be interpreted as Python code.
+          python -c "import importlib, os; name = os.environ['EXTENSION_NAME'].replace('-', '_'); importlib.import_module(name); print('Successfully imported', name)"
 
           # Install test dependencies in case they were not already installed
           python -m pip install pytest pytest-cov
@@ -148,4 +159,4 @@ jobs:
             python -m unittest discover -s . -p "*test*.py" -v
           fi
 
-          echo "Completed testing ${{ matrix.extension.name }}"
+          echo "Completed testing $EXTENSION_NAME"

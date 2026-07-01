@@ -2,10 +2,12 @@ import os
 
 import h5py
 import numpy as np
+import pandas as pd
 from hdmf.container import Data
 from hdmf.data_utils import DataChunkIterator, DataIO
 from hdmf.testing import TestCase
-from hdmf.utils import get_data_shape, to_uint_array, is_newer_version, _is_collection, _get_length, _unwrap_scalar
+from hdmf.utils import (get_data_shape, to_uint_array, is_newer_version, _is_collection, _get_length, _unwrap_scalar,
+                        coerce_pandas_data)
 from tests.unit.helpers.utils import get_temp_filepath
 
 
@@ -171,12 +173,12 @@ class TestGetDataShape(TestCase):
             res = get_data_shape(dset)
             self.assertTupleEqual(res, (3, 2))
 
-            dset = f.create_dataset('shape', shape=(3, 2))
+            dset = f.create_dataset('shape', shape=(3, 2), dtype='f4')
             res = get_data_shape(dset)
             self.assertTupleEqual(res, (3, 2))
 
             # test that shape takes priority over maxshape for objects that have both
-            dset = f.create_dataset('shape_maxshape', shape=(3, 2), maxshape=(None, 100))
+            dset = f.create_dataset('shape_maxshape', shape=(3, 2), maxshape=(None, 100), dtype='f4')
             res = get_data_shape(dset)
             self.assertTupleEqual(res, (3, 2))
 
@@ -373,6 +375,97 @@ class TestToUintArray(TestCase):
         arr = [0., 1., 2.]
         with self.assertRaisesWith(ValueError, 'Cannot convert array of dtype float64 to uint.'):
             to_uint_array(arr)
+
+class TestCoercePandasData(TestCase):
+    """Tests for coerce_pandas_data, which normalizes pandas Series/ExtensionArray to numpy."""
+
+    def test_passthrough_non_pandas(self):
+        arr = np.array([1, 2, 3])
+        self.assertIs(coerce_pandas_data(arr), arr)
+        lst = [1, 2, 3]
+        self.assertIs(coerce_pandas_data(lst), lst)
+
+    def test_string_array(self):
+        sa = pd.array(['a', 'b', 'c'], dtype='string')
+        out = coerce_pandas_data(sa)
+        self.assertIsInstance(out, np.ndarray)
+        self.assertEqual(list(out), ['a', 'b', 'c'])
+
+    def test_arrow_string_array(self):
+        try:
+            asa = pd.array(['a', 'b', 'c'], dtype='string[pyarrow]')
+        except ImportError:
+            self.skipTest('pyarrow not installed')
+        out = coerce_pandas_data(asa)
+        self.assertIsInstance(out, np.ndarray)
+        self.assertEqual(list(out), ['a', 'b', 'c'])
+
+    def test_series_string(self):
+        s = pd.Series(['a', 'b', 'c'], dtype='string')
+        out = coerce_pandas_data(s)
+        self.assertIsInstance(out, np.ndarray)
+        self.assertEqual(list(out), ['a', 'b', 'c'])
+
+    def test_series_numeric_lossless(self):
+        s = pd.Series([1, 2, 3])
+        out = coerce_pandas_data(s)
+        self.assertIsInstance(out, np.ndarray)
+        self.assertEqual(out.dtype, np.int64)
+        np.testing.assert_array_equal(out, [1, 2, 3])
+
+    def test_categorical(self):
+        cat = pd.Categorical(['x', 'y', 'x'])
+        out = coerce_pandas_data(cat)
+        self.assertIsInstance(out, np.ndarray)
+        self.assertEqual(list(out), ['x', 'y', 'x'])
+
+    def test_string_array_with_na_raises(self):
+        sa = pd.array(['a', None, 'c'], dtype='string')
+        with self.assertRaisesRegex(TypeError, 'missing values'):
+            coerce_pandas_data(sa)
+
+    def test_series_object_with_nan_raises(self):
+        s = pd.Series(['a', np.nan, 'c'])
+        with self.assertRaisesRegex(TypeError, 'missing values'):
+            coerce_pandas_data(s)
+
+    def test_integer_array_lossless(self):
+        ia = pd.array([1, 2, 3], dtype='Int64')
+        out = coerce_pandas_data(ia)
+        self.assertIsInstance(out, np.ndarray)
+        self.assertEqual(out.dtype, np.int64)
+        np.testing.assert_array_equal(out, [1, 2, 3])
+
+    def test_boolean_array_lossless(self):
+        ba = pd.array([True, False, True], dtype='boolean')
+        out = coerce_pandas_data(ba)
+        self.assertIsInstance(out, np.ndarray)
+        self.assertEqual(out.dtype, np.bool_)
+        np.testing.assert_array_equal(out, [True, False, True])
+
+    def test_integer_array_with_na_raises(self):
+        ia = pd.array([1, None, 3], dtype='Int64')
+        with self.assertRaisesRegex(TypeError, 'missing values'):
+            coerce_pandas_data(ia)
+
+
+class TestDataAcceptsPandas(TestCase):
+    """Verify pandas Series/ExtensionArray flow through Data construction."""
+
+    def test_vector_data_from_arrow_string_values(self):
+        from hdmf.common import VectorData
+        df = pd.DataFrame({'animal': ['cat', 'dog', 'bird']})
+        vd = VectorData(name='animal', description='', data=df['animal'].values)
+        self.assertIsInstance(vd.data, np.ndarray)
+        self.assertEqual(list(vd.data), ['cat', 'dog', 'bird'])
+
+    def test_vector_data_from_series(self):
+        from hdmf.common import VectorData
+        s = pd.Series(['a', 'b', 'c'])
+        vd = VectorData(name='s', description='', data=s)
+        self.assertIsInstance(vd.data, np.ndarray)
+        self.assertEqual(list(vd.data), ['a', 'b', 'c'])
+
 
 class TestVersionComparison(TestCase):
     """Test the version comparison functionality in NamespaceCatalog."""

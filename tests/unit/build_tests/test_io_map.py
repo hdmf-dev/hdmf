@@ -768,6 +768,86 @@ class TestObjectMapperContainer(ObjectMapperMixin, TestCase):
         self.assertSetEqual(keys, expected)
 
 
+class TestConstructUnnamedLinkSubtype(TestCase):
+    """Regression test for #1481.
+
+    An anonymous (unnamed) typed link should map link targets whose type is the link's ``target_type``
+    or any subtype of it. Previously, subtype targets were dropped on construct because links were
+    matched by exact data type.
+    """
+
+    def setUp(self):
+        self.base_spec = GroupSpec(doc='A base type', data_type_def='LinkBase')
+        self.sub_spec = GroupSpec(doc='A subtype of LinkBase', data_type_def='LinkSub', data_type_inc='LinkBase')
+        self.holder_spec = GroupSpec(
+            doc='Holds anonymous links to LinkBase instances',
+            data_type_def='LinkHolder',
+            links=[LinkSpec(doc='links to LinkBase instances', target_type='LinkBase', quantity='*')],
+        )
+
+        class LinkBase(Container):
+            @property
+            def data_type(self):
+                return 'LinkBase'
+
+        class LinkSub(LinkBase):
+            @property
+            def data_type(self):
+                return 'LinkSub'
+
+        class LinkHolder(Container):
+
+            @docval({'name': 'name', 'type': str, 'doc': 'the name of this LinkHolder'},
+                    {'name': 'links', 'type': ('array_data', 'data'), 'doc': 'linked LinkBases', 'default': None})
+            def __init__(self, **kwargs):
+                name, links = getargs('name', 'links', kwargs)
+                super().__init__(name=name)
+                self.links = links
+
+            @property
+            def data_type(self):
+                return 'LinkHolder'
+
+        class LinkHolderMapper(ObjectMapper):
+            def __init__(self, spec):
+                super().__init__(spec)
+                # map the anonymous link spec to the 'links' constructor argument / field
+                self.map_spec('links', spec.links[0])
+
+        self.type_map = create_test_type_map(
+            [self.base_spec, self.sub_spec, self.holder_spec],
+            {'LinkBase': LinkBase, 'LinkSub': LinkSub, 'LinkHolder': LinkHolder},
+            {'LinkHolder': LinkHolderMapper},
+        )
+        self.manager = BuildManager(self.type_map)
+
+    def _construct_holder_linking(self, target_data_type):
+        base_builder = GroupBuilder(
+            name='my_base',
+            attributes={'data_type': target_data_type, 'namespace': CORE_NAMESPACE, 'object_id': 'base-id'},
+        )
+        holder_builder = GroupBuilder(
+            name='my_holder',
+            links={'my_base': LinkBuilder(builder=base_builder, name='my_base')},
+            attributes={'data_type': 'LinkHolder', 'namespace': CORE_NAMESPACE, 'object_id': 'holder-id'},
+        )
+        return self.manager.construct(holder_builder)
+
+    def test_construct_unnamed_link_exact_type(self):
+        """An anonymous link to an exact-type target is mapped to the field (unchanged behavior)."""
+        holder = self._construct_holder_linking('LinkBase')
+        self.assertIsNotNone(holder.links)
+        self.assertEqual(len(holder.links), 1)
+        self.assertEqual(holder.links[0].data_type, 'LinkBase')
+
+    def test_construct_unnamed_link_subtype(self):
+        """An anonymous link to a subtype target is mapped to the field (was dropped before #1481)."""
+        holder = self._construct_holder_linking('LinkSub')
+        self.assertIsNotNone(holder.links)
+        self.assertEqual(len(holder.links), 1)
+        self.assertEqual(holder.links[0].data_type, 'LinkSub')
+
+
 class TestLinkedContainer(TestCase):
 
     def setUp(self):

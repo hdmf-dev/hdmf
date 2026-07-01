@@ -1,12 +1,37 @@
 # HDMF Changelog
 
-## Unreleased
-
-### Breaking changes
-- `HDF5IO` `expandable` argument is now a list of data type names instead of a boolean. The default is `("VectorData", "ElementIdentifiers")`, so only `DynamicTable` columns and id are expandable out of the box — previously every dataset with a matching spec shape was expanded. Datasets of types outside this list that previously were expandable by default will now default to fixed-shape on-disk layout; add the relevant type to `expandable` to restore prior behavior. Replace `expandable=True` with an explicit list (e.g. `["VectorData", "ElementIdentifiers", "MyType"]`) and `expandable=False` with `[]`; passing `True`/`False` now raises a `TypeError`. @bendichter @rly [#1439](https://github.com/hdmf-dev/hdmf/pull/1439)
+## HDMF 6.1.0 (June 25, 2026)
 
 ### Enhancements
-- Set sensible default chunk sizes (~4 MB, in the recommended 2-16 MB range for cloud-hosted files) when `chunks=True`, replacing h5py's much smaller defaults. Added public `HDF5IO.compute_default_chunk_shape()` so users can inspect or override the chunk shape that would be used. @bendichter [#1440](https://github.com/hdmf-dev/hdmf/pull/1440)
+- Accept pandas `Series` and `ExtensionArray` (including `StringArray` and `ArrowStringArray`) as `data` in `Data` and its subclasses (e.g., `VectorData`), normalizing to numpy at construction. This restores compatibility with pandas 3.0, where DataFrame string columns are PyArrow-backed by default and previously failed HDMF's type validation. Inputs containing missing values (`pd.NA`/`NaN`) raise an informative `TypeError` rather than silently failing at HDF5 write time. The `pandas<3` cap has been lifted from the dependency pin. @rly [#1469](https://github.com/hdmf-dev/hdmf/pull/1469)
+- Added a `HERD`-specific `__repr__` and `_repr_html_` that surface the references as a flattened table, so a `HERD` (especially one read back from a file) no longer appears empty in its default display. @rly [#1510](https://github.com/hdmf-dev/hdmf/pull/1510)
+- `HERD.add_ref` now defaults `key` to the value of a scalar string `attribute` when `key` is not provided, removing the redundant argument in the common case. @rly [#1511](https://github.com/hdmf-dev/hdmf/pull/1511)
+- `HERD.add_ref` no longer warns when an `entity_uri` is provided for an already-existing `entity_id` and the URI matches the stored one. The entity tables are normalized, so re-passing the same `entity_uri` (common when annotating many objects or files with the same entity) is harmless; a warning is now emitted only when a *different* `entity_uri` is provided, in which case the existing URI is kept. @bendichter [#1513](https://github.com/hdmf-dev/hdmf/pull/1513)
+
+### Changed
+- Removed the `file` argument from `HERD.add_ref` and `HERD.add_ref_termset`. The file is now always resolved automatically from the container's parent hierarchy, so a reference can only be added to a container that has already been added to a file. This enforces that an external reference cannot be attached to a container that is not yet in a file. This is technically a breaking change, but the `file` argument was not yet used publicly. @bendichter [#1512](https://github.com/hdmf-dev/hdmf/pull/1512)
+- Refactored `HERD` internals. The object lookup now identifies an object by its file together with its object_id, relative_path, and field, so a shared object_id across files (e.g. a copied, modified file) resolves to the correct object instead of colliding. @rly [#1515](https://github.com/hdmf-dev/hdmf/pull/1515)
+
+### Internal improvements
+- Minor `HERD` internal cleanups: removed a dead assignment and hoisted the files dataframe construction. @rly [#1507](https://github.com/hdmf-dev/hdmf/pull/1507)
+- Switched the release pipeline to PyPI OIDC trusted publishing and the `gh` CLI, and now build the GitHub release notes from the changelog. @rly [#1517](https://github.com/hdmf-dev/hdmf/pull/1517)
+- Hardened the GitHub Actions CI: added least-privilege `permissions` blocks, pinned actions to commit SHAs (or immutable release tags), deduplicated the test setup into a composite action, passed untrusted inputs through environment variables, and added a zizmor security audit of the workflows. @rly [#1518](https://github.com/hdmf-dev/hdmf/pull/1518)
+
+### Fixed
+- Fixed iterative HDF5 writes (e.g. from a `DataChunkIterator`) storing data as `float32` when no explicit dtype was set on the builder. The data's own dtype is now used, so e.g. integer data is stored as integers rather than silently downcast, and an `H5pyDeprecationWarning` is no longer emitted. @rly [#1519](https://github.com/hdmf-dev/hdmf/pull/1519)
+- Removed the broken `str` (object_id) option from the `container` argument of `HERD.add_ref`, `HERD.add_ref_termset`, `HERD.get_key`, and `HERD.get_object_entities`; these methods now require an `AbstractContainer` and reject a string with a clear type error. @rly [#1514](https://github.com/hdmf-dev/hdmf/pull/1514)
+- Fixed `HERD.get_object_entities(attribute=...)` not finding references added with `HERD.add_ref(attribute=...)`, which raised `KeyError`/`TypeError` for non-DataType attributes. Both methods now resolve the attribute the same way. @rly [#1504](https://github.com/hdmf-dev/hdmf/pull/1504)
+- Fixed `HERD.get_key` failing with an `AttributeError` instead of a clear error when called with a container that has not been added to the object table. It now raises `ValueError("Object not in Object Table.")`. @rly [#1504](https://github.com/hdmf-dev/hdmf/pull/1504)
+- Fixed `HERD.assert_external_resources_equal` not comparing the `entity_keys` table, so HERDs differing only in entity-key relationships compared as equal. @rly [#1500](https://github.com/hdmf-dev/hdmf/pull/1500)
+- Fixed `HERD._get_file_from_container` returning `None` instead of raising `ValueError` when a container has ancestors but none is a `HERDManager`. @rly [#1500](https://github.com/hdmf-dev/hdmf/pull/1500)
+- Fixed `HERD.get_object_entities` failing on a `HERD` read from a file, where index columns come back as numpy unsigned integers. @rly [#1497](https://github.com/hdmf-dev/hdmf/pull/1497)
+- Fixed `HERD.from_zip` ignoring the type map. It now constructs the result with `cls` (so subclasses such as `pynwb.resources.HERD` get their own type map) and accepts an optional `type_map` argument. Previously a HERD loaded from a zip archive always used the default type map, so attribute-based `add_ref` on containers of non-default types (e.g. NWB types via pynwb) raised `AttributeError: 'NoneType' object has no attribute 'parent'`. @rly [#1506](https://github.com/hdmf-dev/hdmf/pull/1506)
+- Fixed reading an anonymous (unnamed) typed link whose target is a subtype of the link's `target_type`. During construct, links were matched to their spec by exact data type, so a subtype target (e.g. a `Device` subtype linked through `ndx-pose`'s `PoseEstimation.devices`) was dropped and the field came back as `None`. Links are now indexed across their full type hierarchy, matching the behavior already used for sub-groups. @rly [#1482](https://github.com/hdmf-dev/hdmf/pull/1482)
+
+## HDMF 6.0.2 (May 15, 2026)
+
+### Fixed
+- Added `numpy.generic` to the `scalar_data` docval macro so that numpy scalar types (e.g. `numpy.uint64`) are accepted as scalar data values. This fixes a compatibility issue with numpy 2.0, which removed `__iter__` from numpy scalars and caused them to be rejected by `DatasetBuilder`. @rly [#1476](https://github.com/hdmf-dev/hdmf/pull/1476)
 
 ## HDMF 6.0.1 (May 5, 2026)
 
