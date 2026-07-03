@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 6.2.0 (Upcoming)
+
+### Changed
+- Added support for hdmf-common schema 1.10.0, which changes ``MeaningsTable.target`` from a link to an object-reference attribute (``dtype`` with ``reftype: object``, ``target_type: VectorData``). Files written with the hdmf-common 1.9.0 ``MeaningsTable`` (a link named "target") are still read correctly via a backwards-compatibility mapping in ``MeaningsTableMap``. There is no change in the read/write API; the change is limited to the representation on disk. @rly [#1525](https://github.com/hdmf-dev/hdmf/pull/1525)
+
 ## HDMF 6.1.0 (June 25, 2026)
 
 ### Enhancements
