@@ -1902,14 +1902,14 @@ class EnumData(VectorData):
 @register_class('MeaningsTable')
 class MeaningsTable(DynamicTable):
     """
-    A table to store information about the meanings of values in a linked VectorData object.
+    A table to store information about the meanings of values in a referenced VectorData object.
 
-    All possible values of the linked VectorData object should be present in the 'value' column
+    All possible values of the referenced VectorData object should be present in the 'value' column
     of this table, even if the value is not observed in the data. Additional columns may be
     added to store additional metadata about each value.
 
     The name of the MeaningsTable is automatically set to "{target.name}_meanings" based on
-    the linked VectorData object. For example, if the linked VectorData object is named
+    the referenced VectorData object. For example, if the referenced VectorData object is named
     "stimulus_type", the MeaningsTable will be named "stimulus_type_meanings".
     """
 
@@ -1918,7 +1918,7 @@ class MeaningsTable(DynamicTable):
     )
 
     __columns__ = (
-        {'name': 'value', 'description': 'The value in the linked VectorData object.', 'required': True},
+        {'name': 'value', 'description': 'The value in the referenced VectorData object.', 'required': True},
         {'name': 'meaning', 'description': 'The meaning of the value.', 'required': True},
     )
 
@@ -1942,7 +1942,7 @@ class MeaningsTable(DynamicTable):
         super().__init__(**kwargs)
         self.target = target
 
-    @docval({'name': 'value', 'type': None, 'doc': 'the value in the linked VectorData object'},
+    @docval({'name': 'value', 'type': None, 'doc': 'the value in the referenced VectorData object'},
             {'name': 'meaning', 'type': str, 'doc': 'the meaning of the value'},
             {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
             {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
