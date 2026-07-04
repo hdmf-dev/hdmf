@@ -106,7 +106,7 @@ def _ndarray_shape_tuple(hint):
 
 
 def map_hint(hint):  # noqa: C901
-    """Map a single type hint to docval spec fields. Returns a :class:`MappedHint`."""
+    """Map a single type hint to docval spec fields. Returns a ``MappedHint``."""
     if hint is None or hint is _NoneType or hint is inspect.Parameter.empty or hint is Any:
         return MappedHint({'type': None})
 

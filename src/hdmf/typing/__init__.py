@@ -4,8 +4,8 @@ This package provides:
 
 - Type aliases enforceable by beartype anywhere (``@beartype``,
   ``beartype.door.is_bearable``, or HDMF's :func:`validated`): numeric aliases
-  (:data:`Int`, :data:`UInt`, :data:`Float`, :data:`Bool`) accepting numpy scalar
-  types, macro aliases (:data:`ArrayData`, :data:`ScalarData`, :data:`AnyData`)
+  (``Int``, ``UInt``, ``Float``, ``Bool``) accepting numpy scalar
+  types, macro aliases (``ArrayData``, ``ScalarData``, ``AnyData``)
   backed by a live type registry, :class:`TypeName` for cross-module forward
   references, and :class:`Shaped` for array shape requirements. numpydantic
   ``NDArray[...]`` hints are also supported for dtype- and shape-checked arrays.

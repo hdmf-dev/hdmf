@@ -60,7 +60,7 @@ def register_macro(macro_name):
     """Class decorator registering a type under a macro name (e.g. ``'array_data'``).
 
     Successor to :func:`hdmf.utils.docval_macro`; both write to the same registry,
-    which the macro aliases (:data:`ArrayData`, :data:`ScalarData`, :data:`AnyData`)
+    which the macro aliases (``ArrayData``, ``ScalarData``, ``AnyData``)
     read at call time.
     """
     from ..utils import docval_macro
