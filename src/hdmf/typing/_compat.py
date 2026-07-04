@@ -12,6 +12,7 @@ machinery unchanged.
 import inspect
 import types
 import typing
+import warnings
 from typing import Annotated, Any, Literal
 
 from ._docstrings import parse_docstring
@@ -112,6 +113,15 @@ def map_hint(hint):  # noqa: C901
 
     # unresolved forward reference: docval matches the string against the MRO
     if isinstance(hint, str):
+        if not hint.replace('.', '').isidentifier():
+            # a compound annotation string (e.g. "A | None") that could not be
+            # resolved; matching it against MRO names would never succeed
+            warnings.warn(
+                f"could not resolve string annotation {hint!r}; it will not be validated. "
+                "Use hdmf.typing.TypeName[...] for forward references to later-defined names.",
+                stacklevel=2,
+            )
+            return MappedHint({'type': None}, exact=False)
         return MappedHint({'type': hint})
     if isinstance(hint, typing.ForwardRef):
         return MappedHint({'type': hint.__forward_arg__})

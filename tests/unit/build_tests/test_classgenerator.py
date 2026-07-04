@@ -501,7 +501,7 @@ class TestDynamicContainer(TestCase):
         self.spec_catalog.register_spec(multi_spec, 'extension.yaml')
         self.type_map.namespace_catalog.resolve_all_specs()
         Multi = self.type_map.get_dt_container_cls('Multi', CORE_NAMESPACE)
-        with self.assertRaisesWith(TypeError, "MCIClassGenerator.set_init.<locals>.__init__: missing argument 'bars'"):
+        with self.assertRaisesWith(TypeError, "__init__: missing a required argument: 'bars'"):
             Multi(
                 name='my_multi',
                 attr3=5.
@@ -726,7 +726,8 @@ class TestDynamicContainerIncludingFixedName(TestCase):
             {'name': 'my_baz1', 'doc': 'A composition inside with a fixed name', 'type': baz1_cls},
             {'name': 'my_baz2', 'doc': 'A composition inside with a fixed name', 'type': baz2_cls},
             {'name': 'my_baz1_link', 'doc': 'A composition inside without a fixed name', 'type': baz1_cls},
-            {'name': 'skip_post_init', 'type': bool, 'default': False,
+            # 'bool' (the docval type string) and the bool class validate identically
+            {'name': 'skip_post_init', 'type': 'bool', 'default': False,
              'doc': 'bool to skip post_init'}
         ))
 

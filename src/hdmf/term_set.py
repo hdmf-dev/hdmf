@@ -1,11 +1,11 @@
 import glob
 import os
 from collections import namedtuple
-from .utils import docval
 import warnings
 import numpy as np
 from .data_utils import append_data, extend_data
 from ruamel.yaml import YAML
+from .typing import validated
 
 
 class TermSet:
@@ -117,12 +117,13 @@ class TermSet:
 
         return info_tuple(enum_meaning, description, meaning)
 
-    @docval({'name': 'term', 'type': str, 'doc': "term to be validated"})
-    def validate(self, **kwargs):
+    @validated
+    def validate(self, term: str):
+        """Validate term in dataset towards a termset.
+
+        Args:
+            term: term to be validated
         """
-        Validate term in dataset towards a termset.
-        """
-        term = kwargs['term']
         try:
             self[term]
             return True
@@ -219,19 +220,18 @@ class TermSetWrapper:
     """
     This class allows any HDF5 dataset or attribute to have a TermSet.
     """
-    @docval({'name': 'termset',
-             'type': TermSet,
-             'doc': 'The TermSet to be used.'},
-            {'name': 'value',
-             'type': (list, np.ndarray, dict, str, tuple),
-             'doc': 'The target item that is wrapped, either data or attribute.'},
-            {'name': 'field', 'type': str, 'default': None,
-             'doc': 'The field within a compound array.'}
-            )
-    def __init__(self, **kwargs):
-        self.__value = kwargs['value']
-        self.__termset = kwargs['termset']
-        self.__field = kwargs['field']
+    @validated
+    def __init__(self, termset: TermSet, value: list | np.ndarray | dict | str | tuple, field: str | None = None):
+        """Initialize this object.
+
+        Args:
+            termset: The TermSet to be used.
+            value: The target item that is wrapped, either data or attribute.
+            field: The field within a compound array.
+        """
+        self.__value = value
+        self.__termset = termset
+        self.__field = field
         self.__validate()
 
     def __validate(self):
@@ -355,21 +355,26 @@ class TypeConfigurator:
     When toggled on, every instance of a configuration file supported data type will be validated
     according to the corresponding TermSet.
     """
-    @docval({'name': 'paths', 'type': list, 'doc': 'Paths to configuration files.', 'default': None})
-    def __init__(self, **kwargs):
+    @validated
+    def __init__(self, paths: list | None = None):
+        """Initialize this object.
+
+        Args:
+            paths: Paths to configuration files.
+        """
         self.config = None
         self.paths = []
-        if kwargs["paths"]:
-            for p in kwargs["paths"]:
+        if paths:
+            for p in paths:
                 self.load_type_config(p)
 
-    @docval({'name': 'data_type', 'type': str,
-             'doc': 'The desired data type within the configuration file.'},
-            {'name': 'namespace', 'type': str,
-             'doc': 'The namespace for the data type.'})
-    def get_config(self, data_type, namespace):
-        """
-        Return the config for that data type in the given namespace.
+    @validated
+    def get_config(self, data_type: str, namespace: str):
+        """Return the config for that data type in the given namespace.
+
+        Args:
+            data_type: The desired data type within the configuration file.
+            namespace: The namespace for the data type.
         """
         try:
             namespace_config = self.config['namespaces'][namespace]
@@ -384,10 +389,12 @@ class TypeConfigurator:
             msg = '%s was not found within the configuration for that namespace.' % data_type
             raise ValueError(msg)
 
-    @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'})
-    def load_type_config(self, config_path):
-        """
-        Load the configuration file for validation on the fields defined for the objects within the file.
+    @validated
+    def load_type_config(self, config_path: str):
+        """Load the configuration file for validation on the fields defined for the objects within the file.
+
+        Args:
+            config_path: Path to the configuration file.
         """
         with open(config_path, 'r') as config:
             yaml = YAML(typ='safe')

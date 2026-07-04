@@ -101,6 +101,8 @@ nitpick_ignore_regex = [
     # Is[is_array_data], Is[has_shape_...], etc., which are not documented targets
     ('py:class', r'beartype\..*'),
     ('py:class', r'(is|has_shape)_\w*'),
+    ('py:class', r'h5py\._hl\..*'),
+    ('py:class', r'types\.(Lambda|Function)Type'),
 ]
 
 suppress_warnings = ["config.cache"]

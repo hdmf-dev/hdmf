@@ -23,23 +23,25 @@ from ..utils import _is_collection, _get_length, _unwrap_scalar
 from ..query import ReferenceResolver
 from ..spec import Spec, AttributeSpec, DatasetSpec, GroupSpec, LinkSpec, RefSpec
 from ..spec.spec import BaseStorageSpec
-from ..utils import docval, getargs, ExtenderMeta, get_docval, get_data_shape, is_array_like, is_zarr_array, StrDataset
+from ..utils import ExtenderMeta, get_docval, get_data_shape, is_array_like, is_zarr_array, StrDataset
+from ..typing import validated
 
 
 _const_arg = '__constructor_arg'
 
 
-@docval({'name': 'name', 'type': str, 'doc': 'the name of the constructor argument'},
-        is_method=False)
-def _constructor_arg(**kwargs):
-    '''Decorator to override the default mapping scheme for a given constructor argument.
+@validated
+def _constructor_arg(name: str):
+    """Decorator to override the default mapping scheme for a given constructor argument.
 
     Decorate ObjectMapper methods with this function when extending ObjectMapper to override the default
     scheme for mapping between AbstractContainer and Builder objects. The decorated method should accept as its
     first argument the Builder object that is being mapped. The method should return the value to be passed
     to the target AbstractContainer class constructor argument given by *name*.
-    '''
-    name = getargs('name', kwargs)
+
+    Args:
+        name: the name of the constructor argument
+    """
 
     def _dec(func):
         setattr(func, _const_arg, name)
@@ -51,18 +53,19 @@ def _constructor_arg(**kwargs):
 _obj_attr = '__object_attr'
 
 
-@docval({'name': 'name', 'type': str, 'doc': 'the name of the constructor argument'},
-        is_method=False)
-def _object_attr(**kwargs):
-    '''Decorator to override the default mapping scheme for a given object attribute.
+@validated
+def _object_attr(name: str):
+    """Decorator to override the default mapping scheme for a given object attribute.
 
     Decorate ObjectMapper methods with this function when extending ObjectMapper to override the default
     scheme for mapping between AbstractContainer and Builder objects. The decorated method should accept as its
     first argument the AbstractContainer object that is being mapped. The method should return the child Builder
     object (or scalar if the object attribute corresponds to an AttributeSpec) that represents the
     attribute given by *name*.
-    '''
-    name = getargs('name', kwargs)
+
+    Args:
+        name: the name of the constructor argument
+    """
 
     def _dec(func):
         setattr(func, _obj_attr, name)
@@ -438,34 +441,36 @@ class ObjectMapper(metaclass=ExtenderMeta):
     _const_arg = '__constructor_arg'
 
     @staticmethod
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the constructor argument'},
-            is_method=False)
-    def constructor_arg(**kwargs):
-        '''Decorator to override the default mapping scheme for a given constructor argument.
+    @validated
+    def constructor_arg(name: str):
+        """Decorator to override the default mapping scheme for a given constructor argument.
 
         Decorate ObjectMapper methods with this function when extending ObjectMapper to override the default
         scheme for mapping between AbstractContainer and Builder objects. The decorated method should accept as its
         first argument the Builder object that is being mapped. The method should return the value to be passed
         to the target AbstractContainer class constructor argument given by *name*.
-        '''
-        name = getargs('name', kwargs)
+
+        Args:
+            name: the name of the constructor argument
+        """
         return _constructor_arg(name)
 
     _obj_attr = '__object_attr'
 
     @staticmethod
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the constructor argument'},
-            is_method=False)
-    def object_attr(**kwargs):
-        '''Decorator to override the default mapping scheme for a given object attribute.
+    @validated
+    def object_attr(name: str):
+        """Decorator to override the default mapping scheme for a given object attribute.
 
         Decorate ObjectMapper methods with this function when extending ObjectMapper to override the default
         scheme for mapping between AbstractContainer and Builder objects. The decorated method should accept as its
         first argument the AbstractContainer object that is being mapped. The method should return the child Builder
         object (or scalar if the object attribute corresponds to an AttributeSpec) that represents the
         attribute given by *name*.
-        '''
-        name = getargs('name', kwargs)
+
+        Args:
+            name: the name of the constructor argument
+        """
         return _object_attr(name)
 
     @staticmethod
@@ -500,12 +505,14 @@ class ObjectMapper(metaclass=ExtenderMeta):
             elif cls.__is_attr(func):
                 cls.obj_attrs[cls.__get_obj_attr(func)] = getattr(cls, name)
 
-    @docval({'name': 'spec', 'type': (DatasetSpec, GroupSpec),
-             'doc': 'The specification for mapping objects to builders'})
-    def __init__(self, **kwargs):
-        """ Create a map from AbstractContainer attributes to specifications """
+    @validated
+    def __init__(self, spec: DatasetSpec | GroupSpec):
+        """Create a map from AbstractContainer attributes to specifications
+
+        Args:
+            spec: The specification for mapping objects to builders
+        """
         self.logger = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__qualname__))
-        spec = getargs('spec', kwargs)
         self.__spec = spec
         self.__data_type_key = spec.type_key()
         self.__spec2attr = dict()
@@ -525,10 +532,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return builder.name
 
     @classmethod
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to get the name for'})
-    def convert_dt_name(cls, **kwargs):
-        '''Construct the attribute name corresponding to a specification'''
-        spec = getargs('spec', kwargs)
+    @validated
+    def convert_dt_name(cls, spec: Spec):
+        """Construct the attribute name corresponding to a specification
+
+        Args:
+            spec: the specification to get the name for
+        """
         name = cls.__get_data_type(spec)
         s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
         name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
@@ -563,10 +573,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
         name_stack.pop()
 
     @classmethod
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to get the object attribute names for'})
-    def get_attr_names(cls, **kwargs):
-        '''Get the attribute names for each subspecification in a Spec'''
-        spec = getargs('spec', kwargs)
+    @validated
+    def get_attr_names(cls, spec: Spec):
+        """Get the attribute names for each subspecification in a Spec
+
+        Args:
+            spec: the specification to get the object attribute names for
+        """
         names = OrderedDict()
         for subspec in spec.attributes:
             cls.__get_fields(list(), names, subspec)
@@ -584,46 +597,64 @@ class ObjectMapper(metaclass=ExtenderMeta):
         for k, v in attr_names.items():
             self.map_spec(k, v)
 
-    @docval({"name": "attr_name", "type": str, "doc": "the name of the object to map"},
-            {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"})
-    def map_attr(self, **kwargs):
-        """ Map an attribute to spec. Use this to override default behavior """
-        attr_name, spec = getargs('attr_name', 'spec', kwargs)
+    @validated
+    def map_attr(self, attr_name: str, spec: Spec):
+        """Map an attribute to spec. Use this to override default behavior
+
+        Args:
+            attr_name: the name of the object to map
+            spec: the spec to map the attribute to
+        """
         self.__spec2attr[spec] = attr_name
         self.__attr2spec[attr_name] = spec
 
-    @docval({"name": "attr_name", "type": str, "doc": "the name of the attribute"})
-    def get_attr_spec(self, **kwargs):
-        """ Return the Spec for a given attribute """
-        attr_name = getargs('attr_name', kwargs)
+    @validated
+    def get_attr_spec(self, attr_name: str):
+        """Return the Spec for a given attribute
+
+        Args:
+            attr_name: the name of the attribute
+        """
         return self.__attr2spec.get(attr_name)
 
-    @docval({"name": "carg_name", "type": str, "doc": "the name of the constructor argument"})
-    def get_carg_spec(self, **kwargs):
-        """ Return the Spec for a given constructor argument """
-        carg_name = getargs('carg_name', kwargs)
+    @validated
+    def get_carg_spec(self, carg_name: str):
+        """Return the Spec for a given constructor argument
+
+        Args:
+            carg_name: the name of the constructor argument
+        """
         return self.__carg2spec.get(carg_name)
 
-    @docval({"name": "const_arg", "type": str, "doc": "the name of the constructor argument to map"},
-            {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"})
-    def map_const_arg(self, **kwargs):
-        """ Map an attribute to spec. Use this to override default behavior """
-        const_arg, spec = getargs('const_arg', 'spec', kwargs)
+    @validated
+    def map_const_arg(self, const_arg: str, spec: Spec):
+        """Map an attribute to spec. Use this to override default behavior
+
+        Args:
+            const_arg: the name of the constructor argument to map
+            spec: the spec to map the attribute to
+        """
         self.__spec2carg[spec] = const_arg
         self.__carg2spec[const_arg] = spec
 
-    @docval({"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"})
-    def unmap(self, **kwargs):
-        """ Removing any mapping for a specification. Use this to override default mapping """
-        spec = getargs('spec', kwargs)
+    @validated
+    def unmap(self, spec: Spec):
+        """Removing any mapping for a specification. Use this to override default mapping
+
+        Args:
+            spec: the spec to map the attribute to
+        """
         self.__spec2attr.pop(spec, None)
         self.__spec2carg.pop(spec, None)
 
-    @docval({"name": "attr_carg", "type": str, "doc": "the constructor argument/object attribute to map this spec to"},
-            {"name": "spec", "type": Spec, "doc": "the spec to map the attribute to"})
-    def map_spec(self, **kwargs):
-        """ Map the given specification to the construct argument and object attribute """
-        spec, attr_carg = getargs('spec', 'attr_carg', kwargs)
+    @validated
+    def map_spec(self, attr_carg: str, spec: Spec):
+        """Map the given specification to the construct argument and object attribute
+
+        Args:
+            attr_carg: the constructor argument/object attribute to map this spec to
+            spec: the spec to map the attribute to
+        """
         self.map_const_arg(attr_carg, spec)
         self.map_attr(attr_carg, spec)
 
@@ -643,21 +674,31 @@ class ObjectMapper(metaclass=ExtenderMeta):
             return func(self, container, manager)
         return None
 
-    @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute for"},
-            returns='the attribute name', rtype=str)
-    def get_attribute(self, **kwargs):
-        ''' Get the object attribute name for the given Spec '''
-        spec = getargs('spec', kwargs)
+    @validated
+    def get_attribute(self, spec: Spec) -> str:
+        """Get the object attribute name for the given Spec
+
+        Args:
+            spec: the spec to get the attribute for
+
+        Returns:
+            the attribute name
+        """
         val = self.__spec2attr.get(spec, None)
         return val
 
-    @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
-            {"name": "container", "type": AbstractContainer, "doc": "the container to get the attribute value from"},
-            {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
-            returns='the value of the attribute')
-    def get_attr_value(self, **kwargs):
-        ''' Get the value of the attribute corresponding to this spec from the given container '''
-        spec, container, manager = getargs('spec', 'container', 'manager', kwargs)
+    @validated
+    def get_attr_value(self, spec: Spec, container: AbstractContainer, manager: BuildManager):
+        """Get the value of the attribute corresponding to this spec from the given container
+
+        Args:
+            spec: the spec to get the attribute value for
+            container: the container to get the attribute value from
+            manager: the BuildManager used for managing this build
+
+        Returns:
+            the value of the attribute
+        """
         attr_name = self.get_attribute(spec)
         if attr_name is None:
             return None
@@ -798,32 +839,43 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 warnings.warn(msg, IncorrectQuantityBuildWarning)
                 self.logger.debug('IncorrectQuantityBuildWarning: ' + msg)
 
-    @docval({"name": "spec", "type": Spec, "doc": "the spec to get the constructor argument for"},
-            returns="the name of the constructor argument", rtype=str)
-    def get_const_arg(self, **kwargs):
-        ''' Get the constructor argument for the given Spec '''
-        spec = getargs('spec', kwargs)
+    @validated
+    def get_const_arg(self, spec: Spec) -> str:
+        """Get the constructor argument for the given Spec
+
+        Args:
+            spec: the spec to get the constructor argument for
+
+        Returns:
+            the name of the constructor argument
+        """
         return self.__spec2carg.get(spec, None)
 
-    @docval({"name": "container", "type": AbstractContainer, "doc": "the container to convert to a Builder"},
-            {"name": "manager", "type": BuildManager, "doc": "the BuildManager to use for managing this build"},
-            {"name": "parent", "type": GroupBuilder, "doc": "the parent of the resulting Builder", 'default': None},
-            {"name": "source", "type": str,
-             "doc": "the source of container being built i.e. file path", 'default': None},
-            {"name": "builder", "type": BaseBuilder, "doc": "the Builder to build on", 'default': None},
-            {"name": "matched_spec", "type": BaseStorageSpec,
-             "doc": ("the position-resolved subspec for this container in its parent's spec tree, used to compute "
-                     "dtype/shape for the new dataset builder before it exists. Stored on the resulting builder as "
-                     "`builder.matched_spec` so post-creation consumers can read it without re-deriving the match."),
-             'default': None},
-            returns="the Builder representing the given AbstractContainer", rtype=Builder)
-    def build(self, **kwargs):
-        '''Convert an AbstractContainer to a Builder representation.
+    @validated
+    def build(self,
+              container: AbstractContainer,
+              manager: BuildManager,
+              parent: GroupBuilder | None = None,
+              source: str | None = None,
+              builder: BaseBuilder | None = None,
+              matched_spec: BaseStorageSpec | None = None) -> Builder:
+        """Convert an AbstractContainer to a Builder representation.
 
         References are not added but are queued to be added in the BuildManager.
-        '''
-        container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
-        builder, matched_spec = getargs('builder', 'matched_spec', kwargs)
+
+        Args:
+            container: the container to convert to a Builder
+            manager: the BuildManager to use for managing this build
+            parent: the parent of the resulting Builder
+            source: the source of container being built i.e. file path
+            builder: the Builder to build on
+            matched_spec: the position-resolved subspec for this container in its parent's spec tree, used to compute
+                dtype/shape for the new dataset builder before it exists. Stored on the resulting builder as
+                `builder.matched_spec` so post-creation consumers can read it without re-deriving the match.
+
+        Returns:
+            the Builder representing the given AbstractContainer
+        """
         name = manager.get_builder_name(container)
         if isinstance(self.__spec, GroupSpec):
             self.logger.debug("Building %s '%s' as a group (source: %s)"
@@ -1564,14 +1616,18 @@ class ObjectMapper(metaclass=ExtenderMeta):
             tmp = tmp[0]
         return tmp
 
-    @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
-             'doc': 'the builder to construct the AbstractContainer from'},
-            {'name': 'manager', 'type': BuildManager, 'doc': 'the BuildManager for this build'},
-            {'name': 'parent', 'type': (Proxy, AbstractContainer),
-             'doc': 'the parent AbstractContainer/Proxy for the AbstractContainer being built', 'default': None})
-    def construct(self, **kwargs):
-        ''' Construct an AbstractContainer from the given Builder '''
-        builder, manager, parent = getargs('builder', 'manager', 'parent', kwargs)
+    @validated
+    def construct(self,
+                  builder: DatasetBuilder | GroupBuilder,
+                  manager: BuildManager,
+                  parent: Proxy | AbstractContainer | None = None):
+        """Construct an AbstractContainer from the given Builder
+
+        Args:
+            builder: the builder to construct the AbstractContainer from
+            manager: the BuildManager for this build
+            parent: the parent AbstractContainer/Proxy for the AbstractContainer being built
+        """
         cls = manager.get_cls(builder)
         # gather all subspecs
         subspecs = self.__get_subspec_values(builder, self.spec, manager)
@@ -1626,11 +1682,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
         obj._in_construct_mode = False  # reset to False to indicate that the construction of the object is complete
         return obj
 
-    @docval({'name': 'container', 'type': AbstractContainer,
-             'doc': 'the AbstractContainer to get the Builder name for'})
-    def get_builder_name(self, **kwargs):
-        '''Get the name of a Builder that represents a AbstractContainer'''
-        container = getargs('container', kwargs)
+    @validated
+    def get_builder_name(self, container: AbstractContainer):
+        """Get the name of a Builder that represents a AbstractContainer
+
+        Args:
+            container: the AbstractContainer to get the Builder name for
+        """
         if self.__spec.name is not None:
             ret = self.__spec.name
         else:

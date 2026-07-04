@@ -11,11 +11,12 @@ import numpy as np
 import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator
-from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict,
+from .utils import (get_docval, ExtenderMeta, get_data_shape, LabelledDict,
                     get_basic_array_info, generate_array_html_repr, _is_collection, _get_length, _unwrap_scalar,
                     coerce_pandas_data)
 
 from .term_set import TermSet, TermSetWrapper
+from .typing import AnyData, ArrayData, Bool, ScalarData, signature_function, validated
 
 
 def _set_exp(cls):
@@ -353,9 +354,13 @@ class AbstractContainer(metaclass=ExtenderMeta):
         inst.parent = kwargs.pop('parent', None)
         return inst
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'})
-    def __init__(self, **kwargs):
-        name = getargs('name', kwargs)
+    @validated
+    def __init__(self, name: str):
+        """Initialize this container.
+
+        Args:
+            name: the name of this container
+        """
         if ('/' in name or ':' in name) and not self._in_construct_mode:
             raise ValueError(f"name '{name}' cannot contain a '/' or ':'")
         self.__name = name
@@ -419,12 +424,13 @@ class AbstractContainer(metaclass=ExtenderMeta):
         '''
         return self.__name
 
-    @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to search for', 'default': None})
-    def get_ancestor(self, **kwargs):
+    @validated
+    def get_ancestor(self, data_type: str | None = None):
+        """Traverse parent hierarchy and return first instance of the specified data_type
+
+        Args:
+            data_type: the data_type to search for
         """
-        Traverse parent hierarchy and return first instance of the specified data_type
-        """
-        data_type = getargs('data_type', kwargs)
         if data_type is None:
             return self.parent
         p = self.parent
@@ -465,8 +471,10 @@ class AbstractContainer(metaclass=ExtenderMeta):
             self.all_children()
         return self.__obj
 
-    @docval()
-    def get_ancestors(self, **kwargs):
+    @validated
+    def get_ancestors(self):
+        """get_ancestors
+        """
         p = self.parent
         ret = []
         while p is not None:
@@ -493,25 +501,30 @@ class AbstractContainer(metaclass=ExtenderMeta):
             self.__object_id = str(uuid4())
         return self.__object_id
 
-    @docval({'name': 'recurse', 'type': bool,
-             'doc': "whether or not to change the object ID of this container's children", 'default': True})
-    def generate_new_id(self, **kwargs):
-        """Changes the object ID of this Container and all of its children to a new UUID string."""
-        recurse = getargs('recurse', kwargs)
+    @validated
+    def generate_new_id(self, recurse: Bool = True):
+        """Changes the object ID of this Container and all of its children to a new UUID string.
+
+        Args:
+            recurse: whether or not to change the object ID of this container's children
+        """
         self.__object_id = str(uuid4())
         self.set_modified()
         if recurse:
             for c in self.children:
-                c.generate_new_id(**kwargs)
+                c.generate_new_id(recurse=recurse)
 
     @property
     def modified(self):
         return self.__modified
 
-    @docval({'name': 'modified', 'type': bool,
-             'doc': 'whether or not this Container has been modified', 'default': True})
-    def set_modified(self, **kwargs):
-        modified = getargs('modified', kwargs)
+    @validated
+    def set_modified(self, modified: Bool = True):
+        """set_modified
+
+        Args:
+            modified: whether or not this Container has been modified
+        """
         self.__modified = modified
         if modified and isinstance(self.parent, Container):
             self.parent.set_modified()
@@ -986,11 +999,15 @@ class Data(AbstractContainer):
     """
     A class for representing dataset containers
     """
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'data', 'type': ('scalar_data', 'array_data', 'data'), 'doc': 'the source of the data'})
-    def __init__(self, **kwargs):
-        data = popargs('data', kwargs)
-        super().__init__(**kwargs)
+    @validated
+    def __init__(self, name: str, data: ScalarData | ArrayData | AnyData):
+        """Initialize this container.
+
+        Args:
+            name: the name of this container
+            data: the source of the data
+        """
+        super().__init__(name=name)
 
         data = coerce_pandas_data(data)
         self._validate_new_data(data)
@@ -1041,15 +1058,16 @@ class Data(AbstractContainer):
             data = data_chunk_iterator_class(data=data, **data_chunk_iterator_kwargs)
         self.__data = data_io_class(data=data, **data_io_kwargs)
 
-    @docval({'name': 'func', 'type': types.FunctionType, 'doc': 'a function to transform *data*'})
-    def transform(self, **kwargs):
-        """
-        Transform data from the current underlying state.
+    @validated
+    def transform(self, func: types.FunctionType):
+        """Transform data from the current underlying state.
 
         This function can be used to permanently load data from disk, or convert to a different
         representation, such as a torch.Tensor
+
+        Args:
+            func: a function to transform *data*
         """
-        func = getargs('func', kwargs)
         self.__data = func(self.__data)
         return self
 
@@ -1167,12 +1185,8 @@ class MultiContainerInterface(Container):
     def __make_get(cls, func_name, attr_name, container_type):
         doc = "Get %s from this %s" % (cls.__add_article(container_type), cls.__name__)
 
-        @docval({'name': 'name', 'type': str, 'doc': 'the name of the %s' % cls.__join(container_type),
-                 'default': None},
-                rtype=container_type, returns='the %s with the given name' % cls.__join(container_type),
-                func_name=func_name, doc=doc)
-        def _func(self, **kwargs):
-            name = getargs('name', kwargs)
+        def _body(self, kwargs):
+            name = kwargs['name']
             d = getattr(self, attr_name)
             ret = None
             if name is None:
@@ -1193,19 +1207,19 @@ class MultiContainerInterface(Container):
                     raise KeyError(msg)
             return ret
 
-        return _func
+        return signature_function(
+            func_name,
+            [{'name': 'name', 'type': str, 'doc': 'the name of the %s' % cls.__join(container_type),
+              'default': None}],
+            _body, doc=doc, returns='the %s with the given name' % cls.__join(container_type))
 
     @classmethod
     def __make_getitem(cls, attr_name, container_type):
         doc = "Get %s from this %s" % (cls.__add_article(container_type), cls.__name__)
 
-        @docval({'name': 'name', 'type': str, 'doc': 'the name of the %s' % cls.__join(container_type),
-                 'default': None},
-                rtype=container_type, returns='the %s with the given name' % cls.__join(container_type),
-                func_name='__getitem__', doc=doc)
-        def _func(self, **kwargs):
+        def _body(self, kwargs):
             # NOTE this is the same code as the getter but with different error messages
-            name = getargs('name', kwargs)
+            name = kwargs['name']
             d = getattr(self, attr_name)
             ret = None
             if name is None:
@@ -1226,17 +1240,18 @@ class MultiContainerInterface(Container):
                     raise KeyError(msg)
             return ret
 
-        return _func
+        return signature_function(
+            '__getitem__',
+            [{'name': 'name', 'type': str, 'doc': 'the name of the %s' % cls.__join(container_type),
+              'default': None}],
+            _body, doc=doc, returns='the %s with the given name' % cls.__join(container_type))
 
     @classmethod
     def __make_add(cls, func_name, attr_name, container_type):
         doc = "Add one or multiple %s objects to this %s" % (cls.__join(container_type), cls.__name__)
 
-        @docval({'name': attr_name, 'type': (list, tuple, dict, container_type),
-                 'doc': 'one or multiple %s objects to add to this %s' % (cls.__join(container_type),  cls.__name__)},
-                func_name=func_name, doc=doc)
-        def _func(self, **kwargs):
-            container = getargs(attr_name, kwargs)
+        def _body(self, kwargs):
+            container = kwargs[attr_name]
             if isinstance(container, container_type):
                 containers = [container]
             elif isinstance(container, dict):
@@ -1259,20 +1274,25 @@ class MultiContainerInterface(Container):
                 d[tmp.name] = tmp
             return container
 
-        return _func
+        return signature_function(
+            func_name,
+            [{'name': attr_name, 'type': (list, tuple, dict, container_type),
+              'doc': 'one or multiple %s objects to add to this %s'
+                     % (cls.__join(container_type), cls.__name__)}],
+            _body, doc=doc)
 
     @classmethod
     def __make_create(cls, func_name, add_name, container_type):
         doc = "Create %s object and add it to this %s" % (cls.__add_article(container_type), cls.__name__)
 
-        @docval(*get_docval(container_type.__init__), func_name=func_name, doc=doc,
-                returns="the %s object that was created" % cls.__join(container_type), rtype=container_type)
-        def _func(self, **kwargs):
+        def _body(self, kwargs):
             ret = container_type(**kwargs)
             getattr(self, add_name)(ret)
             return ret
 
-        return _func
+        return signature_function(
+            func_name, list(get_docval(container_type.__init__)), _body, doc=doc,
+            returns="the %s object that was created" % cls.__join(container_type))
 
     @classmethod
     def __make_constructor(cls, clsconf):
@@ -1285,17 +1305,17 @@ class MultiContainerInterface(Container):
 
         args.append({'name': 'name', 'type': str, 'doc': 'the name of this container', 'default': cls.__name__})
 
-        @docval(*args, func_name='__init__')
-        def _func(self, **kwargs):
+        def _body(self, kwargs):
             super().__init__(name=kwargs['name'])
             for conf in clsconf:
                 attr_name = conf['attr']
                 add_name = conf['add']
-                container = popargs(attr_name, kwargs)
+                container = kwargs[attr_name]
                 add = getattr(self, add_name)
                 add(container)
 
-        return _func
+        return signature_function('__init__', args, _body,
+                                  doc='Initialize the %s.' % cls.__name__)
 
     @classmethod
     def __make_getter(cls, attr):
@@ -1319,9 +1339,13 @@ class MultiContainerInterface(Container):
     def __make_setter(cls, add_name):
         """Make a setter function for creating a :py:func:`property`"""
 
-        @docval({'name': 'val', 'type': (list, tuple, dict), 'doc': 'the sub items to add', 'default': None})
-        def _func(self, **kwargs):
-            val = getargs('val', kwargs)
+        @validated
+        def _func(self, val: list | tuple | dict | None = None):
+            """_func
+
+            Args:
+                val: the sub items to add
+            """
             if val is None:
                 return
             getattr(self, add_name)(val)
@@ -1510,10 +1534,10 @@ class Row(object, metaclass=ExtenderMeta):
                 func_args.append({'name': 'idx', 'type': int, 'default': None,
                                   'help': 'the index for this row'})
 
-                @docval(*func_args)
-                def __init__(self, **kwargs):
+                def _row_init_body(self, kwargs):
                     super(cls, self).__init__()
-                    table, idx = popargs('table', 'idx', kwargs)
+                    table = kwargs.pop('table')
+                    idx = kwargs.pop('idx')
                     self.__keys = list()
                     self.__idx = None
                     self.__table = None
@@ -1523,7 +1547,8 @@ class Row(object, metaclass=ExtenderMeta):
                     self.idx = idx
                     self.table = table
 
-                setattr(cls, '__init__', __init__)
+                setattr(cls, '__init__', signature_function(
+                    '__init__', func_args, _row_init_body, doc='Initialize the row.'))
 
                 def todict(self):
                     return {k: getattr(self, k) for k in self.__keys}
@@ -1606,41 +1631,52 @@ class Table(Data):
                 if defname is not None:
                     name['default'] = defname  # override the name with the default name if present
 
-                @docval(name,
-                        {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the data in this table',
-                         'default': list()})
-                def __init__(self, **kwargs):
-                    name, data = getargs('name', 'data', kwargs)
+                def _table_init_body(self, kwargs):
                     colnames = [i['name'] for i in columns]
-                    super(cls, self).__init__(colnames, name, data)
+                    super(cls, self).__init__(colnames, kwargs['name'], kwargs['data'])
 
-                setattr(cls, '__init__', __init__)
+                setattr(cls, '__init__', signature_function(
+                    '__init__',
+                    [name, {'name': 'data', 'type': ('array_data', 'data'),
+                            'doc': 'the data in this table', 'default': list()}],
+                    _table_init_body, doc='Initialize the table.'))
 
             if cls.add_row == bases[-1].add_row:  # check if add_row is overridden
 
-                @docval(*columns)
-                def add_row(self, **kwargs):
+                def _add_row_body(self, kwargs):
                     return super(cls, self).add_row(kwargs)
 
-                setattr(cls, 'add_row', add_row)
+                setattr(cls, 'add_row', signature_function(
+                    'add_row', columns, _add_row_body, doc='Add a row to the table.'))
 
-    @docval({'name': 'columns', 'type': (list, tuple), 'doc': 'a list of the columns in this table'},
-            {'name': 'name', 'type': str, 'doc': 'the name of this container'},
-            {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the source of the data', 'default': list()})
-    def __init__(self, **kwargs):
-        self.__columns = tuple(popargs('columns', kwargs))
-        self.__col_index = {name: idx for idx, name in enumerate(self.__columns)}
+    @validated
+    def __init__(self, columns: list | tuple, name: str, data: ArrayData | AnyData | None = None):
+        """Initialize this container.
+
+        Args:
+            columns: a list of the columns in this table
+            name: the name of this container
+            data: the source of the data
+        """
+        if data is None:
+            data = list()
+        self.__columns = tuple(columns)
+        self.__col_index = {col_name: idx for idx, col_name in enumerate(self.__columns)}
         if getattr(self, '__rowclass__') is not None:
             self.row = RowGetter(self)
-        super().__init__(**kwargs)
+        super().__init__(name=name, data=data)
 
     @property
     def columns(self):
         return self.__columns
 
-    @docval({'name': 'values', 'type': dict, 'doc': 'the values for each column'})
-    def add_row(self, **kwargs):
-        values = getargs('values', kwargs)
+    @validated
+    def add_row(self, values: dict):
+        """add_row
+
+        Args:
+            values: the values for each column
+        """
         if not isinstance(self.data, list):
             msg = 'Cannot append row to %s' % type(self.data)
             raise ValueError(msg)
@@ -1700,22 +1736,17 @@ class Table(Data):
         return pd.DataFrame(data)
 
     @classmethod
-    @docval(
-        {'name': 'df', 'type': pd.DataFrame, 'doc': 'input data'},
-        {'name': 'name', 'type': str, 'doc': 'the name of this container', 'default': None},
-        {
-            'name': 'extra_ok',
-            'type': bool,
-            'doc': 'accept (and ignore) unexpected columns on the input dataframe',
-            'default': False
-        },
-    )
-    def from_dataframe(cls, **kwargs):
-        '''Construct an instance of Table (or a subclass) from a pandas DataFrame. The columns of the dataframe
+    @validated
+    def from_dataframe(cls, df: pd.DataFrame, name: str | None = None, extra_ok: Bool = False):
+        """Construct an instance of Table (or a subclass) from a pandas DataFrame. The columns of the dataframe
         should match the columns defined on the Table subclass.
-        '''
 
-        df, name, extra_ok = getargs('df', 'name', 'extra_ok', kwargs)
+        Args:
+            df: input data
+            name: the name of this container
+            extra_ok: accept (and ignore) unexpected columns on the input dataframe
+        """
+
 
         cls_cols = list([col['name'] for col in getattr(cls, '__columns__')])
         df_cols = list(df.columns)

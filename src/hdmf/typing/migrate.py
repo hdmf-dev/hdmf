@@ -192,16 +192,24 @@ class DocvalMigrator:
             arg.default_src = default_src
         return arg
 
-    def _convert_function(self, node, dec):
+    def _convert_function(self, node, dec, module_spec_lists=None):
         """Convert one @docval function. Returns a MigratedFunction, or None to skip."""
         func = MigratedFunction(node=node, decorator=dec, args=[], options={},
                                 returns_doc=None, rtype_hint=None, allow_extra=False)
+        spec_nodes = []
         for spec_node in dec.args:
             if isinstance(spec_node, ast.Starred):
+                # resolve splices of module-level literal spec lists, e.g. @docval(*_attr_args)
+                if (isinstance(spec_node.value, ast.Name)
+                        and (module_spec_lists or {}).get(spec_node.value.id) is not None):
+                    spec_nodes.extend(module_spec_lists[spec_node.value.id])
+                    continue
                 func.todos.append(
                     f"decorator splices other functions' specs ({ast.unparse(spec_node)}); "
                     "convert by hand")
                 return None
+            spec_nodes.append(spec_node)
+        for spec_node in spec_nodes:
             arg = self._convert_arg(spec_node)
             if arg is None:
                 func.todos.append(f"non-literal argument spec: {ast.unparse(spec_node)}")
@@ -337,14 +345,18 @@ class DocvalMigrator:
             out.extend(buffer if replacement is None else replacement)
             buffer = []
         out.extend(buffer)  # unbalanced trailing lines, if any
-        leftover_kwargs = any('kwargs' in line for line in out) and not func.allow_extra
+        leftover_kwargs = any('kwargs' in line for line in out)
         todos = list(func.todos)
         for arg in func.args:
             todos.extend(f"{arg.name}: {t}" for t in arg.todos)
-        if leftover_kwargs:
+        if leftover_kwargs and not func.allow_extra:
             todos.append("body still references `kwargs`, which no longer exists; rewrite "
                          "remaining uses (e.g. multi-line getargs/popargs, "
                          "super().__init__(**kwargs) -> explicit keywords)")
+        elif leftover_kwargs:
+            todos.append("`kwargs` now holds ONLY extra keyword arguments (docval's kwargs held "
+                         "ALL parsed args) — audit each use; named parameters must be passed "
+                         "explicitly (e.g. f(**kwargs) -> f(a=a, b=b, **kwargs))")
         todo_lines = [f"{indent}    # TODO(migrate): {t}" for t in todos]
         return todo_lines + out
 
@@ -356,12 +368,21 @@ class DocvalMigrator:
         targets = self._find_docval_functions(tree)
         if not targets:
             return source, 0, 0
+        # module-level `NAME = [ {...}, ... ]` spec lists, resolvable in *NAME splices
+        module_spec_lists = {}
+        for stmt in tree.body:
+            if (isinstance(stmt, ast.Assign) and len(stmt.targets) == 1
+                    and isinstance(stmt.targets[0], ast.Name)
+                    and isinstance(stmt.value, (ast.List, ast.Tuple))
+                    and stmt.value.elts
+                    and all(isinstance(e, (ast.Dict, ast.Call)) for e in stmt.value.elts)):
+                module_spec_lists[stmt.targets[0].id] = stmt.value.elts
         lines = source.splitlines()
         n_converted = 0
         n_skipped = 0
         # bottom-up so earlier line numbers stay valid
         for node, dec in sorted(targets, key=lambda t: t[0].lineno, reverse=True):
-            func = self._convert_function(node, dec)
+            func = self._convert_function(node, dec, module_spec_lists)
             if func is None:
                 n_skipped += 1
                 dec_line = dec.lineno - 1

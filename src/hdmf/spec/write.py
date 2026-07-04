@@ -10,7 +10,7 @@ import ruamel.yaml as yaml
 from .catalog import SpecCatalog
 from .namespace import SpecNamespace
 from .spec import GroupSpec, DatasetSpec
-from ..utils import docval, getargs, popargs
+from ..typing import validated
 
 
 class SpecWriter(metaclass=ABCMeta):
@@ -26,11 +26,14 @@ class SpecWriter(metaclass=ABCMeta):
 
 class YAMLSpecWriter(SpecWriter):
 
-    @docval({'name': 'outdir',
-             'type': str,
-             'doc': 'the path to write the directory to output the namespace and specs too', 'default': '.'})
-    def __init__(self, **kwargs):
-        self.__outdir = getargs('outdir', kwargs)
+    @validated
+    def __init__(self, outdir: str = '.'):
+        """Initialize this spec.
+
+        Args:
+            outdir: the path to write the directory to output the namespace and specs too
+        """
+        self.__outdir = outdir
 
     def __dump_spec(self, specs, stream):
         specs_plain_dict = json.loads(json.dumps(specs))
@@ -105,45 +108,62 @@ class YAMLSpecWriter(SpecWriter):
 class NamespaceBuilder:
     ''' A class for building namespace and spec files '''
 
-    @docval({'name': 'doc', 'type': str, 'doc': 'Description about what the namespace represents'},
-            {'name': 'name', 'type': str, 'doc': 'Name of the namespace'},
-            {'name': 'full_name', 'type': str, 'doc': 'Extended full name of the namespace', 'default': None},
-            {'name': 'version', 'type': (str, tuple, list), 'doc': 'Version number of the namespace', 'default': None},
-            {'name': 'author', 'type': (str, list), 'doc': 'Author or list of authors.', 'default': None},
-            {'name': 'contact', 'type': (str, list),
-             'doc': 'List of emails. Ordering should be the same as for author', 'default': None},
-            {'name': 'date', 'type': (datetime, str),
-             'doc': "Date last modified or released. Formatting is %Y-%m-%d %H:%M:%S, e.g, 2017-04-25 17:14:13",
-             'default': None},
-            {'name': 'namespace_cls', 'type': type, 'doc': 'the SpecNamespace type', 'default': SpecNamespace})
-    def __init__(self, **kwargs):
-        ns_cls = popargs('namespace_cls', kwargs)
-        if kwargs['version'] is None:
+    @validated
+    def __init__(self,
+                 doc: str,
+                 name: str,
+                 full_name: str | None = None,
+                 version: str | tuple | list | None = None,
+                 author: str | list | None = None,
+                 contact: str | list | None = None,
+                 date: datetime | str | None = None,
+                 namespace_cls: type = SpecNamespace):
+        """Initialize this spec.
+
+        Args:
+            doc: Description about what the namespace represents
+            name: Name of the namespace
+            full_name: Extended full name of the namespace
+            version: Version number of the namespace
+            author: Author or list of authors.
+            contact: List of emails. Ordering should be the same as for author
+            date: Date last modified or released. Formatting is %Y-%m-%d %H:%M:%S, e.g, 2017-04-25 17:14:13
+            namespace_cls: the SpecNamespace type
+        """
+        ns_cls = namespace_cls
+        if version is None:
             # version is required on write as of HDMF 1.5. this check should prevent the writing of namespace files
             # without a version
             raise ValueError("Namespace '%s' missing key 'version'. Please specify a version for the extension."
-                             % kwargs['name'])
-        self.__ns_args = copy.deepcopy(kwargs)
+                             % name)
+        self.__ns_args = copy.deepcopy(dict(doc=doc, name=name, full_name=full_name, version=version,
+                                            author=author, contact=contact, date=date))
         self.__namespaces = OrderedDict()
         self.__sources = OrderedDict()
         self.__catalog = SpecCatalog()
         self.__dt_key = ns_cls.types_key()
 
-    @docval({'name': 'source', 'type': str, 'doc': 'the path to write the spec to'},
-            {'name': 'spec', 'type': (GroupSpec, DatasetSpec), 'doc': 'the Spec to add'})
-    def add_spec(self, **kwargs):
-        ''' Add a Spec to the namespace '''
-        source, spec = getargs('source', 'spec', kwargs)
+    @validated
+    def add_spec(self, source: str, spec: GroupSpec | DatasetSpec):
+        """Add a Spec to the namespace
+
+        Args:
+            source: the path to write the spec to
+            spec: the Spec to add
+        """
         self.__catalog.auto_register(spec, source)
         self.add_source(source)
         self.__sources[source].setdefault(self.__dt_key, list()).append(spec)
 
-    @docval({'name': 'source', 'type': str, 'doc': 'the path to write the spec to'},
-            {'name': 'doc', 'type': str, 'doc': 'additional documentation for the source file', 'default': None},
-            {'name': 'title', 'type': str, 'doc': 'optional heading to be used for the source', 'default': None})
-    def add_source(self, **kwargs):
-        ''' Add a source file to the namespace '''
-        source, doc, title = getargs('source', 'doc', 'title', kwargs)
+    @validated
+    def add_source(self, source: str, doc: str | None = None, title: str | None = None):
+        """Add a source file to the namespace
+
+        Args:
+            source: the path to write the spec to
+            doc: additional documentation for the source file
+            title: optional heading to be used for the source
+        """
         if '/' in source or source[0] == '.':
             raise ValueError('source must be a base file')
         source_dict = {'source': source}
@@ -154,13 +174,16 @@ class NamespaceBuilder:
         if title is not None:
             self.__sources[source]['title'] = doc
 
-    @docval({'name': 'data_type', 'type': str, 'doc': 'the data type to include'},
-            {'name': 'source', 'type': str, 'doc': 'the source file to include the type from', 'default': None},
-            {'name': 'namespace', 'type': str,
-             'doc': 'the namespace from which to include the data type', 'default': None})
-    def include_type(self, **kwargs):
-        ''' Include a data type from an existing namespace or source '''
-        dt, src, ns = getargs('data_type', 'source', 'namespace', kwargs)
+    @validated
+    def include_type(self, data_type: str, source: str | None = None, namespace: str | None = None):
+        """Include a data type from an existing namespace or source
+
+        Args:
+            data_type: the data type to include
+            source: the source file to include the type from
+            namespace: the namespace from which to include the data type
+        """
+        dt, src, ns = data_type, source, namespace
         if src is not None:
             self.add_source(src)
             self.__sources[src].setdefault(self.__dt_key, list()).append(dt)
@@ -170,28 +193,30 @@ class NamespaceBuilder:
         else:
             raise ValueError("must specify 'source' or 'namespace' when including type")
 
-    @docval({'name': 'namespace', 'type': str, 'doc': 'the namespace to include'})
-    def include_namespace(self, **kwargs):
-        ''' Include an entire namespace '''
-        namespace = getargs('namespace', kwargs)
+    @validated
+    def include_namespace(self, namespace: str):
+        """Include an entire namespace
+
+        Args:
+            namespace: the namespace to include
+        """
         self.__namespaces.setdefault(namespace, {'namespace': namespace})
 
-    @docval({'name': 'path', 'type': str, 'doc': 'the path to write the spec to'},
-            {'name': 'outdir',
-             'type': str,
-             'doc': 'the path to write the directory to output the namespace and specs too', 'default': '.'},
-            {'name': 'writer',
-             'type': SpecWriter,
-             'doc': 'the SpecWriter to use to write the namespace', 'default': None})
-    def export(self, **kwargs):
-        ''' Export the namespace to the given path.
+    @validated
+    def export(self, path: str, outdir: str = '.', writer: SpecWriter | None = None):
+        """Export the namespace to the given path.
 
         All new specification source files will be written in the same directory as the
         given path.
-        '''
-        ns_path, writer = getargs('path', 'writer', kwargs)
+
+        Args:
+            path: the path to write the spec to
+            outdir: the path to write the directory to output the namespace and specs too
+            writer: the SpecWriter to use to write the namespace
+        """
+        ns_path = path
         if writer is None:
-            writer = YAMLSpecWriter(outdir=getargs('outdir', kwargs))
+            writer = YAMLSpecWriter(outdir=outdir)
         ns_args = copy.copy(self.__ns_args)
         ns_args['schema'] = list()
         for ns, info in self.__namespaces.items():
@@ -226,9 +251,13 @@ class NamespaceBuilder:
 
 class SpecFileBuilder(dict):
 
-    @docval({'name': 'spec', 'type': (GroupSpec, DatasetSpec), 'doc': 'the Spec to add'})
-    def add_spec(self, **kwargs):
-        spec = getargs('spec', kwargs)
+    @validated
+    def add_spec(self, spec: GroupSpec | DatasetSpec):
+        """add_spec
+
+        Args:
+            spec: the Spec to add
+        """
         if isinstance(spec, GroupSpec):
             self.setdefault('groups', list()).append(spec)
         elif isinstance(spec, DatasetSpec):

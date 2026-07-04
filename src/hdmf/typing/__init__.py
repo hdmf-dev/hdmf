@@ -25,6 +25,7 @@ Migration tooling lives in :mod:`hdmf.typing.migrate`
 """
 
 from ..utils import AllowPositional  # re-export: used as a @validated option
+from ._build import hint_from_spec, signature_function
 from ._compat import map_hint, synthesize_docval
 from ._decorator import set_type_checking, validated
 from ._shapes import Shaped
@@ -51,8 +52,10 @@ __all__ = [
     'Shaped',
     'TypeName',
     'UInt',
+    'hint_from_spec',
     'map_hint',
     'register_macro',
+    'signature_function',
     'set_type_checking',
     'synthesize_docval',
     'validated',

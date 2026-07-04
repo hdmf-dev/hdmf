@@ -17,30 +17,33 @@ from ..backends.hdf5 import HDF5IO  # noqa: E402
 from ..validate import ValidatorMap  # noqa: E402
 from ..build import BuildManager, TypeMap  # noqa: E402
 from ..container import _set_exp  # noqa: E402
+from typing import Any  # noqa: E402
+from ..typing import Bool, Int, TypeName, validated  # noqa: E402
 
 
 # a global type map
 global __TYPE_MAP
 
-@docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'},
-        {'name': 'type_map', 'type': TypeMap, 'doc': 'The TypeMap.', 'default': None},
-        is_method=False)
-def load_type_config(**kwargs):
+@validated
+def load_type_config(config_path: str, type_map: TypeMap | None = None):
+    """This method will either load the config at the given path into either the global type map or a specific type map.
+
+    Args:
+        config_path: Path to the configuration file.
+        type_map: The TypeMap.
     """
-    This method will either load the config at the given path into either the global type map or a specific type map.
-    """
-    config_path = kwargs['config_path']
-    type_map = kwargs['type_map'] or __TYPE_MAP
+    type_map = type_map or __TYPE_MAP
 
     type_map.type_config.load_type_config(config_path)
 
-@docval({'name': 'type_map', 'type': TypeMap, 'doc': 'The TypeMap.', 'default': None},
-        is_method=False)
-def get_loaded_type_config(**kwargs):
+@validated
+def get_loaded_type_config(type_map: TypeMap | None = None):
+    """This method returns a dictionary with the configuration for each namespace and data type.
+
+    Args:
+        type_map: The TypeMap.
     """
-    This method returns a dictionary with the configuration for each namespace and data type.
-    """
-    type_map = kwargs['type_map'] or __TYPE_MAP
+    type_map = type_map or __TYPE_MAP
 
     if type_map.type_config.config is None:
         msg = "No configuration is loaded."
@@ -48,28 +51,29 @@ def get_loaded_type_config(**kwargs):
 
     return type_map.type_config.config
 
-@docval({'name': 'type_map', 'type': TypeMap, 'doc': 'The TypeMap.', 'default': None},
-        is_method=False)
-def unload_type_config(**kwargs):
+@validated
+def unload_type_config(type_map: TypeMap | None = None):
+    """Unload all type configurations from the global type map or a specific type map.
+
+    Args:
+        type_map: The TypeMap.
     """
-    Unload all type configurations from the global type map or a specific type map.
-    """
-    type_map = kwargs['type_map'] or __TYPE_MAP
+    type_map = type_map or __TYPE_MAP
 
     return type_map.type_config.unload_type_config()
 
 # a function to register a container classes with the global map
-@docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the spec for'},
-        {'name': 'namespace', 'type': str, 'doc': 'the name of the namespace', 'default': CORE_NAMESPACE},
-        {"name": "container_cls", "type": type,
-         "doc": "the class to map to the specified data_type", 'default': None},
-        is_method=False)
-def register_class(**kwargs):
+@validated
+def register_class(data_type: str, namespace: str = CORE_NAMESPACE, container_cls: type | None = None):
     """Register an Container class to use for reading and writing a data_type from a specification
     If container_cls is not specified, returns a decorator for registering an Container subclass
     as the class for data_type in namespace.
+
+    Args:
+        data_type: the data_type to get the spec for
+        namespace: the name of the namespace
+        container_cls: the class to map to the specified data_type
     """
-    data_type, namespace, container_cls = getargs('data_type', 'namespace', 'container_cls', kwargs)
     if namespace == EXP_NAMESPACE:
         def _dec(cls):
             _set_exp(cls)
@@ -87,16 +91,16 @@ def register_class(**kwargs):
 
 
 # a function to register an object mapper for a container class
-@docval({"name": "container_cls", "type": type,
-         "doc": "the Container class for which the given ObjectMapper class gets used for"},
-        {"name": "mapper_cls", "type": type, "doc": "the ObjectMapper class to use to map", 'default': None},
-        is_method=False)
-def register_map(**kwargs):
+@validated
+def register_map(container_cls: type, mapper_cls: type | None = None):
     """Register an ObjectMapper to use for a Container class type
     If mapper_cls is not specified, returns a decorator for registering an ObjectMapper class
     as the mapper for container_cls. If mapper_cls specified, register the class as the mapper for container_cls
+
+    Args:
+        container_cls: the Container class for which the given ObjectMapper class gets used for
+        mapper_cls: the ObjectMapper class to use to map
     """
-    container_cls, mapper_cls = getargs('container_cls', 'mapper_cls', kwargs)
 
     def _dec(cls):
         __TYPE_MAP.register_map(container_cls, cls)
@@ -124,15 +128,16 @@ def _get_resources():
     return __get_resources()
 
 
-@docval({'name': 'namespace_path', 'type': str,
-         'doc': 'the path to the YAML with the namespace definition'},
-        returns="the namespaces loaded from the given file", rtype=tuple,
-        is_method=False)
-def load_namespaces(**kwargs):
-    '''
-    Load namespaces from file
-    '''
-    namespace_path = getargs('namespace_path', kwargs)
+@validated
+def load_namespaces(namespace_path: str) -> tuple:
+    """Load namespaces from file
+
+    Args:
+        namespace_path: the path to the YAML with the namespace definition
+
+    Returns:
+        the namespaces loaded from the given file
+    """
     return __TYPE_MAP.load_namespaces(namespace_path)
 
 
@@ -141,13 +146,8 @@ def available_namespaces():
 
 
 # a function to get the container class for a give type
-@docval({'name': 'data_type', 'type': str,
-         'doc': 'the data_type to get the Container class for'},
-        {'name': 'namespace', 'type': str, 'doc': 'the namespace the data_type is defined in'},
-        {'name': 'post_init_method', 'type': Callable, 'default': None,
-        'doc': 'The function used as a post_init method to validate the class generation.'},
-        is_method=False)
-def get_class(**kwargs):
+@validated
+def get_class(data_type: str, namespace: str, post_init_method: Callable | None = None):
     """Get the class object of the Container subclass corresponding to a given neurdata_type.
 
     For developers:
@@ -163,25 +163,27 @@ def get_class(**kwargs):
     Remember that the generation of a class means the __init__ is being created for you. You don't ever see it.
     The generation also builds the docval for the __init__ and prepares the __fields__ dict for creating
     setters, which are handled in AbstractContainer.
+
+    Args:
+        data_type: the data_type to get the Container class for
+        namespace: the namespace the data_type is defined in
+        post_init_method: The function used as a post_init method to validate the class generation.
     """
-    data_type, namespace, post_init_method = getargs('data_type', 'namespace', 'post_init_method', kwargs)
     return __TYPE_MAP.get_dt_container_cls(data_type, namespace, post_init_method)
 
 
-@docval({
-            'name': 'copy', 'type': bool,
-            'doc': 'Whether to return a deepcopy of the TypeMap. '
-            'If False, a direct reference may be returned (use with caution).',
-            'default': True
-        },
-        allow_positional=AllowPositional.ERROR,
-        returns="the namespaces loaded from the given file", rtype=tuple,
-        is_method=False)
-def get_type_map(**kwargs):
-    '''
-    Get a BuildManager to use for I/O using the core namespace.
-    '''
-    copy_map = getargs('copy', kwargs)
+@validated(allow_positional=AllowPositional.ERROR)
+def get_type_map(copy: Bool = True) -> tuple:
+    """Get a BuildManager to use for I/O using the core namespace.
+
+    Args:
+        copy: Whether to return a deepcopy of the TypeMap. If False, a direct reference may be returned (use with
+            caution).
+
+    Returns:
+        the namespaces loaded from the given file
+    """
+    copy_map = copy
     if copy_map:
         type_map = deepcopy(__TYPE_MAP)
     else:
@@ -189,6 +191,7 @@ def get_type_map(**kwargs):
     return type_map
 
 
+# intentionally on @docval: splices get_type_map argument specs; migrates with docval removal
 @docval(*get_docval(get_type_map),
         returns="a build manager with namespaces loaded from the given file", rtype=BuildManager,
         is_method=False)
@@ -201,17 +204,18 @@ def get_manager(**kwargs):
     return BuildManager(type_map)
 
 
-@docval({'name': 'io', 'type': HDMFIO,
-         'doc': 'the HDMFIO object to read from'},
-        {'name': 'namespace', 'type': str,
-         'doc': 'the namespace to validate against', 'default': CORE_NAMESPACE},
-        {'name': 'experimental', 'type': bool,
-         'doc': 'data type is an experimental data type', 'default': False},
-        returns="errors in the file", rtype=list,
-        is_method=False)
-def validate(**kwargs):
-    """Validate an file against a namespace"""
-    io, namespace, experimental = getargs('io', 'namespace', 'experimental', kwargs)
+@validated
+def validate(io: HDMFIO, namespace: str = CORE_NAMESPACE, experimental: Bool = False) -> list:
+    """Validate an file against a namespace
+
+    Args:
+        io: the HDMFIO object to read from
+        namespace: the namespace to validate against
+        experimental: data type is an experimental data type
+
+    Returns:
+        errors in the file
+    """
     if experimental:
         namespace = EXP_NAMESPACE
     builder = io.read_builder()
@@ -219,6 +223,7 @@ def validate(**kwargs):
     return validator.validate(builder)
 
 
+# intentionally on @docval: splices HDF5IO argument specs; migrates with docval removal
 @docval(*get_docval(HDF5IO.__init__), is_method=False)
 def get_hdf5io(**kwargs):
     """
