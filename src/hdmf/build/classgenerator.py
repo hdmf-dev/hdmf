@@ -7,6 +7,7 @@ import numpy as np
 from ..container import Container, Data, MultiContainerInterface
 from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec, DatasetSpec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
+from ..typing import signature_function
 from ..utils import docval, getargs, ExtenderMeta, get_docval, popargs, AllowPositional
 
 
@@ -377,12 +378,8 @@ class CustomClassGenerator:
             if item['name'] == 'skip_post_init':
                 docval_args.remove(item)
 
-        @docval(*docval_args,
-                {'name': 'skip_post_init', 'type': bool, 'default': False,
-                 'doc': 'bool to skip post_init'},
-                allow_positional=AllowPositional.WARNING)
-        def __init__(self, **kwargs):
-            skip_post_init = popargs('skip_post_init', kwargs)
+        def _init_body(self, kwargs):
+            skip_post_init = kwargs.pop('skip_post_init')
 
             original_kwargs = dict(kwargs)
             if name is not None:  # force container name to be the fixed name in the spec
@@ -413,7 +410,14 @@ class CustomClassGenerator:
             if self.post_init_method is not None and not skip_post_init:
                 self.post_init_method(**original_kwargs)
 
-        classdict['__init__'] = __init__
+        classdict['__init__'] = signature_function(
+            '__init__',
+            list(docval_args) + [{'name': 'skip_post_init', 'type': bool, 'default': False,
+                                  'doc': 'bool to skip post_init'}],
+            _init_body,
+            doc='Initialize the container, setting all fields defined in the schema.',
+            allow_positional=AllowPositional.WARNING,
+        )
 
 
 class MCIClassGenerator(CustomClassGenerator):
@@ -483,8 +487,7 @@ class MCIClassGenerator(CustomClassGenerator):
         if '__clsconf__' in classdict:
             previous_init = classdict['__init__']
 
-            @docval(*docval_args, allow_positional=AllowPositional.WARNING)
-            def __init__(self, **kwargs):
+            def _mci_init_body(self, kwargs):
                 # store the values passed to init for each MCI attribute so that they can be added
                 # after calling __init__
                 original_kwargs = dict(kwargs)
@@ -497,7 +500,7 @@ class MCIClassGenerator(CustomClassGenerator):
                     add_method_name = field_clsconf['add']
                     new_kwarg = dict(
                         attr_name=attr_name,
-                        value=popargs(attr_name, kwargs),
+                        value=kwargs.pop(attr_name),
                         add_method_name=add_method_name
                     )
                     new_kwargs.append(new_kwarg)
@@ -520,4 +523,8 @@ class MCIClassGenerator(CustomClassGenerator):
                     self.post_init_method(**original_kwargs)
 
             # override __init__
-            classdict['__init__'] = __init__
+            classdict['__init__'] = signature_function(
+                '__init__', list(docval_args), _mci_init_body,
+                doc='Initialize the container, setting all fields defined in the schema.',
+                allow_positional=AllowPositional.WARNING,
+            )

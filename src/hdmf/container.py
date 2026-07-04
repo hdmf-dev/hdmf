@@ -11,12 +11,12 @@ import numpy as np
 import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator
-from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict,
+from .utils import (get_docval, ExtenderMeta, get_data_shape, LabelledDict,
                     get_basic_array_info, generate_array_html_repr, _is_collection, _get_length, _unwrap_scalar,
                     coerce_pandas_data)
 
 from .term_set import TermSet, TermSetWrapper
-from .typing import AnyData, ArrayData, Bool, ScalarData, validated
+from .typing import AnyData, ArrayData, Bool, ScalarData, signature_function, validated
 
 
 def _set_exp(cls):
@@ -1185,14 +1185,8 @@ class MultiContainerInterface(Container):
     def __make_get(cls, func_name, attr_name, container_type):
         doc = "Get %s from this %s" % (cls.__add_article(container_type), cls.__name__)
 
-        # intentionally on @docval: this decorator is composed dynamically at class-
-        # generation time; it migrates when docval is removed (see #1129 Phase 4)
-        @docval({'name': 'name', 'type': str, 'doc': 'the name of the %s' % cls.__join(container_type),
-                 'default': None},
-                rtype=container_type, returns='the %s with the given name' % cls.__join(container_type),
-                func_name=func_name, doc=doc)
-        def _func(self, **kwargs):
-            name = getargs('name', kwargs)
+        def _body(self, kwargs):
+            name = kwargs['name']
             d = getattr(self, attr_name)
             ret = None
             if name is None:
@@ -1213,21 +1207,19 @@ class MultiContainerInterface(Container):
                     raise KeyError(msg)
             return ret
 
-        return _func
+        return signature_function(
+            func_name,
+            [{'name': 'name', 'type': str, 'doc': 'the name of the %s' % cls.__join(container_type),
+              'default': None}],
+            _body, doc=doc, returns='the %s with the given name' % cls.__join(container_type))
 
     @classmethod
     def __make_getitem(cls, attr_name, container_type):
         doc = "Get %s from this %s" % (cls.__add_article(container_type), cls.__name__)
 
-        # intentionally on @docval: this decorator is composed dynamically at class-
-        # generation time; it migrates when docval is removed (see #1129 Phase 4)
-        @docval({'name': 'name', 'type': str, 'doc': 'the name of the %s' % cls.__join(container_type),
-                 'default': None},
-                rtype=container_type, returns='the %s with the given name' % cls.__join(container_type),
-                func_name='__getitem__', doc=doc)
-        def _func(self, **kwargs):
+        def _body(self, kwargs):
             # NOTE this is the same code as the getter but with different error messages
-            name = getargs('name', kwargs)
+            name = kwargs['name']
             d = getattr(self, attr_name)
             ret = None
             if name is None:
@@ -1248,19 +1240,18 @@ class MultiContainerInterface(Container):
                     raise KeyError(msg)
             return ret
 
-        return _func
+        return signature_function(
+            '__getitem__',
+            [{'name': 'name', 'type': str, 'doc': 'the name of the %s' % cls.__join(container_type),
+              'default': None}],
+            _body, doc=doc, returns='the %s with the given name' % cls.__join(container_type))
 
     @classmethod
     def __make_add(cls, func_name, attr_name, container_type):
         doc = "Add one or multiple %s objects to this %s" % (cls.__join(container_type), cls.__name__)
 
-        # intentionally on @docval: this decorator is composed dynamically at class-
-        # generation time; it migrates when docval is removed (see #1129 Phase 4)
-        @docval({'name': attr_name, 'type': (list, tuple, dict, container_type),
-                 'doc': 'one or multiple %s objects to add to this %s' % (cls.__join(container_type),  cls.__name__)},
-                func_name=func_name, doc=doc)
-        def _func(self, **kwargs):
-            container = getargs(attr_name, kwargs)
+        def _body(self, kwargs):
+            container = kwargs[attr_name]
             if isinstance(container, container_type):
                 containers = [container]
             elif isinstance(container, dict):
@@ -1283,22 +1274,25 @@ class MultiContainerInterface(Container):
                 d[tmp.name] = tmp
             return container
 
-        return _func
+        return signature_function(
+            func_name,
+            [{'name': attr_name, 'type': (list, tuple, dict, container_type),
+              'doc': 'one or multiple %s objects to add to this %s'
+                     % (cls.__join(container_type), cls.__name__)}],
+            _body, doc=doc)
 
     @classmethod
     def __make_create(cls, func_name, add_name, container_type):
         doc = "Create %s object and add it to this %s" % (cls.__add_article(container_type), cls.__name__)
 
-        # intentionally on @docval: this decorator is composed dynamically at class-
-        # generation time; it migrates when docval is removed (see #1129 Phase 4)
-        @docval(*get_docval(container_type.__init__), func_name=func_name, doc=doc,
-                returns="the %s object that was created" % cls.__join(container_type), rtype=container_type)
-        def _func(self, **kwargs):
+        def _body(self, kwargs):
             ret = container_type(**kwargs)
             getattr(self, add_name)(ret)
             return ret
 
-        return _func
+        return signature_function(
+            func_name, list(get_docval(container_type.__init__)), _body, doc=doc,
+            returns="the %s object that was created" % cls.__join(container_type))
 
     @classmethod
     def __make_constructor(cls, clsconf):
@@ -1311,19 +1305,17 @@ class MultiContainerInterface(Container):
 
         args.append({'name': 'name', 'type': str, 'doc': 'the name of this container', 'default': cls.__name__})
 
-        # intentionally on @docval: this decorator is composed dynamically at class-
-        # generation time; it migrates when docval is removed (see #1129 Phase 4)
-        @docval(*args, func_name='__init__')
-        def _func(self, **kwargs):
+        def _body(self, kwargs):
             super().__init__(name=kwargs['name'])
             for conf in clsconf:
                 attr_name = conf['attr']
                 add_name = conf['add']
-                container = popargs(attr_name, kwargs)
+                container = kwargs[attr_name]
                 add = getattr(self, add_name)
                 add(container)
 
-        return _func
+        return signature_function('__init__', args, _body,
+                                  doc='Initialize the %s.' % cls.__name__)
 
     @classmethod
     def __make_getter(cls, attr):
@@ -1542,12 +1534,10 @@ class Row(object, metaclass=ExtenderMeta):
                 func_args.append({'name': 'idx', 'type': int, 'default': None,
                                   'help': 'the index for this row'})
 
-                # intentionally on @docval: this decorator is composed dynamically at class-
-                # generation time; it migrates when docval is removed (see #1129 Phase 4)
-                @docval(*func_args)
-                def __init__(self, **kwargs):
+                def _row_init_body(self, kwargs):
                     super(cls, self).__init__()
-                    table, idx = popargs('table', 'idx', kwargs)
+                    table = kwargs.pop('table')
+                    idx = kwargs.pop('idx')
                     self.__keys = list()
                     self.__idx = None
                     self.__table = None
@@ -1557,7 +1547,8 @@ class Row(object, metaclass=ExtenderMeta):
                     self.idx = idx
                     self.table = table
 
-                setattr(cls, '__init__', __init__)
+                setattr(cls, '__init__', signature_function(
+                    '__init__', func_args, _row_init_body, doc='Initialize the row.'))
 
                 def todict(self):
                     return {k: getattr(self, k) for k in self.__keys}
@@ -1640,27 +1631,23 @@ class Table(Data):
                 if defname is not None:
                     name['default'] = defname  # override the name with the default name if present
 
-                # intentionally on @docval: this decorator is composed dynamically at class-
-                # generation time; it migrates when docval is removed (see #1129 Phase 4)
-                @docval(name,
-                        {'name': 'data', 'type': ('array_data', 'data'), 'doc': 'the data in this table',
-                         'default': list()})
-                def __init__(self, **kwargs):
-                    name, data = getargs('name', 'data', kwargs)
+                def _table_init_body(self, kwargs):
                     colnames = [i['name'] for i in columns]
-                    super(cls, self).__init__(colnames, name, data)
+                    super(cls, self).__init__(colnames, kwargs['name'], kwargs['data'])
 
-                setattr(cls, '__init__', __init__)
+                setattr(cls, '__init__', signature_function(
+                    '__init__',
+                    [name, {'name': 'data', 'type': ('array_data', 'data'),
+                            'doc': 'the data in this table', 'default': list()}],
+                    _table_init_body, doc='Initialize the table.'))
 
             if cls.add_row == bases[-1].add_row:  # check if add_row is overridden
 
-                # intentionally on @docval: this decorator is composed dynamically at class-
-                # generation time; it migrates when docval is removed (see #1129 Phase 4)
-                @docval(*columns)
-                def add_row(self, **kwargs):
+                def _add_row_body(self, kwargs):
                     return super(cls, self).add_row(kwargs)
 
-                setattr(cls, 'add_row', add_row)
+                setattr(cls, 'add_row', signature_function(
+                    'add_row', columns, _add_row_body, doc='Add a row to the table.'))
 
     @validated
     def __init__(self, columns: list | tuple, name: str, data: ArrayData | AnyData | None = None):
