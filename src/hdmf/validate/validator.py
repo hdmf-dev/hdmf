@@ -384,7 +384,6 @@ class Validator(metaclass=ABCMeta):
         return self.__vmap
 
     @abstractmethod
-    @abstractmethod
     @validated
     def validate(self, value: Any) -> list:
         """Validate the given value against this validator's spec.

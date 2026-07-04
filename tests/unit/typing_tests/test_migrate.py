@@ -83,6 +83,24 @@ class TestDocvalMigrator(TestCase):
         self.assertEqual(n_skipped, 1)
         self.assertIn('convert by hand', migrated)
 
+    def test_other_decorators_not_duplicated(self):
+        """@classmethod etc. must be re-emitted exactly once (doubling breaks on Python 3.13+)."""
+        migrated, n_converted, _ = self._migrate('''\
+            from hdmf.utils import docval, getargs
+
+            class C:
+
+                @classmethod
+                @docval({'name': 'path', 'type': str, 'doc': 'the path'})
+                def from_path(cls, **kwargs):
+                    path = getargs('path', kwargs)
+                    return cls(path)
+            ''')
+        self.assertEqual(n_converted, 1)
+        self.assertEqual(migrated.count('@classmethod'), 1)
+        self.assertLess(migrated.index('@classmethod'), migrated.index('@validated'))
+        compile(migrated, '<migrated>', 'exec')
+
     def test_leftover_kwargs_flagged(self):
         migrated, n_converted, _ = self._migrate('''\
             from hdmf.utils import docval, popargs

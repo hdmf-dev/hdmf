@@ -995,7 +995,6 @@ class HERD(Container):
             os.remove(file)
 
     @classmethod
-    @classmethod
     @validated
     def get_zip_directory(cls, path: str):
         """Return the directory of the file given.
@@ -1007,7 +1006,6 @@ class HERD(Container):
         return directory
 
     @classmethod
-    @classmethod
     @validated
     def from_zip(cls, path: str, type_map: TypeMap | None = None):
         """Method to read in zipped tsv files to populate HERD.
@@ -1016,7 +1014,7 @@ class HERD(Container):
             path: The path to the zip file.
             type_map: The TypeMap to use for the returned HERD. If None, the default TypeMap is used.
         """
-        zip_file, type_map = path, type_map
+        zip_file = path
         directory = cls.get_zip_directory(zip_file)
 
         with zipfile.ZipFile(zip_file, 'r') as zip:

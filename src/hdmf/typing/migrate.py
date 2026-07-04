@@ -372,8 +372,10 @@ class DocvalMigrator:
                                        "converted automatically; convert by hand")
                 continue
             n_converted += 1
-            dec_start = min(d.lineno for d in node.decorator_list
-                            if d is dec or getattr(getattr(d, 'func', None), 'id', None) == 'docval') - 1
+            # replace ALL decorator lines: every decorator is re-emitted in new_block, so
+            # starting any lower would leave duplicates (e.g. a doubled @classmethod, which
+            # Python 3.13+ rejects at call time)
+            dec_start = min(d.lineno for d in node.decorator_list) - 1
             # skip an existing docstring; it is folded into the generated one
             body_start = node.body[0].lineno - 1
             body_end = node.end_lineno - 1
