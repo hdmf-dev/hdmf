@@ -14,8 +14,9 @@ from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpe
 from ..spec import SpecNamespace
 from ..spec.spec import BaseStorageSpec, DtypeHelper
 from ..utils import _is_collection, _get_length
-from ..utils import docval, getargs, pystr, get_data_shape
+from ..utils import pystr, get_data_shape
 from ..query import ReferenceResolver
+from ..typing import validated
 
 
 __allowable = DtypeHelper.allowable
@@ -252,9 +253,14 @@ def check_shape(expected, received):
 class ValidatorMap:
     """A class for keeping track of Validator objects for all data types in a namespace"""
 
-    @docval({'name': 'namespace', 'type': SpecNamespace, 'doc': 'the namespace to builder map for'})
-    def __init__(self, **kwargs):
-        ns = getargs('namespace', kwargs)
+    @validated
+    def __init__(self, namespace: SpecNamespace):
+        """Initialize the ValidatorMap.
+
+        Args:
+            namespace: the namespace to builder map for
+        """
+        ns = namespace
         self.__ns = ns
         tree = defaultdict(list)
         types = ns.get_registered_types()
@@ -295,11 +301,16 @@ class ValidatorMap:
     def namespace(self):
         return self.__ns
 
-    @docval({'name': 'spec', 'type': (Spec, str), 'doc': 'the specification to use to validate'},
-            returns='all valid sub data types for the given spec', rtype=tuple)
-    def valid_types(self, **kwargs):
-        '''Get all valid types for a given data type'''
-        spec = getargs('spec', kwargs)
+    @validated
+    def valid_types(self, spec: Spec | str) -> tuple:
+        """Get all valid types for a given data type
+
+        Args:
+            spec: the specification to use to validate
+
+        Returns:
+            all valid sub data types for the given spec
+        """
         if isinstance(spec, Spec):
             spec = spec.data_type_def
         try:
@@ -307,12 +318,17 @@ class ValidatorMap:
         except KeyError:
             raise ValueError("no children for '%s'" % spec)
 
-    @docval({'name': 'data_type', 'type': (BaseStorageSpec, str),
-             'doc': 'the data type to get the validator for'},
-            returns='the validator ``data_type``')
-    def get_validator(self, **kwargs):
-        """Return the validator for a given data type"""
-        dt = getargs('data_type', kwargs)
+    @validated
+    def get_validator(self, data_type: BaseStorageSpec | str):
+        """Return the validator for a given data type
+
+        Args:
+            data_type: the data type to get the validator for
+
+        Returns:
+            the validator ``data_type``
+        """
+        dt = data_type
         if isinstance(dt, BaseStorageSpec):
             dt_tmp = dt.data_type_def
             if dt_tmp is None:
@@ -324,15 +340,19 @@ class ValidatorMap:
             msg = "data type '%s' not found in namespace %s" % (dt, self.__ns.name)
             raise ValueError(msg)
 
-    @docval({'name': 'builder', 'type': BaseBuilder, 'doc': 'the builder to validate'},
-            returns="a list of errors found", rtype=list)
-    def validate(self, **kwargs):
+    @validated
+    def validate(self, builder: BaseBuilder) -> list:
         """Validate a builder against a Spec
 
         ``builder`` must have the attribute used to specifying data type
         by the namespace used to construct this ValidatorMap.
+
+        Args:
+            builder: the builder to validate
+
+        Returns:
+            a list of errors found
         """
-        builder = getargs('builder', kwargs)
         dt = builder.attributes.get(self.__type_key)
         if dt is None:
             msg = "builder must have data type defined with attribute '%s'" % self.__type_key
@@ -344,11 +364,16 @@ class ValidatorMap:
 class Validator(metaclass=ABCMeta):
     '''A base class for classes that will be used to validate against Spec subclasses'''
 
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to use to validate'},
-            {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
-    def __init__(self, **kwargs):
-        self.__spec = getargs('spec', kwargs)
-        self.__vmap = getargs('validator_map', kwargs)
+    @validated
+    def __init__(self, spec: Spec, validator_map: ValidatorMap):
+        """Initialize the validator.
+
+        Args:
+            spec: the specification to use to validate
+            validator_map: the ValidatorMap to use during validation
+        """
+        self.__spec = spec
+        self.__vmap = validator_map
 
     @property
     def spec(self):
@@ -359,9 +384,17 @@ class Validator(metaclass=ABCMeta):
         return self.__vmap
 
     @abstractmethod
-    @docval({'name': 'value', 'type': None, 'doc': 'either in the form of a value or a Builder'},
-            returns='a list of Errors', rtype=list)
-    def validate(self, **kwargs):
+    @abstractmethod
+    @validated
+    def validate(self, value: Any) -> list:
+        """Validate the given value against this validator's spec.
+
+        Args:
+            value: either in the form of a value or a Builder
+
+        Returns:
+            a list of Errors
+        """
         pass
 
     @classmethod
@@ -381,15 +414,26 @@ class Validator(metaclass=ABCMeta):
 class AttributeValidator(Validator):
     '''A class for validating values against AttributeSpecs'''
 
-    @docval({'name': 'spec', 'type': AttributeSpec, 'doc': 'the specification to use to validate'},
-            {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    @validated
+    def __init__(self, spec: AttributeSpec, validator_map: ValidatorMap):
+        """Initialize the validator.
 
-    @docval({'name': 'value', 'type': None, 'doc': 'the value to validate'},
-            returns='a list of Errors', rtype=list)
-    def validate(self, **kwargs):
-        value = getargs('value', kwargs)
+        Args:
+            spec: the specification to use to validate
+            validator_map: the ValidatorMap to use during validation
+        """
+        super().__init__(spec=spec, validator_map=validator_map)
+
+    @validated
+    def validate(self, value: Any) -> list:
+        """Validate the given value against this validator's spec.
+
+        Args:
+            value: the value to validate
+
+        Returns:
+            a list of Errors
+        """
         ret = list()
         spec = self.spec
 
@@ -445,18 +489,29 @@ class AttributeValidator(Validator):
 class BaseStorageValidator(Validator):
     '''A base class for validating against Spec objects that have attributes i.e. BaseStorageSpec'''
 
-    @docval({'name': 'spec', 'type': BaseStorageSpec, 'doc': 'the specification to use to validate'},
-            {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    @validated
+    def __init__(self, spec: BaseStorageSpec, validator_map: ValidatorMap):
+        """Initialize the validator.
+
+        Args:
+            spec: the specification to use to validate
+            validator_map: the ValidatorMap to use during validation
+        """
+        super().__init__(spec=spec, validator_map=validator_map)
         self.__attribute_validators = dict()
         for attr in self.spec.attributes:
             self.__attribute_validators[attr.name] = AttributeValidator(attr, self.vmap)
 
-    @docval({"name": "builder", "type": BaseBuilder, "doc": "the builder to validate"},
-            returns='a list of Errors', rtype=list)
-    def validate(self, **kwargs):
-        builder = getargs('builder', kwargs)
+    @validated
+    def validate(self, builder: BaseBuilder) -> list:
+        """Validate the given value against this validator's spec.
+
+        Args:
+            builder: the builder to validate
+
+        Returns:
+            a list of Errors
+        """
         attributes = builder.attributes
         ret = list()
         for attr, validator in self.__attribute_validators.items():
@@ -476,10 +531,15 @@ class BaseStorageValidator(Validator):
 class DatasetValidator(BaseStorageValidator):
     '''A class for validating DatasetBuilders against DatasetSpecs'''
 
-    @docval({'name': 'spec', 'type': DatasetSpec, 'doc': 'the specification to use to validate'},
-            {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    @validated
+    def __init__(self, spec: DatasetSpec, validator_map: ValidatorMap):
+        """Initialize the validator.
+
+        Args:
+            spec: the specification to use to validate
+            validator_map: the ValidatorMap to use during validation
+        """
+        super().__init__(spec=spec, validator_map=validator_map)
 
     def _check_ref_target_type(self, val, expected_type, type_key, builder, ret):
         """Helper to recursively validate reference target types and hierarchy."""
@@ -502,10 +562,16 @@ class DatasetValidator(BaseStorageValidator):
             for v in val:
                 self._check_ref_target_type(v, expected_type, type_key, builder, ret)
 
-    @docval({"name": "builder", "type": DatasetBuilder, "doc": "the builder to validate"},
-            returns='a list of Errors', rtype=list)
-    def validate(self, **kwargs):
-        builder = getargs('builder', kwargs)
+    @validated
+    def validate(self, builder: DatasetBuilder) -> list:
+        """Validate the given value against this validator's spec.
+
+        Args:
+            builder: the builder to validate
+
+        Returns:
+            a list of Errors
+        """
         ret = super().validate(builder)
         data = builder.data
         if self.spec.dtype is not None:
@@ -575,15 +641,26 @@ def _resolve_data_type(spec):
 class GroupValidator(BaseStorageValidator):
     '''A class for validating GroupBuilders against GroupSpecs'''
 
-    @docval({'name': 'spec', 'type': GroupSpec, 'doc': 'the specification to use to validate'},
-            {'name': 'validator_map', 'type': ValidatorMap, 'doc': 'the ValidatorMap to use during validation'})
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    @validated
+    def __init__(self, spec: GroupSpec, validator_map: ValidatorMap):
+        """Initialize the validator.
 
-    @docval({"name": "builder", "type": GroupBuilder, "doc": "the builder to validate"},
-            returns='a list of Errors', rtype=list)
-    def validate(self, **kwargs):
-        builder = getargs('builder', kwargs)
+        Args:
+            spec: the specification to use to validate
+            validator_map: the ValidatorMap to use during validation
+        """
+        super().__init__(spec=spec, validator_map=validator_map)
+
+    @validated
+    def validate(self, builder: GroupBuilder) -> list:
+        """Validate the given value against this validator's spec.
+
+        Args:
+            builder: the builder to validate
+
+        Returns:
+            a list of Errors
+        """
         errors = super().validate(builder)
         errors.extend(self.__validate_children(builder))
         return self._remove_duplicates(errors)

@@ -8,27 +8,35 @@ except ImportError:
 
 from . import register_class
 from ..container import Container
-from ..utils import docval, popargs, to_uint_array,  get_data_shape, AllowPositional
+from ..typing import ArrayData, validated
+from ..utils import to_uint_array, get_data_shape, AllowPositional
 
 
 @register_class('CSRMatrix')
 class CSRMatrix(Container):
 
-    @docval({'name': 'data', 'type': (csr_matrix, 'array_data'),
-             'doc': 'the data to use for this CSRMatrix or CSR data array.'
-                    'If passing CSR data array, *indices*, *indptr*, and *shape* must also be provided'},
-            {'name': 'indices', 'type': 'array_data', 'doc': 'CSR index array', 'default': None},
-            {'name': 'indptr', 'type': 'array_data', 'doc': 'CSR index pointer array', 'default': None},
-            {'name': 'shape', 'type': 'array_data', 'doc': 'the shape of the matrix', 'default': None},
-            {'name': 'name', 'type': str, 'doc': 'the name to use for this when storing', 'default': 'csr_matrix'},
-            allow_positional=AllowPositional.WARNING)
-    def __init__(self, **kwargs):
+    @validated(allow_positional=AllowPositional.WARNING)
+    def __init__(self,
+                 data: csr_matrix | ArrayData,
+                 indices: ArrayData | None = None,
+                 indptr: ArrayData | None = None,
+                 shape: ArrayData | None = None,
+                 name: str = 'csr_matrix'):
+        """Initialize the CSRMatrix.
+
+        Args:
+            data: the data to use for this CSRMatrix or CSR data array. If passing CSR data array,
+                *indices*, *indptr*, and *shape* must also be provided
+            indices: CSR index array
+            indptr: CSR index pointer array
+            shape: the shape of the matrix
+            name: the name to use for this when storing
+        """
         if not SCIPY_INSTALLED:
             raise ImportError(
                 "scipy must be installed to use CSRMatrix. Please install scipy using `pip install scipy`."
             )
-        data, indices, indptr, shape = popargs('data', 'indices', 'indptr', 'shape', kwargs)
-        super().__init__(**kwargs)
+        super().__init__(name=name)
         if not isinstance(data, csr_matrix):
             temp_shape = get_data_shape(data)
             temp_ndim = len(temp_shape)

@@ -5,7 +5,7 @@ from . import get_type_map
 from ..container import Table, Row, Container, Data, AbstractContainer, HERDManager
 from ..term_set import TermSet
 from ..data_utils import DataIO
-from ..utils import docval, popargs, AllowPositional
+from ..utils import AllowPositional
 from ..build import TypeMap
 from ..term_set import TermSetWrapper
 from glob import glob
@@ -13,6 +13,7 @@ import os
 import zipfile
 from collections import namedtuple
 from warnings import warn
+from ..typing import Bool, Int, validated
 
 
 class KeyTable(Table):
@@ -173,31 +174,35 @@ class HERD(Container):
         {'name': 'entities', 'child': True},
     )
 
-    @docval({'name': 'keys', 'type': KeyTable, 'default': None,
-             'doc': 'The table storing user keys for referencing resources.'},
-            {'name': 'files', 'type': FileTable, 'default': None,
-             'doc': 'The table for storing file ids used in external resources.'},
-            {'name': 'entities', 'type': EntityTable, 'default': None,
-             'doc': 'The table storing entity information.'},
-            {'name': 'objects', 'type': ObjectTable, 'default': None,
-             'doc': 'The table storing object information.'},
-            {'name': 'object_keys', 'type': ObjectKeyTable, 'default': None,
-             'doc': 'The table storing object-key relationships.'},
-            {'name': 'entity_keys', 'type': EntityKeyTable, 'default': None,
-             'doc': 'The table storing entity-key relationships.'},
-            {'name': 'type_map', 'type': TypeMap, 'default': None,
-             'doc': 'The type map. If None is provided, the HDMF-common type map will be used.'},
-            allow_positional=AllowPositional.WARNING)
-    def __init__(self, **kwargs):
+    @validated(allow_positional=AllowPositional.WARNING)
+    def __init__(self,
+                 keys: KeyTable | None = None,
+                 files: FileTable | None = None,
+                 entities: EntityTable | None = None,
+                 objects: ObjectTable | None = None,
+                 object_keys: ObjectKeyTable | None = None,
+                 entity_keys: EntityKeyTable | None = None,
+                 type_map: TypeMap | None = None):
+        """Initialize the HERD container.
+
+        Args:
+            keys: The table storing user keys for referencing resources.
+            files: The table for storing file ids used in external resources.
+            entities: The table storing entity information.
+            objects: The table storing object information.
+            object_keys: The table storing object-key relationships.
+            entity_keys: The table storing entity-key relationships.
+            type_map: The type map. If None is provided, the HDMF-common type map will be used.
+        """
         name = 'external_resources'
         super().__init__(name)
-        self.keys = kwargs['keys'] or KeyTable()
-        self.files = kwargs['files'] or FileTable()
-        self.entities = kwargs['entities'] or EntityTable()
-        self.objects = kwargs['objects'] or ObjectTable()
-        self.object_keys = kwargs['object_keys'] or ObjectKeyTable()
-        self.entity_keys = kwargs['entity_keys'] or EntityKeyTable()
-        self.type_map = kwargs['type_map'] or get_type_map()
+        self.keys = keys or KeyTable()
+        self.files = files or FileTable()
+        self.entities = entities or EntityTable()
+        self.objects = objects or ObjectTable()
+        self.object_keys = object_keys or ObjectKeyTable()
+        self.entity_keys = entity_keys or EntityKeyTable()
+        self.type_map = type_map or get_type_map()
 
     @staticmethod
     def assert_external_resources_equal(left, right, check_dtype=True):
@@ -228,10 +233,9 @@ class HERD(Container):
             raise AssertionError(msg)
         return True
 
-    @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the key to be added.'})
-    def _add_key(self, **kwargs):
-        """
-        Add a key to be used for making references to external resources.
+    @validated
+    def _add_key(self, key_name: str):
+        """Add a key to be used for making references to external resources.
 
         It is possible to use the same *key_name* to refer to different resources so long as the *key_name* is not
         used within the same object, relative_path, and field. To do so, this method must be called for the
@@ -239,52 +243,53 @@ class HERD(Container):
 
         The returned Key objects must be managed by the caller so as to be appropriately passed to subsequent calls
         to methods for storing information about the different resources.
+
+        Args:
+            key_name: The name of the key to be added.
         """
-        key = kwargs['key_name']
+        key = key_name
         return Key(key, table=self.keys)
 
-    @docval({'name': 'file_object_id', 'type': str, 'doc': 'The id of the file'})
-    def _add_file(self, **kwargs):
-        """
-        Add a file to be used for making references to external resources.
+    @validated
+    def _add_file(self, file_object_id: str):
+        """Add a file to be used for making references to external resources.
 
         This is optional when working in HDMF.
+
+        Args:
+            file_object_id: The id of the file
         """
-        file_object_id = kwargs['file_object_id']
         return File(file_object_id, table=self.files)
 
-    @docval({'name': 'entity_id', 'type': str, 'doc': 'The unique entity id.'},
-            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the entity.'})
-    def _add_entity(self, **kwargs):
+    @validated
+    def _add_entity(self, entity_id: str, entity_uri: str):
+        """Add an entity that will be referenced to using keys specified in HERD.entity_keys.
+
+        Args:
+            entity_id: The unique entity id.
+            entity_uri: The URI for the entity.
         """
-        Add an entity that will be referenced to using keys specified in HERD.entity_keys.
-        """
-        entity_id = kwargs['entity_id']
-        entity_uri = kwargs['entity_uri']
         entity = Entity( entity_id, entity_uri, table=self.entities)
         return entity
 
-    @docval({'name': 'container', 'type': (str, AbstractContainer),
-             'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
-            {'name': 'files_idx', 'type': (int, np.integer),
-             'doc': 'The file_object_id row idx.'},
-            {'name': 'object_type', 'type': str, 'default': None,
-             'doc': ('The type of the object. This is also the parent in relative_path. If omitted, '
-                     'the name of the container class is used.')},
-            {'name': 'relative_path', 'type': str,
-             'doc': ('The relative_path of the attribute of the object that uses ',
-                     'an external resource reference key. Use an empty string if not applicable.')},
-            {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.')})
-    def _add_object(self, **kwargs):
+    @validated
+    def _add_object(self,
+                    container: str | AbstractContainer,
+                    files_idx: Int | np.integer,
+                    relative_path: str,
+                    object_type: str | None = None,
+                    field: str = ''):
+        """Add an object that references an external resource.
+
+        Args:
+            container: The Container/Data object to add or the object id of the Container/Data object to add.
+            files_idx: The file_object_id row idx.
+            object_type: The type of the object. This is also the parent in relative_path. If omitted, the name of the
+                container class is used.
+            relative_path: The relative_path of the attribute of the object that uses an external resource reference
+                key. Use an empty string if not applicable.
+            field: The field of the compound data type using an external resource.
         """
-        Add an object that references an external resource.
-        """
-        files_idx, container, object_type, relative_path, field = popargs('files_idx',
-                                                                          'container',
-                                                                          'object_type',
-                                                                          'relative_path',
-                                                                          'field', kwargs)
 
         if object_type is None:
             object_type = container.__class__.__name__
@@ -294,23 +299,25 @@ class HERD(Container):
         obj = Object(files_idx, container, object_type, relative_path, field, table=self.objects)
         return obj
 
-    @docval({'name': 'obj', 'type': (int, np.integer, Object), 'doc': 'The Object that uses the Key.'},
-            {'name': 'key', 'type': (int, np.integer, Key), 'doc': 'The Key that the Object uses.'})
-    def _add_object_key(self, **kwargs):
-        """
-        Specify that an object (i.e. container and relative_path) uses a key to reference
+    @validated
+    def _add_object_key(self, obj: Int | np.integer | Object, key: Int | np.integer | Key):
+        """Specify that an object (i.e. container and relative_path) uses a key to reference
         an external resource.
+
+        Args:
+            obj: The Object that uses the Key.
+            key: The Key that the Object uses.
         """
-        obj, key = popargs('obj', 'key', kwargs)
         return ObjectKey(obj, key, table=self.object_keys)
 
-    @docval({'name': 'entity', 'type': (int, np.integer, Entity), 'doc': 'The Entity associated with the Key.'},
-            {'name': 'key', 'type': (int, np.integer, Key), 'doc': 'The Key that the connected to the Entity.'})
-    def _add_entity_key(self, **kwargs):
+    @validated
+    def _add_entity_key(self, entity: Int | np.integer | Entity, key: Int | np.integer | Key):
+        """Add entity-key relationship to the EntityKeyTable.
+
+        Args:
+            entity: The Entity associated with the Key.
+            key: The Key that the connected to the Entity.
         """
-        Add entity-key relationship to the EntityKeyTable.
-        """
-        entity, key = popargs('entity', 'key', kwargs)
         return EntityKey(entity, key, table=self.entity_keys)
 
     def _find_object(self, file, container, relative_path, field):
@@ -365,14 +372,14 @@ class HERD(Container):
         return self._add_object(files_idx=files_idx, container=container,
                                 relative_path=relative_path, field=field)
 
-    @docval({'name': 'container', 'type': (str, AbstractContainer),
-             'doc': ('The Container/Data object that uses the key or '
-                     'the object id for the Container/Data object that uses the key.')})
-    def _get_file_from_container(self, **kwargs):
+    @validated
+    def _get_file_from_container(self, container: str | AbstractContainer):
+        """Method to retrieve a file associated with the container in the case a file is not provided.
+
+        Args:
+            container: The Container/Data object that uses the key or the object id for the Container/Data object that
+                uses the key.
         """
-        Method to retrieve a file associated with the container in the case a file is not provided.
-        """
-        container = kwargs['container']
 
         if isinstance(container, HERDManager):
             return container
@@ -394,16 +401,16 @@ class HERD(Container):
                "to the file before adding an external reference." % getattr(container, 'name', container))
         raise ValueError(msg)
 
-    @docval({'name': 'objects', 'type': list,
-             'doc': 'List of objects to check for TermSetWrapper within the fields.'})
-    def __check_termset_wrapper(self, **kwargs):
-        """
-        Takes a list of objects and checks the fields for TermSetWrapper.
+    @validated
+    def __check_termset_wrapper(self, objects: list):
+        """Takes a list of objects and checks the fields for TermSetWrapper.
 
         wrapped_obj = namedtuple('wrapped_obj', ['object', 'attribute', 'wrapper'])
         :return: [wrapped_obj(object1, attribute_name1, wrapper1), ...]
+
+        Args:
+            objects: List of objects to check for TermSetWrapper within the fields.
         """
-        objects = kwargs['objects']
 
         ret = [] # list to be returned with the objects, attributes and corresponding termsets
 
@@ -419,15 +426,15 @@ class HERD(Container):
 
         return ret
 
-    @docval({'name': 'root_container', 'type': HERDManager,
-             'doc': 'The root container or file containing objects with a TermSet.'})
-    def add_ref_container(self, **kwargs):
-        """
-        Method to search through the root_container for all instances of TermSet.
+    @validated
+    def add_ref_container(self, root_container: HERDManager):
+        """Method to search through the root_container for all instances of TermSet.
         Currently, only datasets are supported. By using a TermSet, the data comes validated
         and can use the permissible values within the set to populate HERD.
+
+        Args:
+            root_container: The root container or file containing objects with a TermSet.
         """
-        root_container = kwargs['root_container']
 
         all_objects = root_container.all_children() # list of child objects and the container itself
 
@@ -449,30 +456,26 @@ class HERD(Container):
                              entity_id=entity_id,
                              entity_uri=entity_uri)
 
-    @docval({'name': 'container', 'type': AbstractContainer, 'default': None,
-             'doc': 'The Container/Data object that uses the key.'},
-            {'name': 'attribute', 'type': str,
-             'doc': 'The attribute of the container for the external reference.', 'default': None},
-            {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.')},
-            {'name': 'key', 'type': (str, Key), 'default': None,
-             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
-            {'name': 'termset', 'type': TermSet,
-             'doc': 'The TermSet to be used if the container/attribute does not have one.'}
-            )
-    def add_ref_termset(self, **kwargs):
-        """
-        This method allows users to take advantage of using the TermSet class to provide the entity information
+    @validated
+    def add_ref_termset(self,
+                        termset: TermSet,
+                        container: AbstractContainer | None = None,
+                        attribute: str | None = None,
+                        field: str = '',
+                        key: str | Key | None = None):
+        """This method allows users to take advantage of using the TermSet class to provide the entity information
         for add_ref, while also validating the data. This method supports adding a single key or an entire dataset
         to the HERD tables. For both cases, the term, i.e., key, will be validated against the permissible values
         in the TermSet. If valid, it will proceed to call add_ref. Otherwise, the method will return a dict of
         missing terms (terms not found in the TermSet).
+
+        Args:
+            container: The Container/Data object that uses the key.
+            attribute: The attribute of the container for the external reference.
+            field: The field of the compound data type using an external resource.
+            key: The name of the key or the Key object from the KeyTable for the key to add a resource for.
+            termset: The TermSet to be used if the container/attribute does not have one.
         """
-        container = kwargs['container']
-        attribute = kwargs['attribute']
-        key = kwargs['key']
-        field = kwargs['field']
-        termset = kwargs['termset']
 
         # if key is provided then add_ref proceeds as normal
         if key is not None:
@@ -547,38 +550,35 @@ class HERD(Container):
         return container, relative_path
 
 
-    @docval({'name': 'container', 'type': AbstractContainer, 'default': None,
-             'doc': 'The Container/Data object that uses the key.'},
-            {'name': 'attribute', 'type': str,
-             'doc': 'The attribute of the container for the external reference.', 'default': None},
-            {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.')},
-            {'name': 'key', 'type': (str, Key), 'default': None,
-             'doc': ('The name of the key or the Key object from the KeyTable for the key to add a resource for. '
-                     'If not provided and ``attribute`` names a scalar string attribute, the value of that '
-                     'attribute is used as the key.')},
-            {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
-            {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None},
-            )
-    def add_ref(self, **kwargs):  # noqa: C901
-        """
-        Add information about an external reference used in this file.
+    @validated
+    def add_ref(self,  # noqa: C901
+                entity_id: str,
+                container: AbstractContainer | None = None,
+                attribute: str | None = None,
+                field: str = '',
+                key: str | Key | None = None,
+                entity_uri: str | None = None):
+        """Add information about an external reference used in this file.
 
         It is possible to use the same name of the key to refer to different resources
         so long as the name of the key is not used within the same object, relative_path, and
         field combination. This method does not support such functionality by default.
+
+        Args:
+            container: The Container/Data object that uses the key.
+            attribute: The attribute of the container for the external reference.
+            field: The field of the compound data type using an external resource.
+            key: The name of the key or the Key object from the KeyTable for the key to add a resource for. If not
+                provided and ``attribute`` names a scalar string attribute, the value of that attribute is used as the
+                key.
+            entity_id: The identifier for the entity at the resource.
+            entity_uri: The URI for the identifier at the resource.
         """
         ###############################################################
-        container = kwargs['container']
-        attribute = kwargs['attribute']
         if isinstance(container, Data):
             # Used when using the TermSetWrapper
             if attribute == 'data':
                 attribute = None
-        key = kwargs['key']
-        field = kwargs['field']
-        entity_id = kwargs['entity_id']
-        entity_uri = kwargs['entity_uri']
 
         ##########################################
         # Default the key from a scalar attribute
@@ -718,30 +718,30 @@ class HERD(Container):
         if add_entity_key:
             self._add_entity_key(entity, key)
 
-    @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
-            {'name': 'file', 'type': HERDManager, 'doc': 'The file associated with the container.',
-             'default': None},
-            {'name': 'container', 'type': AbstractContainer, 'default': None,
-             'doc': 'The Container/Data object that uses the key.'},
-            {'name': 'relative_path', 'type': str,
-             'doc': ('The relative_path of the attribute of the object that uses ',
-                     'an external resource reference key. Use an empty string if not applicable.'),
-             'default': ''},
-            {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.')})
-    def get_key(self, **kwargs):
-        """
-        Return a Key.
+    @validated
+    def get_key(self,
+                key_name: str,
+                file: HERDManager | None = None,
+                container: AbstractContainer | None = None,
+                relative_path: str = '',
+                field: str = ''):
+        """Return a Key.
 
         If container, relative_path, and field are provided, the Key that corresponds to the given name of the key
         for the given container, relative_path, and field is returned.
 
         If there are multiple matches, a list of all matching keys will be returned.
+
+        Args:
+            key_name: The name of the Key to get.
+            file: The file associated with the container.
+            container: The Container/Data object that uses the key.
+            relative_path: The relative_path of the attribute of the object that uses an external resource reference
+                key. Use an empty string if not applicable.
+            field: The field of the compound data type using an external resource.
         """
-        key_name, container, relative_path, field = popargs('key_name', 'container', 'relative_path', 'field', kwargs)
         key_idx_matches = self.keys.which(key=key_name)
 
-        file = kwargs['file']
 
         if container is not None:
             if file is None:
@@ -766,34 +766,35 @@ class HERD(Container):
             else:
                 return self.keys.row[key_idx_matches[0]]
 
-    @docval({'name': 'entity_id', 'type': str, 'doc': 'The ID for the identifier at the resource.'})
-    def get_entity(self, **kwargs):
-        entity_id = kwargs['entity_id']
+    @validated
+    def get_entity(self, entity_id: str):
+        """get_entity
+
+        Args:
+            entity_id: The ID for the identifier at the resource.
+        """
         entity = self.entities.which(entity_id=entity_id)
         if len(entity)>0:
             return self.entities.row[entity[0]]
         else:
             return None
 
-    @docval({'name': 'object_type', 'type': str,
-             'doc': 'The type of the object. This is also the parent in relative_path.'},
-            {'name': 'relative_path', 'type': str,
-             'doc': ('The relative_path of the attribute of the object that uses ',
-                     'an external resource reference key. Use an empty string if not applicable.'),
-             'default': ''},
-            {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.')},
-            {'name': 'all_instances', 'type': bool, 'default': False,
-             'doc': ('The bool to return a dataframe with all instances of the object_type.',
-                     'If True, relative_path and field inputs will be ignored.')})
-    def get_object_type(self, **kwargs):
+    @validated
+    def get_object_type(self,
+                        object_type: str,
+                        relative_path: str = '',
+                        field: str = '',
+                        all_instances: Bool = False):
+        """Get all entities/resources associated with an object_type.
+
+        Args:
+            object_type: The type of the object. This is also the parent in relative_path.
+            relative_path: The relative_path of the attribute of the object that uses an external resource reference
+                key. Use an empty string if not applicable.
+            field: The field of the compound data type using an external resource.
+            all_instances: The bool to return a dataframe with all instances of the object_type. If True,
+                relative_path and field inputs will be ignored.
         """
-        Get all entities/resources associated with an object_type.
-        """
-        object_type = kwargs['object_type']
-        relative_path = kwargs['relative_path']
-        field = kwargs['field']
-        all_instances = kwargs['all_instances']
 
         df = self.to_dataframe()
 
@@ -805,27 +806,23 @@ class HERD(Container):
                         & (df['field'] == field)]
         return df
 
-    @docval({'name': 'file',  'type': HERDManager, 'doc': 'The file.',
-             'default': None},
-            {'name': 'container', 'type': AbstractContainer,
-             'doc': 'The Container/data object that is linked to resources/entities.'},
-            {'name': 'attribute', 'type': str,
-             'doc': 'The attribute of the container for the external reference.', 'default': None},
-            {'name': 'relative_path', 'type': str,
-             'doc': ('The relative_path of the attribute of the object that uses ',
-                     'an external resource reference key. Use an empty string if not applicable.'),
-             'default': ''},
-            {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.')})
-    def get_object_entities(self, **kwargs):
+    @validated
+    def get_object_entities(self,
+                            container: AbstractContainer,
+                            file: HERDManager | None = None,
+                            attribute: str | None = None,
+                            relative_path: str = '',
+                            field: str = ''):
+        """Get all entities/resources associated with an object.
+
+        Args:
+            file: The file.
+            container: The Container/data object that is linked to resources/entities.
+            attribute: The attribute of the container for the external reference.
+            relative_path: The relative_path of the attribute of the object that uses an external resource reference
+                key. Use an empty string if not applicable.
+            field: The field of the compound data type using an external resource.
         """
-        Get all entities/resources associated with an object.
-        """
-        file = kwargs['file']
-        container = kwargs['container']
-        attribute = kwargs['attribute']
-        relative_path = kwargs['relative_path']
-        field = kwargs['field']
 
         if file is None:
             file = self._get_file_from_container(container=container)
@@ -855,20 +852,21 @@ class HERD(Container):
         df = pd.DataFrame(entities, columns=['entity_id', 'entity_uri'])
         return df
 
-    @docval({'name': 'use_categories', 'type': bool, 'default': False,
-             'doc': 'Use a multi-index on the columns to indicate which category each column belongs to.'},
-            rtype='pandas.DataFrame', returns='A DataFrame with all data merged into a flat, denormalized table.')
-    def to_dataframe(self, **kwargs):
-        """
-        Convert the data from the keys, resources, entities, objects, and object_keys tables
+    @validated
+    def to_dataframe(self, use_categories: Bool = False) -> pd.DataFrame:
+        """Convert the data from the keys, resources, entities, objects, and object_keys tables
         to a single joint dataframe. I.e., here data is being denormalized, e.g., keys that
         are used across multiple entities or objects will duplicated across the corresponding
         rows.
 
         Returns: :py:class:`~pandas.DataFrame` with all data merged into a single, flat, denormalized table.
 
+        Args:
+            use_categories: Use a multi-index on the columns to indicate which category each column belongs to.
+
+        Returns:
+            A DataFrame with all data merged into a flat, denormalized table.
         """
-        use_categories = popargs('use_categories', kwargs)
         # Step 1: Combine the entities, keys, and entity_keys table
         ent_key_df = self.entity_keys.to_dataframe()
         entities_mapped_df = self.entities.to_dataframe().iloc[ent_key_df['entities_idx']].reset_index(drop=True)
@@ -973,12 +971,14 @@ class HERD(Container):
         html_repr += "</div>"
         return html_repr
 
-    @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
-    def to_zip(self, **kwargs):
+    @validated
+    def to_zip(self, path: str):
+        """Write the tables in HERD to zipped tsv files.
+
+        Args:
+            path: The path to the zip file.
         """
-        Write the tables in HERD to zipped tsv files.
-        """
-        zip_file = kwargs['path']
+        zip_file = path
         directory = os.path.dirname(zip_file)
 
         files = [os.path.join(directory, child.name)+'.tsv' for child in self.children]
@@ -995,23 +995,28 @@ class HERD(Container):
             os.remove(file)
 
     @classmethod
-    @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
-    def get_zip_directory(cls, path):
-        """
-        Return the directory of the file given.
+    @classmethod
+    @validated
+    def get_zip_directory(cls, path: str):
+        """Return the directory of the file given.
+
+        Args:
+            path: The path to the zip file.
         """
         directory = os.path.dirname(os.path.realpath(path))
         return directory
 
     @classmethod
-    @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'},
-            {'name': 'type_map', 'type': TypeMap, 'default': None,
-             'doc': 'The TypeMap to use for the returned HERD. If None, the default TypeMap is used.'})
-    def from_zip(cls, **kwargs):
+    @classmethod
+    @validated
+    def from_zip(cls, path: str, type_map: TypeMap | None = None):
+        """Method to read in zipped tsv files to populate HERD.
+
+        Args:
+            path: The path to the zip file.
+            type_map: The TypeMap to use for the returned HERD. If None, the default TypeMap is used.
         """
-        Method to read in zipped tsv files to populate HERD.
-        """
-        zip_file, type_map = popargs('path', 'type_map', kwargs)
+        zip_file, type_map = path, type_map
         directory = cls.get_zip_directory(zip_file)
 
         with zipfile.ZipFile(zip_file, 'r') as zip:

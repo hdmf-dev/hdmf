@@ -2,7 +2,8 @@ from abc import ABCMeta, abstractmethod
 
 import numpy as np
 
-from .utils import ExtenderMeta, docval_macro, docval, getargs
+from .typing import ArrayData, validated
+from .utils import ExtenderMeta, docval_macro
 
 
 @docval_macro('array_data')
@@ -19,10 +20,15 @@ class HDMFDataset(metaclass=ExtenderMeta):
         idx = self.__evaluate_key(key)
         return self.dataset[idx]
 
-    @docval({'name': 'dataset', 'type': 'array_data', 'doc': 'the HDF5 file lazily evaluate'})
-    def __init__(self, **kwargs):
+    @validated
+    def __init__(self, dataset: ArrayData):
+        """Initialize the HDMFDataset.
+
+        Args:
+            dataset: the dataset (e.g. an HDF5 or Zarr dataset) to be lazily evaluated
+        """
         super().__init__()
-        self.__dataset = getargs('dataset', kwargs)
+        self.__dataset = dataset
 
     @property
     def dataset(self):

@@ -295,26 +295,50 @@ class DocvalMigrator:
         return f"{indent}@validated"
 
     def _rewrite_body(self, func, body_lines, indent):
-        """Rewrite mechanical getargs/popargs lines; flag remaining kwargs references."""
+        """Rewrite mechanical getargs/popargs/kwargs[...] lines; flag remaining kwargs uses."""
         import re
         argnames = {a.name for a in func.args}
-        out = []
-        pattern = re.compile(
-            r"^(?P<lead>\s*)(?P<targets>[\w.]+(?:\s*,\s*[\w.]+)*)\s*=\s*(?:getargs|popargs)\(\s*"
-            r"(?P<names>(?:'[^']+'|\"[^\"]+\")(?:\s*,\s*(?:'[^']+'|\"[^\"]+\"))*)\s*,\s*kwargs\s*\)\s*$")
-        for line in body_lines:
-            m = pattern.match(line)
+        getargs_pattern = re.compile(
+            r"^(?P<lead>\s*)\(?\s*(?P<targets>[\w.]+(?:\s*,\s*[\w.]+)*)\s*,?\s*\)?\s*="
+            r"\s*(?:getargs|popargs)\(\s*"
+            r"(?P<names>(?:'[^']+'|\"[^\"]+\")(?:\s*,\s*(?:'[^']+'|\"[^\"]+\"))*)\s*,\s*kwargs\s*,?\s*\)\s*$")
+        subscript_pattern = re.compile(
+            r"^(?P<lead>\s*)(?P<target>[\w.]+)\s*=\s*kwargs\[\s*(?:'(?P<name>\w+)'|\"(?P<name2>\w+)\")\s*\]\s*$")
+
+        def rewrite(logical, lead):
+            """Rewrite one whitespace-squashed logical line, or return None to keep it."""
+            m = getargs_pattern.match(logical)
             if m:
                 targets = [t.strip() for t in m.group('targets').split(',')]
                 names = [n.strip().strip('\'"') for n in m.group('names').split(',')]
                 if len(targets) == len(names) and all(n in argnames for n in names):
                     if targets == names:
-                        continue  # parameters are now real names; the line is redundant
-                    # e.g. `self.data, foo = getargs('data', 'bar', kwargs)` ->
-                    #      `self.data, foo = data, bar`
-                    out.append(f"{m.group('lead')}{', '.join(targets)} = {', '.join(names)}")
-                    continue
-            out.append(line)
+                        return []  # parameters are now real names; the line is redundant
+                    return [f"{lead}{', '.join(targets)} = {', '.join(names)}"]
+            m = subscript_pattern.match(logical)
+            if m:
+                name = m.group('name') or m.group('name2')
+                if name in argnames:
+                    if m.group('target') == name:
+                        return []
+                    return [f"{lead}{m.group('target')} = {name}"]
+            return None
+
+        out = []
+        buffer = []
+        balance = 0
+        for line in body_lines:
+            buffer.append(line)
+            balance += sum(line.count(c) for c in '([{') - sum(line.count(c) for c in ')]}')
+            if balance > 0 or line.rstrip().endswith('\\'):
+                continue  # statement continues on the next line
+            balance = 0
+            lead = re.match(r'\s*', buffer[0]).group()
+            logical = ' '.join(part.strip().rstrip('\\').strip() for part in buffer)
+            replacement = rewrite(lead + logical, lead)
+            out.extend(buffer if replacement is None else replacement)
+            buffer = []
+        out.extend(buffer)  # unbalanced trailing lines, if any
         leftover_kwargs = any('kwargs' in line for line in out) and not func.allow_extra
         todos = list(func.todos)
         for arg in func.args:
