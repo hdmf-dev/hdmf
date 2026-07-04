@@ -19,8 +19,6 @@ comment for human review:
   ``super().__init__(**kwargs)``)
 """
 
-from __future__ import annotations
-
 import argparse
 import ast
 import difflib
