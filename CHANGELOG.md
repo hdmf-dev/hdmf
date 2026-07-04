@@ -1,5 +1,12 @@
 # HDMF Changelog
 
+## HDMF 6.2.0 (Upcoming)
+
+### Enhancements
+- Added the `hdmf.typing` package, the first phase of replacing `@docval` with standard Python type hints ([#1129](https://github.com/hdmf-dev/hdmf/issues/1129)). It provides: type aliases with docval-equivalent semantics (`Int`, `UInt`, `Float`, `Bool` with numpy widening; `ArrayData`, `ScalarData`, `AnyData` backed by the live docval macro registry; `TypeName[...]` for MRO-name forward references; `Shaped[...]` for array shape specs), the `@validated` decorator for docval-parity runtime validation of type-hinted functions (with the same error messages, `TermSetWrapper` unwrapping, and an `HDMF_TYPE_CHECKING=off` kill switch), a migration tool (`python -m hdmf.typing.migrate`), and parity-testing helpers (`hdmf.typing.testing`). @bendichter [#TBD]
+- `hdmf.utils.get_docval` now also works on functions with type-hinted signatures: docval-compatible argument specs are synthesized from the signature, type hints, and Google-style docstring. This keeps the downstream splice pattern `@docval(*get_docval(Parent.__init__, ...))` working as HDMF (and downstream libraries) migrate off `@docval` module by module. Existing `@docval`-decorated functions are unaffected. @bendichter [#TBD]
+- New required dependencies: `beartype`, `numpydantic`, and `docstring_parser`. @bendichter [#TBD]
+
 ## HDMF 6.1.0 (June 25, 2026)
 
 ### Enhancements
