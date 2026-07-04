@@ -98,7 +98,7 @@ class AttributeSpecTests(TestCase):
 
     def test_build_spec_no_doc(self):
         spec_dict = {'name': 'attribute1', 'dtype': 'text'}
-        msg = "AttributeSpec.__init__: missing argument 'doc'"
+        msg = "AttributeSpec.__init__: missing a required argument: 'doc'"
         with self.assertRaisesWith(TypeError, msg):
             AttributeSpec.build_spec(spec_dict)
 

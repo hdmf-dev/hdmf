@@ -3,7 +3,7 @@ import warnings
 from collections import OrderedDict
 
 from .spec import BaseStorageSpec, GroupSpec
-from ..utils import docval, getargs
+from ..typing import Bool, validated
 
 
 class SpecCatalog:
@@ -27,14 +27,14 @@ class SpecCatalog:
         self.__hierarchy = dict()
         self.__spec_source_files = dict()
 
-    @docval({'name': 'spec', 'type': BaseStorageSpec, 'doc': 'a Spec object'},
-            {'name': 'source_file', 'type': str,
-             'doc': 'path to the source file from which the spec was loaded', 'default': None})
-    def register_spec(self, **kwargs):
-        '''
-        Associate a specified object type with a specification
-        '''
-        spec, source_file = getargs('spec', 'source_file', kwargs)
+    @validated
+    def register_spec(self, spec: BaseStorageSpec, source_file: str | None = None):
+        """Associate a specified object type with a specification
+
+        Args:
+            spec: a Spec object
+            source_file: path to the source file from which the spec was loaded
+        """
         ndt = spec.data_type_inc
         ndt_def = spec.data_type_def
         if ndt_def is None:
@@ -55,46 +55,52 @@ class SpecCatalog:
         self.__specs[type_name] = spec
         self.__spec_source_files[type_name] = source_file
 
-    @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to get the Spec for'},
-            returns="the specification for writing the given object type to HDF5 ", rtype=BaseStorageSpec)
-    def get_spec(self, **kwargs):
-        '''
-        Get the Spec object for the given type
-        '''
-        data_type = getargs('data_type', kwargs)
+    @validated
+    def get_spec(self, data_type: str) -> BaseStorageSpec:
+        """Get the Spec object for the given type
+
+        Args:
+            data_type: the data_type to get the Spec for
+
+        Returns:
+            the specification for writing the given object type to HDF5
+        """
         return self.__specs.get(data_type, None)
 
-    @docval(rtype=tuple)
-    def get_registered_types(self, **kwargs):
-        '''
-        Return all registered specifications
-        '''
-        # kwargs is not used here but is used by docval
+    def get_registered_types(self) -> tuple:
+        """Return all registered specifications.
+
+        Returns:
+            all registered specifications
+        """
         return tuple(self.__specs.keys())
 
-    @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type of the spec to get the source file for'},
-            returns="the path to source specification file from which the spec was originally loaded or None ",
-            rtype='str')
-    def get_spec_source_file(self, **kwargs):
-        '''
-        Return the path to the source file from which the spec for the given
+    @validated
+    def get_spec_source_file(self, data_type: str) -> 'str':
+        """Return the path to the source file from which the spec for the given
         type was loaded from. None is returned if no file path is available
         for the spec. Note: The spec in the file may not be identical to the
         object in case the spec is modified after load.
-        '''
-        data_type = getargs('data_type', kwargs)
+
+        Args:
+            data_type: the data_type of the spec to get the source file for
+
+        Returns:
+            the path to source specification file from which the spec was originally loaded or None
+        """
         return self.__spec_source_files.get(data_type, None)
 
-    @docval({'name': 'spec', 'type': BaseStorageSpec, 'doc': 'the Spec object to register'},
-            {'name': 'source_file',
-             'type': str,
-             'doc': 'path to the source file from which the spec was loaded', 'default': None},
-            rtype=tuple, returns='the types that were registered with this spec')
-    def auto_register(self, **kwargs):
-        '''
-        Register this specification and all sub-specification using data_type as object type name
-        '''
-        spec, source_file = getargs('spec', 'source_file', kwargs)
+    @validated
+    def auto_register(self, spec: BaseStorageSpec, source_file: str | None = None) -> tuple:
+        """Register this specification and all sub-specification using data_type as object type name
+
+        Args:
+            spec: the Spec object to register
+            source_file: path to the source file from which the spec was loaded
+
+        Returns:
+            the types that were registered with this spec
+        """
         ndt = spec.data_type_def
         ret = list()
         if ndt is not None:
@@ -110,18 +116,19 @@ class SpecCatalog:
                 ret.extend(self.auto_register(group_spec, source_file))
         return tuple(ret)
 
-    @docval({'name': 'data_type', 'type': (str, type),
-             'doc': 'the data_type to get the hierarchy of'},
-            returns="Tuple of strings with the names of the types the given data_type inherits from.",
-            rtype=tuple)
-    def get_hierarchy(self, **kwargs):
-        """
-        For a given type get the type inheritance hierarchy for that type.
+    @validated
+    def get_hierarchy(self, data_type: str | type) -> tuple:
+        """For a given type get the type inheritance hierarchy for that type.
 
         E.g., if we have a type MyContainer that inherits from BaseContainer then
         the result will be a tuple with the strings ('MyContainer', 'BaseContainer')
+
+        Args:
+            data_type: the data_type to get the hierarchy of
+
+        Returns:
+            Tuple of strings with the names of the types the given data_type inherits from.
         """
-        data_type = getargs('data_type', kwargs)
         if isinstance(data_type, type):
             data_type = data_type.__name__
         ret = self.__hierarchy.get(data_type)
@@ -142,12 +149,13 @@ class SpecCatalog:
                 tmp_hier = tmp_hier[1:]
         return tuple(ret)
 
-    @docval(returns="Hierarchically nested OrderedDict with the hierarchy of all the types",
-            rtype=OrderedDict)
-    def get_full_hierarchy(self):
-        """
-        Get the complete hierarchy of all types. The function attempts to sort types by name using
+    @validated
+    def get_full_hierarchy(self) -> OrderedDict:
+        """Get the complete hierarchy of all types. The function attempts to sort types by name using
         standard Python sorted.
+
+        Returns:
+            Hierarchically nested OrderedDict with the hierarchy of all the types
         """
         # Get the list of all types
         registered_types = self.get_registered_types()
@@ -169,16 +177,9 @@ class SpecCatalog:
 
         return type_hierarchy
 
-    @docval({'name': 'data_type', 'type': (str, type),
-             'doc': 'the data_type to get the subtypes for'},
-            {'name': 'recursive', 'type': bool,
-             'doc': 'recursively get all subtypes. Set to False to only get the direct subtypes',
-             'default': True},
-            returns="Tuple of strings with the names of all types of the given data_type.",
-            rtype=tuple)
-    def get_subtypes(self, **kwargs):
-        """
-        For a given data type recursively find all the subtypes that inherit from it.
+    @validated
+    def get_subtypes(self, data_type: str | type, recursive: Bool = True) -> tuple:
+        """For a given data type recursively find all the subtypes that inherit from it.
 
         E.g., assume we have the following inheritance hierarchy::
 
@@ -188,8 +189,14 @@ class SpecCatalog:
 
         In this case, the subtypes of BaseContainer would be (AContainer, ADContainer, BContainer),
         the subtypes of AContainer would be (ADContainer), and the subtypes of BContainer would be empty ().
+
+        Args:
+            data_type: the data_type to get the subtypes for
+            recursive: recursively get all subtypes. Set to False to only get the direct subtypes
+
+        Returns:
+            Tuple of strings with the names of all types of the given data_type.
         """
-        data_type, recursive = getargs('data_type', 'recursive', kwargs)
         curr_spec = self.get_spec(data_type)
         if isinstance(curr_spec, BaseStorageSpec):  # Only BaseStorageSpec have data_type_inc/def keys
             subtypes = []

@@ -5,7 +5,10 @@ from itertools import chain
 from typing import TYPE_CHECKING
 from warnings import warn
 
-from ..utils import docval, getargs, popargs, get_docval
+from typing import Any
+
+from ..typing import Bool, Int, TypeName, validated
+from ..utils import get_docval
 
 if TYPE_CHECKING:
     from .namespace import SpecNamespace  # noqa: F401
@@ -255,12 +258,20 @@ class Spec(ConstructableDict):
     ''' A base specification class
     '''
 
-    @docval({'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-            {'name': 'name', 'type': str, 'doc': 'The name of this attribute', 'default': None},
-            {'name': 'required', 'type': bool, 'doc': 'whether or not this attribute is required', 'default': True},
-            {'name': 'parent', 'type': 'hdmf.spec.spec.Spec', 'doc': 'the parent of this spec', 'default': None})
-    def __init__(self, **kwargs):
-        name, doc, required, parent = getargs('name', 'doc', 'required', 'parent', kwargs)
+    @validated
+    def __init__(self,
+                 doc: str,
+                 name: str | None = None,
+                 required: Bool = True,
+                 parent: "Spec | None" = None):
+        """Initialize this spec.
+
+        Args:
+            doc: a description about what this specification represents
+            name: The name of this attribute
+            required: whether or not this attribute is required
+            parent: the parent of this spec
+        """
         super().__init__()
         self['doc'] = doc
         if name is not None:
@@ -321,19 +332,18 @@ class Spec(ConstructableDict):
 
 _target_type_key = 'target_type'
 
-_ref_args = [
-    {'name': _target_type_key, 'type': str, 'doc': 'the target type GroupSpec or DatasetSpec'},
-    {'name': 'reftype', 'type': str,
-     'doc': 'the type of reference this is. only "object" is supported currently.'},
-]
-
 
 class RefSpec(ConstructableDict):
     __allowable_types = ('object', )
 
-    @docval(*_ref_args)
-    def __init__(self, **kwargs):
-        target_type, reftype = getargs(_target_type_key, 'reftype', kwargs)
+    @validated
+    def __init__(self, target_type: str, reftype: str):
+        """Initialize the RefSpec.
+
+        Args:
+            target_type: the target type GroupSpec or DatasetSpec
+            reftype: the type of reference this is. only "object" is supported currently.
+        """
         self[_target_type_key] = target_type
         if reftype not in self.__allowable_types:
             msg = "reftype must be one of the following: %s" % ", ".join(self.__allowable_types)
@@ -351,28 +361,34 @@ class RefSpec(ConstructableDict):
         return self['reftype']
 
 
-_attr_args = [
-    {'name': 'name', 'type': str, 'doc': 'The name of this attribute'},
-    {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-    {'name': 'dtype', 'type': (str, RefSpec), 'doc': 'The data type of this attribute'},
-    {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
-    {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
-    {'name': 'required', 'type': bool,
-     'doc': 'whether or not this attribute is required. ignored when "value" is specified', 'default': True},
-    {'name': 'parent', 'type': 'hdmf.spec.spec.BaseStorageSpec', 'doc': 'the parent of this spec', 'default': None},
-    {'name': 'value', 'type': None, 'doc': 'a constant value for this attribute', 'default': None},
-    {'name': 'default_value', 'type': None, 'doc': 'a default value for this attribute', 'default': None}
-]
-
-
 class AttributeSpec(Spec):
     ''' Specification for attributes
     '''
 
-    @docval(*_attr_args)
-    def __init__(self, **kwargs):
-        name, dtype, doc, dims, shape, required, parent, value, default_value = getargs(
-            'name', 'dtype', 'doc', 'dims', 'shape', 'required', 'parent', 'value', 'default_value', kwargs)
+    @validated
+    def __init__(self,
+                 name: str,
+                 doc: str,
+                 dtype: str | RefSpec,
+                 shape: list | tuple | None = None,
+                 dims: list | tuple | None = None,
+                 required: Bool = True,
+                 parent: "BaseStorageSpec | None" = None,
+                 value: Any = None,
+                 default_value: Any = None):
+        """Initialize this spec.
+
+        Args:
+            name: The name of this attribute
+            doc: a description about what this specification represents
+            dtype: The data type of this attribute
+            shape: the shape of this dataset
+            dims: the dimensions of this dataset
+            required: whether or not this attribute is required. ignored when "value" is specified
+            parent: the parent of this spec
+            value: a constant value for this attribute
+            default_value: a default value for this attribute
+        """
         super().__init__(doc, name=name, required=required, parent=parent)
         self['dtype'] = DtypeHelper.check_dtype(dtype)
         if value is not None:
@@ -436,21 +452,6 @@ class AttributeSpec(Spec):
         return ret
 
 
-_attrbl_args = [
-    {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-    {'name': 'name', 'type': str,
-     'doc': 'the name of this base storage container, allowed only if quantity is not \'%s\' or \'%s\''
-            % (ONE_OR_MANY, ZERO_OR_MANY), 'default': None},
-    {'name': 'default_name', 'type': str,
-     'doc': 'The default name of this base storage container, used only if name is None', 'default': None},
-    {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
-    {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
-    {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
-    {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-    {'name': 'data_type_inc', 'type': str, 'doc': 'the data type this specification extends', 'default': None},
-]
-
-
 class BaseStorageSpec(Spec):
     ''' A specification for any object that can hold attributes. '''
 
@@ -459,17 +460,36 @@ class BaseStorageSpec(Spec):
     __type_key = 'data_type'
     __id_key = 'object_id'
 
-    @docval(*_attrbl_args)
-    def __init__(self, **kwargs):
-        name, doc, quantity, attributes, linkable, data_type_def, data_type_inc = \
-            getargs('name', 'doc', 'quantity', 'attributes', 'linkable', 'data_type_def', 'data_type_inc', kwargs)
+    @validated
+    def __init__(self,
+                 doc: str,
+                 name: str | None = None,
+                 default_name: str | None = None,
+                 attributes: list | None = None,
+                 linkable: Bool = True,
+                 quantity: str | Int = 1,
+                 data_type_def: str | None = None,
+                 data_type_inc: str | None = None):
+        """Initialize this spec.
+
+        Args:
+            doc: a description about what this specification represents
+            name: the name of this base storage container, allowed only if quantity is not '*' or '+'
+            default_name: The default name of this base storage container, used only if name is None
+            attributes: the attributes on this group
+            linkable: whether or not this group can be linked
+            quantity: the required number of allowed instance
+            data_type_def: the data type this specification represents
+            data_type_inc: the data type this specification extends
+        """
+        if attributes is None:
+            attributes = list()
         if name is not None and "/" in name:
             raise ValueError(f"Name '{name}' is invalid. Names of Groups and Datasets cannot contain '/'")
         if name is None and data_type_def is None and data_type_inc is None:
             raise ValueError("Cannot create Group or Dataset spec with no name "
                              "without specifying '%s' and/or '%s'." % (self.def_key(), self.inc_key()))
         super().__init__(doc, name=name)
-        default_name = getargs('default_name', kwargs)
         if default_name:
             if "/" in default_name:
                 raise ValueError(
@@ -562,50 +582,54 @@ class BaseStorageSpec(Spec):
                 self.set_attribute(inc_spec_attribute)
         self.__inc_spec_resolved = True
 
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
-    def is_inherited_spec(self, **kwargs):
-        '''
-        Return True if this spec was inherited from the parent type, False otherwise.
+    @validated
+    def is_inherited_spec(self, spec: Spec):
+        """Return True if this spec was inherited from the parent type, False otherwise.
 
         Returns False if the spec is not found.
-        '''
-        spec = getargs('spec', kwargs)
+
+        Args:
+            spec: the specification to check
+        """
         if spec.parent is self and spec.name in self.__attributes:
             return self.is_inherited_attribute(spec.name)
         return False
 
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
-    def is_overridden_spec(self, **kwargs):
-        '''
-        Return True if this spec overrides a specification from the parent type, False otherwise.
+    @validated
+    def is_overridden_spec(self, spec: Spec):
+        """Return True if this spec overrides a specification from the parent type, False otherwise.
 
         Returns False if the spec is not found.
-        '''
-        spec = getargs('spec', kwargs)
+
+        Args:
+            spec: the specification to check
+        """
         if spec.parent is self and spec.name in self.__attributes:
             return self.is_overridden_attribute(spec.name)
         return False
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the attribute to check'})
-    def is_inherited_attribute(self, **kwargs):
-        '''
-        Return True if the attribute was inherited from the parent type, False otherwise.
+    @validated
+    def is_inherited_attribute(self, name: str):
+        """Return True if the attribute was inherited from the parent type, False otherwise.
 
         Raises a ValueError if the spec is not found.
-        '''
-        name = getargs('name', kwargs)
+
+        Args:
+            name: the name of the attribute to check
+        """
         if name not in self.__attributes:
             raise ValueError("Attribute '%s' not found" % name)
         return name not in self.__new_attributes
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the attribute to check'})
-    def is_overridden_attribute(self, **kwargs):
-        '''
-        Return True if the given attribute overrides the specification from the parent, False otherwise.
+    @validated
+    def is_overridden_attribute(self, name: str):
+        """Return True if the given attribute overrides the specification from the parent, False otherwise.
 
         Raises a ValueError if the spec is not found.
-        '''
-        name = getargs('name', kwargs)
+
+        Args:
+            name: the name of the attribute to check
+        """
         if name not in self.__attributes:
             raise ValueError("Attribute '%s' not found" % name)
         return name in self.__overridden_attributes
@@ -693,20 +717,45 @@ class BaseStorageSpec(Spec):
         ''' The number of times the object being specified should be present '''
         return self.get('quantity', DEF_QUANTITY)
 
-    @docval(*_attr_args)
-    def add_attribute(self, **kwargs):
-        ''' Add an attribute to this specification '''
+    @validated
+    def add_attribute(self,
+                      name: str,
+                      doc: str,
+                      dtype: str | RefSpec,
+                      shape: list | tuple | None = None,
+                      dims: list | tuple | None = None,
+                      required: Bool = True,
+                      parent: "BaseStorageSpec | None" = None,
+                      value: Any = None,
+                      default_value: Any = None):
+        """Add an attribute to this specification
+
+        Args:
+            name: The name of this attribute
+            doc: a description about what this specification represents
+            dtype: The data type of this attribute
+            shape: the shape of this dataset
+            dims: the dimensions of this dataset
+            required: whether or not this attribute is required. ignored when "value" is specified
+            parent: the parent of this spec
+            value: a constant value for this attribute
+            default_value: a default value for this attribute
+        """
         warn("BaseStorageSpec.add_attribute is deprecated and will be removed in HDMF 6.0. "
              "Use BaseStorageSpec.set_attribute instead.",
              DeprecationWarning, stacklevel=2)
-        spec = AttributeSpec(**kwargs)
+        spec = AttributeSpec(name=name, doc=doc, dtype=dtype, shape=shape, dims=dims,
+                             required=required, parent=parent, value=value, default_value=default_value)
         self.set_attribute(spec)
         return spec
 
-    @docval({'name': 'spec', 'type': AttributeSpec, 'doc': 'the specification for the attribute to add'})
-    def set_attribute(self, **kwargs):
-        ''' Set an attribute on this specification '''
-        spec = kwargs.get('spec')
+    @validated
+    def set_attribute(self, spec: AttributeSpec):
+        """Set an attribute on this specification
+
+        Args:
+            spec: the specification for the attribute to add
+        """
         attributes = self.setdefault('attributes', list())
         if spec.parent is not None:
             spec = AttributeSpec.build_spec(spec)
@@ -732,10 +781,13 @@ class BaseStorageSpec(Spec):
         self.__attributes[spec.name] = spec
         spec.parent = self
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the attribute to the Spec for'})
-    def get_attribute(self, **kwargs):
-        ''' Get an attribute on this specification '''
-        name = getargs('name', kwargs)
+    @validated
+    def get_attribute(self, name: str):
+        """Get an attribute on this specification
+
+        Args:
+            name: the name of the attribute to the Spec for
+        """
         return self.__attributes.get(name)
 
     @classmethod
@@ -747,19 +799,18 @@ class BaseStorageSpec(Spec):
         return ret
 
 
-_dt_args = [
-    {'name': 'name', 'type': str, 'doc': 'the name of this column'},
-    {'name': 'doc', 'type': str, 'doc': 'a description about what this data type is'},
-    {'name': 'dtype', 'type': (str, list, RefSpec), 'doc': 'the data type of this column'},
-]
-
-
 class DtypeSpec(ConstructableDict):
     '''A class for specifying a component of a compound type'''
 
-    @docval(*_dt_args)
-    def __init__(self, **kwargs):
-        doc, name, dtype = getargs('doc', 'name', 'dtype', kwargs)
+    @validated
+    def __init__(self, name: str, doc: str, dtype: str | list | RefSpec):
+        """Initialize this spec.
+
+        Args:
+            name: the name of this column
+            doc: a description about what this data type is
+            dtype: the data type of this column
+        """
         self['doc'] = doc
         self['name'] = name
         self.check_valid_dtype(dtype)
@@ -796,9 +847,13 @@ class DtypeSpec(ConstructableDict):
         return True
 
     @staticmethod
-    @docval({'name': 'spec', 'type': (str, dict), 'doc': 'the spec object to check'}, is_method=False)
-    def is_ref(**kwargs):
-        spec = getargs('spec', kwargs)
+    @validated
+    def is_ref(spec: str | dict):
+        """is_ref
+
+        Args:
+            spec: the spec object to check
+        """
         spec_is_ref = False
         if isinstance(spec, dict):
             if _target_type_key in spec:
@@ -818,35 +873,44 @@ class DtypeSpec(ConstructableDict):
         return ret
 
 
-_dataset_args = [
-    {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-    {'name': 'dtype', 'type': (str, list, RefSpec),
-     'doc': 'The data type of this attribute. Use a list of DtypeSpecs to specify a compound data type.',
-     'default': None},
-    {'name': 'name', 'type': str, 'doc': 'The name of this dataset', 'default': None},
-    {'name': 'default_name', 'type': str, 'doc': 'The default name of this dataset', 'default': None},
-    {'name': 'shape', 'type': (list, tuple), 'doc': 'the shape of this dataset', 'default': None},
-    {'name': 'dims', 'type': (list, tuple), 'doc': 'the dimensions of this dataset', 'default': None},
-    {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
-    {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
-    {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
-    {'name': 'default_value', 'type': None, 'doc': 'a default value for this dataset', 'default': None},
-    {'name': 'value', 'type': None, 'doc': 'a fixed value for this dataset', 'default': None},
-    {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-    {'name': 'data_type_inc', 'type': str, 'doc': 'the data type this specification extends', 'default': None},
-]
-
-
 class DatasetSpec(BaseStorageSpec):
     ''' Specification for datasets
 
     To specify a table-like dataset i.e. a compound data type.
     '''
 
-    @docval(*_dataset_args)
-    def __init__(self, **kwargs):
-        doc, shape, dims, dtype = popargs('doc', 'shape', 'dims', 'dtype', kwargs)
-        default_value, value = popargs('default_value', 'value', kwargs)
+    @validated
+    def __init__(self,
+                 doc: str,
+                 dtype: str | list | RefSpec | None = None,
+                 name: str | None = None,
+                 default_name: str | None = None,
+                 shape: list | tuple | None = None,
+                 dims: list | tuple | None = None,
+                 attributes: list | None = None,
+                 linkable: Bool = True,
+                 quantity: str | Int = 1,
+                 default_value: Any = None,
+                 value: Any = None,
+                 data_type_def: str | None = None,
+                 data_type_inc: str | None = None):
+        """Initialize this spec.
+
+        Args:
+            doc: a description about what this specification represents
+            dtype: The data type of this attribute. Use a list of DtypeSpecs to specify a compound data type.
+            name: The name of this dataset
+            default_name: The default name of this dataset
+            shape: the shape of this dataset
+            dims: the dimensions of this dataset
+            attributes: the attributes on this group
+            linkable: whether or not this group can be linked
+            quantity: the required number of allowed instance
+            default_value: a default value for this dataset
+            value: a fixed value for this dataset
+            data_type_def: the data type this specification represents
+            data_type_inc: the data type this specification extends
+        """
         if shape is not None:
             if len(shape) == 0:
                 raise ValueError("'shape' must not be empty")
@@ -870,7 +934,9 @@ class DatasetSpec(BaseStorageSpec):
             else:
                 DtypeHelper.check_dtype(dtype)
             self['dtype'] = dtype
-        super().__init__(doc, **kwargs)
+        super().__init__(doc, name=name, default_name=default_name, attributes=attributes,
+                         linkable=linkable, quantity=quantity, data_type_def=data_type_def,
+                         data_type_inc=data_type_inc)
         if default_value is not None:
             self['default_value'] = default_value
             if value is not None:
@@ -947,20 +1013,23 @@ class DatasetSpec(BaseStorageSpec):
         return ret
 
 
-_link_args = [
-    {'name': 'doc', 'type': str, 'doc': 'a description about what this link represents'},
-    {'name': _target_type_key, 'type': (str, BaseStorageSpec), 'doc': 'the target type GroupSpec or DatasetSpec'},
-    {'name': 'quantity', 'type': (str, int), 'doc': 'the required number of allowed instance', 'default': 1},
-    {'name': 'name', 'type': str, 'doc': 'the name of this link', 'default': None}
-]
-
-
 class LinkSpec(Spec):
 
-    @docval(*_link_args)
-    def __init__(self, **kwargs):
-        doc, target_type, name, quantity = popargs('doc', _target_type_key, 'name', 'quantity', kwargs)
-        super().__init__(doc, name, **kwargs)
+    @validated
+    def __init__(self,
+                 doc: str,
+                 target_type: str | BaseStorageSpec,
+                 quantity: str | Int = 1,
+                 name: str | None = None):
+        """Initialize the LinkSpec.
+
+        Args:
+            doc: a description about what this link represents
+            target_type: the target type GroupSpec or DatasetSpec
+            quantity: the required number of allowed instance
+            name: the name of this link
+        """
+        super().__init__(doc, name)
         if isinstance(target_type, BaseStorageSpec):
             if target_type.data_type_def is None:
                 msg = ("'%s' must be a string or a GroupSpec or DatasetSpec with a '%s' key."
@@ -996,44 +1065,47 @@ class LinkSpec(Spec):
         return self.quantity not in (ZERO_OR_ONE, ZERO_OR_MANY)
 
 
-_group_args = [
-    {'name': 'doc', 'type': str, 'doc': 'a description about what this specification represents'},
-    {
-        'name': 'name',
-        'type': str,
-        'doc': 'the name of the Group that is written to the file. If this argument is omitted, users will be '
-               'required to enter a ``name`` field when creating instances of this data type in the API. Another '
-               'option is to specify ``default_name``, in which case this name will be used as the name of the Group '
-               'if no other name is provided.',
-        'default': None,
-    },
-    {'name': 'default_name', 'type': str, 'doc': 'The default name of this group', 'default': None},
-    {'name': 'groups', 'type': list, 'doc': 'the subgroups in this group', 'default': list()},
-    {'name': 'datasets', 'type': list, 'doc': 'the datasets in this group', 'default': list()},
-    {'name': 'attributes', 'type': list, 'doc': 'the attributes on this group', 'default': list()},
-    {'name': 'links', 'type': list, 'doc': 'the links in this group', 'default': list()},
-    {'name': 'linkable', 'type': bool, 'doc': 'whether or not this group can be linked', 'default': True},
-    {
-        'name': 'quantity',
-        'type': (str, int),
-        'doc': "the allowable number of instance of this group in a certain location. See table of options "
-               "`here <https://schema-language.readthedocs.io/en/latest/description.html#quantity>`_. Note that if you"
-               "specify ``name``, ``quantity`` cannot be ``'*'``, ``'+'``, or an integer greater that 1, because you "
-               "cannot have more than one group of the same name in the same parent group.",
-        'default': 1,
-    },
-    {'name': 'data_type_def', 'type': str, 'doc': 'the data type this specification represents', 'default': None},
-    {'name': 'data_type_inc', 'type': str, 'doc': 'the data type this specification extends', 'default': None},
-]
-
-
 class GroupSpec(BaseStorageSpec):
     ''' Specification for groups
     '''
 
-    @docval(*_group_args)
-    def __init__(self, **kwargs):
-        doc, groups, datasets, links = popargs('doc', 'groups', 'datasets', 'links', kwargs)
+    @validated
+    def __init__(self,
+                 doc: str,
+                 name: str | None = None,
+                 default_name: str | None = None,
+                 groups: list | None = None,
+                 datasets: list | None = None,
+                 attributes: list | None = None,
+                 links: list | None = None,
+                 linkable: Bool = True,
+                 quantity: str | Int = 1,
+                 data_type_def: str | None = None,
+                 data_type_inc: str | None = None):
+        """Initialize this spec.
+
+        Args:
+            doc: a description about what this specification represents
+            name: the name of the Group that is written to the file. If this argument is omitted, users will be
+                required to enter a ``name`` field when creating instances of this data type in the API. Another
+                option is to specify ``default_name``, in which case this name will be used as the name of the Group
+                if no other name is provided.
+            default_name: The default name of this group
+            groups: the subgroups in this group
+            datasets: the datasets in this group
+            attributes: the attributes on this group
+            links: the links in this group
+            linkable: whether or not this group can be linked
+            quantity: the allowable number of instance of this group in a certain location. See table of options `here
+                <https://schema-language.readthedocs.io/en/latest/description.html#quantity>`_. Note that if
+                youspecify ``name``, ``quantity`` cannot be ``'*'``, ``'+'``, or an integer greater that 1, because
+                you cannot have more than one group of the same name in the same parent group.
+            data_type_def: the data type this specification represents
+            data_type_inc: the data type this specification extends
+        """
+        groups = groups if groups is not None else list()
+        datasets = datasets if datasets is not None else list()
+        links = links if links is not None else list()
         self.__data_types = dict()  # for GroupSpec/DatasetSpec data_type_def/inc
         self.__target_types = dict()  # for LinkSpec target_types
         self.__groups = dict()
@@ -1053,7 +1125,9 @@ class GroupSpec(BaseStorageSpec):
         self.__overridden_links = set()
         self.__new_groups = set(self.__groups.keys())
         self.__overridden_groups = set()
-        super().__init__(doc, **kwargs)
+        super().__init__(doc, name=name, default_name=default_name, attributes=attributes,
+                         linkable=linkable, quantity=quantity, data_type_def=data_type_def,
+                         data_type_inc=data_type_inc)
 
     def resolve_inc_spec(self, inc_spec: 'GroupSpec', namespace: 'SpecNamespace'):  # noqa: C901
         """Add groups, datasets, links, and attributes from the inc_spec to this spec and track which ones are new and
@@ -1165,64 +1239,79 @@ class GroupSpec(BaseStorageSpec):
                 self.set_link(link_spec)
         super().resolve_inc_spec(inc_spec, namespace)
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the dataset'},
-            raises="ValueError, if 'name' is not part of this spec")
-    def is_inherited_dataset(self, **kwargs):
-        '''Return true if a dataset with the given name was inherited'''
-        name = getargs('name', kwargs)
+    @validated
+    def is_inherited_dataset(self, name: str):
+        """Return true if a dataset with the given name was inherited
+
+        Args:
+            name: the name of the dataset
+        """
         if name not in self.__datasets:
             raise ValueError("Dataset '%s' not found in spec" % name)
         return name not in self.__new_datasets
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the dataset'},
-            raises="ValueError, if 'name' is not part of this spec")
-    def is_overridden_dataset(self, **kwargs):
-        '''Return true if a dataset with the given name overrides a specification from the parent type'''
-        name = getargs('name', kwargs)
+    @validated
+    def is_overridden_dataset(self, name: str):
+        """Return true if a dataset with the given name overrides a specification from the parent type
+
+        Args:
+            name: the name of the dataset
+        """
         if name not in self.__datasets:
             raise ValueError("Dataset '%s' not found in spec" % name)
         return name in self.__overridden_datasets
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the group'},
-            raises="ValueError, if 'name' is not part of this spec")
-    def is_inherited_group(self, **kwargs):
-        '''Return true if a group with the given name was inherited'''
-        name = getargs('name', kwargs)
+    @validated
+    def is_inherited_group(self, name: str):
+        """Return true if a group with the given name was inherited
+
+        Args:
+            name: the name of the group
+        """
         if name not in self.__groups:
             raise ValueError("Group '%s' not found in spec" % name)
         return name not in self.__new_groups
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the group'},
-            raises="ValueError, if 'name' is not part of this spec")
-    def is_overridden_group(self, **kwargs):
-        '''Return true if a group with the given name overrides a specification from the parent type'''
-        name = getargs('name', kwargs)
+    @validated
+    def is_overridden_group(self, name: str):
+        """Return true if a group with the given name overrides a specification from the parent type
+
+        Args:
+            name: the name of the group
+        """
         if name not in self.__groups:
             raise ValueError("Group '%s' not found in spec" % name)
         return name in self.__overridden_groups
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the link'},
-            raises="ValueError, if 'name' is not part of this spec")
-    def is_inherited_link(self, **kwargs):
-        '''Return true if a link with the given name was inherited'''
-        name = getargs('name', kwargs)
+    @validated
+    def is_inherited_link(self, name: str):
+        """Return true if a link with the given name was inherited
+
+        Args:
+            name: the name of the link
+        """
         if name not in self.__links:
             raise ValueError("Link '%s' not found in spec" % name)
         return name not in self.__new_links
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the link'},
-            raises="ValueError, if 'name' is not part of this spec")
-    def is_overridden_link(self, **kwargs):
-        '''Return true if a link with the given name overrides a specification from the parent type'''
-        name = getargs('name', kwargs)
+    @validated
+    def is_overridden_link(self, name: str):
+        """Return true if a link with the given name overrides a specification from the parent type
+
+        Args:
+            name: the name of the link
+        """
         if name not in self.__links:
             raise ValueError("Link '%s' not found in spec" % name)
         return name in self.__overridden_links
 
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
-    def is_inherited_spec(self, **kwargs):
-        ''' Returns 'True' if specification was inherited from a parent type '''
-        spec = getargs('spec', kwargs)
+    @validated
+    def is_inherited_spec(self, spec: Spec):
+        """Returns 'True' if specification was inherited from a parent type
+
+        Args:
+            spec: the specification to check
+        """
         spec_name = spec.name
         if spec_name is None and hasattr(spec, 'data_type_def'):
             spec_name = spec.data_type_def
@@ -1259,10 +1348,13 @@ class GroupSpec(BaseStorageSpec):
                         return True
         return False
 
-    @docval({'name': 'spec', 'type': Spec, 'doc': 'the specification to check'})
-    def is_overridden_spec(self, **kwargs):
-        ''' Returns 'True' if specification overrides a specification from the parent type '''
-        spec = getargs('spec', kwargs)
+    @validated
+    def is_overridden_spec(self, spec: Spec):
+        """Returns 'True' if specification overrides a specification from the parent type
+
+        Args:
+            spec: the specification to check
+        """
         spec_name = spec.name
         if spec_name is None:
             if isinstance(spec, LinkSpec):  # unnamed LinkSpec cannot be overridden
@@ -1300,35 +1392,47 @@ class GroupSpec(BaseStorageSpec):
                         return True
         return False
 
-    @docval({'name': 'spec', 'type': (BaseStorageSpec, str), 'doc': 'the specification to check'})
-    def is_inherited_type(self, **kwargs):
-        ''' Returns True if `spec` represents a data type that was inherited '''
-        spec = getargs('spec', kwargs)
+    @validated
+    def is_inherited_type(self, spec: BaseStorageSpec | str):
+        """Returns True if `spec` represents a data type that was inherited
+
+        Args:
+            spec: the specification to check
+        """
         if isinstance(spec, BaseStorageSpec):
             if spec.data_type_def is None:  # why not also check data_type_inc?
                 raise ValueError('cannot check if something was inherited if it does not have a %s' % self.def_key())
             spec = spec.data_type_def
         return spec not in self.__new_data_types
 
-    @docval({'name': 'spec', 'type': (BaseStorageSpec, str), 'doc': 'the specification to check'},
-            raises="ValueError, if 'name' is not part of this spec")
-    def is_overridden_type(self, **kwargs):
-        ''' Returns True if `spec` represents a data type that overrides a specification from a parent type '''
-        return self.is_inherited_type(**kwargs)
+    @validated
+    def is_overridden_type(self, spec: BaseStorageSpec | str):
+        """Returns True if `spec` represents a data type that overrides a specification from a parent type
 
-    @docval({'name': 'spec', 'type': (LinkSpec, str), 'doc': 'the specification to check'})
-    def is_inherited_target_type(self, **kwargs):
-        ''' Returns True if `spec` represents a target type that was inherited '''
-        spec = getargs('spec', kwargs)
+        Args:
+            spec: the specification to check
+        """
+        return self.is_inherited_type(spec)
+
+    @validated
+    def is_inherited_target_type(self, spec: LinkSpec | str):
+        """Returns True if `spec` represents a target type that was inherited
+
+        Args:
+            spec: the specification to check
+        """
         if isinstance(spec, LinkSpec):
             spec = spec.target_type
         return spec not in self.__new_target_types
 
-    @docval({'name': 'spec', 'type': (LinkSpec, str), 'doc': 'the specification to check'},
-            raises="ValueError, if 'name' is not part of this spec")
-    def is_overridden_target_type(self, **kwargs):
-        ''' Returns True if `spec` represents a target type that overrides a specification from a parent type '''
-        return self.is_inherited_target_type(**kwargs)
+    @validated
+    def is_overridden_target_type(self, spec: LinkSpec | str):
+        """Returns True if `spec` represents a target type that overrides a specification from a parent type
+
+        Args:
+            spec: the specification to check
+        """
+        return self.is_inherited_target_type(spec)
 
     def __add_data_type_inc(self, spec):
         # update the __data_types dict with the given groupspec/datasetspec so that:
@@ -1425,9 +1529,9 @@ class GroupSpec(BaseStorageSpec):
         else:
             self.__target_types[dt] = spec
 
-    @docval({'name': 'data_type', 'type': str, 'doc': 'the data_type to retrieve'})
-    def get_data_type(self, **kwargs):
-        ''' Get a specification by "data_type"
+    @validated
+    def get_data_type(self, data_type: str):
+        """Get a specification by "data_type"
 
         NOTE: If there is only one spec for a given data type, then it is returned.
         If there are multiple specs for a given data type and they are all named, then they are returned in a list.
@@ -1435,13 +1539,16 @@ class GroupSpec(BaseStorageSpec):
         The other named specs can be returned using get_group or get_dataset.
 
         NOTE: this method looks for an exact match of the data type and does not consider the type hierarchy.
-        '''
-        ndt = getargs('data_type', kwargs)
+
+        Args:
+            data_type: the data_type to retrieve
+        """
+        ndt = data_type
         return self.__data_types.get(ndt, None)
 
-    @docval({'name': 'target_type', 'type': str, 'doc': 'the target_type to retrieve'})
-    def get_target_type(self, **kwargs):
-        ''' Get a specification by "target_type"
+    @validated
+    def get_target_type(self, target_type: str):
+        """Get a specification by "target_type"
 
         NOTE: If there is only one spec for a given target type, then it is returned.
         If there are multiple specs for a given target type and they are all named, then they are returned in a list.
@@ -1449,8 +1556,11 @@ class GroupSpec(BaseStorageSpec):
         The other named specs can be returned using get_link.
 
         NOTE: this method looks for an exact match of the target type and does not consider the type hierarchy.
-        '''
-        ndt = getargs('target_type', kwargs)
+
+        Args:
+            target_type: the target_type to retrieve
+        """
+        ndt = target_type
         return self.__target_types.get(ndt, None)
 
     @property
@@ -1468,19 +1578,56 @@ class GroupSpec(BaseStorageSpec):
         ''' The links specified in this GroupSpec '''
         return tuple(self.get('links', tuple()))
 
-    @docval(*_group_args)
-    def add_group(self, **kwargs):
-        ''' Add a new specification for a subgroup to this group specification '''
+    @validated
+    def add_group(self,
+                  doc: str,
+                  name: str | None = None,
+                  default_name: str | None = None,
+                  groups: list | None = None,
+                  datasets: list | None = None,
+                  attributes: list | None = None,
+                  links: list | None = None,
+                  linkable: Bool = True,
+                  quantity: str | Int = 1,
+                  data_type_def: str | None = None,
+                  data_type_inc: str | None = None):
+        """Add a new specification for a subgroup to this group specification
+
+        Args:
+            doc: a description about what this specification represents
+            name: the name of the Group that is written to the file. If this argument is omitted, users will be
+                required to enter a ``name`` field when creating instances of this data type in the API. Another
+                option is to specify ``default_name``, in which case this name will be used as the name of the Group
+                if no other name is provided.
+            default_name: The default name of this group
+            groups: the subgroups in this group
+            datasets: the datasets in this group
+            attributes: the attributes on this group
+            links: the links in this group
+            linkable: whether or not this group can be linked
+            quantity: the allowable number of instance of this group in a certain location. See table of options `here
+                <https://schema-language.readthedocs.io/en/latest/description.html#quantity>`_. Note that if
+                youspecify ``name``, ``quantity`` cannot be ``'*'``, ``'+'``, or an integer greater that 1, because
+                you cannot have more than one group of the same name in the same parent group.
+            data_type_def: the data type this specification represents
+            data_type_inc: the data type this specification extends
+        """
         warn("GroupSpec.add_group is deprecated and will be removed in HDMF 6.0. Use GroupSpec.set_group instead.",
              DeprecationWarning, stacklevel=2)
-        spec = self.__class__(**kwargs)
+        spec = self.__class__(doc, name=name, default_name=default_name, groups=groups,
+                              datasets=datasets, attributes=attributes, links=links,
+                              linkable=linkable, quantity=quantity,
+                              data_type_def=data_type_def, data_type_inc=data_type_inc)
         self.set_group(spec)
         return spec
 
-    @docval({'name': 'spec', 'type': ('GroupSpec'), 'doc': 'the specification for the subgroup'})
-    def set_group(self, **kwargs):
-        ''' Add the given specification for a subgroup to this group specification '''
-        spec = getargs('spec', kwargs)
+    @validated
+    def set_group(self, spec: TypeName['GroupSpec']):
+        """Add the given specification for a subgroup to this group specification
+
+        Args:
+            spec: the specification for the subgroup
+        """
         if spec.parent is not None:
             spec = self.build_spec(spec)
         if spec.name is None:
@@ -1497,25 +1644,64 @@ class GroupSpec(BaseStorageSpec):
         self.setdefault('groups', list()).append(spec)
         spec.parent = self
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the group to the Spec for'})
-    def get_group(self, **kwargs):
-        ''' Get a specification for a subgroup to this group specification '''
-        name = getargs('name', kwargs)
+    @validated
+    def get_group(self, name: str):
+        """Get a specification for a subgroup to this group specification
+
+        Args:
+            name: the name of the group to the Spec for
+        """
         return self.__groups.get(name, self.__links.get(name))
 
-    @docval(*_dataset_args)
-    def add_dataset(self, **kwargs):
-        ''' Add a new specification for a dataset to this group specification '''
+    @validated
+    def add_dataset(self,
+                    doc: str,
+                    dtype: str | list | RefSpec | None = None,
+                    name: str | None = None,
+                    default_name: str | None = None,
+                    shape: list | tuple | None = None,
+                    dims: list | tuple | None = None,
+                    attributes: list | None = None,
+                    linkable: Bool = True,
+                    quantity: str | Int = 1,
+                    default_value: Any = None,
+                    value: Any = None,
+                    data_type_def: str | None = None,
+                    data_type_inc: str | None = None):
+        """Add a new specification for a dataset to this group specification
+
+        Args:
+            doc: a description about what this specification represents
+            dtype: The data type of this attribute. Use a list of DtypeSpecs to specify a compound data type.
+            name: The name of this dataset
+            default_name: The default name of this dataset
+            shape: the shape of this dataset
+            dims: the dimensions of this dataset
+            attributes: the attributes on this group
+            linkable: whether or not this group can be linked
+            quantity: the required number of allowed instance
+            default_value: a default value for this dataset
+            value: a fixed value for this dataset
+            data_type_def: the data type this specification represents
+            data_type_inc: the data type this specification extends
+        """
         warn("GroupSpec.add_dataset is deprecated and will be removed in HDMF 6.0. Use GroupSpec.set_dataset instead.",
              DeprecationWarning, stacklevel=2)
-        spec = self.dataset_spec_cls()(**kwargs)
+        spec = self.dataset_spec_cls()(doc, name=name, default_name=default_name, dtype=dtype,
+                                       shape=shape, dims=dims, attributes=attributes,
+                                       linkable=linkable, quantity=quantity,
+                                       default_value=default_value, value=value,
+                                       data_type_def=data_type_def, data_type_inc=data_type_inc)
         self.set_dataset(spec)
         return spec
 
-    @docval({'name': 'spec', 'type': 'hdmf.spec.spec.DatasetSpec', 'doc': 'the specification for the dataset'})
-    def set_dataset(self, **kwargs):
-        ''' Add the given specification for a dataset to this group specification '''
-        spec = getargs('spec', kwargs)
+    @validated
+    def set_dataset(self, spec: "DatasetSpec"):
+        """Add the given specification for a dataset to this group specification
+
+        Args:
+            spec: the specification for the dataset
+        """
         if spec.parent is not None:
             spec = self.dataset_spec_cls().build_spec(spec)
         if spec.name is None:
@@ -1532,25 +1718,42 @@ class GroupSpec(BaseStorageSpec):
         self.setdefault('datasets', list()).append(spec)
         spec.parent = self
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the dataset to the Spec for'})
-    def get_dataset(self, **kwargs):
-        ''' Get a specification for a dataset to this group specification '''
-        name = getargs('name', kwargs)
+    @validated
+    def get_dataset(self, name: str):
+        """Get a specification for a dataset to this group specification
+
+        Args:
+            name: the name of the dataset to the Spec for
+        """
         return self.__datasets.get(name, self.__links.get(name))
 
-    @docval(*_link_args)
-    def add_link(self, **kwargs):
-        ''' Add a new specification for a link to this group specification '''
+    @validated
+    def add_link(self,
+                 doc: str,
+                 target_type: str | BaseStorageSpec,
+                 quantity: str | Int = 1,
+                 name: str | None = None):
+        """Add a new specification for a link to this group specification.
+
+        Args:
+            doc: a description about what this link represents
+            target_type: the target type GroupSpec or DatasetSpec
+            quantity: the required number of allowed instance
+            name: the name of this link
+        """
         warn("GroupSpec.add_link is deprecated and will be removed in HDMF 6.0. Use GroupSpec.set_link instead.",
              DeprecationWarning, stacklevel=2)
-        spec = self.link_spec_cls()(**kwargs)
+        spec = self.link_spec_cls()(doc=doc, target_type=target_type, quantity=quantity, name=name)
         self.set_link(spec)
         return spec
 
-    @docval({'name': 'spec', 'type': 'hdmf.spec.spec.LinkSpec', 'doc': 'the specification for the object to link to'})
-    def set_link(self, **kwargs):
-        ''' Add a given specification for a link to this group specification '''
-        spec = getargs('spec', kwargs)
+    @validated
+    def set_link(self, spec: "LinkSpec"):
+        """Add a given specification for a link to this group specification
+
+        Args:
+            spec: the specification for the object to link to
+        """
         if spec.parent is not None:
             spec = self.link_spec_cls().build_spec(spec)
         # NOTE named specs can be present in both __links and __target_types
@@ -1560,10 +1763,13 @@ class GroupSpec(BaseStorageSpec):
         self.setdefault('links', list()).append(spec)
         spec.parent = self
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the link to the Spec for'})
-    def get_link(self, **kwargs):
-        ''' Get a specification for a link to this group specification '''
-        name = getargs('name', kwargs)
+    @validated
+    def get_link(self, name: str):
+        """Get a specification for a link to this group specification
+
+        Args:
+            name: the name of the link to the Spec for
+        """
         return self.__links.get(name)
 
     @classmethod

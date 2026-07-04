@@ -9,7 +9,8 @@ from warnings import warn
 
 from .catalog import SpecCatalog
 from .spec import DatasetSpec, GroupSpec
-from ..utils import docval, getargs, popargs, get_docval, is_newer_version
+from ..typing import Bool, validated
+from ..utils import get_docval, is_newer_version
 
 _namespace_args = [
     {'name': 'doc', 'type': str, 'doc': 'a description about what this namespace represents'},
@@ -36,10 +37,30 @@ class SpecNamespace(dict):
 
     UNVERSIONED = None  # value representing missing version
 
-    @docval(*_namespace_args)
-    def __init__(self, **kwargs):
-        doc, full_name, name, version, date, author, contact, schema, catalog = \
-            popargs('doc', 'full_name', 'name', 'version', 'date', 'author', 'contact', 'schema', 'catalog', kwargs)
+    @validated
+    def __init__(self,
+                 doc: str,
+                 name: str,
+                 schema: list,
+                 full_name: str | None = None,
+                 version: str | tuple | list | None = None,
+                 date: datetime | str | None = None,
+                 author: str | list | None = None,
+                 contact: str | list | None = None,
+                 catalog: SpecCatalog | None = None):
+        """Initialize this spec.
+
+        Args:
+            doc: a description about what this namespace represents
+            name: the name of this namespace
+            schema: location of schema specification files or other Namespaces
+            full_name: extended full name of this namespace
+            version: Version number of the namespace
+            date: Date last modified or released. Formatting is %Y-%m-%d %H:%M:%S, e.g, 2017-04-25 17:14:13
+            author: Author or list of authors.
+            contact: List of emails. Ordering should be the same as for author
+            catalog: The SpecCatalog object for this SpecNamespace
+        """
         super().__init__()
         self['doc'] = doc
         self['schema'] = schema
@@ -124,13 +145,17 @@ class SpecNamespace(dict):
         """
         return [item['source'] for item in self.schema if 'source' in item]
 
-    @docval({'name': 'sourcefile', 'type': str, 'doc': 'Name of the source file'},
-            returns='Dict with the source file documentation', rtype=dict)
-    def get_source_description(self, sourcefile):
-        """
-        Get the description of a source file as described in the namespace. The result is a
+    @validated
+    def get_source_description(self, sourcefile: str) -> dict:
+        """Get the description of a source file as described in the namespace. The result is a
         dict which contains the 'source' and optionally 'title', 'doc' and 'data_types'
         imported from the source file
+
+        Args:
+            sourcefile: Name of the source file
+
+        Returns:
+            Dict with the source file documentation
         """
         for item in self.schema:
             if item.get('source', None) == sourcefile:
@@ -141,25 +166,37 @@ class SpecNamespace(dict):
         """The SpecCatalog containing all the Specs"""
         return self.__catalog
 
-    @docval({'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to get the spec for'})
-    def get_spec(self, **kwargs):
-        """Get the Spec object for the given data type"""
-        data_type = getargs('data_type', kwargs)
+    @validated
+    def get_spec(self, data_type: str | type):
+        """Get the Spec object for the given data type
+
+        Args:
+            data_type: the data_type to get the spec for
+        """
         spec = self.__catalog.get_spec(data_type)
         if spec is None:
             raise ValueError("No specification for '%s' in namespace '%s'" % (data_type, self.name))
         return spec
 
-    @docval(returns="the a tuple of the available data types", rtype=tuple)
-    def get_registered_types(self, **kwargs):
-        """Get the available types in this namespace"""
+    @validated
+    def get_registered_types(self) -> tuple:
+        """Get the available types in this namespace
+
+        Returns:
+            the a tuple of the available data types
+        """
         return self.__catalog.get_registered_types()
 
-    @docval({'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to get the hierarchy of'},
-            returns="a tuple with the type hierarchy", rtype=tuple)
-    def get_hierarchy(self, **kwargs):
-        ''' Get the extension hierarchy for the given data_type in this namespace'''
-        data_type = getargs('data_type', kwargs)
+    @validated
+    def get_hierarchy(self, data_type: str | type) -> tuple:
+        """Get the extension hierarchy for the given data_type in this namespace
+
+        Args:
+            data_type: the data_type to get the hierarchy of
+
+        Returns:
+            a tuple with the type hierarchy
+        """
         return self.__catalog.get_hierarchy(data_type)
 
     @classmethod
@@ -174,9 +211,14 @@ class SpecNamespace(dict):
 
 class SpecReader(metaclass=ABCMeta):
 
-    @docval({'name': 'source', 'type': str, 'doc': 'the source from which this reader reads from'})
-    def __init__(self, **kwargs):
-        self.__source = getargs('source', kwargs)
+    @validated
+    def __init__(self, source: str):
+        """Initialize this spec.
+
+        Args:
+            source: the source from which this reader reads from
+        """
+        self.__source = source
 
     @property
     def source(self):
@@ -193,9 +235,14 @@ class SpecReader(metaclass=ABCMeta):
 
 class YAMLSpecReader(SpecReader):
 
-    @docval({'name': 'indir', 'type': str, 'doc': 'the path spec files are relative to', 'default': '.'})
-    def __init__(self, **kwargs):
-        super().__init__(source=kwargs['indir'])
+    @validated
+    def __init__(self, indir: str = '.'):
+        """Initialize this spec.
+
+        Args:
+            indir: the path spec files are relative to
+        """
+        super().__init__(source=indir)
 
     def read_namespace(self, namespace_path):
         namespaces = None
@@ -224,22 +271,27 @@ class YAMLSpecReader(SpecReader):
 
 class NamespaceCatalog:
 
-    @docval({'name': 'group_spec_cls', 'type': type,
-             'doc': 'the class to use for group specifications', 'default': GroupSpec},
-            {'name': 'dataset_spec_cls', 'type': type,
-             'doc': 'the class to use for dataset specifications', 'default': DatasetSpec},
-            {'name': 'spec_namespace_cls', 'type': type,
-             'doc': 'the class to use for specification namespaces', 'default': SpecNamespace},
-            {'name': 'core_namespaces', 'type': list,
-             'doc': 'the names of the core namespaces', 'default': list()})
-    def __init__(self, **kwargs):
-        """Create a catalog for storing  multiple Namespaces"""
-        self.__namespaces = OrderedDict()
-        self.__dataset_spec_cls = getargs('dataset_spec_cls', kwargs)
-        self.__group_spec_cls = getargs('group_spec_cls', kwargs)
-        self.__spec_namespace_cls = getargs('spec_namespace_cls', kwargs)
+    @validated
+    def __init__(self,
+                 group_spec_cls: type = GroupSpec,
+                 dataset_spec_cls: type = DatasetSpec,
+                 spec_namespace_cls: type = SpecNamespace,
+                 core_namespaces: list | None = None):
+        """Create a catalog for storing  multiple Namespaces
 
-        core_namespaces = getargs('core_namespaces', kwargs)
+        Args:
+            group_spec_cls: the class to use for group specifications
+            dataset_spec_cls: the class to use for dataset specifications
+            spec_namespace_cls: the class to use for specification namespaces
+            core_namespaces: the names of the core namespaces
+        """
+        if core_namespaces is None:
+            core_namespaces = list()
+        self.__namespaces = OrderedDict()
+        self.__dataset_spec_cls = dataset_spec_cls
+        self.__group_spec_cls = group_spec_cls
+        self.__spec_namespace_cls = spec_namespace_cls
+
         self.__core_namespaces = core_namespaces
 
         # keep track of all spec objects ever loaded, so we don't have
@@ -273,9 +325,13 @@ class NamespaceCatalog:
         self.__core_namespaces.extend(ns_catalog.__core_namespaces)
 
     @property
-    @docval(returns='a tuple of the available namespaces', rtype=tuple)
-    def namespaces(self):
-        """The namespaces in this NamespaceCatalog"""
+    @validated
+    def namespaces(self) -> tuple:
+        """The namespaces in this NamespaceCatalog
+
+        Returns:
+            a tuple of the available namespaces
+        """
         return tuple(self.__namespaces.keys())
 
     @property
@@ -306,11 +362,14 @@ class NamespaceCatalog:
         """
         return self.__source_types.get(ns_name, ())
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this namespace'},
-            {'name': 'namespace', 'type': SpecNamespace, 'doc': 'the SpecNamespace object'})
-    def add_namespace(self, **kwargs):
-        """Add a namespace to this catalog"""
-        name, namespace = getargs('name', 'namespace', kwargs)
+    @validated
+    def add_namespace(self, name: str, namespace: SpecNamespace):
+        """Add a namespace to this catalog
+
+        Args:
+            name: the name of this namespace
+            namespace: the SpecNamespace object
+        """
         if name in self.__namespaces:
             raise KeyError("namespace '%s' already exists" % name)
         self.__namespaces[name] = namespace
@@ -346,76 +405,90 @@ class NamespaceCatalog:
                 elif isinstance(spec, DatasetSpec):
                     self.__unresolved_spec_dicts[source]['datasets'].append(spec)
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of this namespace'},
-            returns="the SpecNamespace with the given name", rtype=SpecNamespace)
-    def get_namespace(self, **kwargs):
-        """Get the a SpecNamespace"""
-        name = getargs('name', kwargs)
+    @validated
+    def get_namespace(self, name: str) -> SpecNamespace:
+        """Get the a SpecNamespace
+
+        Args:
+            name: the name of this namespace
+
+        Returns:
+            the SpecNamespace with the given name
+        """
         ret = self.__namespaces.get(name)
         if ret is None:
             raise KeyError("'%s' not a namespace" % name)
         return ret
 
-    @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace'},
-            {'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to get the spec for'},
-            returns="the specification for writing the given object type to HDF5 ", rtype='Spec')
-    def get_spec(self, **kwargs):
-        '''
-        Get the Spec object for the given type from the given Namespace
-        '''
-        namespace, data_type = getargs('namespace', 'data_type', kwargs)
+    @validated
+    def get_spec(self, namespace: str, data_type: str | type) -> DatasetSpec | GroupSpec:
+        """Get the Spec object for the given type from the given Namespace
+
+        Args:
+            namespace: the name of the namespace
+            data_type: the data_type to get the spec for
+
+        Returns:
+            the specification for writing the given object type to HDF5
+        """
         if namespace not in self.__namespaces:
             raise KeyError("'%s' not a namespace" % namespace)
         return self.__namespaces[namespace].get_spec(data_type)
 
-    @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace'},
-            {'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to get the spec for'},
-            returns="a tuple with the type hierarchy", rtype=tuple)
-    def get_hierarchy(self, **kwargs):
-        '''
-        Get the type hierarchy for a given data_type in a given namespace
-        '''
-        namespace, data_type = getargs('namespace', 'data_type', kwargs)
+    @validated
+    def get_hierarchy(self, namespace: str, data_type: str | type) -> tuple:
+        """Get the type hierarchy for a given data_type in a given namespace
+
+        Args:
+            namespace: the name of the namespace
+            data_type: the data_type to get the spec for
+
+        Returns:
+            a tuple with the type hierarchy
+        """
         spec_ns = self.__namespaces.get(namespace)
         if spec_ns is None:
             raise KeyError("'%s' not a namespace" % namespace)
         return spec_ns.get_hierarchy(data_type)
 
-    @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace containing the data_type'},
-            {'name': 'data_type', 'type': str, 'doc': 'the data_type to check'},
-            {'name': 'parent_data_type', 'type': str, 'doc': 'the potential parent data_type'},
-            returns="True if *data_type* is a sub `data_type` of *parent_data_type*, False otherwise", rtype=bool)
-    def is_sub_data_type(self, **kwargs):
-        '''
-        Return whether or not *data_type* is a sub `data_type` of *parent_data_type*
-        '''
-        ns, dt, parent_dt = getargs('namespace', 'data_type', 'parent_data_type', kwargs)
+    @validated
+    def is_sub_data_type(self, namespace: str, data_type: str, parent_data_type: str) -> bool:
+        """Return whether or not *data_type* is a sub `data_type` of *parent_data_type*
+
+        Args:
+            namespace: the name of the namespace containing the data_type
+            data_type: the data_type to check
+            parent_data_type: the potential parent data_type
+
+        Returns:
+            True if *data_type* is a sub `data_type` of *parent_data_type*, False otherwise
+        """
+        ns, dt, parent_dt = namespace, data_type, parent_data_type
         hier = self.get_hierarchy(ns, dt)
         return parent_dt in hier
 
-    @docval(rtype=tuple)
-    def get_sources(self, **kwargs):
-        '''
-        Get all the source specification files that were loaded in this catalog
-        '''
+    @validated
+    def get_sources(self) -> tuple:
+        """Get all the source specification files that were loaded in this catalog
+        """
         return tuple(self.__loaded_specs.keys())
 
-    @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace'},
-            rtype=tuple)
-    def get_namespace_sources(self, **kwargs):
-        '''
-        Get all the source specifications that were loaded for a given namespace
-        '''
-        namespace = getargs('namespace', kwargs)
+    @validated
+    def get_namespace_sources(self, namespace: str) -> tuple:
+        """Get all the source specifications that were loaded for a given namespace
+
+        Args:
+            namespace: the name of the namespace
+        """
         return tuple(self.__included_sources[namespace])
 
-    @docval({'name': 'source', 'type': str, 'doc': 'the name of the source'},
-            rtype=tuple)
-    def get_types(self, **kwargs):
-        '''
-        Get the types that were loaded from a given source
-        '''
-        source = getargs('source', kwargs)
+    @validated
+    def get_types(self, source: str) -> tuple:
+        """Get the types that were loaded from a given source
+
+        Args:
+            source: the name of the source
+        """
         ret = self.__loaded_specs.get(source)
         if ret is not None:
             ret = tuple(ret)
@@ -423,16 +496,16 @@ class NamespaceCatalog:
             ret = tuple()
         return ret
 
-    @docval({'name': 'source', 'type': str, 'doc': 'the name of the source file'},
-            rtype=dict)
-    def get_spec_source_dict(self, **kwargs):
-        '''
-        Get the unresolved specs for a given source file.
+    @validated
+    def get_spec_source_dict(self, source: str) -> dict:
+        """Get the unresolved specs for a given source file.
         Returns a dict with 'datasets' and 'groups' keys containing lists of
         unresolved Spec objects (before resolution of inherited fields).
         Returns None if the source is not found.
-        '''
-        source = getargs('source', kwargs)
+
+        Args:
+            source: the name of the source file
+        """
         return self.__unresolved_spec_dicts.get(source, None)
 
     def __load_spec_file(self, reader, spec_source, catalog, types_to_load):
@@ -701,20 +774,22 @@ class NamespaceCatalog:
                 __register_dependent_types_helper(child_spec)
 
 
-    @docval({'name': 'namespace_path', 'type': str, 'doc': 'the path to the file containing the namespaces(s) to load'},
-            {'name': 'resolve',
-             'type': bool,
-             'doc': ('whether or not to include objects from included/parent spec objects. In practice, this is '
-                     'False when generating documentation where it is useful to show the unresolved specs'),
-             'default': True},
-            {'name': 'reader',
-             'type': (SpecReader, dict),
-             'doc': 'the SpecReader or dict of SpecReader classes to use for reading specifications',
-             'default': None},
-            returns='a dictionary describing the dependencies of loaded namespaces', rtype=dict)
-    def load_namespaces(self, **kwargs):
-        """Load the namespaces in the given file"""
-        namespace_path, resolve, reader = getargs('namespace_path', 'resolve', 'reader', kwargs)
+    @validated
+    def load_namespaces(self,
+                        namespace_path: str,
+                        resolve: Bool = True,
+                        reader: SpecReader | dict | None = None) -> dict:
+        """Load the namespaces in the given file
+
+        Args:
+            namespace_path: the path to the file containing the namespaces(s) to load
+            resolve: whether or not to include objects from included/parent spec objects. In practice, this is False
+                when generating documentation where it is useful to show the unresolved specs
+            reader: the SpecReader or dict of SpecReader classes to use for reading specifications
+
+        Returns:
+            a dictionary describing the dependencies of loaded namespaces
+        """
 
         # determine which readers and order of readers to use for loading specs
         if reader is None:
