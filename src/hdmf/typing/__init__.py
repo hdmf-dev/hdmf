@@ -2,16 +2,22 @@
 
 This package provides:
 
-- Type aliases (:data:`Int`, :data:`Float`, :data:`ArrayData`, :class:`TypeName`,
-  :class:`Shaped`, ...) that carry docval-equivalent semantics: numpy numeric
-  widening, the live docval macro registry, MRO-name matching for forward
-  references, and array shape specifications.
+- Type aliases enforceable by beartype anywhere (``@beartype``,
+  ``beartype.door.is_bearable``, or HDMF's :func:`validated`): numeric aliases
+  (:data:`Int`, :data:`UInt`, :data:`Float`, :data:`Bool`) accepting numpy scalar
+  types, macro aliases (:data:`ArrayData`, :data:`ScalarData`, :data:`AnyData`)
+  backed by a live type registry, :class:`TypeName` for cross-module forward
+  references, and :class:`Shaped` for array shape requirements. numpydantic
+  ``NDArray[...]`` hints are also supported for dtype- and shape-checked arrays.
 - The :func:`validated` decorator, which validates arguments of a type-hinted
-  function at call time with the same semantics and error messages as ``@docval``.
+  function at call time through beartype/numpydantic.
 - A compatibility layer so :func:`hdmf.utils.get_docval` works on plain type-hinted
-  functions, keeping downstream libraries that splice parent argument specs
-  (``@docval(*get_docval(Parent.__init__, ...))``) working during and after the
-  migration away from ``@docval`` (https://github.com/hdmf-dev/hdmf/issues/1129).
+  functions: docval-format argument specs are synthesized from the signature, type
+  hints, and Google-style docstring. This keeps downstream code that splices parent
+  argument specs (``@docval(*get_docval(Parent.__init__, ...))``) working while
+  ``@docval`` is phased out (https://github.com/hdmf-dev/hdmf/issues/1129); it is
+  the only part of this package that speaks docval, and it will be removed together
+  with docval.
 
 Migration tooling lives in :mod:`hdmf.typing.migrate`
 (``python -m hdmf.typing.migrate --help``) and parity-testing helpers in
@@ -21,17 +27,17 @@ Migration tooling lives in :mod:`hdmf.typing.migrate`
 from ..utils import AllowPositional  # re-export: used as a @validated option
 from ._compat import map_hint, synthesize_docval
 from ._decorator import set_type_checking, validated
-from ._shapes import ShapeSpec, Shaped
+from ._shapes import Shaped
 from ._types import (
     AnyData,
     ArrayData,
     Bool,
-    DocvalType,
     Float,
     Int,
     ScalarData,
     TypeName,
     UInt,
+    register_macro,
 )
 
 __all__ = [
@@ -39,15 +45,14 @@ __all__ = [
     'AnyData',
     'ArrayData',
     'Bool',
-    'DocvalType',
     'Float',
     'Int',
     'ScalarData',
-    'ShapeSpec',
     'Shaped',
     'TypeName',
     'UInt',
     'map_hint',
+    'register_macro',
     'set_type_checking',
     'synthesize_docval',
     'validated',

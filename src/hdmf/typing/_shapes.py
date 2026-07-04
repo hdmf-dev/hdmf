@@ -1,47 +1,36 @@
-"""Array shape annotations and validation with docval-parity semantics."""
+"""Array shape annotations and validation.
+
+For plain array arguments, prefer numpydantic (``NDArray[Shape["* x, 3 y"], ...]``),
+which checks dtype and shape through its own ``isinstance`` machinery. ``Shaped``
+exists for HDMF's looser shape semantics: it accepts anything (not just arrays), and
+under ``@validated`` it applies the historical fallback of unwrapping a value by
+argument name (e.g. a ``TimeSeries`` passed for an argument named ``data`` has its
+``.data`` checked) when the value's own shape cannot be determined.
+"""
 
 from typing import Annotated
 
-
-class ShapeSpec:
-    """Annotated metadata carrying a docval-style shape specification.
-
-    A shape is a tuple where each element is an int (exact dimension length) or None
-    (any length), e.g. ``(None, 3)``. A tuple of such tuples means any of the listed
-    shapes is allowed.
-    """
-
-    __slots__ = ('shape',)
-
-    def __init__(self, shape):
-        if not isinstance(shape, (tuple, list)):
-            raise TypeError(f"shape must be a tuple or list, got {shape!r}")
-        self.shape = tuple(tuple(s) if isinstance(s, (tuple, list)) else s for s in shape)
-
-    def __repr__(self):
-        return f"ShapeSpec({self.shape!r})"
-
-    def __eq__(self, other):
-        return isinstance(other, ShapeSpec) and other.shape == self.shape
-
-    def __hash__(self):
-        return hash((ShapeSpec, self.shape))
+from ._validators import shape_validator
 
 
 class Shaped:
     """Annotate a type with a required array shape: ``Shaped[ArrayData, (None, 3)]``.
 
-    Equivalent to the docval ``'shape'`` key, including its fallback behaviors:
-    values whose shape cannot be determined are unwrapped via ``getattr(value, argname)``
-    (e.g. a ``TimeSeries`` passed for an argument named ``data`` has its ``.data``
-    checked).
+    A shape is a tuple where each element is an int (exact dimension length) or None
+    (any length); a tuple of such tuples means any of the listed shapes is allowed.
+    The annotation is enforced by beartype wherever the value's shape is
+    determinable; ``@validated`` additionally applies the unwrap-by-argument-name
+    fallback.
     """
 
     def __class_getitem__(cls, item):
         if not (isinstance(item, tuple) and len(item) == 2):
             raise TypeError("Shaped[...] requires two arguments: Shaped[type, shape]")
         t, shape = item
-        return Annotated[t, ShapeSpec(shape)]
+        if not isinstance(shape, (tuple, list)):
+            raise TypeError(f"shape must be a tuple or list, got {shape!r}")
+        shape = tuple(tuple(s) if isinstance(s, (tuple, list)) else s for s in shape)
+        return Annotated[t, shape_validator(shape)]
 
 
 def _shape_okay(valshape, argshape):
@@ -57,7 +46,6 @@ def _shape_okay_multi(valshape, argshape):
 
 
 def _shape_error_message(argname, valshape, allowable_shapes):
-    # mirrors hdmf.utils.__shape_error_message
     if isinstance(allowable_shapes, (list, tuple)) and all(isinstance(e, (list, tuple)) for e in allowable_shapes):
         allowable_shapes_str = " or ".join(map(str, allowable_shapes))
     else:
@@ -67,11 +55,11 @@ def _shape_error_message(argname, valshape, allowable_shapes):
 
 
 def check_shape(argname, value, shape):
-    """Check ``value`` against a docval-style ``shape`` spec with docval's exact semantics.
+    """Check ``value`` against a shape spec, unwrapping by argument name if needed.
 
     Returns None if the shape validates, otherwise an error message string.
     """
-    from ..utils import get_data_shape  # deferred; utils must not import this module at top level
+    from ..utils import get_data_shape
 
     argval = value
     valshape = get_data_shape(argval)

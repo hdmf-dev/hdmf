@@ -400,6 +400,79 @@ class TestValidatedLossyHints(TestCase):
         self.assertEqual(get_docval(func, 'data')[0]['shape'], (None, 3))
 
 
+class TestBeartypeNativeEnforcement(TestCase):
+    """The hdmf.typing aliases are real beartype validators: they are enforced by
+    plain beartype (no @validated involved), because validation is built on the
+    type-hint system itself, not on docval."""
+
+    def test_macro_alias_enforced_by_plain_beartype(self):
+        from beartype import beartype
+        from beartype.roar import BeartypeCallHintParamViolation
+
+        @beartype
+        def func(a: ArrayData):
+            return a
+
+        func([1, 2, 3])
+        func(np.arange(3))
+        with self.assertRaises(BeartypeCallHintParamViolation):
+            func(5)
+
+    def test_type_name_enforced_by_plain_beartype(self):
+        from beartype import beartype
+        from beartype.roar import BeartypeCallHintParamViolation
+
+        @beartype
+        def func(thing: TypeName['BeartypeNativeTarget']):
+            return thing
+
+        class BeartypeNativeTarget:
+            pass
+
+        func(BeartypeNativeTarget())
+        with self.assertRaises(BeartypeCallHintParamViolation):
+            func(5)
+
+    def test_shaped_enforced_by_plain_beartype(self):
+        from beartype import beartype
+        from beartype.roar import BeartypeCallHintParamViolation
+
+        @beartype
+        def func(data: Shaped[ArrayData, (None, 3)]):
+            return data
+
+        func([[1, 2, 3], [4, 5, 6]])
+        with self.assertRaises(BeartypeCallHintParamViolation):
+            func([[1, 2], [3, 4]])
+
+    def test_bare_int_hint_is_strict(self):
+        """A bare `int` hint has standard type-hint semantics: numpy ints are
+        rejected. Use hdmf.typing.Int for numpy widening."""
+        @validated
+        def func(a: int):
+            """F.
+
+            Args:
+                a: doc a
+            """
+            return a
+
+        self.assertEqual(func(5), 5)
+        with self.assertRaisesRegex(TypeError, "incorrect type for 'a'"):
+            func(np.int32(5))
+
+    def test_int_alias_in_union_collapses_in_spec(self):
+        """Int | str synthesizes to docval ('int', str), not the raw numpy union."""
+        def func(a: Int | str):
+            """F.
+
+            Args:
+                a: doc a
+            """
+
+        self.assertEqual(get_docval(func, 'a')[0]['type'], ('int', str))
+
+
 class TestValidationParityHarness(TestCase):
     """Test the parity harness itself on a known-equivalent function pair."""
 

@@ -1,24 +1,26 @@
-"""The @validated decorator: runtime validation driven by type hints.
+"""The @validated decorator: runtime validation driven purely by type hints.
 
-Validation semantics intentionally mirror ``@docval`` so that a migrated function
-accepts and rejects exactly the same inputs, with the same error messages. For each
-parameter, the hint is mapped to a docval spec (see ``_compat.map_hint``); hints that
-map exactly are checked with :func:`hdmf.utils.check_type` (numpy widening, live
-macro registry, MRO-name matching), and hints that docval cannot express
-(parametrized generics, numpydantic ``NDArray``) are checked against the original
-hint via beartype.
+Validation runs through beartype (``beartype.door.is_bearable``) for every
+parameter, including the :mod:`hdmf.typing` aliases, whose semantics are
+implemented as beartype validators (see ``_validators``). numpydantic ``NDArray``
+hints are checked through numpydantic's own ``isinstance`` machinery. No docval
+machinery is involved; the docval-format specs synthesized at decoration time exist
+only so :func:`hdmf.utils.get_docval` keeps working for downstream code during the
+migration, and are otherwise used here only to phrase error messages.
 """
 
 import functools
 import inspect
 import os
+import typing
 import warnings
 
 from beartype.door import is_bearable
 
-from ..utils import AllowPositional, check_type
+from ..utils import AllowPositional
 from ._compat import _is_numpydantic_ndarray, _safe_hints, synthesize_docval
 from ._shapes import check_shape
+from ._validators import compat_info, matches_type_name
 
 _TYPE_CHECKING_ENABLED = os.environ.get('HDMF_TYPE_CHECKING', '').lower() not in ('off', '0', 'false')
 
@@ -34,7 +36,7 @@ def set_type_checking(enabled):
 
 
 def _format_type(argtype):
-    # mirrors hdmf.utils.__format_type
+    # renders synthesized docval-vocabulary types into readable error messages
     if isinstance(argtype, str):
         return argtype
     elif isinstance(argtype, type):
@@ -50,7 +52,6 @@ def _format_type(argtype):
 
 
 def _fmt_str_quotes(x):
-    # mirrors hdmf.utils.__fmt_str_quotes
     if isinstance(x, (list, tuple)):
         return '{}'.format(x)
     if isinstance(x, str):
@@ -58,48 +59,91 @@ def _fmt_str_quotes(x):
     return str(x)
 
 
+def _without_shape_validators(hint):
+    """Return the hint with HDMF shape validators removed.
+
+    ``@validated`` runs its own shape pass (with the unwrap-by-argument-name
+    fallback and shape violations raising ValueError, matching docval), so shape
+    must not also fail the beartype type check, where it would be misclassified as
+    a type error. The full annotation still enforces shape for plain-beartype
+    consumers.
+    """
+    if typing.get_origin(hint) is not typing.Annotated:
+        return hint
+    base, *metadata = typing.get_args(hint)
+    kept = [m for m in metadata if 'shape' not in (compat_info(m) or {})]
+    if len(kept) == len(metadata):
+        return hint
+    if kept:
+        return typing.Annotated[tuple([base] + kept)]
+    return base
+
+
 class _ParamCheck:
     """Precomputed validation info for one parameter."""
 
-    __slots__ = ('name', 'spec', 'hint', 'use_hint', 'is_ndarray_hint', 'allow_none', 'required')
+    __slots__ = ('name', 'spec', 'hint', 'checker', 'allow_none', 'required')
 
-    def __init__(self, name, spec, hint, use_hint):
+    def __init__(self, name, spec, hint, func_qualname):
         self.name = name
         self.spec = spec
         self.hint = hint
-        self.use_hint = use_hint  # validate against the original hint (lossy mapping)
-        self.is_ndarray_hint = use_hint and _is_numpydantic_ndarray(hint)
         self.required = 'default' not in spec
-        self.allow_none = (not self.required
-                           and (spec['default'] is None or spec.get('allow_none', False)))
+        self.allow_none = not self.required and (spec['default'] is None or spec.get('allow_none', False))
+        self.checker = self._build_checker(func_qualname)
+
+    def _build_checker(self, func_qualname):
+        hint = _without_shape_validators(self.hint)
+        if hint is None or hint is inspect.Parameter.empty or hint is object:
+            return None  # unannotated: accept anything
+        if 'enum' in self.spec:
+            # Literal membership is checked separately (ValueError, like docval);
+            # here only check the value's type against the literal values' types
+            base_types = tuple(dict.fromkeys(type(v) for v in self.spec['enum']))
+            return lambda value: isinstance(value, base_types)
+        if isinstance(hint, str):
+            # unresolvable forward reference: match by class name in the MRO
+            return lambda value: matches_type_name(value, hint)
+        if isinstance(hint, typing.ForwardRef):
+            forward_name = hint.__forward_arg__
+            return lambda value: matches_type_name(value, forward_name)
+        if _is_numpydantic_ndarray(hint):
+            # numpydantic implements isinstance() with dtype and shape checking
+            return lambda value: isinstance(value, hint)
+        try:
+            is_bearable(None, hint)  # force beartype to compile the hint now
+        except Exception as e:
+            warnings.warn(
+                f"{func_qualname}: type hint {hint!r} for argument '{self.name}' is not "
+                f"checkable at runtime ({type(e).__name__}); it will not be validated",
+                stacklevel=4,
+            )
+            return None
+        return lambda value: is_bearable(value, hint)
 
     def type_ok(self, argval):
         if argval is None:
-            return self.allow_none
-        if self.use_hint:
-            if self.is_ndarray_hint:
-                # numpydantic NDArray implements isinstance() with dtype/shape checks
-                return isinstance(argval, self.hint)
-            return is_bearable(argval, self.hint)
-        return check_type(argval, self.spec['type'], allow_none=self.allow_none)
+            # match the long-standing `arg: T = None` idiom: None is valid whenever
+            # the default is None, even if the hint does not include None
+            return self.allow_none or (self.checker is not None and self.checker(None))
+        return self.checker is None or self.checker(argval)
 
     def expected_str(self):
-        if self.use_hint:
-            hint_str = repr(self.hint)
-            return hint_str.removeprefix('typing.') if hint_str.startswith('typing.') else str(self.hint)
-        return _format_type(self.spec['type'])
+        spec_type = self.spec.get('type')
+        if spec_type is not None:
+            return _format_type(spec_type)
+        return str(self.hint)
 
 
 def validated(func=None, *, enforce_type=True, enforce_shape=True,
               allow_positional=AllowPositional.ALLOWED):
-    """Decorator validating arguments of a type-hinted function with docval semantics.
+    """Decorator validating arguments of a type-hinted function at call time.
 
     Args:
         enforce_type: whether to check argument types at call time
         enforce_shape: whether to check array shapes (from ``Shaped[...]`` hints)
-        allow_positional: policy for positional arguments, mirroring the docval
-            option of the same name. Prefer real keyword-only parameters (``*,``)
-            over ``AllowPositional.ERROR`` in new code.
+        allow_positional: policy for positional arguments. Prefer real keyword-only
+            parameters (``*,``) over ``AllowPositional.ERROR`` in new code.
     """
     if func is None:
         return lambda f: _apply_validated(f, enforce_type, enforce_shape, allow_positional)
@@ -118,8 +162,7 @@ def _apply_validated(func, enforce_type, enforce_shape, allow_positional):  # no
     for spec in specs:
         name = spec['name']
         hint = hints.get(name, sig.parameters[name].annotation)
-        use_hint = not meta['exact'].get(name, True)
-        checks[name] = _ParamCheck(name, spec, hint, use_hint)
+        checks[name] = _ParamCheck(name, spec, hint, func.__qualname__)
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -145,7 +188,7 @@ def _apply_validated(func, enforce_type, enforce_shape, allow_positional):  # no
 
         type_errors = []
         value_errors = []
-        from ..term_set import TermSetWrapper  # circular import fix, as in hdmf.utils
+        from ..term_set import TermSetWrapper  # deferred to avoid a circular import
 
         for name, argval in bound.arguments.items():
             check = checks.get(name)

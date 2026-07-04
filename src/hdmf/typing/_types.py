@@ -1,9 +1,11 @@
 """Type aliases for use in type-hinted HDMF function signatures.
 
-These aliases carry :class:`DocvalType` metadata so that :func:`hdmf.utils.get_docval`
-can map them back to the exact docval type vocabulary (``'int'``, ``'array_data'``,
-etc.), preserving behavior when the synthesized specs are spliced into legacy
-``@docval`` decorators downstream.
+All aliases are enforceable by beartype directly (``@beartype``,
+``beartype.door.is_bearable``, or HDMF's :func:`~hdmf.typing.validated`): the
+numeric aliases are plain unions, and the macro/name aliases carry
+:mod:`beartype.vale` validators. The ``get_docval`` compatibility shim knows how to
+render each alias back into legacy docval vocabulary for downstream code that still
+splices docval specs; that is the aliases' only connection to docval.
 """
 
 import typing
@@ -11,32 +13,11 @@ from typing import Annotated, Any
 
 import numpy as np
 
+from ._validators import macro_validator, type_name_validator
 
-class DocvalType:
-    """Annotated metadata marking a type alias as equivalent to a docval type string.
-
-    The string is interpreted exactly as docval interprets it: macro names
-    (``'array_data'``, ``'scalar_data'``, ``'data'``) resolve against the live macro
-    registry, ``'int'``/``'uint'``/``'float'``/``'bool'`` use numpy-widening checks,
-    and any other string matches class names in the value's MRO.
-    """
-
-    __slots__ = ('name',)
-
-    def __init__(self, name: str):
-        self.name = name
-
-    def __repr__(self):
-        return f"DocvalType({self.name!r})"
-
-    def __eq__(self, other):
-        return isinstance(other, DocvalType) and other.name == self.name
-
-    def __hash__(self):
-        return hash((DocvalType, self.name))
-
-
-# numeric aliases with the same numpy widening as docval's check_type
+# numeric aliases accepting numpy scalar types alongside the Python types, matching
+# how HDMF has always treated numeric data. A bare `int` hint is strict under
+# beartype and will NOT accept np.int32 — use these aliases for numeric arguments.
 _int_types = (int, np.int8, np.int16, np.int32, np.int64)
 _uint_types = (np.uint8, np.uint16, np.uint32, np.uint64)
 _float_types = [float, np.float16, np.float32, np.float64]
@@ -45,30 +26,42 @@ if hasattr(np, "float128"):  # pragma: no cover
 if hasattr(np, "longdouble"):  # pragma: no cover
     _float_types.append(np.longdouble)
 _float_types = tuple(dict.fromkeys(_float_types))  # dedupe (longdouble may alias float128)
+_bool_types = (bool, np.bool_)
 
-Int = Annotated[typing.Union[_int_types], DocvalType('int')]
-UInt = Annotated[typing.Union[_uint_types], DocvalType('uint')]
-Float = Annotated[typing.Union[_float_types], DocvalType('float')]
-Bool = Annotated[bool | np.bool_, DocvalType('bool')]
+Int = typing.Union[_int_types]
+UInt = typing.Union[_uint_types]
+Float = typing.Union[_float_types]
+Bool = typing.Union[_bool_types]
 
-# macro aliases resolve against the live registry in hdmf.utils at call time,
-# so types registered later (e.g. by hdmf-zarr via @docval_macro) are honored
-ArrayData = Annotated[Any, DocvalType('array_data')]
-ScalarData = Annotated[Any, DocvalType('scalar_data')]
-AnyData = Annotated[Any, DocvalType('data')]
+# macro aliases accept instances of any type registered under the corresponding
+# macro name; the registry is read at call time, so types registered later
+# (e.g. by hdmf-zarr) are honored
+ArrayData = Annotated[Any, macro_validator('array_data')]
+ScalarData = Annotated[Any, macro_validator('scalar_data')]
+AnyData = Annotated[Any, macro_validator('data')]
 
 
 class TypeName:
     """Reference a type by class name, matched against the value's MRO at call time.
 
-    ``TypeName['DynamicTable']`` behaves exactly like the docval type string
-    ``'DynamicTable'``: the value passes if any class in its MRO is named
-    ``DynamicTable`` (or has that fully qualified ``module.qualname``). Use this for
-    forward references that cross module boundaries, where a PEP 484 string
-    annotation would not resolve.
+    ``TypeName['DynamicTable']`` accepts any value with a class named
+    ``DynamicTable`` (or with that fully qualified ``module.qualname``) anywhere in
+    its MRO. Use this for forward references that cross module boundaries, where a
+    PEP 484 string annotation would not resolve.
     """
 
     def __class_getitem__(cls, name):
         if not isinstance(name, str):
             raise TypeError(f"TypeName[...] requires a class name string, got {name!r}")
-        return Annotated[Any, DocvalType(name)]
+        return Annotated[Any, type_name_validator(name)]
+
+
+def register_macro(macro_name):
+    """Class decorator registering a type under a macro name (e.g. ``'array_data'``).
+
+    Successor to :func:`hdmf.utils.docval_macro`; both write to the same registry,
+    which the macro aliases (:data:`ArrayData`, :data:`ScalarData`, :data:`AnyData`)
+    read at call time.
+    """
+    from ..utils import docval_macro
+    return docval_macro(macro_name)

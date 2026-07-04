@@ -15,14 +15,43 @@ import typing
 from typing import Annotated, Any, Literal
 
 from ._docstrings import parse_docstring
-from ._shapes import ShapeSpec
-from ._types import DocvalType
+from ._types import _bool_types, _float_types, _int_types, _uint_types
+from ._validators import compat_info
 
 _synth_attr_name = '__synth_docval__'
 
-# docval treats these hint types as themselves; anything else non-mappable degrades
-# to its unparametrized origin (docval never checked container element types)
 _NoneType = type(None)
+
+# used to render numeric alias unions back to docval's numeric vocabulary; order
+# matters only for readability of the resulting spec
+_NUMERIC_ALIASES = (
+    ('uint', frozenset(_uint_types)),
+    ('int', frozenset(_int_types)),
+    ('float', frozenset(_float_types)),
+    ('bool', frozenset(_bool_types)),
+)
+
+
+def _collapse_numeric(members):
+    """Replace complete numeric-alias type sets in a union with docval's string names.
+
+    E.g. ``(int, np.int8, ..., str)`` (from an ``Int | str`` hint) becomes
+    ``('int', str)``.
+    """
+    mset = {m for m in members if isinstance(m, type)}
+    member_to_name = {}
+    for name, type_set in _NUMERIC_ALIASES:
+        if type_set <= mset:
+            for t in type_set:
+                member_to_name[t] = name
+    out = []
+    for m in members:
+        name = member_to_name.get(m) if isinstance(m, type) else None
+        if name is None:
+            out.append(m)
+        elif name not in out:
+            out.append(name)
+    return tuple(out)
 
 
 class MappedHint:
@@ -94,10 +123,13 @@ def map_hint(hint):  # noqa: C901
         docval_name = None
         shape = None
         for meta in metadata:
-            if isinstance(meta, DocvalType):
-                docval_name = meta.name
-            elif isinstance(meta, ShapeSpec):
-                shape = meta.shape
+            info = compat_info(meta)
+            if info is None:
+                continue
+            if 'docval_name' in info:
+                docval_name = info['docval_name']
+            if 'shape' in info:
+                shape = info['shape']
         if docval_name is not None:
             fields = {'type': docval_name}
             if shape is not None:
@@ -127,8 +159,9 @@ def map_hint(hint):  # noqa: C901
                 members.extend(member_type)
             else:
                 members.append(member_type)
-        # dedupe while preserving order (unhashable members are not produced here)
-        members = tuple(dict.fromkeys(members))
+        # dedupe while preserving order (unhashable members are not produced here),
+        # then render complete numeric alias sets back to docval's string names
+        members = _collapse_numeric(tuple(dict.fromkeys(members)))
         fields = {'type': members[0] if len(members) == 1 else members}
         if shape is not None:
             fields['shape'] = shape
