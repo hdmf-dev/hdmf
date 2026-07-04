@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 
 from . import register_class
-from .table import DynamicTable
+from .table import DynamicTable, MeaningsTable
+from ..typing import Bool, Int, validated
 from ..utils import docval, getargs, popargs, get_docval, AllowPositional
 
 
@@ -30,6 +31,8 @@ class AlignedDynamicTable(DynamicTable):
     """
     __fields__ = ({'name': 'category_tables', 'child': True}, )
 
+    # this decorator intentionally stays on @docval: it splices parent argument specs
+    # (get_docval works on the type-hinted parent); it migrates when docval is removed
     @docval(*get_docval(DynamicTable.__init__),
             {'name': 'category_tables', 'type': list,
              'doc': 'List of DynamicTables to be added to the container. NOTE - Only regular '
@@ -130,10 +133,9 @@ class AlignedDynamicTable(DynamicTable):
         """
         return list(self.category_tables.keys())
 
-    @docval({'name': 'category', 'type': DynamicTable, 'doc': 'Add a new DynamicTable category'},)
-    def add_category(self, **kwargs):
-        """
-        Add a new DynamicTable to the AlignedDynamicTable to create a new category in the table.
+    @validated
+    def add_category(self, category: DynamicTable):
+        """Add a new DynamicTable to the AlignedDynamicTable to create a new category in the table.
 
         NOTE: The table must align with (i.e, have the same number of rows as) the main data table (and
         other category tables). I.e., if the AlignedDynamicTable is already populated with data
@@ -141,8 +143,10 @@ class AlignedDynamicTable(DynamicTable):
 
         :raises: ValueError is raised if the input table does not have the same number of rows as the main table.
                  ValueError is raised if the table is an AlignedDynamicTable instead of regular DynamicTable.
+
+        Args:
+            category: Add a new DynamicTable category
         """
-        category = getargs('category', kwargs)
         if len(category) != len(self):
             raise ValueError('New category DynamicTable does not align, it has %i rows expected %i' %
                              (len(category), len(self)))
@@ -154,14 +158,20 @@ class AlignedDynamicTable(DynamicTable):
         self.category_tables[category.name] = category
         category.parent = self
 
-    @docval({'name': 'name', 'type': str, 'doc': 'Name of the category we want to retrieve', 'default': None})
-    def get_category(self, **kwargs):
-        name = popargs('name', kwargs)
+    @validated
+    def get_category(self, name: str | None = None):
+        """get_category
+
+        Args:
+            name: Name of the category we want to retrieve
+        """
         if name is None or (name not in self.category_tables and name == self.name):
             return self
         else:
             return self.category_tables[name]
 
+    # this decorator intentionally stays on @docval: it splices parent argument specs
+    # (get_docval works on the type-hinted parent); it migrates when docval is removed
     @docval(*get_docval(DynamicTable.add_column),
             {'name': 'category', 'type': str, 'doc': 'The category the column should be added to',
              'default': None})
@@ -184,16 +194,16 @@ class AlignedDynamicTable(DynamicTable):
                 raise KeyError("Category %s not in table" % category_name)
             category.add_column(**kwargs)
 
-    @docval({'name': 'data', 'type': dict, 'doc': 'the data to put in this row', 'default': None},
-            {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
-            {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',
-             'default': False},
-            allow_extra=True)
-    def add_row(self, **kwargs):
+    @validated
+    def add_row(self, data: dict | None = None, id: Int | None = None, enforce_unique_id: Bool = False, **kwargs):
+        """We can either provide the row data as a single dict or by specifying a dict for each category
+
+        Args:
+            data: the data to put in this row
+            id: the ID for the row
+            enforce_unique_id: enforce that the id in the table must be unique
         """
-        We can either provide the row data as a single dict or by specifying a dict for each category
-        """
-        data, row_id, enforce_unique_id = popargs('data', 'id', 'enforce_unique_id', kwargs)
+        row_id = id
         data = data if data is not None else kwargs
 
         # extract the category data
@@ -217,21 +227,21 @@ class AlignedDynamicTable(DynamicTable):
         for category, values in category_data.items():
             self.category_tables[category].add_row(**values)
 
-    @docval({'name': 'include_category_tables', 'type': bool,
-             'doc': "Ignore sub-category tables and just look at the main table", 'default': False},
-            {'name': 'ignore_category_ids', 'type': bool,
-             'doc': "Ignore id columns of sub-category tables", 'default': False})
-    def get_colnames(self, **kwargs):
+    @validated
+    def get_colnames(self, include_category_tables: Bool = False, ignore_category_ids: Bool = False):
         """Get the full list of names of columns for this table
 
         :returns: List of tuples (str, str) where the first string is the name of the DynamicTable
                   that contains the column and the second string is the name of the column. If
                   include_category_tables is False, then a list of column names is returned.
+
+        Args:
+            include_category_tables: Ignore sub-category tables and just look at the main table
+            ignore_category_ids: Ignore id columns of sub-category tables
         """
-        if not getargs('include_category_tables', kwargs):
+        if not include_category_tables:
             return self.colnames
         else:
-            ignore_category_ids = getargs('ignore_category_ids', kwargs)
             columns = [(self.name, c) for c in self.colnames]
             for category in self.category_tables.values():
                 if not ignore_category_ids:
@@ -239,12 +249,15 @@ class AlignedDynamicTable(DynamicTable):
                 columns += [(category.name, c) for c in category.colnames]
             return columns
 
-    @docval({'name': 'ignore_category_ids', 'type': bool,
-             'doc': "Ignore id columns of sub-category tables", 'default': False})
-    def to_dataframe(self, **kwargs):
-        """Convert the collection of tables to a single pandas DataFrame"""
+    @validated
+    def to_dataframe(self, ignore_category_ids: Bool = False):
+        """Convert the collection of tables to a single pandas DataFrame
+
+        Args:
+            ignore_category_ids: Ignore id columns of sub-category tables
+        """
         dfs = [super().to_dataframe().reset_index(), ]
-        if getargs('ignore_category_ids', kwargs):
+        if ignore_category_ids:
             dfs += [category.to_dataframe() for category in self.category_tables.values()]
         else:
             dfs += [category.to_dataframe().reset_index() for category in self.category_tables.values()]
@@ -359,16 +372,15 @@ class AlignedDynamicTable(DynamicTable):
                                  "[row, (category, column)] or a tuple of length 3 of the form "
                                  "[category, column, row], [row, category, column]")
 
-    @docval({'name': 'ignore_category_tables', 'type': bool,
-             'doc': "Ignore the category tables and only check in the main table columns", 'default': False},
-            allow_extra=False)
-    def has_foreign_columns(self, **kwargs):
-        """
-        Does the table contain DynamicTableRegion columns
+    @validated
+    def has_foreign_columns(self, ignore_category_tables: Bool = False):
+        """Does the table contain DynamicTableRegion columns
 
         :returns: True if the table or any of the category tables contains a DynamicTableRegion column, else False
+
+        Args:
+            ignore_category_tables: Ignore the category tables and only check in the main table columns
         """
-        ignore_category_tables = getargs('ignore_category_tables', kwargs)
         if super().has_foreign_columns():
             return True
         if not ignore_category_tables:
@@ -377,26 +389,27 @@ class AlignedDynamicTable(DynamicTable):
                     return True
         return False
 
-    @docval({'name': 'ignore_category_tables', 'type': bool,
-             'doc': "Ignore the category tables and only check in the main table columns", 'default': False},
-            allow_extra=False)
-    def get_foreign_columns(self, **kwargs):
-        """
-        Determine the names of all columns that link to another DynamicTable, i.e.,
+    @validated
+    def get_foreign_columns(self, ignore_category_tables: Bool = False):
+        """Determine the names of all columns that link to another DynamicTable, i.e.,
         find all DynamicTableRegion type columns. Similar to a foreign key in a
         database, a DynamicTableRegion column references elements in another table.
 
         :returns: List of tuples (str, str) where the first string is the name of the
                   category table (or None if the column is in the main table) and the
                   second string is the column name.
+
+        Args:
+            ignore_category_tables: Ignore the category tables and only check in the main table columns
         """
-        ignore_category_tables = getargs('ignore_category_tables', kwargs)
         col_names = [(None, col_name) for col_name in super().get_foreign_columns()]
         if not ignore_category_tables:
             for table in self.category_tables.values():
                 col_names += [(table.name, col_name) for col_name in table.get_foreign_columns()]
         return col_names
 
+    # this decorator intentionally stays on @docval: it splices parent argument specs
+    # (get_docval works on the type-hinted parent); it migrates when docval is removed
     @docval(*get_docval(DynamicTable.get_linked_tables),
             {'name': 'ignore_category_tables', 'type': bool,
              'doc': "Ignore the category tables and only check in the main table columns", 'default': False},
@@ -418,14 +431,17 @@ class AlignedDynamicTable(DynamicTable):
         other_tables = None if ignore_category_tables else list(self.category_tables.values())
         return super().get_linked_tables(other_tables=other_tables)
 
-    @docval({'name': 'col_name', 'type': str,
-             'doc': 'The name of the column to get the MeaningsTable for.'},
-            {'name': 'category', 'type': str,
-             'doc': 'The category the column belongs to.', 'default': None},
-            returns='the MeaningsTable for the given column', rtype='MeaningsTable')
-    def get_meanings_for_column(self, **kwargs):
-        """Get a MeaningsTable for a column in this DynamicTable."""
-        col_name, category = getargs('col_name', 'category', kwargs)
+    @validated
+    def get_meanings_for_column(self, col_name: str, category: str | None = None) -> MeaningsTable:
+        """Get a MeaningsTable for a column in this DynamicTable.
+
+        Args:
+            col_name: The name of the column to get the MeaningsTable for.
+            category: The category the column belongs to.
+
+        Returns:
+            the MeaningsTable for the given column
+        """
         if category is not None:
             category_table = self.get_category(category)
             meanings_table_name = f"{col_name}_meanings"

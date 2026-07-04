@@ -337,14 +337,18 @@ class DocvalMigrator:
             out.extend(buffer if replacement is None else replacement)
             buffer = []
         out.extend(buffer)  # unbalanced trailing lines, if any
-        leftover_kwargs = any('kwargs' in line for line in out) and not func.allow_extra
+        leftover_kwargs = any('kwargs' in line for line in out)
         todos = list(func.todos)
         for arg in func.args:
             todos.extend(f"{arg.name}: {t}" for t in arg.todos)
-        if leftover_kwargs:
+        if leftover_kwargs and not func.allow_extra:
             todos.append("body still references `kwargs`, which no longer exists; rewrite "
                          "remaining uses (e.g. multi-line getargs/popargs, "
                          "super().__init__(**kwargs) -> explicit keywords)")
+        elif leftover_kwargs:
+            todos.append("`kwargs` now holds ONLY extra keyword arguments (docval's kwargs held "
+                         "ALL parsed args) — audit each use; named parameters must be passed "
+                         "explicitly (e.g. f(**kwargs) -> f(a=a, b=b, **kwargs))")
         todo_lines = [f"{indent}    # TODO(migrate): {t}" for t in todos]
         return todo_lines + out
 
