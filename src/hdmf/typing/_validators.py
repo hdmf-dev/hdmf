@@ -56,6 +56,7 @@ def macro_validator(macro_name):
         types_ = _macro_types(macro_name)
         return bool(types_) and isinstance(value, types_)
 
+    checker.__name__ = checker.__qualname__ = f"is_{macro_name}"
     validator = _remember(Is[checker], {'docval_name': macro_name})
     _macro_validators[macro_name] = validator
     return validator
@@ -79,6 +80,7 @@ def type_name_validator(name):
     def checker(value):
         return matches_type_name(value, name)
 
+    checker.__name__ = checker.__qualname__ = "is_" + "".join(c if c.isalnum() else "_" for c in name)
     validator = _remember(Is[checker], {'docval_name': name})
     _type_name_validators[name] = validator
     return validator
@@ -102,6 +104,9 @@ def shape_validator(shape):
             return True
         return _shape_okay_multi(valshape, shape)
 
+    dims = "x".join("any" if d in (None,) else str(d) for d in shape) if all(
+        not isinstance(d, (tuple, list)) for d in shape) else "multi"
+    checker.__name__ = checker.__qualname__ = f"has_shape_{dims}"
     validator = _remember(Is[checker], {'shape': shape})
     _shape_validators[shape] = validator
     return validator

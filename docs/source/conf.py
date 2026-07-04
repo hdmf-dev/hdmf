@@ -97,6 +97,10 @@ nitpick_ignore = [('py:class', 'Intracomm'),
 nitpick_ignore_regex = [
     ('py:class', r'numpy\.(u?int|float|bool|longdouble)\w*'),
     ('py:class', r'pandas\.core\..*'),
+    # beartype validators inside hdmf.typing alias signatures render as
+    # Is[is_array_data], Is[has_shape_...], etc., which are not documented targets
+    ('py:class', r'beartype\..*'),
+    ('py:class', r'(is|has_shape)_\w*'),
 ]
 
 suppress_warnings = ["config.cache"]

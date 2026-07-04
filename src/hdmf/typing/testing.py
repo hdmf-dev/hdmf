@@ -5,8 +5,6 @@ old ``@docval``-decorated function, migrate the real one, and assert parity over
 set of call cases.
 """
 
-from __future__ import annotations
-
 import typing
 from typing import Any, Callable
 
