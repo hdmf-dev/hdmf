@@ -110,11 +110,15 @@ class DocvalMigrator:
             self.aliases.use('TypeName')
             return f"TypeName[{node.value!r}]"
         if isinstance(node, ast.Constant) and node.value is None:
-            return 'None'
+            # docval type None means "any type"
+            self.typing_names.add('Any')
+            return 'Any'
         if isinstance(node, ast.Name):
             if node.id in NAME_MAP:
                 return self.aliases.use(NAME_MAP[node.id])
             return node.id
+        if isinstance(node, ast.Attribute):
+            return ast.unparse(node)  # e.g. np.ndarray
         if isinstance(node, (ast.Tuple, ast.List)):
             members = [self._convert_type(elt, arg) for elt in node.elts]
             # dedupe (e.g. ('array_data', list) -> ArrayData already covers list at runtime,
@@ -128,14 +132,24 @@ class DocvalMigrator:
         return ast.unparse(node)
 
     def _convert_arg(self, spec_node):
-        """Convert one literal docval spec dict AST node to a MigratedArg, or None."""
-        if not isinstance(spec_node, ast.Dict):
-            return None
+        """Convert one literal docval spec dict AST node to a MigratedArg, or None.
+
+        Handles both ``{'name': ...}`` dict literals and ``dict(name=...)`` calls.
+        """
         keys = {}
-        for k, v in zip(spec_node.keys, spec_node.values):
-            if not (isinstance(k, ast.Constant) and isinstance(k.value, str)):
-                return None
-            keys[k.value] = v
+        if isinstance(spec_node, ast.Dict):
+            for k, v in zip(spec_node.keys, spec_node.values):
+                if not (isinstance(k, ast.Constant) and isinstance(k.value, str)):
+                    return None
+                keys[k.value] = v
+        elif (isinstance(spec_node, ast.Call) and isinstance(spec_node.func, ast.Name)
+                and spec_node.func.id == 'dict' and not spec_node.args):
+            for kw in spec_node.keywords:
+                if kw.arg is None:  # dict(**something)
+                    return None
+                keys[kw.arg] = kw.value
+        else:
+            return None
         if 'name' not in keys or not isinstance(keys['name'], ast.Constant):
             return None
         arg = MigratedArg(name=keys['name'].value, hint='')
@@ -175,7 +189,7 @@ class DocvalMigrator:
                                  "add a None-guard in the body")
                 default_src = 'None'
                 default_is_none = True
-            if (default_is_none or allow_none) and 'None' not in arg.hint.split(' | '):
+            if (default_is_none or allow_none) and 'None' not in arg.hint.split(' | ') and arg.hint != 'Any':
                 arg.hint = f"{arg.hint} | None"
             arg.default_src = default_src
         return arg
@@ -197,8 +211,12 @@ class DocvalMigrator:
             func.args.append(arg)
 
         for kw in dec.keywords:
-            if kw.arg == 'returns' and isinstance(kw.value, ast.Constant):
-                func.returns_doc = kw.value.value
+            if kw.arg == 'returns':
+                if isinstance(kw.value, ast.Constant):
+                    func.returns_doc = kw.value.value
+                else:
+                    func.todos.append(f"non-literal returns doc dropped: {ast.unparse(kw.value)}; "
+                                      "add a Returns: docstring section by hand")
             elif kw.arg == 'rtype':
                 if isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
                     func.rtype_hint = f"{kw.value.value!r}"
@@ -256,7 +274,10 @@ class DocvalMigrator:
             params.append(f"{arg.name}: {arg.hint} = {arg.default_src}")
         if func.allow_extra:
             params.append('**kwargs')
-        ret = f" -> {func.rtype_hint}" if func.rtype_hint and node.name != '__init__' else ''
+        rtype = func.rtype_hint
+        if node.returns is not None:  # an existing return annotation wins over docval rtype
+            rtype = ast.unparse(node.returns)
+        ret = f" -> {rtype}" if rtype and node.name != '__init__' else ''
         one_line = f"{indent}def {node.name}({', '.join(params)}){ret}:"
         if len(one_line) <= MAX_SIGNATURE_WIDTH:
             return [one_line]
@@ -274,30 +295,34 @@ class DocvalMigrator:
         return f"{indent}@validated"
 
     def _rewrite_body(self, func, body_lines, indent):
-        """Remove mechanical getargs/popargs lines; flag remaining kwargs references."""
+        """Rewrite mechanical getargs/popargs lines; flag remaining kwargs references."""
         import re
         argnames = {a.name for a in func.args}
         out = []
-        removed_any = False
         pattern = re.compile(
-            r"^\s*(?P<targets>\w+(?:\s*,\s*\w+)*)\s*=\s*(?:getargs|popargs)\(\s*"
+            r"^(?P<lead>\s*)(?P<targets>[\w.]+(?:\s*,\s*[\w.]+)*)\s*=\s*(?:getargs|popargs)\(\s*"
             r"(?P<names>(?:'[^']+'|\"[^\"]+\")(?:\s*,\s*(?:'[^']+'|\"[^\"]+\"))*)\s*,\s*kwargs\s*\)\s*$")
         for line in body_lines:
             m = pattern.match(line)
             if m:
                 targets = [t.strip() for t in m.group('targets').split(',')]
                 names = [n.strip().strip('\'"') for n in m.group('names').split(',')]
-                if targets == names and all(n in argnames for n in names):
-                    removed_any = True
-                    continue  # parameters are now real names; the line is redundant
+                if len(targets) == len(names) and all(n in argnames for n in names):
+                    if targets == names:
+                        continue  # parameters are now real names; the line is redundant
+                    # e.g. `self.data, foo = getargs('data', 'bar', kwargs)` ->
+                    #      `self.data, foo = data, bar`
+                    out.append(f"{m.group('lead')}{', '.join(targets)} = {', '.join(names)}")
+                    continue
             out.append(line)
         leftover_kwargs = any('kwargs' in line for line in out) and not func.allow_extra
         todos = list(func.todos)
         for arg in func.args:
             todos.extend(f"{arg.name}: {t}" for t in arg.todos)
-        if leftover_kwargs and removed_any:
-            todos.append("body still references `kwargs`; rewrite remaining uses "
-                         "(e.g. super().__init__(**kwargs) -> explicit keywords)")
+        if leftover_kwargs:
+            todos.append("body still references `kwargs`, which no longer exists; rewrite "
+                         "remaining uses (e.g. multi-line getargs/popargs, "
+                         "super().__init__(**kwargs) -> explicit keywords)")
         todo_lines = [f"{indent}    # TODO(migrate): {t}" for t in todos]
         return todo_lines + out
 
