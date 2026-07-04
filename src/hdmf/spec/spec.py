@@ -263,7 +263,7 @@ class Spec(ConstructableDict):
                  doc: str,
                  name: str | None = None,
                  required: Bool = True,
-                 parent: "Spec | None" = None):
+                 parent: TypeName['Spec'] | None = None):  # noqa: F821
         """Initialize this spec.
 
         Args:
@@ -373,7 +373,7 @@ class AttributeSpec(Spec):
                  shape: list | tuple | None = None,
                  dims: list | tuple | None = None,
                  required: Bool = True,
-                 parent: "BaseStorageSpec | None" = None,
+                 parent: TypeName['BaseStorageSpec'] | None = None,  # noqa: F821
                  value: Any = None,
                  default_value: Any = None):
         """Initialize this spec.
@@ -725,7 +725,7 @@ class BaseStorageSpec(Spec):
                       shape: list | tuple | None = None,
                       dims: list | tuple | None = None,
                       required: Bool = True,
-                      parent: "BaseStorageSpec | None" = None,
+                      parent: TypeName['BaseStorageSpec'] | None = None,  # noqa: F821
                       value: Any = None,
                       default_value: Any = None):
         """Add an attribute to this specification
@@ -1696,7 +1696,7 @@ class GroupSpec(BaseStorageSpec):
         return spec
 
     @validated
-    def set_dataset(self, spec: "DatasetSpec"):
+    def set_dataset(self, spec: TypeName['DatasetSpec']):  # noqa: F821
         """Add the given specification for a dataset to this group specification
 
         Args:
@@ -1748,7 +1748,7 @@ class GroupSpec(BaseStorageSpec):
         return spec
 
     @validated
-    def set_link(self, spec: "LinkSpec"):
+    def set_link(self, spec: TypeName['LinkSpec']):  # noqa: F821
         """Add a given specification for a link to this group specification
 
         Args:

@@ -1,28 +1,37 @@
 """Module for build error definitions"""
 from .builders import Builder
 from ..container import AbstractContainer
-from ..utils import docval, getargs
+from ..typing import validated
 
 
 class BuildError(Exception):
     """Error raised when building a container into a builder."""
 
-    @docval({'name': 'builder', 'type': Builder, 'doc': 'the builder that cannot be built'},
-            {'name': 'reason', 'type': str, 'doc': 'the reason for the error'})
-    def __init__(self, **kwargs):
-        self.__builder = getargs('builder', kwargs)
-        self.__reason = getargs('reason', kwargs)
+    @validated
+    def __init__(self, builder: Builder, reason: str):
+        """Initialize this object.
+
+        Args:
+            builder: the builder that cannot be built
+            reason: the reason for the error
+        """
+        self.__builder = builder
+        self.__reason = reason
         self.__message = "%s (%s): %s" % (self.__builder.name, self.__builder.path, self.__reason)
         super().__init__(self.__message)
 
 
 class OrphanContainerBuildError(BuildError):
 
-    @docval({'name': 'builder', 'type': Builder, 'doc': 'the builder containing the broken link'},
-            {'name': 'container', 'type': AbstractContainer, 'doc': 'the container that has no parent'})
-    def __init__(self, **kwargs):
-        builder = getargs('builder', kwargs)
-        self.__container = getargs('container', kwargs)
+    @validated
+    def __init__(self, builder: Builder, container: AbstractContainer):
+        """Initialize this object.
+
+        Args:
+            builder: the builder containing the broken link
+            container: the container that has no parent
+        """
+        self.__container = container
         reason = ("Linked %s '%s' has no parent. Remove the link or ensure the linked container is added properly."
                   % (self.__container.__class__.__name__, self.__container.name))
         super().__init__(builder=builder, reason=reason)
@@ -30,11 +39,15 @@ class OrphanContainerBuildError(BuildError):
 
 class ReferenceTargetNotBuiltError(BuildError):
 
-    @docval({'name': 'builder', 'type': Builder, 'doc': 'the builder containing the reference that cannot be found'},
-            {'name': 'container', 'type': AbstractContainer, 'doc': 'the container that is not built yet'})
-    def __init__(self, **kwargs):
-        builder = getargs('builder', kwargs)
-        self.__container = getargs('container', kwargs)
+    @validated
+    def __init__(self, builder: Builder, container: AbstractContainer):
+        """Initialize this object.
+
+        Args:
+            builder: the builder containing the reference that cannot be found
+            container: the container that is not built yet
+        """
+        self.__container = container
         reason = ("Could not find already-built Builder for %s '%s' in BuildManager"
                   % (self.__container.__class__.__name__, self.__container.name))
         super().__init__(builder=builder, reason=reason)

@@ -1,7 +1,7 @@
 """Module with utility functions and classes used for implementation of I/O backends"""
 import os
 from ..spec import NamespaceCatalog, NamespaceBuilder
-from ..utils import docval,  popargs
+from ..typing import validated
 
 
 class WriteStatusTracker(dict):
@@ -47,12 +47,14 @@ class NamespaceToBuilderHelper(object):
     """Helper class used to convert a namespace to a builder for I/O"""
 
     @classmethod
-    @docval({'name': 'ns_catalog', 'type': NamespaceCatalog, 'doc': 'the namespace catalog with the specs'},
-            {'name': 'namespace', 'type': str, 'doc': 'the name of the namespace to be converted to a builder'},
-            rtype=NamespaceBuilder)
-    def convert_namespace(cls, **kwargs):
-        """Convert a namespace to a builder"""
-        ns_catalog, namespace = popargs('ns_catalog', 'namespace', kwargs)
+    @validated
+    def convert_namespace(cls, ns_catalog: NamespaceCatalog, namespace: str) -> NamespaceBuilder:
+        """Convert a namespace to a builder
+
+        Args:
+            ns_catalog: the namespace catalog with the specs
+            namespace: the name of the namespace to be converted to a builder
+        """
         ns = ns_catalog.get_namespace(namespace)
         builder = NamespaceBuilder(ns.doc, ns.name,
                                    full_name=ns.full_name,

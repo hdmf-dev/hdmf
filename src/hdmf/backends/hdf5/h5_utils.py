@@ -19,7 +19,9 @@ import logging
 from ...data_utils import DataIO, AbstractDataChunkIterator, append_data
 from ...query import HDMFDataset, ReferenceResolver, ContainerResolver, BuilderResolver
 from ...spec import SpecWriter, SpecReader
-from ...utils import docval, getargs, popargs, get_docval, get_data_shape
+from ...utils import get_docval, get_data_shape
+from typing import Any
+from ...typing import Bool, Int, TypeName, validated
 
 
 class HDF5IODataChunkIteratorQueue(deque):
@@ -83,12 +85,16 @@ class HDF5IODataChunkIteratorQueue(deque):
 
 
 class H5Dataset(HDMFDataset):
-    @docval({'name': 'dataset', 'type': Dataset, 'doc': 'the HDF5 file lazily evaluate'},
-            {'name': 'io', 'type': 'hdmf.backends.hdf5.h5tools.HDF5IO',
-             'doc': 'the IO object that was used to read the underlying dataset'})
-    def __init__(self, **kwargs):
-        self.__io = popargs('io', kwargs)
-        super().__init__(**kwargs)
+    @validated
+    def __init__(self, dataset: Dataset, io: TypeName['hdmf.backends.hdf5.h5tools.HDF5IO']):  # noqa: F821
+        """Initialize this object.
+
+        Args:
+            dataset: the HDF5 file lazily evaluate
+            io: the IO object that was used to read the underlying dataset
+        """
+        self.__io = io
+        super().__init__(dataset=dataset)
 
     @property
     def io(self):
@@ -183,14 +189,16 @@ class ContainerResolverMixin(ContainerResolver):
 
 class AbstractH5TableDataset(DatasetOfReferences):
 
-    @docval({'name': 'dataset', 'type': Dataset, 'doc': 'the HDF5 file lazily evaluate'},
-            {'name': 'io', 'type': 'hdmf.backends.hdf5.h5tools.HDF5IO',
-             'doc': 'the IO object that was used to read the underlying dataset'},
-            {'name': 'types', 'type': (list, tuple),
-             'doc': 'the IO object that was used to read the underlying dataset'})
-    def __init__(self, **kwargs):
-        types = popargs('types', kwargs)
-        super().__init__(**kwargs)
+    @validated
+    def __init__(self, dataset: Dataset, io: TypeName['hdmf.backends.hdf5.h5tools.HDF5IO'], types: list | tuple):  # noqa: F821
+        """Initialize this object.
+
+        Args:
+            dataset: the HDF5 file lazily evaluate
+            io: the IO object that was used to read the underlying dataset
+            types: the types of the elements in the dataset
+        """
+        super().__init__(dataset=dataset, io=io)
         self.__refgetters = dict()
         for i, t in enumerate(types):
             if t is Reference:
@@ -317,9 +325,14 @@ class H5SpecWriter(SpecWriter):
 
     __str_type = special_dtype(vlen=str)
 
-    @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 file to write specs to'})
-    def __init__(self, **kwargs):
-        self.__group = getargs('group', kwargs)
+    @validated
+    def __init__(self, group: Group):
+        """Initialize this object.
+
+        Args:
+            group: the HDF5 file to write specs to
+        """
+        self.__group = group
 
     @staticmethod
     def stringify(spec):
@@ -344,9 +357,14 @@ class H5SpecWriter(SpecWriter):
 class H5SpecReader(SpecReader):
     """Class that reads cached JSON-formatted namespace and spec data from an HDF5 group."""
 
-    @docval({'name': 'group', 'type': Group, 'doc': 'the HDF5 group to read specs from'})
-    def __init__(self, **kwargs):
-        self.__group = popargs('group', kwargs)
+    @validated
+    def __init__(self, group: Group):
+        """Initialize this object.
+
+        Args:
+            group: the HDF5 group to read specs from
+        """
+        self.__group = group
         source = "%s:%s" % (os.path.abspath(self.__group.file.name), self.__group.name)
         super().__init__(source=source)
         self.__cache = None
@@ -378,78 +396,56 @@ class H5DataIO(DataIO):
     for data arrays.
     """
 
-    @docval({'name': 'data',
-             'type': (np.ndarray, list, tuple, Dataset, Iterable),
-             'doc': 'the data to be written. NOTE: If an h5py.Dataset is used, all other settings but link_data' +
-                    ' will be ignored as the dataset will either be linked to or copied as is in H5DataIO.',
-             'default': None},
-            {'name': 'maxshape',
-             'type': tuple,
-             'doc': 'Dataset will be resizable up to this shape (Tuple). Automatically enables chunking.' +
-                    'Use None for the axes you want to be unlimited.',
-             'default': None},
-            {'name': 'chunks',
-             'type': (bool, tuple),
-             'doc': 'Chunk shape or True to enable auto-chunking',
-             'default': None},
-            {'name': 'compression',
-             'type': (str, bool, int),
-             'doc': 'Compression strategy. If a bool is given, then gzip compression will be used by default.' +
-                    'http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression',
-             'default': None},
-            {'name': 'compression_opts',
-             'type': (int, tuple),
-             'doc': 'Parameter for compression filter',
-             'default': None},
-            {'name': 'fillvalue',
-             'type': None,
-             'doc': 'Value to be returned when reading uninitialized parts of the dataset',
-             'default': None},
-            {'name': 'shuffle',
-             'type': bool,
-             'doc': 'Enable shuffle I/O filter. http://docs.h5py.org/en/latest/high/dataset.html#dataset-shuffle',
-             'default': None},
-            {'name': 'fletcher32',
-             'type': bool,
-             'doc': 'Enable fletcher32 checksum. http://docs.h5py.org/en/latest/high/dataset.html#dataset-fletcher32',
-             'default': None},
-            {'name': 'link_data',
-             'type': bool,
-             'doc': 'If data is an h5py.Dataset should it be linked to or copied. NOTE: This parameter is only ' +
-                    'allowed if data is an h5py.Dataset',
-             'default': False},
-            {'name': 'allow_plugin_filters',
-             'type': bool,
-             'doc': 'Enable passing dynamically loaded filters as compression parameter',
-             'default': False},
-            {'name': 'shape',
-             'type': tuple,
-             'doc': 'the shape of the new dataset, used only if data is None',
-             'default': None},
-            {'name': 'dtype',
-             'type': (str, type, np.dtype),
-             'doc': 'the data type of the new dataset, used only if data is None',
-             'default': None}
-            )
-    def __init__(self, **kwargs):
-        # Get the list of I/O options that user has passed in
-        ioarg_names = [name for name in kwargs.keys() if name not in ['data', 'link_data', 'allow_plugin_filters',
-                                                                      'dtype', 'shape']]
+    @validated
+    def __init__(self,
+                 data: np.ndarray | list | tuple | Dataset | Iterable | None = None,
+                 maxshape: tuple | None = None,
+                 chunks: Bool | tuple | None = None,
+                 compression: str | Bool | Int | None = None,
+                 compression_opts: Int | tuple | None = None,
+                 fillvalue: Any = None,
+                 shuffle: Bool | None = None,
+                 fletcher32: Bool | None = None,
+                 link_data: Bool = False,
+                 allow_plugin_filters: Bool = False,
+                 shape: tuple | None = None,
+                 dtype: str | type | np.dtype | None = None):
+        """Initialize this object.
 
-        # Remove the ioargs from kwargs
-        ioarg_values = [popargs(argname, kwargs) for argname in ioarg_names]
+        Args:
+            data: the data to be written. NOTE: If an h5py.Dataset is used, all other settings but link_data
+                will be ignored as the dataset will either be linked to or copied as is in H5DataIO.
+            maxshape: Dataset will be resizable up to this shape (Tuple). Automatically enables chunking.
+                Use None for the axes you want to be unlimited.
+            chunks: Chunk shape or True to enable auto-chunking
+            compression: Compression strategy. If a bool is given, then gzip compression will be used by
+                default. http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression
+            compression_opts: Parameter for compression filter
+            fillvalue: Value to be returned when reading uninitialized parts of the dataset
+            shuffle: Enable shuffle I/O filter. http://docs.h5py.org/en/latest/high/dataset.html#dataset-shuffle
+            fletcher32: Enable fletcher32 checksum. http://docs.h5py.org/en/latest/high/dataset.html#dataset-fletcher32
+            link_data: If data is an h5py.Dataset should it be linked to or copied. NOTE: This parameter is
+                only allowed if data is an h5py.Dataset
+            allow_plugin_filters: Enable passing dynamically loaded filters as compression parameter
+            shape: the shape of the new dataset, used only if data is None
+            dtype: the data type of the new dataset, used only if data is None
+        """
+        # the h5py io settings (everything except the DataIO/link args)
+        ioargs = dict(maxshape=maxshape, chunks=chunks, compression=compression,
+                      compression_opts=compression_opts, fillvalue=fillvalue, shuffle=shuffle,
+                      fletcher32=fletcher32)
         # Consume link_data parameter
-        self.__link_data = popargs('link_data', kwargs)
+        self.__link_data = link_data
         # Consume allow_plugin_filters parameter
-        self.__allow_plugin_filters = popargs('allow_plugin_filters', kwargs)
+        self.__allow_plugin_filters = allow_plugin_filters
         # Check for possible collision with other parameters
-        if not isinstance(getargs('data', kwargs), Dataset) and self.__link_data:
+        if not isinstance(data, Dataset) and self.__link_data:
             self.__link_data = False
             warnings.warn('link_data parameter in H5DataIO will be ignored', stacklevel=3)
         # Call the super constructor and consume the data parameter
-        super().__init__(**kwargs)
+        super().__init__(data=data, shape=shape, dtype=dtype)
         # Construct the dict with the io args, ignoring all options that were set to None
-        self.__iosettings = {k: v for k, v in zip(ioarg_names, ioarg_values) if v is not None}
+        self.__iosettings = {k: v for k, v in ioargs.items() if v is not None}
         if self.data is None:
             self.__iosettings['dtype'] = self.dtype
             self.__iosettings['shape'] = self.shape

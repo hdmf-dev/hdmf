@@ -8,17 +8,24 @@ from datetime import datetime, date
 import numpy as np
 
 from ..utils import docval, getargs, get_docval
+from typing import Any
+from ..typing import AnyData, ArrayData, Bool, Int, ScalarData, TypeName, validated
 
 
 class Builder(dict, metaclass=ABCMeta):
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the group'},
-            {'name': 'parent', 'type': 'hdmf.build.builders.Builder', 'doc': 'the parent builder of this Builder',
-             'default': None},
-            {'name': 'source', 'type': str,
-             'doc': 'the source of the data in this builder e.g. file name', 'default': None})
-    def __init__(self, **kwargs):
-        name, parent, source = getargs('name', 'parent', 'source', kwargs)
+    @validated
+    def __init__(self,
+                 name: str,
+                 parent: TypeName['Builder'] | None = None,  # noqa: F821
+                 source: str | None = None):
+        """Initialize this object.
+
+        Args:
+            name: the name of the group
+            parent: the parent builder of this Builder
+            source: the source of the data in this builder e.g. file name
+        """
         super().__init__()
         self.__name = name
         self.__parent = parent
@@ -92,15 +99,22 @@ class Builder(dict, metaclass=ABCMeta):
 class BaseBuilder(Builder, metaclass=ABCMeta):
     __attribute = 'attributes'  # self dictionary key for attributes
 
-    @docval({'name': 'name', 'type': str, 'doc': 'The name of the builder.'},
-            {'name': 'attributes', 'type': dict, 'doc': 'A dictionary of attributes to create in this builder.',
-             'default': dict()},
-            {'name': 'parent', 'type': 'hdmf.build.builders.GroupBuilder', 'doc': 'The parent builder of this builder.',
-             'default': None},
-            {'name': 'source', 'type': str,
-             'doc': 'The source of the data represented in this builder', 'default': None})
-    def __init__(self, **kwargs):
-        name, attributes, parent, source = getargs('name', 'attributes', 'parent', 'source', kwargs)
+    @validated
+    def __init__(self,
+                 name: str,
+                 attributes: dict | None = None,
+                 parent: TypeName['GroupBuilder'] | None = None,  # noqa: F821
+                 source: str | None = None):
+        """Initialize this object.
+
+        Args:
+            name: The name of the builder.
+            attributes: A dictionary of attributes to create in this builder.
+            parent: The parent builder of this builder.
+            source: The source of the data represented in this builder
+        """
+        if attributes is None:
+            attributes = dict()
         super().__init__(name, parent, source)
         super().__setitem__(BaseBuilder.__attribute, dict())
         for name, val in attributes.items():
@@ -121,11 +135,14 @@ class BaseBuilder(Builder, metaclass=ABCMeta):
         """The attributes stored in this Builder object."""
         return super().__getitem__(BaseBuilder.__attribute)
 
-    @docval({'name': 'name', 'type': str, 'doc': 'The name of the attribute.'},
-            {'name': 'value', 'type': None, 'doc': 'The attribute value.'})
-    def set_attribute(self, **kwargs):
-        """Set an attribute for this group."""
-        name, value = getargs('name', 'value', kwargs)
+    @validated
+    def set_attribute(self, name: str, value: Any):
+        """Set an attribute for this group.
+
+        Args:
+            name: The name of the attribute.
+            value: The attribute value.
+        """
         self.attributes[name] = value
 
 
@@ -136,29 +153,32 @@ class GroupBuilder(BaseBuilder):
     __link = 'links'
     __attribute = 'attributes'
 
-    @docval({'name': 'name', 'type': str, 'doc': 'The name of the group.'},
-            {'name': 'groups', 'type': (dict, list),
-             'doc': ('A dictionary or list of subgroups to add to this group. If a dict is provided, only the '
-                     'values are used.'),
-             'default': dict()},
-            {'name': 'datasets', 'type': (dict, list),
-             'doc': ('A dictionary or list of datasets to add to this group. If a dict is provided, only the '
-                     'values are used.'),
-             'default': dict()},
-            {'name': 'attributes', 'type': dict, 'doc': 'A dictionary of attributes to create in this group.',
-             'default': dict()},
-            {'name': 'links', 'type': (dict, list),
-             'doc': ('A dictionary or list of links to add to this group. If a dict is provided, only the '
-                     'values are used.'),
-             'default': dict()},
-            {'name': 'parent', 'type': 'hdmf.build.builders.GroupBuilder', 'doc': 'The parent builder of this builder.',
-             'default': None},
-            {'name': 'source', 'type': str,
-             'doc': 'The source of the data represented in this builder.', 'default': None})
-    def __init__(self, **kwargs):
-        """Create a builder object for a group."""
-        name, groups, datasets, links, attributes, parent, source = getargs(
-            'name', 'groups', 'datasets', 'links', 'attributes', 'parent', 'source', kwargs)
+    @validated
+    def __init__(self,
+                 name: str,
+                 groups: dict | list | None = None,
+                 datasets: dict | list | None = None,
+                 attributes: dict | None = None,
+                 links: dict | list | None = None,
+                 parent: TypeName['GroupBuilder'] | None = None,  # noqa: F821
+                 source: str | None = None):
+        """Create a builder object for a group.
+
+        Args:
+            name: The name of the group.
+            groups: A dictionary or list of subgroups to add to this group. If a dict is provided, only the values are
+                used.
+            datasets: A dictionary or list of datasets to add to this group. If a dict is provided, only the values
+                are used.
+            attributes: A dictionary of attributes to create in this group.
+            links: A dictionary or list of links to add to this group. If a dict is provided, only the values are used.
+            parent: The parent builder of this builder.
+            source: The source of the data represented in this builder.
+        """
+        groups = groups if groups is not None else dict()
+        datasets = datasets if datasets is not None else dict()
+        attributes = attributes if attributes is not None else dict()
+        links = links if links is not None else dict()
         # NOTE: if groups, datasets, or links are dicts, their keys are unused
         groups = self.__to_list(groups)
         datasets = self.__to_list(datasets)
@@ -217,6 +237,7 @@ class GroupBuilder(BaseBuilder):
         """The links contained in this group."""
         return super().__getitem__(GroupBuilder.__link)
 
+    # intentionally on @docval: splices parent argument specs; migrates with docval removal
     @docval(*get_docval(BaseBuilder.set_attribute))
     def set_attribute(self, **kwargs):
         """Set an attribute for this group."""
@@ -231,25 +252,31 @@ class GroupBuilder(BaseBuilder):
             raise ValueError("'%s' already exists in %s.%s, cannot set in %s."
                              % (name, self.name, self.obj_type[name], obj_type))
 
-    @docval({'name': 'builder', 'type': 'hdmf.build.builders.GroupBuilder',
-             'doc': 'The GroupBuilder to add to this group.'})
-    def set_group(self, **kwargs):
-        """Add a subgroup to this group."""
-        builder = getargs('builder', kwargs)
+    @validated
+    def set_group(self, builder: TypeName['GroupBuilder']):  # noqa: F821
+        """Add a subgroup to this group.
+
+        Args:
+            builder: The GroupBuilder to add to this group.
+        """
         self.__set_builder(builder, GroupBuilder.__group)
 
-    @docval({'name': 'builder', 'type': 'hdmf.build.builders.DatasetBuilder',
-             'doc': 'The DatasetBuilder to add to this group.'})
-    def set_dataset(self, **kwargs):
-        """Add a dataset to this group."""
-        builder = getargs('builder', kwargs)
+    @validated
+    def set_dataset(self, builder: TypeName['DatasetBuilder']):  # noqa: F821
+        """Add a dataset to this group.
+
+        Args:
+            builder: The DatasetBuilder to add to this group.
+        """
         self.__set_builder(builder, GroupBuilder.__dataset)
 
-    @docval({'name': 'builder', 'type': 'hdmf.build.builders.LinkBuilder',
-             'doc': 'The LinkBuilder to add to this group.'})
-    def set_link(self, **kwargs):
-        """Add a link to this group."""
-        builder = getargs('builder', kwargs)
+    @validated
+    def set_link(self, builder: TypeName['LinkBuilder']):  # noqa: F821
+        """Add a link to this group.
+
+        Args:
+            builder: The LinkBuilder to add to this group.
+        """
         self.__set_builder(builder, GroupBuilder.__link)
 
     def __set_builder(self, builder, obj_type):
@@ -336,33 +363,37 @@ class GroupBuilder(BaseBuilder):
 class DatasetBuilder(BaseBuilder):
     OBJECT_REF_TYPE = 'object'
 
-    @docval({'name': 'name', 'type': str, 'doc': 'The name of the dataset.'},
-            {'name': 'data',
-             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', Iterable, datetime, date),
-             'doc': 'The data in this dataset.', 'default': None},
-            {'name': 'dtype', 'type': (type, np.dtype, str, list),
-             'doc': 'The datatype of this dataset.', 'default': None},
-            {'name': 'attributes', 'type': dict,
-             'doc': 'A dictionary of attributes to create in this dataset.', 'default': dict()},
-            {'name': 'matched_spec_shape', 'type': tuple,
-             'doc': ('The shape defined in the spec that matches the shape of this dataset. Currently this is '
-                     'supplied only on build.'),
-             'default': None},
-            {'name': 'dimension_labels', 'type': tuple,
-             'doc': ('A list of labels for each dimension of this dataset from the spec. Currently this is '
-                     'supplied only on build.'),
-             'default': None},
-            {'name': 'maxshape', 'type': (int, tuple),
-             'doc': 'The shape of this dataset. Use None for scalars.', 'default': None},
-            {'name': 'chunks', 'type': bool, 'doc': 'Whether or not to chunk this dataset.', 'default': False},
-            {'name': 'parent', 'type': GroupBuilder, 'doc': 'The parent builder of this builder.', 'default': None},
-            {'name': 'source', 'type': str, 'doc': 'The source of the data in this builder.', 'default': None})
-    def __init__(self, **kwargs):
-        """ Create a Builder object for a dataset """
-        name, data, dtype, attributes, matched_spec_shape, dimension_labels = getargs(
-            'name', 'data', 'dtype', 'attributes', 'matched_spec_shape', 'dimension_labels', kwargs
-        )
-        maxshape, chunks, parent, source = getargs('maxshape', 'chunks', 'parent', 'source', kwargs)
+    @validated
+    def __init__(self,
+                 name: str,
+                 data: ArrayData | ScalarData | AnyData | TypeName['DatasetBuilder']  # noqa: F821
+                 | Iterable | datetime | date | None = None,
+                 dtype: type | np.dtype | str | list | None = None,
+                 attributes: dict | None = None,
+                 matched_spec_shape: tuple | None = None,
+                 dimension_labels: tuple | None = None,
+                 maxshape: Int | tuple | None = None,
+                 chunks: Bool = False,
+                 parent: GroupBuilder | None = None,
+                 source: str | None = None):
+        """Create a Builder object for a dataset
+
+        Args:
+            name: The name of the dataset.
+            data: The data in this dataset.
+            dtype: The datatype of this dataset.
+            attributes: A dictionary of attributes to create in this dataset.
+            matched_spec_shape: The shape defined in the spec that matches the shape of this dataset. Currently this
+                is supplied only on build.
+            dimension_labels: A list of labels for each dimension of this dataset from the spec. Currently this is
+                supplied only on build.
+            maxshape: The shape of this dataset. Use None for scalars.
+            chunks: Whether or not to chunk this dataset.
+            parent: The parent builder of this builder.
+            source: The source of the data in this builder.
+        """
+        if attributes is None:
+            attributes = dict()
         super().__init__(name, attributes, parent, source)
         self['data'] = data
         self['attributes'] = _copy.copy(attributes)
@@ -421,14 +452,20 @@ class DatasetBuilder(BaseBuilder):
 
 class LinkBuilder(Builder):
 
-    @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
-             'doc': 'The target group or dataset of this link.'},
-            {'name': 'name', 'type': str, 'doc': 'The name of the link', 'default': None},
-            {'name': 'parent', 'type': GroupBuilder, 'doc': 'The parent builder of this builder', 'default': None},
-            {'name': 'source', 'type': str, 'doc': 'The source of the data in this builder', 'default': None})
-    def __init__(self, **kwargs):
-        """Create a builder object for a link."""
-        name, builder, parent, source = getargs('name', 'builder', 'parent', 'source', kwargs)
+    @validated
+    def __init__(self,
+                 builder: DatasetBuilder | GroupBuilder,
+                 name: str | None = None,
+                 parent: GroupBuilder | None = None,
+                 source: str | None = None):
+        """Create a builder object for a link.
+
+        Args:
+            builder: The target group or dataset of this link.
+            name: The name of the link
+            parent: The parent builder of this builder
+            source: The source of the data in this builder
+        """
         if name is None:
             name = builder.name
         super().__init__(name, parent, source)
@@ -442,11 +479,13 @@ class LinkBuilder(Builder):
 
 class ReferenceBuilder(dict):
 
-    @docval({'name': 'builder', 'type': (DatasetBuilder, GroupBuilder),
-             'doc': 'The group or dataset this reference applies to.'})
-    def __init__(self, **kwargs):
-        """Create a builder object for a reference."""
-        builder = getargs('builder', kwargs)
+    @validated
+    def __init__(self, builder: DatasetBuilder | GroupBuilder):
+        """Create a builder object for a reference.
+
+        Args:
+            builder: The group or dataset this reference applies to.
+        """
         self['builder'] = builder
 
     @property

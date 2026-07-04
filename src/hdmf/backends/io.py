@@ -5,21 +5,26 @@ from pathlib import Path
 from ..build import BuildManager, GroupBuilder, TypeMap
 from ..container import Container, HERDManager
 from .errors import UnsupportedOperation
-from ..utils import docval, getargs, popargs, get_basic_array_info, generate_array_html_repr
+from ..utils import get_basic_array_info, generate_array_html_repr
 from ..spec import  NamespaceCatalog
 from warnings import warn
+from ..typing import Bool, TypeName, validated
 
 
 class HDMFIO(metaclass=ABCMeta):
 
-    @docval({'name': 'manager', 'type': BuildManager,
-             'doc': 'the BuildManager to use for I/O', 'default': None},
-            {"name": "source", "type": (str, Path),
-             "doc": "the source of container being built i.e. file path", 'default': None},
-            {'name': 'herd_path', 'type': str,
-             'doc': 'The path to read/write the HERD file', 'default': None},)
-    def __init__(self, **kwargs):
-        manager, source, herd_path = getargs('manager', 'source', 'herd_path', kwargs)
+    @validated
+    def __init__(self,
+                 manager: BuildManager | None = None,
+                 source: str | Path | None = None,
+                 herd_path: str | None = None):
+        """Initialize this object.
+
+        Args:
+            manager: the BuildManager to use for I/O
+            source: the source of container being built i.e. file path
+            herd_path: The path to read/write the HERD file
+        """
         if isinstance(source, Path):
             source = source.resolve()
         elif (isinstance(source, str) and
@@ -44,9 +49,13 @@ class HDMFIO(metaclass=ABCMeta):
         '''The source of the container being read/written i.e. file path'''
         return self.__source
 
-    @docval(returns='the Container object that was read in', rtype=Container)
-    def read(self, **kwargs):
-        """Read a container from the IO source."""
+    @validated
+    def read(self) -> Container:
+        """Read a container from the IO source.
+
+        Returns:
+            the Container object that was read in
+        """
         f_builder = self.read_builder()
         if all(len(v) == 0 for v in f_builder.values()):
             # TODO also check that the keys are appropriate. print a better error message
@@ -68,14 +77,14 @@ class HDMFIO(metaclass=ABCMeta):
 
         return container
 
-    @docval({'name': 'container', 'type': Container, 'doc': 'the Container object to write'},
-            {'name': 'herd', 'type': 'hdmf.common.resources.HERD',
-             'doc': 'A HERD object to populate with references.',
-             'default': None}, allow_extra=True)
-    def write(self, **kwargs):
-        container = popargs('container', kwargs)
-        herd = popargs('herd', kwargs)
+    @validated
+    def write(self, container: Container, herd: TypeName['hdmf.common.resources.HERD'] | None = None, **kwargs):  # noqa: F821
+        """write
 
+        Args:
+            container: the Container object to write
+            herd: A HERD object to populate with references.
+        """
         """Optional: Write HERD."""
         if self.herd_path is not None:
             # If HERD is not provided, create a new one, else extend existing one
@@ -92,17 +101,12 @@ class HDMFIO(metaclass=ABCMeta):
         f_builder = self.__manager.build(container, source=self.__source, root=True)
         self.write_builder(f_builder, **kwargs)
 
-    @docval({'name': 'src_io', 'type': 'hdmf.backends.io.HDMFIO',
-             'doc': 'the HDMFIO object for reading the data to export'},
-            {'name': 'container', 'type': Container,
-             'doc': ('the Container object to export. If None, then the entire contents of the HDMFIO object will be '
-                     'exported'),
-             'default': None},
-            {'name': 'write_args', 'type': dict, 'doc': 'arguments to pass to :py:meth:`write_builder`',
-             'default': dict()},
-            {'name': 'clear_cache', 'type': bool, 'doc': 'whether to clear the build manager cache',
-             'default': False})
-    def export(self, **kwargs):
+    @validated
+    def export(self,
+               src_io: TypeName['hdmf.backends.io.HDMFIO'],  # noqa: F821
+               container: Container | None = None,
+               write_args: dict | None = None,
+               clear_cache: Bool = False):
         """Export from one backend to the backend represented by this class.
 
         If `container` is provided, then the build manager of `src_io` is used to build the container, and the resulting
@@ -128,8 +132,16 @@ class HDMFIO(metaclass=ABCMeta):
               on the Builders. As such, when writing LinkBuilders we need to determine if LinkBuilder.source
               and LinkBuilder.builder.source are the same, and if so the link should be internal to the
               current file (even if the Builder.source points to a different location).
+
+        Args:
+            src_io: the HDMFIO object for reading the data to export
+            container: the Container object to export. If None, then the entire contents of the HDMFIO object will be
+                exported
+            write_args: arguments to pass to :py:meth:`write_builder`
+            clear_cache: whether to clear the build manager cache
         """
-        src_io, container, write_args, clear_cache = getargs('src_io', 'container', 'write_args', 'clear_cache', kwargs)
+        if write_args is None:
+            write_args = dict()
         if container is None and clear_cache:
             # clear all containers and builders from cache so that they can all get rebuilt with export=True.
             # constructing the container is not efficient but there is no elegant way to trigger a
@@ -160,16 +172,23 @@ class HDMFIO(metaclass=ABCMeta):
         self.write_builder(builder=bldr, **write_args)
 
     @abstractmethod
-    @docval(returns='a GroupBuilder representing the read data', rtype='GroupBuilder')
-    def read_builder(self):
-        ''' Read data and return the GroupBuilder representing it '''
+    @validated
+    def read_builder(self) -> 'GroupBuilder':
+        """Read data and return the GroupBuilder representing it
+
+        Returns:
+            a GroupBuilder representing the read data
+        """
         pass
 
     @abstractmethod
-    @docval({'name': 'builder', 'type': GroupBuilder, 'doc': 'the GroupBuilder object representing the Container'},
-            allow_extra=True)
-    def write_builder(self, **kwargs):
-        ''' Write a GroupBuilder representing an Container object '''
+    @validated
+    def write_builder(self, builder: GroupBuilder, **kwargs):
+        """Write a GroupBuilder representing an Container object
+
+        Args:
+            builder: the GroupBuilder object representing the Container
+        """
         pass
 
     @abstractmethod

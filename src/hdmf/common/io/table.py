@@ -2,7 +2,7 @@ from .. import register_map
 from ..table import DynamicTable, VectorData, VectorIndex, DynamicTableRegion
 from ...build import ObjectMapper, BuildManager, CustomClassGenerator
 from ...spec import Spec
-from ...utils import docval, getargs
+from ...typing import validated
 
 
 @register_map(DynamicTable)
@@ -23,13 +23,18 @@ class DynamicTableMap(ObjectMapper):
             return tuple()
         return container.colnames
 
-    @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute value for"},
-            {"name": "container", "type": DynamicTable, "doc": "the container to get the attribute value from"},
-            {"name": "manager", "type": BuildManager, "doc": "the BuildManager used for managing this build"},
-            returns='the value of the attribute')
-    def get_attr_value(self, **kwargs):
-        ''' Get the value of the attribute corresponding to this spec from the given container '''
-        spec, container, manager = getargs('spec', 'container', 'manager', kwargs)
+    @validated
+    def get_attr_value(self, spec: Spec, container: DynamicTable, manager: BuildManager):
+        """Get the value of the attribute corresponding to this spec from the given container
+
+        Args:
+            spec: the spec to get the attribute value for
+            container: the container to get the attribute value from
+            manager: the BuildManager used for managing this build
+
+        Returns:
+            the value of the attribute
+        """
         attr_value = super().get_attr_value(spec, container, manager)
         if attr_value is None and spec.name in container:
             if spec.data_type_inc == 'VectorData':
