@@ -526,10 +526,10 @@ class BaseStorageSpec(Spec):
         :param qty: Quantity string or number.
         :type qty: str | int
 
-        :returns: A validated quantity string.
-        :rtype: str
+        :returns: The validated quantity.
+        :rtype: str | int
 
-        :raises TypeError: If quantity is not an integer.
+        :raises ValueError: If quantity is invalid or is incompatible with the name.
         """
         invalid_name = (
             f"Cannot give specific name to something that can exist multiple times: name='{name}', quantity='{qty}'"
