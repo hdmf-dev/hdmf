@@ -529,7 +529,6 @@ class BaseStorageSpec(Spec):
         :returns: A validated quantity string.
         :rtype: str
 
-        :raises ValueError: If quantity is not in FLAGS or is not >= 1.
         :raises TypeError: If quantity is not an integer.
         """
         invalid_name = (
