@@ -24,12 +24,16 @@ class TestMultiNamespaceResolution(TestCase):
         cat_a = core_catalog()  # includes the dependency types, as the loader would
         cat_a.register_spec(GroupSpec(doc='type A', data_type_inc='Base', data_type_def='TypeA'), 'a.yaml')
         cat_a.register_spec(DatasetSpec(doc='an A vector', data_type_inc='MyVector', data_type_def='AVector'), 'a.yaml')
+        # a type whose name collides with a different type in ndx-b
+        cat_a.register_spec(GroupSpec(doc='an A widget', data_type_def='Widget'), 'a.yaml')
 
         cat_b = core_catalog()  # includes the dependency types, as the loader would
         cat_b.register_spec(GroupSpec(doc='type B', data_type_inc='Base', data_type_def='TypeB'), 'b.yaml')
         cat_b.register_spec(
             DatasetSpec(doc='a sub vector', data_type_inc='MyVector', data_type_def='MySubVector'), 'b.yaml'
         )
+        # a different type that reuses the name 'Widget' (here it inherits Base)
+        cat_b.register_spec(GroupSpec(doc='a B widget', data_type_inc='Base', data_type_def='Widget'), 'b.yaml')
 
         core_ns = SpecNamespace('a shared core', 'test-core', [{'source': 'core.yaml'}],
                                 version='0.1.0', catalog=cat_core)
@@ -76,16 +80,18 @@ class TestMultiNamespaceResolution(TestCase):
     def test_get_hierarchy_unknown_type_returns_empty(self):
         self.assertTupleEqual(self.catalog.get_hierarchy(data_type='NotAType'), ())
 
-    def test_get_subtypes_spans_namespaces(self):
-        """Subtypes of a type are unioned across all namespaces, including sibling extensions."""
-        self.assertSetEqual(set(self.catalog.get_subtypes('MyVector')), {'AVector', 'MySubVector'})
-        self.assertSetEqual(set(self.catalog.get_subtypes('Base')), {'TypeA', 'TypeB'})
+    def test_colliding_name_disambiguated_by_namespace(self):
+        """The same type name in two namespaces resolves to different specs when the namespace is given."""
+        a_widget = self.catalog.get_spec('ndx-a', 'Widget')
+        b_widget = self.catalog.get_spec('ndx-b', 'Widget')
+        self.assertIsNot(a_widget, b_widget)
+        self.assertIsNone(a_widget.data_type_inc)
+        self.assertEqual(b_widget.data_type_inc, 'Base')
 
-    def test_get_subtypes_non_recursive(self):
-        self.assertSetEqual(set(self.catalog.get_subtypes('MyVector', recursive=False)), {'AVector', 'MySubVector'})
-
-    def test_get_subtypes_unknown_type_returns_empty(self):
-        self.assertTupleEqual(self.catalog.get_subtypes('NotAType'), ())
+    def test_colliding_name_search_all_returns_first(self):
+        """With namespace=None, a colliding name resolves to the first-loaded namespace (documented behavior)."""
+        # 'ndx-a' is added before 'ndx-b', so its Widget (which does not inherit Base) is returned
+        self.assertIsNone(self.catalog.get_spec(data_type='Widget').data_type_inc)
 
     def test_is_sub_data_type_search_all_namespaces(self):
         self.assertTrue(self.catalog.is_sub_data_type(data_type='MySubVector', parent_data_type='MyVector'))

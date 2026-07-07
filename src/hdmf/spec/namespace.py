@@ -382,7 +382,9 @@ class NamespaceCatalog:
     def get_spec(self, **kwargs):
         '''
         Get the Spec object for the given type. If *namespace* is None, search all loaded namespaces
-        and return the spec from the namespace that defines the type.
+        and return the spec from the first namespace that defines the type. Searching by name alone
+        assumes a data type name identifies the same type in every namespace; if two namespaces
+        define different types with the same name, pass an explicit *namespace* to disambiguate.
         '''
         namespace, data_type = getargs('namespace', 'data_type', kwargs)
         if data_type is None:
@@ -402,7 +404,9 @@ class NamespaceCatalog:
     def get_hierarchy(self, **kwargs):
         '''
         Get the type hierarchy for a given data_type. If *namespace* is None, search all loaded
-        namespaces; returns an empty tuple if no loaded namespace defines the type.
+        namespaces; returns an empty tuple if no loaded namespace defines the type. Searching by
+        name alone assumes the name identifies the same type in every namespace; pass an explicit
+        *namespace* to disambiguate colliding names.
         '''
         namespace, data_type = getargs('namespace', 'data_type', kwargs)
         if data_type is None:
@@ -416,24 +420,6 @@ class NamespaceCatalog:
             raise KeyError("'%s' not a namespace" % namespace)
         return spec_ns.get_hierarchy(data_type)
 
-    @docval({'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to get the subtypes for'},
-            {'name': 'recursive', 'type': bool,
-             'doc': 'whether to recursively find all subtypes of subtypes', 'default': True},
-            returns="a tuple of all subtypes of *data_type* defined in any loaded namespace", rtype=tuple)
-    def get_subtypes(self, **kwargs):
-        '''
-        Get all subtypes of *data_type* across all loaded namespaces. This unions the subtypes
-        registered in each namespace, so a subtype defined in a different namespace than
-        *data_type* is included.
-        '''
-        data_type, recursive = getargs('data_type', 'recursive', kwargs)
-        if isinstance(data_type, type):
-            data_type = data_type.__name__
-        subtypes = set()
-        for namespace in self.__namespaces.values():
-            subtypes.update(namespace.catalog.get_subtypes(data_type, recursive=recursive))
-        return tuple(subtypes)
-
     @docval({'name': 'namespace', 'type': str,
              'doc': 'the name of the namespace containing the data_type, or None to search all loaded namespaces',
              'default': None},
@@ -443,7 +429,8 @@ class NamespaceCatalog:
     def is_sub_data_type(self, **kwargs):
         '''
         Return whether or not *data_type* is a sub `data_type` of *parent_data_type*. If *namespace*
-        is None, search all loaded namespaces.
+        is None, search all loaded namespaces (assuming names identify the same type in every
+        namespace; pass an explicit *namespace* to disambiguate colliding names).
         '''
         ns, dt, parent_dt = getargs('namespace', 'data_type', 'parent_data_type', kwargs)
         if dt is None or parent_dt is None:
