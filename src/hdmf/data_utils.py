@@ -14,7 +14,10 @@ except ImportError:
 import h5py
 import numpy as np
 
-from .utils import docval, getargs, popargs, docval_macro, get_data_shape, _is_collection, _get_length
+from typing import Any
+
+from .typing import ArrayData, Bool, Float, Int, Shaped, validated
+from .utils import docval_macro, get_data_shape, _is_collection, _get_length
 
 def append_data(data, arg):
     from hdmf.backends.hdf5.h5_utils import HDMFDataset
@@ -156,61 +159,15 @@ class AbstractDataChunkIterator(metaclass=ABCMeta):
 class GenericDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk and buffer shapes."""
 
-    __docval_init = (
-        dict(
-            name="buffer_gb",
-            type=(float, int),
-            doc=(
-                "If buffer_shape is not specified, it will be inferred as the smallest chunk "
-                "below the buffer_gb threshold."
-                "Defaults to 1GB."
-            ),
-            default=None,
-        ),
-        dict(
-            name="buffer_shape",
-            type=tuple,
-            doc="Manually defined shape of the buffer.",
-            default=None,
-        ),
-        dict(
-            name="chunk_mb",
-            type=(float, int),
-            doc=(
-                "If chunk_shape is not specified, it will be inferred as the smallest chunk "
-                "below the chunk_mb threshold.",
-                "Defaults to 10MB.",
-            ),
-            default=None,
-        ),
-        dict(
-            name="chunk_shape",
-            type=tuple,
-            doc="Manually defined shape of the chunks.",
-            default=None,
-        ),
-        dict(
-            name="display_progress",
-            type=bool,
-            doc="Display a progress bar with iteration rate and estimated completion time.",
-            default=False,
-        ),
-        dict(
-            name="progress_bar_class",
-            type=Callable,
-            doc="The progress bar class to use. Defaults to tqdm.tqdm if the TQDM package is installed.",
-            default=None,
-        ),
-        dict(
-            name="progress_bar_options",
-            type=dict,
-            doc="Dictionary of keyword arguments to be passed directly to tqdm.",
-            default=None,
-        ),
-    )
-
-    @docval(*__docval_init)
-    def __init__(self, **kwargs):
+    @validated
+    def __init__(self,
+                 buffer_gb: Float | Int | None = None,
+                 buffer_shape: tuple | None = None,
+                 chunk_mb: Float | Int | None = None,
+                 chunk_shape: tuple | None = None,
+                 display_progress: Bool = False,
+                 progress_bar_class: Callable | None = None,
+                 progress_bar_options: dict | None = None):
         """
         Break a dataset into buffers containing multiple chunks to be written into an HDF5 dataset.
 
@@ -220,25 +177,20 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
         HDF5 recommends chunk size in the range of 2 to 16 MB for optimal cloud performance.
         https://youtu.be/rcS5vt-mKok?t=621
+
+        Args:
+            buffer_gb: If buffer_shape is not specified, it will be inferred as the smallest chunk
+                below the buffer_gb threshold. Defaults to 1GB.
+            buffer_shape: Manually defined shape of the buffer.
+            chunk_mb: If chunk_shape is not specified, it will be inferred as the smallest chunk
+                below the chunk_mb threshold. Defaults to 10MB.
+            chunk_shape: Manually defined shape of the chunks.
+            display_progress: Display a progress bar with iteration rate and estimated completion time.
+            progress_bar_class: The progress bar class to use. Defaults to tqdm.tqdm if the TQDM package
+                is installed.
+            progress_bar_options: Dictionary of keyword arguments to be passed directly to tqdm.
         """
-        (
-            buffer_gb,
-            buffer_shape,
-            chunk_mb,
-            chunk_shape,
-            self.display_progress,
-            progress_bar_class,
-            progress_bar_options,
-        ) = getargs(
-            "buffer_gb",
-            "buffer_shape",
-            "chunk_mb",
-            "chunk_shape",
-            "display_progress",
-            "progress_bar_class",
-            "progress_bar_options",
-            kwargs,
-        )
+        self.display_progress = display_progress
         self.progress_bar_options = progress_bar_options or dict()
 
         if buffer_gb is None and buffer_shape is None:
@@ -328,21 +280,15 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 )
                 self.display_progress = False
 
-    @docval(
-        dict(
-            name="chunk_mb",
-            type=(float, int),
-            doc="Size of the HDF5 chunk in megabytes.",
-            default=None,
-        )
-    )
-    def _get_default_chunk_shape(self, **kwargs) -> tuple[int, ...]:
-        """
-        Select chunk shape with size in MB less than the threshold of chunk_mb.
+    @validated
+    def _get_default_chunk_shape(self, chunk_mb: Float | Int | None = None) -> tuple[int, ...]:
+        """Select chunk shape with size in MB less than the threshold of chunk_mb.
 
         Keeps the dimensional ratios of the original data.
+
+        Args:
+            chunk_mb: Size of the HDF5 chunk in megabytes.
         """
-        chunk_mb = getargs("chunk_mb", kwargs)
         assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
         n_dims = len(self.maxshape)
@@ -359,22 +305,16 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         k = math.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
         return tuple([min(k * x, self.maxshape[dim]) for dim, x in enumerate(v)])
 
-    @docval(
-        dict(
-            name="buffer_gb",
-            type=(float, int),
-            doc="Size of the data buffer in gigabytes. Recommended to be as much free RAM as safely available.",
-            default=None,
-        )
-    )
-    def _get_default_buffer_shape(self, **kwargs) -> tuple[int, ...]:
-        """
-        Select buffer shape with size in GB less than the threshold of buffer_gb.
+    @validated
+    def _get_default_buffer_shape(self, buffer_gb: Float | Int | None = None) -> tuple[int, ...]:
+        """Select buffer shape with size in GB less than the threshold of buffer_gb.
 
         Keeps the dimensional ratios of the original data.
         Assumes the chunk_shape has already been set.
+
+        Args:
+            buffer_gb: Size of the data buffer in gigabytes. Recommended to be as much free RAM as safely available.
         """
-        buffer_gb = getargs("buffer_gb", kwargs)
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert all(chunk_axis > 0 for chunk_axis in self.chunk_shape), (
             f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
@@ -496,29 +436,29 @@ class DataChunkIterator(AbstractDataChunkIterator):
          :py:class:`~hdmf.data_utils.AbstractDataChunkIterator` may be more appropriate.
     """
 
-    __docval_init = (
-        {'name': 'data', 'type': None, 'doc': 'The data object used for iteration', 'default': None},
-        {'name': 'maxshape', 'type': tuple,
-         'doc': 'The maximum shape of the full data array. Use None to indicate unlimited dimensions',
-         'default': None},
-        {'name': 'dtype', 'type': np.dtype, 'doc': 'The Numpy data type for the array', 'default': None},
-        {'name': 'buffer_size', 'type': int, 'doc': 'Number of values to be buffered in a chunk', 'default': 1},
-        {'name': 'iter_axis', 'type': int, 'doc': 'The dimension to iterate over', 'default': 0}
-    )
-
-    @docval(*__docval_init)
-    def __init__(self, **kwargs):
+    @validated
+    def __init__(self,
+                 data: Any = None,
+                 maxshape: tuple | None = None,
+                 dtype: np.dtype | None = None,
+                 buffer_size: Int = 1,
+                 iter_axis: Int = 0):
         """Initialize the DataChunkIterator.
         If 'data' is an iterator and 'dtype' is not specified, then next is called on the iterator in order to determine
         the dtype of the data.
+
+        Args:
+            data: The data object used for iteration
+            maxshape: The maximum shape of the full data array. Use None to indicate unlimited dimensions
+            dtype: The Numpy data type for the array
+            buffer_size: Number of values to be buffered in a chunk
+            iter_axis: The dimension to iterate over
         """
-        # Get the user parameters
-        self.data, self.__maxshape, self.__dtype, self.buffer_size, self.iter_axis = getargs('data',
-                                                                                             'maxshape',
-                                                                                             'dtype',
-                                                                                             'buffer_size',
-                                                                                             'iter_axis',
-                                                                                             kwargs)
+        self.data = data
+        self.__maxshape = maxshape
+        self.__dtype = dtype
+        self.buffer_size = buffer_size
+        self.iter_axis = iter_axis
         self.chunk_index = 0
         # Create an iterator for the data if possible
         if isinstance(self.data, Iterable):
@@ -569,9 +509,23 @@ class DataChunkIterator(AbstractDataChunkIterator):
             raise Exception('Data type could not be determined. Please specify dtype in DataChunkIterator init.')
 
     @classmethod
-    @docval(*__docval_init)
-    def from_iterable(cls, **kwargs):
-        return cls(**kwargs)
+    @validated
+    def from_iterable(cls,
+                      data: Any = None,
+                      maxshape: tuple | None = None,
+                      dtype: np.dtype | None = None,
+                      buffer_size: Int = 1,
+                      iter_axis: Int = 0):
+        """Create a DataChunkIterator; takes the same arguments as the constructor.
+
+        Args:
+            data: The data object used for iteration
+            maxshape: The maximum shape of the full data array. Use None to indicate unlimited dimensions
+            dtype: The Numpy data type for the array
+            buffer_size: Number of values to be buffered in a chunk
+            iter_axis: The dimension to iterate over
+        """
+        return cls(data=data, maxshape=maxshape, dtype=dtype, buffer_size=buffer_size, iter_axis=iter_axis)
 
     def __iter__(self):
         """Return the iterator object"""
@@ -686,22 +640,28 @@ class DataChunkIterator(AbstractDataChunkIterator):
 
     next = __next__
 
-    @docval(returns='Tuple with the recommended chunk shape or None if no particular shape is recommended.')
     def recommended_chunk_shape(self):
         """Recommend a chunk shape.
 
         To optimize iterative write the chunk should be aligned with the common shape of chunks returned by __next__
         or if those chunks are too large, then a well-aligned subset of those chunks. This may also be
         any other value in case one wants to recommend chunk shapes to optimize read rather
-        than write. The default implementation returns None, indicating no preferential chunking option."""
+        than write. The default implementation returns None, indicating no preferential chunking option.
+
+        Returns:
+            Tuple with the recommended chunk shape or None if no particular shape is recommended.
+        """
         return None
 
-    @docval(returns='Recommended initial shape for the full data. This should be the shape of the full dataset' +
-                    'if known beforehand or alternatively the minimum shape of the dataset. Return None if no ' +
-                    'recommendation is available')
     def recommended_data_shape(self):
         """Recommend an initial shape of the data. This is useful when progressively writing data and
-        we want to recommend an initial size for the dataset"""
+        we want to recommend an initial size for the dataset.
+
+        Returns:
+            Recommended initial shape for the full data. This should be the shape of the full dataset
+            if known beforehand or alternatively the minimum shape of the dataset. Return None if no
+            recommendation is available.
+        """
         if self.maxshape is not None:
             if np.all([i is not None for i in self.maxshape]):
                 return self.maxshape
@@ -764,12 +724,15 @@ class DataChunk:
     Class used to describe a data chunk. Used in DataChunkIterator.
     """
 
-    @docval({'name': 'data', 'type': np.ndarray,
-             'doc': 'Numpy array with the data value(s) of the chunk', 'default': None},
-            {'name': 'selection', 'type': None,
-             'doc': 'Numpy index tuple describing the location of the chunk', 'default': None})
-    def __init__(self, **kwargs):
-        self.data, self.selection = getargs('data', 'selection', kwargs)
+    @validated
+    def __init__(self, data: np.ndarray | None = None, selection: Any = None):
+        """Initialize the DataChunk.
+
+        Args:
+            data: Numpy array with the data value(s) of the chunk
+            selection: Numpy index tuple describing the location of the chunk
+        """
+        self.data, self.selection = data, selection
 
     def __len__(self):
         """Get the number of values in the data chunk"""
@@ -954,27 +917,39 @@ class ShapeValidatorResult:
     values are strings with default error messages for the type.
     """
 
-    @docval({'name': 'result', 'type': bool, 'doc': 'Result of the shape validation', 'default': False},
-            {'name': 'message', 'type': str,
-             'doc': 'Message describing the result of the shape validation', 'default': None},
-            {'name': 'ignored', 'type': tuple,
-             'doc': 'Axes that have been ignored in the validation process', 'default': tuple(), 'shape': (None,)},
-            {'name': 'unmatched', 'type': tuple,
-             'doc': 'List of axes that did not match during shape validation', 'default': tuple(), 'shape': (None,)},
-            {'name': 'error', 'type': str, 'doc': 'Error that may have occurred. One of ERROR_TYPE', 'default': None},
-            {'name': 'shape1', 'type': tuple,
-             'doc': 'Shape of the first array for comparison', 'default': tuple(), 'shape': (None,)},
-            {'name': 'shape2', 'type': tuple,
-             'doc': 'Shape of the second array for comparison', 'default': tuple(), 'shape': (None,)},
-            {'name': 'axes1', 'type': tuple,
-             'doc': 'Axes for the first array that should match', 'default': tuple(), 'shape': (None,)},
-            {'name': 'axes2', 'type': tuple,
-             'doc': 'Axes for the second array that should match', 'default': tuple(), 'shape': (None,)},
-            )
-    def __init__(self, **kwargs):
-        self.result, self.message, self.ignored, self.unmatched, \
-            self.error, self.shape1, self.shape2, self.axes1, self.axes2 = getargs(
-                'result', 'message', 'ignored', 'unmatched', 'error', 'shape1', 'shape2', 'axes1', 'axes2', kwargs)
+    @validated
+    def __init__(self,
+                 result: Bool = False,
+                 message: str | None = None,
+                 ignored: Shaped[tuple, (None,)] = (),
+                 unmatched: Shaped[tuple, (None,)] = (),
+                 error: str | None = None,
+                 shape1: Shaped[tuple, (None,)] = (),
+                 shape2: Shaped[tuple, (None,)] = (),
+                 axes1: Shaped[tuple, (None,)] = (),
+                 axes2: Shaped[tuple, (None,)] = ()):
+        """Initialize the ShapeValidatorResult.
+
+        Args:
+            result: Result of the shape validation
+            message: Message describing the result of the shape validation
+            ignored: Axes that have been ignored in the validation process
+            unmatched: List of axes that did not match during shape validation
+            error: Error that may have occurred. One of ERROR_TYPE
+            shape1: Shape of the first array for comparison
+            shape2: Shape of the second array for comparison
+            axes1: Axes for the first array that should match
+            axes2: Axes for the second array that should match
+        """
+        self.result = result
+        self.message = message
+        self.ignored = ignored
+        self.unmatched = unmatched
+        self.error = error
+        self.shape1 = shape1
+        self.shape2 = shape2
+        self.axes1 = axes1
+        self.axes2 = axes2
 
     def __setattr__(self, key, value):
         """
@@ -1007,20 +982,18 @@ class DataIO:
     used to pass dataset-specific I/O parameters to the particular HDMFIO backend.
     """
 
-    @docval({'name': 'data',
-             'type': 'array_data',
-             'doc': 'the data to be written',
-             'default': None},
-            {'name': 'dtype',
-             'type': (type, np.dtype),
-             'doc': 'the data type of the dataset. Not used if data is specified.',
-             'default': None},
-            {'name': 'shape',
-             'type': tuple,
-             'doc': 'the shape of the dataset. Not used if data is specified.',
-             'default': None})
-    def __init__(self, **kwargs):
-        data, dtype, shape = popargs('data', 'dtype', 'shape', kwargs)
+    @validated
+    def __init__(self,
+                 data: ArrayData | None = None,
+                 dtype: type | np.dtype | None = None,
+                 shape: tuple | None = None):
+        """Initialize the DataIO, wrapping data or declaring a dtype and shape for later.
+
+        Args:
+            data: the data to be written
+            dtype: the data type of the dataset. Not used if data is specified.
+            shape: the shape of the dataset. Not used if data is specified.
+        """
         if data is None:
             if (dtype is None) ^ (shape is None):
                 raise ValueError("Must specify 'dtype' and 'shape' if not specifying 'data'")

@@ -460,6 +460,10 @@ __docval_args_loc = 'args'
 def get_docval(func, *args):
     '''Get a copy of docval arguments for a function.
     If args are supplied, return only docval arguments with value for 'name' key equal to the args
+
+    For functions that are not decorated with ``@docval`` but have type-hinted
+    signatures, equivalent argument specs are synthesized from the signature, type
+    hints, and Google-style docstring (see :mod:`hdmf.typing`).
     '''
     func_docval = getattr(func, docval_attr_name, None)
     if func_docval:
@@ -470,10 +474,30 @@ def get_docval(func, *args):
             except KeyError as ke:
                 raise ValueError('Function %s does not have docval argument %s' % (func.__name__, str(ke)))
         return tuple(func_docval[__docval_args_loc])
+    elif __has_annotated_signature(func):
+        from .typing._compat import synthesize_docval  # lazy import to avoid circularity
+        specs, idx, _ = synthesize_docval(func)
+        if args:
+            try:
+                return tuple(idx[name] for name in args)
+            except KeyError as ke:
+                raise ValueError('Function %s does not have docval argument %s' % (func.__name__, str(ke)))
+        return specs
     else:
         if args:
             raise ValueError('Function %s has no docval arguments' % func.__name__)
         return tuple()
+
+
+def __has_annotated_signature(func):
+    """Return True if ``func`` is a plain function/method with type-hinted parameters."""
+    target = getattr(func, '__func__', func)
+    while hasattr(target, '__wrapped__'):
+        target = target.__wrapped__
+    annotations = getattr(target, '__annotations__', None)
+    if not annotations:
+        return False
+    return any(name != 'return' for name in annotations)
 
 
 def __resolve_type(t):

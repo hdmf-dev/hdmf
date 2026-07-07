@@ -30,9 +30,12 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
 dependencies = [
+    "beartype>=0.19.0",
+    "docstring_parser>=0.15",
     "h5py>=3.6.0",
     "jsonschema>=3.2.0",
     "numpy>=1.22.0",
+    "numpydantic>=1.6.0",
     "pandas>=1.4.0",
     "ruamel.yaml>=0.16",
 ]

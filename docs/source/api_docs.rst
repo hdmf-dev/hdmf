@@ -15,6 +15,7 @@ API Documentation
    I/O layer <hdmf.backends>
    Data I/O utilities <hdmf.data_utils>
    Development utilities <hdmf.utils>
+   Type hints and runtime validation <hdmf.typing>
    Validation utilities <hdmf.validate>
    Testing utilities <hdmf.testing>
    Full list of HDMF package contents <hdmf>

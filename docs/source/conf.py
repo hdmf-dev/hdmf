@@ -92,6 +92,16 @@ nitpick_ignore = [('py:class', 'Intracomm'),
                   ('py:class', 'unittest.case.TestCase'),
                   ('py:class', 'pandas.ExtensionArray'),
                   ]
+# numpy scalar types appear in expanded hdmf.typing alias signatures but have no
+# py:class intersphinx targets; same for pandas internal class paths
+nitpick_ignore_regex = [
+    ('py:class', r'numpy\.(u?int|float|bool|longdouble)\w*'),
+    ('py:class', r'pandas\.core\..*'),
+    # beartype validators inside hdmf.typing alias signatures render as
+    # Is[is_array_data], Is[has_shape_...], etc., which are not documented targets
+    ('py:class', r'beartype\..*'),
+    ('py:class', r'(is|has_shape)_\w*'),
+]
 
 suppress_warnings = ["config.cache"]
 
