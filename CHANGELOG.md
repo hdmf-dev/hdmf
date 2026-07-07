@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 6.2.0 (Upcoming)
+
+### Enhancements
+- Added namespace-agnostic type resolution to `NamespaceCatalog`. `get_spec`, `get_hierarchy`, and `is_sub_data_type` now accept `namespace=None` to search all loaded namespaces (returning the first match by name, mirroring `TypeMap.get_dt_container_cls`), and new `type_key`/`type_keys` properties report the catalog's data type key(s). Pass an explicit namespace to disambiguate a type name that is defined differently in more than one namespace. This is groundwork for validating files that use multiple extensions across namespaces (#608). @rly [#1531](https://github.com/hdmf-dev/hdmf/pull/1531)
+
 ## HDMF 6.1.0 (June 25, 2026)
 
 ### Enhancements
