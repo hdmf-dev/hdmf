@@ -1007,7 +1007,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if spec_shape is None:
             return None, None
         else:
-            if isinstance(spec.dtype, list):
+            if isinstance(spec.dtype, (list, RefSpec)) or self.__is_reftype(data):
+                # A compound (list) or reference dataset is written 1D with one element per entry, so
+                # treat it as 1D of length len(data). This covers references declared in the spec
+                # (RefSpec) as well as an untyped column whose data are references. Using
+                # get_data_shape here would recurse into reference targets (e.g. a DynamicTable,
+                # which is len()/index-able) and report a spurious higher-rank shape, yielding a
+                # maxshape whose rank does not match the 1D dataset the backend actually writes.
                 data_shape = (_get_length(data),)
             else:
                 data_shape = get_data_shape(data)
