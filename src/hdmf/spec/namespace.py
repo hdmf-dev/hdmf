@@ -298,6 +298,16 @@ class NamespaceCatalog:
         """The core namespaces used in this NamespaceCatalog"""
         return self.__core_namespaces
 
+    @property
+    def type_key(self):
+        """The data type key used by this catalog's spec classes (e.g. 'data_type')."""
+        return self.__group_spec_cls.type_key()
+
+    @property
+    def type_keys(self):
+        """The set of data type keys used by this catalog's group and dataset spec classes."""
+        return {self.__group_spec_cls.type_key(), self.__dataset_spec_cls.type_key()}
+
     def get_source_types(self, ns_name):
         """Get the source types for a namespace.
 
@@ -356,40 +366,88 @@ class NamespaceCatalog:
             raise KeyError("'%s' not a namespace" % name)
         return ret
 
-    @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace'},
-            {'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to get the spec for'},
+    def _namespace_of(self, data_type):
+        """Return the name of the first loaded namespace that defines *data_type*, or None if none do."""
+        if isinstance(data_type, type):
+            data_type = data_type.__name__
+        for name, namespace in self.__namespaces.items():
+            if namespace.catalog.get_spec(data_type) is not None:
+                return name
+        return None
+
+    @docval({'name': 'namespace', 'type': str,
+             'doc': 'the name of the namespace, or None to search all loaded namespaces', 'default': None},
+            {'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to get the spec for', 'default': None},
             returns="the specification for writing the given object type to HDF5 ", rtype='Spec')
     def get_spec(self, **kwargs):
         '''
-        Get the Spec object for the given type from the given Namespace
+        Get the Spec object for the given type. If *namespace* is None, search all loaded namespaces
+        and return the spec from the namespace that defines the type.
         '''
         namespace, data_type = getargs('namespace', 'data_type', kwargs)
+        if data_type is None:
+            raise ValueError("'data_type' must be provided")
+        if namespace is None:
+            namespace = self._namespace_of(data_type)
+            if namespace is None:
+                raise ValueError("No specification for '%s' in any loaded namespace" % data_type)
         if namespace not in self.__namespaces:
             raise KeyError("'%s' not a namespace" % namespace)
         return self.__namespaces[namespace].get_spec(data_type)
 
-    @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace'},
-            {'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to get the spec for'},
+    @docval({'name': 'namespace', 'type': str,
+             'doc': 'the name of the namespace, or None to search all loaded namespaces', 'default': None},
+            {'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to get the spec for', 'default': None},
             returns="a tuple with the type hierarchy", rtype=tuple)
     def get_hierarchy(self, **kwargs):
         '''
-        Get the type hierarchy for a given data_type in a given namespace
+        Get the type hierarchy for a given data_type. If *namespace* is None, search all loaded
+        namespaces; returns an empty tuple if no loaded namespace defines the type.
         '''
         namespace, data_type = getargs('namespace', 'data_type', kwargs)
+        if data_type is None:
+            raise ValueError("'data_type' must be provided")
+        if namespace is None:
+            namespace = self._namespace_of(data_type)
+            if namespace is None:
+                return tuple()
         spec_ns = self.__namespaces.get(namespace)
         if spec_ns is None:
             raise KeyError("'%s' not a namespace" % namespace)
         return spec_ns.get_hierarchy(data_type)
 
-    @docval({'name': 'namespace', 'type': str, 'doc': 'the name of the namespace containing the data_type'},
-            {'name': 'data_type', 'type': str, 'doc': 'the data_type to check'},
-            {'name': 'parent_data_type', 'type': str, 'doc': 'the potential parent data_type'},
+    @docval({'name': 'data_type', 'type': (str, type), 'doc': 'the data_type to get the subtypes for'},
+            {'name': 'recursive', 'type': bool,
+             'doc': 'whether to recursively find all subtypes of subtypes', 'default': True},
+            returns="a tuple of all subtypes of *data_type* defined in any loaded namespace", rtype=tuple)
+    def get_subtypes(self, **kwargs):
+        '''
+        Get all subtypes of *data_type* across all loaded namespaces. This unions the subtypes
+        registered in each namespace, so a subtype defined in a different namespace than
+        *data_type* is included.
+        '''
+        data_type, recursive = getargs('data_type', 'recursive', kwargs)
+        if isinstance(data_type, type):
+            data_type = data_type.__name__
+        subtypes = set()
+        for namespace in self.__namespaces.values():
+            subtypes.update(namespace.catalog.get_subtypes(data_type, recursive=recursive))
+        return tuple(subtypes)
+
+    @docval({'name': 'namespace', 'type': str,
+             'doc': 'the name of the namespace containing the data_type, or None to search all loaded namespaces',
+             'default': None},
+            {'name': 'data_type', 'type': str, 'doc': 'the data_type to check', 'default': None},
+            {'name': 'parent_data_type', 'type': str, 'doc': 'the potential parent data_type', 'default': None},
             returns="True if *data_type* is a sub `data_type` of *parent_data_type*, False otherwise", rtype=bool)
     def is_sub_data_type(self, **kwargs):
         '''
-        Return whether or not *data_type* is a sub `data_type` of *parent_data_type*
+        Return whether or not *data_type* is a sub `data_type` of *parent_data_type*. If *namespace*
+        is None, search all loaded namespaces.
         '''
         ns, dt, parent_dt = getargs('namespace', 'data_type', 'parent_data_type', kwargs)
+        if dt is None or parent_dt is None:
+            raise ValueError("'data_type' and 'parent_data_type' must be provided")
         hier = self.get_hierarchy(ns, dt)
         return parent_dt in hier
 
