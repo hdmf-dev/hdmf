@@ -3,7 +3,8 @@
 ## HDMF 6.1.1 (Upcoming)
 
 ### Fixed
-- Fixed writing a 1D dataset of object references whose targets are `DynamicTable`s (or other sized, indexable containers). Because such a container is `len()`/index-able, the reference column's shape was inferred by recursing into the referenced tables, producing a spurious higher-rank `maxshape` that did not match the 1D reference dataset the backend writes and raised `ValueError: 'maxshape' must have same rank as dataset shape`. The shape of a reference (or compound) dataset is now taken from the reference array itself. @pauladkisson [#1533](https://github.com/hdmf-dev/hdmf/pull/1533)
+- Fixed writing a 1D dataset of object references whose targets are `DynamicTable`s (or other sized, indexable containers). The shape of a reference (or compound) dataset is now taken from the reference array itself. @pauladkisson [#1533](https://github.com/hdmf-dev/hdmf/pull/1533)
+
 
 ## HDMF 6.1.0 (June 25, 2026)
 
