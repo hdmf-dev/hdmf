@@ -1862,7 +1862,14 @@ class EnumData(VectorData):
             return idx
         if not np.isscalar(idx):
             idx = np.asarray(idx)
-            ret = np.asarray(self.elements.get(idx.ravel(), **kwargs)).reshape(idx.shape)
+            # Load the full set of elements and index it in memory. An h5py-backed elements dataset
+            # requires its selection indices to be sorted and free of duplicates, while enum indices
+            # are arbitrarily ordered and repeat; indexing an in-memory array has no such constraint.
+            # The elements are a small fixed set, so reading them all is cheap. Selecting a small
+            # number of rows from an elements dataset with very high cardinality reads more than
+            # strictly needed, which is not the case EnumData is designed for.
+            elements = np.asarray(self.elements.get(np.s_[:], **kwargs))
+            ret = elements[idx]
             if join:
                 ret = ''.join(ret.ravel())
         else:

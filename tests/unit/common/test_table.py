@@ -2886,6 +2886,60 @@ class TestDynamicTableAddEnumRoundTrip(H5RoundTripMixin, TestCase):
         return table
 
 
+class TestEnumDataReadResolve(TestCase):
+    """Resolve EnumData values after reading from disk (h5py-backed elements).
+
+    An h5py-backed elements dataset requires its selection indices to be sorted and unique. Enum
+    indices are arbitrarily ordered and repeat, so resolving them requires reading the elements
+    into memory, where indexing carries no such constraint.
+    """
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        self.io = None
+
+    def tearDown(self):
+        # close the read IO before removing the file so the removal succeeds on Windows,
+        # which cannot delete a file that is still open
+        if self.io is not None:
+            self.io.close()
+        remove_test_file(self.path)
+
+    def _write_and_read(self, data):
+        ed = EnumData(name='color', description='a test EnumData',
+                      data=np.asarray(data), elements=['red', 'green', 'blue', 'yellow'])
+        table = DynamicTable(name='table0', description='an example table',
+                             columns=[ed], colnames=['color'])
+        with HDF5IO(self.path, 'w', manager=get_manager()) as io:
+            io.write(table)
+        self.io = HDF5IO(self.path, 'r', manager=get_manager())
+        read_table = self.io.read()
+        return read_table['color']
+
+    def test_read_resolve_all(self):
+        # indices are non-monotonic and repeat, which h5py rejects without unique-sorted handling
+        col = self._write_and_read([0, 1, 2, 1, 3, 0, 2])
+        np.testing.assert_array_equal(
+            col[:], ['red', 'green', 'blue', 'green', 'yellow', 'red', 'blue']
+        )
+
+    def test_read_resolve_scalar(self):
+        col = self._write_and_read([0, 1, 2, 1, 3, 0, 2])
+        self.assertEqual(col[3], 'green')
+
+    def test_read_resolve_slice(self):
+        # the slice selects element indices [3, 0, 1], which are non-monotonic and would be
+        # rejected if passed directly to the h5py-backed elements dataset
+        col = self._write_and_read([2, 3, 0, 1, 2])
+        np.testing.assert_array_equal(col[1:4], ['yellow', 'red', 'green'])
+
+    def test_read_resolve_2d(self):
+        col = self._write_and_read([[0, 3], [1, 1], [2, 0]])
+        np.testing.assert_array_equal(
+            col[:], [['red', 'yellow'], ['green', 'green'], ['blue', 'red']]
+        )
+
+
 class TestDynamicTableAddEnum(TestCase):
 
     def test_enum(self):
