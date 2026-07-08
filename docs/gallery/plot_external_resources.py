@@ -373,4 +373,35 @@ herd.to_zip(path='./HERD.zip')
 # by providing the path to the file itself.
 
 er_read = HERD.from_zip(path='./HERD.zip')
+
+###############################################################################
+# Inspect the data after reading
+# ------------------------------------------------------
+# In a Jupyter notebook, displaying ``er_read`` renders a summary line with the
+# table sizes followed by the flattened table of references (one row per
+# object/key/entity association). The same information is available
+# programmatically through the accessors below.
+#
+# :py:func:`~hdmf.common.resources.HERD.to_dataframe` gives the flattened view,
+# with one row per (file, object, key, entity) association. This is the most
+# convenient starting point for exploring what was stored.
+er_read.to_dataframe()
+
+###############################################################################
+# The individual interlinked tables are available as well, each as a
+# :py:class:`~pandas.DataFrame`.
+er_read.files.to_dataframe()
+er_read.objects.to_dataframe()
+er_read.entities.to_dataframe()
+er_read.keys.to_dataframe()
+er_read.object_keys.to_dataframe()
+er_read.entity_keys.to_dataframe()
+
+###############################################################################
+# To retrieve the entities annotated on a single object, pass a live container
+# to :py:func:`~hdmf.common.resources.HERD.get_object_entities`. The container's
+# ``object_id`` is matched against the objects stored in the read
+# :py:class:`~hdmf.common.resources.HERD`.
+er_read.get_object_entities(file=file, container=species['Species_Data'])
+
 os.remove('./HERD.zip')

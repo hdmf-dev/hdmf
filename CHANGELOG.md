@@ -2,6 +2,9 @@
 
 ## HDMF 6.2.0 (Upcoming)
 
+### Documentation and tutorial enhancements
+- Expanded the "Read HERD" section of the external resources tutorial to show how to inspect a `HERD` after reading it back with `HERD.from_zip`, using `to_dataframe`, the individual interlinked tables, and `get_object_entities`. This addresses confusion about a read `HERD` appearing empty in its default Jupyter display. @rly [#1535](https://github.com/hdmf-dev/hdmf/pull/1535)
+
 ### Changed
 - Added support for hdmf-common schema 1.10.0, which changes ``MeaningsTable.target`` from a link to an object-reference attribute (``dtype`` with ``reftype: object``, ``target_type: VectorData``). Files written with the hdmf-common 1.9.0 ``MeaningsTable`` (a link named "target") are still read correctly via a backwards-compatibility mapping in ``MeaningsTableMap``. There is no change in the read/write API; the change is limited to the representation on disk. @rly [#1525](https://github.com/hdmf-dev/hdmf/pull/1525)
 
