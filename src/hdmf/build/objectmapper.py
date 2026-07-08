@@ -988,7 +988,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
         spec
             The DatasetSpec or AttributeSpec providing ``shape``, ``dims``, and ``dtype`` to
             match against. When ``spec.dtype`` is a list (compound dtype), the data is treated
-            as 1D with length equal to ``len(data)`` for the purpose of shape matching.
+       spec
+           The DatasetSpec or AttributeSpec providing ``shape``, ``dims``, and ``dtype`` to
+           match against. When ``spec.dtype`` is a list (compound dtype), or a``RefSpec``, or
+           when ``data`` holds references, the data is treated as 1D with length equal to
+           ``len(data)`` for the purpose of shape matching, since the backend writes such
+           datasets 1D with one element per entry.
 
         Returns
         -------
