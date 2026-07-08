@@ -3495,6 +3495,56 @@ class TestMeaningsTableRoundTrip(H5RoundTripMixin, TestCase):
         self.assertEqual(list(mt['meaning'].data), ['stimulus A', 'stimulus B', 'stimulus C'])
 
 
+class TestMeaningsTableLegacyTargetLinkRead(TestCase):
+    """Read a MeaningsTable written with the hdmf-common 1.9.0 "target" link layout.
+
+    hdmf-common 1.9.0 stored ``MeaningsTable.target`` as a link named "target"; 1.10.0 stores it as
+    an object-reference attribute named "target". A new-format file is written and then rewritten on
+    disk into the 1.9.0 layout (the "target" reference attribute is replaced with a "target" SoftLink
+    to the target column) so that MeaningsTableMap's backwards-compatibility path is exercised.
+    """
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        remove_test_file(self.path)
+
+    def _write_legacy_file(self):
+        table = DynamicTable(name='test_table', description='a test table')
+        table.add_column(name='stimulus_type', description='stimulus type')
+        table.add_row(stimulus_type='a')
+        table.add_row(stimulus_type='b')
+        table.add_row(stimulus_type='a')
+
+        mt = MeaningsTable(target=table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        table.add_meanings_table(mt)
+
+        with HDF5IO(self.path, 'w', manager=get_manager()) as io:
+            io.write(table)
+
+        # rewrite into the hdmf-common 1.9.0 layout: replace the "target" object-reference attribute
+        # with a "target" SoftLink to the target column
+        with h5py.File(self.path, 'r+') as f:
+            group = f['meanings_tables/stimulus_type_meanings']
+            del group.attrs['target']
+            group['target'] = h5py.SoftLink('/stimulus_type')
+
+    def test_read_legacy_target_link(self):
+        self._write_legacy_file()
+        with HDF5IO(self.path, 'r', manager=get_manager()) as io:
+            read_table = io.read()
+            mt = read_table.get_meanings_table('stimulus_type_meanings')
+            # the target link resolves to the target column, not an extra column of the table
+            self.assertEqual(tuple(mt.colnames), ('value', 'meaning'))
+            self.assertEqual(len(mt), 2)
+            self.assertEqual(list(mt['value'].data), ['a', 'b'])
+            self.assertEqual(list(mt['meaning'].data), ['stimulus A', 'stimulus B'])
+            self.assertIs(mt.target, read_table['stimulus_type'])
+
+
 class TestMeaningsTableLengthMismatchRoundTrip(H5RoundTripMixin, TestCase):
     """Roundtrip when MeaningsTable row count differs from the target column row count.
 
