@@ -4348,6 +4348,48 @@ class TestDefaultExpandableWithReferences(H5RoundTripMixin, TestCase):
             self.assertEqual(f[ref_ds[1]].name, '/group2')
 
 
+class TestDefaultExpandableWithTableReferences(H5RoundTripMixin, TestCase):
+    """Test that a VectorData column of references to DynamicTables is written 1D and expandable.
+
+    A DynamicTable is ``len()``/index-able, so inferring the reference column's shape by recursing
+    into the referenced tables reports a spurious higher-rank shape, producing a maxshape whose rank
+    does not match the 1D reference dataset the backend writes. Regression test: the shape must be
+    taken from the reference array (1D), not the referenced tables.
+    """
+
+    def setUpContainer(self):
+        target1 = DynamicTable(name='target1', description='a referenced table')
+        target1.add_column(name='x', description='a column')
+        target1.add_row(x=1.0)
+        target2 = DynamicTable(name='target2', description='another referenced table')
+        target2.add_column(name='x', description='a column')
+        target2.add_row(x=2.0)
+
+        table = DynamicTable(name='table0', description='an example table')
+        table.add_column(name='ref', description='a reference column to whole tables')
+        table.add_row(ref=target1)
+        table.add_row(ref=target2)
+
+        multi = SimpleMultiContainer(name='multi')
+        multi.add_container(target1)
+        multi.add_container(target2)
+        multi.add_container(table)
+        return multi
+
+    def test_roundtrip(self):
+        super().test_roundtrip()
+
+        with h5py.File(self.filename, 'r') as f:
+            ref_ds = f['table0/ref']
+            self.assertEqual(ref_ds.maxshape, (None,))
+            self.assertIsNotNone(ref_ds.chunks)
+            self.assertTrue(h5py.check_ref_dtype(ref_ds.dtype))
+            # Stored refs resolve to the expected target tables.
+            self.assertIsInstance(ref_ds[0], h5py.Reference)
+            self.assertEqual(f[ref_ds[0]].name, '/target1')
+            self.assertEqual(f[ref_ds[1]].name, '/target2')
+
+
 class TestDefaultExpandableExplicitOverride(H5RoundTripMixin, TestCase):
     """Test that explicit H5DataIO settings are not overridden by the default expandable behavior."""
 
