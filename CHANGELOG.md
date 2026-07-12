@@ -4,7 +4,7 @@
 
 ### Changed
 - Added support for hdmf-common schema 1.10.0, which changes ``MeaningsTable.target`` from a link to an object-reference attribute (``dtype`` with ``reftype: object``, ``target_type: VectorData``). Files written with the hdmf-common 1.9.0 ``MeaningsTable`` (a link named "target") are still read correctly via a backwards-compatibility mapping in ``MeaningsTableMap``. There is no change in the read/write API; the change is limited to the representation on disk. @rly [#1525](https://github.com/hdmf-dev/hdmf/pull/1525)
-- ``DynamicTable.get_meanings_for_column`` (and the ``AlignedDynamicTable`` override) now returns ``None`` when the named column exists but has no ``MeaningsTable``, and raises ``KeyError`` only when the column itself does not exist. @rly [#1537](https://github.com/hdmf-dev/hdmf/issues/1537)
+- ``DynamicTable.get_meanings_for_column`` (and the ``AlignedDynamicTable`` override) now returns ``None`` when the named column exists but has no ``MeaningsTable``, and raises ``KeyError`` only when the column itself does not exist. @rly [#1538](https://github.com/hdmf-dev/hdmf/pull/1538)
 
 ### Fixed
 - Fixed reading the resolved values of an `EnumData` column from an HDF5 file (e.g. `column[:]`). @rly [#1534](https://github.com/hdmf-dev/hdmf/pull/1534)
