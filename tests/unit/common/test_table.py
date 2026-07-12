@@ -3426,10 +3426,14 @@ class TestDynamicTableMeaningsTables(TestCase):
         retrieved = self.table.get_meanings_for_column('stimulus_type')
         self.assertEqual(retrieved, mt)
 
-    def test_get_meanings_for_column_not_found(self):
-        """Test error when no MeaningsTable exists for a column."""
+    def test_get_meanings_for_column_no_meanings(self):
+        """Test that None is returned when a valid column has no MeaningsTable."""
+        self.assertIsNone(self.table.get_meanings_for_column('stimulus_type'))
+
+    def test_get_meanings_for_column_invalid_column(self):
+        """Test error when the column does not exist."""
         with self.assertRaises(KeyError):
-            self.table.get_meanings_for_column('stimulus_type')
+            self.table.get_meanings_for_column('nonexistent')
 
     def test_get_meanings_table_not_found(self):
         """Test error when MeaningsTable not found."""
