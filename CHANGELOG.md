@@ -4,6 +4,7 @@
 
 ### Changed
 - Added support for hdmf-common schema 1.10.0, which changes ``MeaningsTable.target`` from a link to an object-reference attribute (``dtype`` with ``reftype: object``, ``target_type: VectorData``). Files written with the hdmf-common 1.9.0 ``MeaningsTable`` (a link named "target") are still read correctly via a backwards-compatibility mapping in ``MeaningsTableMap``. There is no change in the read/write API; the change is limited to the representation on disk. @rly [#1525](https://github.com/hdmf-dev/hdmf/pull/1525)
+- ``DynamicTable.get_meanings_for_column`` (and the ``AlignedDynamicTable`` override) now returns ``None`` when the named column exists but has no ``MeaningsTable``, and raises ``KeyError`` only when the column itself does not exist. @rly [#1538](https://github.com/hdmf-dev/hdmf/pull/1538)
 
 ### Fixed
 - Fixed `ObjectMapper._parse_isoformat` raising `ValueError: Invalid isoformat string` when reading an ISO 8601 timestamp that ends in the `Z` (UTC) designator on Python < 3.11. `datetime.fromisoformat` did not accept a trailing `Z` until Python 3.11, but `requires-python` is `>=3.10` and hdmf's own writer emits the equivalent `+00:00` offset, so a `Z`-terminated timestamp written by a peer tool was unreadable on the supported 3.10 floor. A trailing `Z`/`z` is now normalized to `+00:00` before parsing. @Leonard013 [#1539](https://github.com/hdmf-dev/hdmf/pull/1539)
