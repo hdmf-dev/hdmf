@@ -610,14 +610,18 @@ class DynamicTable(Container):
 
     @docval({'name': 'col_name', 'type': str,
              'doc': 'The name of the column to get the MeaningsTable for.'},
-            returns='the MeaningsTable for the given column', rtype='MeaningsTable')
+            returns="the MeaningsTable for the given column, or None if the column has no MeaningsTable",
+            rtype='MeaningsTable')
     def get_meanings_for_column(self, **kwargs):
-        """Get a MeaningsTable for a column in this DynamicTable."""
+        """Get the MeaningsTable for a column in this DynamicTable.
+
+        Return None if the column exists but has no MeaningsTable. Raise KeyError if the column
+        does not exist in this DynamicTable.
+        """
         col_name = getargs('col_name', kwargs)
-        meanings_table_name = f"{col_name}_meanings"
-        if meanings_table_name not in self.__meanings_tables:
-            raise KeyError(f"No MeaningsTable found for column '{col_name}' in DynamicTable '{self.name}'")
-        return self.__meanings_tables[meanings_table_name]
+        if col_name not in self:
+            raise KeyError(f"Column '{col_name}' not found in DynamicTable '{self.name}'")
+        return self.__meanings_tables.get(f"{col_name}_meanings")
 
     def __set_table_attr(self, col):
         if hasattr(self, col.name) and col.name not in self.__uninit_cols:
