@@ -3,7 +3,6 @@ import math
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable, Callable
 from warnings import warn
-from typing import Tuple
 from itertools import product, chain
 
 try:
@@ -15,7 +14,7 @@ except ImportError:
 import h5py
 import numpy as np
 
-from .utils import docval, getargs, popargs, docval_macro, get_data_shape
+from .utils import docval, getargs, popargs, docval_macro, get_data_shape, _is_collection, _get_length
 
 def append_data(data, arg):
     from hdmf.backends.hdf5.h5_utils import HDMFDataset
@@ -28,8 +27,16 @@ def append_data(data, arg):
     elif isinstance(data, np.ndarray):
         if len(data.dtype)>0: # data is a structured array
             return np.append(data, arg)
-        else: # arg is a scalar or row vector
-            return np.append(data,  np.expand_dims(arg, axis=0), axis=0)
+        elif np.ndim(arg) < np.ndim(data):
+            # arg is a scalar or row vector
+            # This can be used for shape validation on append, but now the validated dim
+            # needs to match the expected logic here.
+            return np.append(data, np.expand_dims(arg, axis=0), axis=0)
+        else:
+            # arg already has the same dimension as data
+            # This allows users to use shape validation in the docval (for append) where the input
+            # dim matches the schema dim for the dataset.
+            return np.append(data, arg, axis=0)
     elif isinstance(data, h5py.Dataset):
         shape = list(data.shape)
         shape[0] += 1
@@ -57,7 +64,7 @@ def extend_data(data, arg):
         data.extend(arg)
         return data
     elif isinstance(data, np.ndarray):
-        return np.vstack((data, arg))
+        return np.concatenate((data, arg))
     elif isinstance(data, h5py.Dataset):
         shape = list(data.shape)
         shape[0] += len(arg)
@@ -329,7 +336,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             default=None,
         )
     )
-    def _get_default_chunk_shape(self, **kwargs) -> Tuple[int, ...]:
+    def _get_default_chunk_shape(self, **kwargs) -> tuple[int, ...]:
         """
         Select chunk shape with size in MB less than the threshold of chunk_mb.
 
@@ -360,7 +367,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             default=None,
         )
     )
-    def _get_default_buffer_shape(self, **kwargs) -> Tuple[int, ...]:
+    def _get_default_buffer_shape(self, **kwargs) -> tuple[int, ...]:
         """
         Select buffer shape with size in GB less than the threshold of buffer_gb.
 
@@ -409,13 +416,13 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
                 self.progress_bar.write("\n")
             raise StopIteration
 
-    def __reduce__(self) -> Tuple[Callable, Iterable]:
+    def __reduce__(self) -> tuple[Callable, Iterable]:
         instance_constructor = self._from_dict
         initialization_args = (self._to_dict(),)
         return (instance_constructor, initialization_args)
 
     @abstractmethod
-    def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
+    def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         """
         Retrieve the data specified by the selection using minimal I/O.
 
@@ -424,7 +431,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
         :param selection: tuple of slices, each indicating the selection indexed with respect to maxshape for that axis.
             Each axis of tuple is a slice of the full shape from which to pull data into the buffer.
-        :type selection: Tuple[slice]
+        :type selection: tuple[slice]
 
         :returns: Array of data specified by selection
         :rtype: numpy.ndarray
@@ -432,7 +439,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
 
     @abstractmethod
-    def _get_maxshape(self) -> Tuple[int, ...]:
+    def _get_maxshape(self) -> tuple[int, ...]:
         """Retrieve the maximum bounds of the data shape using minimal I/O."""
         raise NotImplementedError("The setter for the maxshape property has not been built for this DataChunkIterator!")
 
@@ -454,14 +461,14 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             "The `._from_dict()` method for pickling has not been defined for this DataChunkIterator!"
         )
 
-    def recommended_chunk_shape(self) -> Tuple[int, ...]:
+    def recommended_chunk_shape(self) -> tuple[int, ...]:
         return self.chunk_shape
 
-    def recommended_data_shape(self) -> Tuple[int, ...]:
+    def recommended_data_shape(self) -> tuple[int, ...]:
         return self.maxshape
 
     @property
-    def maxshape(self) -> Tuple[int, ...]:
+    def maxshape(self) -> tuple[int, ...]:
         return self._maxshape
     @property
     def dtype(self) -> np.dtype:
@@ -731,9 +738,9 @@ class DataChunkIterator(AbstractDataChunkIterator):
                 # Size of self.__next_chunk.data along self.iter_axis is not accurate for maxshape because it is just a
                 # chunk. So try to set maxshape along the dimension self.iter_axis based on the shape of self.data if
                 # possible. Otherwise, use None to represent an unlimited size
-                if hasattr(self.data, '__len__') and self.iter_axis == 0:
+                if _is_collection(self.data) and self.iter_axis == 0:
                     # special case of 1-D array
-                    self.__maxshape[0] = len(self.data)
+                    self.__maxshape[0] = _get_length(self.data)
                 else:
                     self.__maxshape[self.iter_axis] = self.data.shape[self.iter_axis]
             except AttributeError:  # from self.data.shape
@@ -1099,7 +1106,7 @@ class DataIO:
             raise InvalidDataIOError("Cannot get length of data. Data is not valid.")
         if isinstance(self.data, AbstractDataChunkIterator):
             return self.data.maxshape[0]
-        return len(self.data)
+        return _get_length(self.data)
 
     def __bool__(self):
         if self.valid:

@@ -124,6 +124,10 @@ class FooFile(Container, HERDManager):
           and should be reset to 'root' when use is finished to avoid potential cross-talk between tests.
     """
 
+    __fields__ = (
+        {'name': 'external_resources', 'child': True, 'required_name': 'external_resources'},
+    )
+
     ROOT_NAME = "root"  # For HDF5 and Zarr this is the root. It should be set before use if different for the backend.
 
     @docval(
@@ -330,6 +334,7 @@ def get_foo_buildmanager(my_data_dtype="int"):
     )
     namespace_catalog = NamespaceCatalog()
     namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+    namespace_catalog.resolve_all_specs()
     type_map = TypeMap(namespace_catalog)
 
     type_map.register_container_type(CORE_NAMESPACE, "Foo", Foo)
@@ -342,6 +347,71 @@ def get_foo_buildmanager(my_data_dtype="int"):
 
     manager = BuildManager(type_map)
     return manager
+
+############################################
+# Qux: A test class with variable data shapes
+############################################
+class QuxData(Data):
+    pass
+
+
+class QuxBucket(Container):
+    "PseudoFile"
+    @docval(
+        {"name": "name", "type": str, "doc": "the name of this bucket"},
+        {"name": "qux_data", "type": QuxData, "doc": "Data with user defined shape."},
+    )
+    def __init__(self, **kwargs):
+        name, qux_data = getargs("name", "qux_data", kwargs)
+        super().__init__(name=name)
+        self.__qux_data = qux_data
+        self.__qux_data.parent = self
+
+    @property
+    def qux_data(self):
+        return self.__qux_data
+
+
+def get_qux_buildmanager(shape):
+    qux_data_spec = DatasetSpec(
+        doc="A test dataset of references specification with a data type",
+        name="qux_data",
+        data_type_def="QuxData",
+        shape=shape,
+        dtype='int'
+    )
+
+    qux_bucket_spec = GroupSpec(
+        doc="A test group specification for a data type containing data type",
+        data_type_def="QuxBucket",
+        datasets=[
+            DatasetSpec(doc="doc", data_type_inc="QuxData"),
+        ],
+    )
+
+    spec_catalog = SpecCatalog()
+    spec_catalog.register_spec(qux_data_spec, "test.yaml")
+    spec_catalog.register_spec(qux_bucket_spec, "test.yaml")
+
+    namespace = SpecNamespace(
+        "a test namespace",
+        CORE_NAMESPACE,
+        [{"source": "test.yaml"}],
+        version="0.1.0",
+        catalog=spec_catalog,
+    )
+
+    namespace_catalog = NamespaceCatalog()
+    namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+    namespace_catalog.resolve_all_specs()
+
+    type_map = TypeMap(namespace_catalog)
+    type_map.register_container_type(CORE_NAMESPACE, "QuxData", QuxData)
+    type_map.register_container_type(CORE_NAMESPACE, "QuxBucket", QuxBucket)
+
+    manager = BuildManager(type_map)
+    return manager
+
 
 
 ############################################
@@ -458,6 +528,7 @@ def get_baz_buildmanager():
 
     namespace_catalog = NamespaceCatalog()
     namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+    namespace_catalog.resolve_all_specs()
 
     type_map = TypeMap(namespace_catalog)
     type_map.register_container_type(CORE_NAMESPACE, "Baz", Baz)
@@ -500,6 +571,7 @@ def create_test_type_map(specs, container_classes, mappers=None):
     )
     namespace_catalog = NamespaceCatalog()
     namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+    namespace_catalog.resolve_all_specs()
     type_map = TypeMap(namespace_catalog)
     for type_name, container_cls in container_classes.items():
         type_map.register_container_type(CORE_NAMESPACE, type_name, container_cls)
@@ -510,7 +582,13 @@ def create_test_type_map(specs, container_classes, mappers=None):
     return type_map
 
 
-def create_load_namespace_yaml(namespace_name, specs, output_dir, incl_types, type_map):
+def create_load_namespace_yaml(
+    namespace_name: str,
+    specs: list[GroupSpec | DatasetSpec],
+    output_dir: str,
+    incl_types: dict[str, list[str] | None],
+    type_map: TypeMap,
+) -> dict:
     """
     Create a TypeMap with the specs loaded from YAML files and dependencies resolved.
 
@@ -520,6 +598,7 @@ def create_load_namespace_yaml(namespace_name, specs, output_dir, incl_types, ty
 
     :param namespace_name: Name of the new namespace.
     :param specs: List of specs of new data types to add.
+    :param output_dir: Directory to write the namespace and spec YAML files to.
     :param incl_types: Dict mapping included namespace name to list of data types to include or None to include all.
     :param type_map: The type map to load the namespace into.
     """
@@ -543,7 +622,7 @@ def create_load_namespace_yaml(namespace_name, specs, output_dir, incl_types, ty
 
     ns_builder.export(ns_filename, outdir=output_dir)
     ns_path = os.path.join(output_dir, ns_filename)
-    type_map.load_namespaces(ns_path)
+    return type_map.load_namespaces(ns_path)
 
 
 # ##### custom spec classes #####
@@ -626,19 +705,6 @@ class CustomGroupSpec(BaseStorageOverride, GroupSpec):
     @classmethod
     def dataset_spec_cls(cls):
         return CustomDatasetSpec
-
-    @docval(*deepcopy(swap_inc_def(GroupSpec, "CustomGroupSpec")))
-    def add_group(self, **kwargs):
-        spec = CustomGroupSpec(**kwargs)
-        self.set_group(spec)
-        return spec
-
-    @docval(*deepcopy(swap_inc_def(DatasetSpec, "CustomDatasetSpec")))
-    def add_dataset(self, **kwargs):
-        """Add a new specification for a subgroup to this group specification"""
-        spec = CustomDatasetSpec(**kwargs)
-        self.set_dataset(spec)
-        return spec
 
 
 class CustomDatasetSpec(BaseStorageOverride, DatasetSpec):

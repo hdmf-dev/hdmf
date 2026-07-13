@@ -1,5 +1,7 @@
 import collections
 import copy as _copy
+import datetime
+import re
 import types
 import warnings
 from abc import ABCMeta
@@ -7,20 +9,75 @@ from enum import Enum
 
 import h5py
 import numpy as np
+import pandas as pd
+from pandas.api.extensions import ExtensionArray as _PandasExtensionArray
 
 
 __macros = {
-    'array_data': [np.ndarray, list, tuple, h5py.Dataset],
-    'scalar_data': [str, int, float, bytes, bool],
+    'array_data': [np.ndarray, list, tuple, h5py.Dataset, pd.Series, _PandasExtensionArray],
+    'scalar_data': [str, int, float, bytes, bool, datetime.datetime, datetime.date, np.generic],
     'data': []
 }
 
 try:
-    # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
-    import zarr
-    __macros['array_data'].append(zarr.Array)
+    from zarr import Array as ZarrArray
+    ZARR_INSTALLED = True
 except ImportError:
-    pass
+    ZARR_INSTALLED = False
+
+
+def is_zarr_array(value):
+    return ZARR_INSTALLED and isinstance(value, ZarrArray)
+
+
+def is_array_like(value):
+    """Return True if ``value`` is a numpy ndarray, h5py Dataset, or zarr Array."""
+    return isinstance(value, np.ndarray) or isinstance(value, h5py.Dataset) or is_zarr_array(value)
+
+
+def coerce_pandas_data(data):
+    """Convert a pandas Series or ExtensionArray to a numpy array for HDMF storage.
+
+    HDMF stores dataset values as numpy arrays (or array-likes such as h5py.Dataset).
+    Pandas Series and ExtensionArray inputs are normalized at the construction
+    boundary so that downstream code only has to handle numpy/list/tuple data.
+
+    Raises:
+        TypeError: if the input contains missing values (pd.NA / np.nan), which
+            cannot be serialized to HDF5 variable-length string datasets and which
+            HDMF does not support for other dtypes.
+    """
+    if isinstance(data, pd.Series):
+        underlying = data.array
+    elif isinstance(data, _PandasExtensionArray):
+        underlying = data
+    else:
+        return data
+
+    if pd.isna(underlying).any():
+        raise TypeError(
+            "Cannot construct an HDMF dataset from pandas data containing missing "
+            "values (pd.NA or NaN). HDF5 cannot serialize missing values in "
+            "variable-length string datasets, and HDMF does not yet support "
+            "missing values for other dtypes. Replace missing values with a "
+            "sentinel (e.g., empty string) before passing the data to HDMF."
+        )
+
+    # pandas nullable masked dtypes (e.g. Int64, boolean, Float64) expose the
+    # backing numpy dtype. Convert through it so the result keeps that dtype on
+    # all supported pandas versions; a plain to_numpy()/np.asarray() returns an
+    # object array on pandas < 2.2.
+    numpy_dtype = getattr(underlying.dtype, "numpy_dtype", None)
+    if numpy_dtype is not None:
+        return underlying.to_numpy(dtype=numpy_dtype)
+
+    if isinstance(data, pd.Series):
+        return data.to_numpy()
+    return np.asarray(data)
+
+if ZARR_INSTALLED:
+    # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
+    __macros['array_data'].append(ZarrArray)
 
 
 # code to signify how to handle positional arguments in docval
@@ -188,6 +245,15 @@ def __fmt_str_quotes(x):
     return str(x)
 
 
+def __shape_error_message(argname, valshape, allowable_shapes):
+    if isinstance(allowable_shapes, (list, tuple)) and all(isinstance(e, (list, tuple)) for e in allowable_shapes):
+        allowable_shapes_str = " or ".join(map(str, allowable_shapes))
+    else:
+        allowable_shapes_str = str(allowable_shapes)
+    allowable_shapes_str = allowable_shapes_str.replace("None", "*")
+    return f"incorrect shape for {argname}: got {valshape}, and expected {allowable_shapes_str}"
+
+
 def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True, allow_extra=False,  # noqa: C901
                  allow_positional=AllowPositional.ALLOWED):
     """
@@ -304,8 +370,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                         argval = getattr(argval, argname)
                         valshape = get_data_shape(argval)
                     if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
-                        fmt_val = (argname, valshape, arg['shape'])
-                        value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
+                        value_errors.append(__shape_error_message(argname, valshape, arg['shape']))
                 if 'enum' in arg:
                     err = __check_enum(argval, arg)
                     if err:
@@ -361,8 +426,7 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                     argval = getattr(argval, argname)
                     valshape = get_data_shape(argval)
                 if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
-                    fmt_val = (argname, valshape, arg['shape'])
-                    value_errors.append("incorrect shape for '%s' (got '%s', expected '%s')" % fmt_val)
+                    value_errors.append(__shape_error_message(argname, valshape, arg['shape']))
             if 'enum' in arg and argval is not None:
                 err = __check_enum(argval, arg)
                 if err:
@@ -382,8 +446,6 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
         for key in extras.keys():
             type_errors.append("unrecognized argument: '%s'" % key)
     else:
-        # TODO: Extras get stripped out if function arguments are composed with fmt_docval_args.
-        # allow_extra needs to be tracked on a function so that fmt_docval_args doesn't strip them out
         for key in extras.keys():
             ret[key] = extras[key]
     return {'args': ret, 'future_warnings': future_warnings, 'type_errors': type_errors, 'value_errors': value_errors,
@@ -412,95 +474,6 @@ def get_docval(func, *args):
         if args:
             raise ValueError('Function %s has no docval arguments' % func.__name__)
         return tuple()
-
-
-# def docval_wrap(func, is_method=True):
-#    if is_method:
-#        @docval(*get_docval(func))
-#        def method(self, **kwargs):
-#
-#            return call_docval_args(func, kwargs)
-#        return method
-#    else:
-#        @docval(*get_docval(func))
-#        def static_method(**kwargs):
-#            return call_docval_args(func, kwargs)
-#        return method
-
-
-def fmt_docval_args(func, kwargs):
-    ''' Separate positional and keyword arguments
-
-    Useful for methods that wrap other methods
-    '''
-    warnings.warn("fmt_docval_args will be deprecated in a future version of HDMF. Instead of using fmt_docval_args, "
-                  "call the function directly with the kwargs. Please note that fmt_docval_args "
-                  "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
-                  "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
-                  "is set), then you will need to pop the extra arguments out of kwargs before calling the function.",
-                  PendingDeprecationWarning, stacklevel=2)
-    func_docval = getattr(func, docval_attr_name, None)
-    ret_args = list()
-    ret_kwargs = dict()
-    kwargs_copy = _copy.copy(kwargs)
-    if func_docval:
-        for arg in func_docval[__docval_args_loc]:
-            val = kwargs_copy.pop(arg['name'], None)
-            if 'default' in arg:
-                if val is not None:
-                    ret_kwargs[arg['name']] = val
-            else:
-                ret_args.append(val)
-        if func_docval['allow_extra']:
-            ret_kwargs.update(kwargs_copy)
-    else:
-        raise ValueError('no docval found on %s' % str(func))
-    return ret_args, ret_kwargs
-
-
-# def _remove_extra_args(func, kwargs):
-#     """Return a dict of only the keyword arguments that are accepted by the function's docval.
-#
-#     If the docval specifies allow_extra=True, then the original kwargs are returned.
-#     """
-#     # NOTE: this has the same functionality as the to-be-deprecated fmt_docval_args except that
-#     # kwargs are kept as kwargs instead of parsed into args and kwargs
-#     func_docval = getattr(func, docval_attr_name, None)
-#     if func_docval:
-#         if func_docval['allow_extra']:
-#             # if extra args are allowed, return all args
-#             return kwargs
-#         else:
-#             # save only the arguments listed in the function's docval (skip any others present in kwargs)
-#             ret_kwargs = dict()
-#             for arg in func_docval[__docval_args_loc]:
-#                 val = kwargs.get(arg['name'], None)
-#                 if val is not None:  # do not return arguments that are not present or have value None
-#                     ret_kwargs[arg['name']] = val
-#             return ret_kwargs
-#     else:
-#         raise ValueError('No docval found on %s' % str(func))
-
-
-def call_docval_func(func, kwargs):
-    """Call the function with only the keyword arguments that are accepted by the function's docval.
-
-    Extra keyword arguments are not passed to the function unless the function's docval has allow_extra=True.
-    """
-    warnings.warn("call_docval_func will be deprecated in a future version of HDMF. Instead of using call_docval_func, "
-                  "call the function directly with the kwargs. Please note that call_docval_func "
-                  "removes all arguments not accepted by the function's docval, so if you are passing kwargs that "
-                  "includes extra arguments and the function's docval does not allow extra arguments (allow_extra=True "
-                  "is set), then you will need to pop the extra arguments out of kwargs before calling the function.",
-                  PendingDeprecationWarning, stacklevel=2)
-    with warnings.catch_warnings(record=True):
-        # catch and ignore only PendingDeprecationWarnings from fmt_docval_args so that two
-        # PendingDeprecationWarnings saying the same thing are not raised
-        warnings.simplefilter("ignore", UserWarning)
-        warnings.simplefilter("always", PendingDeprecationWarning)
-        fargs, fkwargs = fmt_docval_args(func, kwargs)
-
-    return func(*fargs, **fkwargs)
 
 
 def __resolve_type(t):
@@ -706,7 +679,7 @@ def __builddoc(func, validator, docstring_fmt, arg_fmt, ret_fmt=None, returns=No
 
             if module.startswith("builtins"):
                 return ":py:class:`~{name}`".format(name=name)
-            elif module.startswith("h5py") or module.startswith('pandas'):
+            elif module.startswith("h5py") or module.startswith('pandas') or module.startswith('pathlib'):
                 return ":py:class:`~{module}.{name}`".format(name=name, module=module.split('.')[0])
             else:
                 return ":py:class:`~{module}.{name}`".format(name=name, module=module)
@@ -901,28 +874,87 @@ def get_data_shape(data, strict_no_data_load=False):
     :return: Tuple of ints indicating the size of known dimensions. Dimensions for which the size is unknown
              will be set to None.
     """
+    from hdmf.container import Data
 
     def __get_shape_helper(local_data):
         shape = list()
-        if hasattr(local_data, '__len__'):
-            shape.append(len(local_data))
-            if len(local_data):
+        if _is_collection(local_data):
+            length = _get_length(local_data)
+            shape.append(length)
+            if length:
                 el = next(iter(local_data))
-                if not isinstance(el, (str, bytes)):
+                # If local_data is a list/tuple of Data, do not iterate into the objects
+                if not isinstance(el, (str, bytes, Data)):
                     shape.extend(__get_shape_helper(el))
         return tuple(shape)
 
-    # NOTE: data.maxshape will fail on empty h5py.Dataset without shape or maxshape. this will be fixed in h5py 3.0
-    if hasattr(data, 'maxshape'):
-        return data.maxshape
+    # Get the shape of the underlying data if this is a Data object. Some Data subclasses may override the shape
+    # property to improve user-friendliness, but we want the actual shape of the data here.
+    if isinstance(data, Data):
+        data = data.data
+
     if hasattr(data, 'shape') and data.shape is not None:
         return data.shape
+    if hasattr(data, 'maxshape'):
+        return data.maxshape
     if isinstance(data, dict):
         return None
-    if hasattr(data, '__len__') and not isinstance(data, (str, bytes)):
+    if _is_collection(data):
         if not strict_no_data_load or isinstance(data, (list, tuple, set)):
             return __get_shape_helper(data)
     return None
+
+
+def _is_collection(data):
+    """Check if data is a collection (array-like with elements) vs a scalar.
+
+    Checks ndim first because the Python array API standard requires conforming
+    arrays to have ndim and shape but does not require __len__. This handles
+    array libraries like zarr v3 that follow the standard. Falls back to
+    __len__ for plain Python containers (list, tuple). Strings and bytes
+    are treated as scalars.
+    """
+    if isinstance(data, (str, bytes)):
+        return False
+    try:
+        ndim = data.ndim
+        return ndim > 0
+    except AttributeError:
+        # No ndim attribute (e.g. list, tuple, dict). Fall back to __len__.
+        return hasattr(data, "__len__")
+    except Exception:
+        # Accessing ndim on a closed h5py dataset raises RuntimeError.
+        # Treat inaccessible data as non-collection.
+        return False
+
+
+def _get_length(data) -> int:
+    """Get the first dimension of an array or a Sized object (``collections.abc.Sized`` such as list or tuple).
+
+    Uses ``shape[0]`` for objects that expose a ``shape`` attribute (numpy
+    arrays, h5py datasets, zarr arrays) and falls back to ``len()`` for
+    Sized objects.
+
+    This exists because the Python array API standard does not require
+    ``__len__``, so libraries like zarr v3 may omit it. Accessing
+    ``shape[0]`` works universally for array-API-conforming objects.
+    """
+    if hasattr(data, "shape") and data.shape is not None:
+        return data.shape[0]
+    return len(data)
+
+
+def _unwrap_scalar(value):
+    """If value is a 0-d ndarray, extract the numpy scalar via .item().
+
+    Array-API-conforming libraries (e.g., zarr v3) return 0-d ndarrays from
+    scalar indexing instead of numpy scalars. This converts them so that
+    isinstance checks against Python/numpy scalar types work correctly.
+    """
+    if isinstance(value, np.ndarray) and value.ndim == 0:
+        return value.item()
+    return value
+
 
 
 def pystr(s):
@@ -967,6 +999,78 @@ def is_ragged(data):
 
     return False
 
+def is_newer_version(version_a: str, version_b: str) -> bool:
+    # this method could be replaced by packaging.version if packaging is added as a dependency
+    version_a_match = re.match(r"(\d+\.\d+\.\d+)", version_a)[0]  # trim off any non-numeric symbols at end
+    version_a_list = [int(i) for i in version_a_match.split(".")]
+
+    version_b_match = re.match(r"(\d+\.\d+\.\d+)", version_b)[0]  # trim off any non-numeric symbols at end
+    version_b_list = [int(i) for i in version_b_match.split(".")]
+
+    for a, b in zip(version_a_list, version_b_list):
+        if a > b:
+            return True
+        elif a < b:
+            return False
+
+    return False
+
+def get_basic_array_info(array):
+    def convert_bytes_to_str(bytes_size):
+        suffixes = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
+        i = 0
+        while bytes_size >= 1024 and i < len(suffixes)-1:
+            bytes_size /= 1024.
+            i += 1
+        return f"{bytes_size:.2f} {suffixes[i]}"
+
+    if hasattr(array, "nbytes"):  # TODO: Remove this after h5py minimal version is larger than 3.0
+        array_size_in_bytes = array.nbytes
+    else:
+        array_size_in_bytes = array.size * array.dtype.itemsize
+    array_size_repr = convert_bytes_to_str(array_size_in_bytes)
+    basic_array_info_dict = {"Data type": array.dtype, "Shape": array.shape, "Array size": array_size_repr}
+
+    return basic_array_info_dict
+
+def generate_array_html_repr(array_info_dict, array, dataset_type=None):
+    def html_table(item_dicts) -> str:
+        """
+        Generates an html table from a dictionary
+        """
+        report = '<table class="data-info">'
+        report += "<tbody>"
+        for k, v in item_dicts.items():
+            report += (
+                f"<tr>"
+                f'<th style="text-align: left">{k}</th>'
+                f'<td style="text-align: left">{v}</td>'
+                f"</tr>"
+            )
+        report += "</tbody>"
+        report += "</table>"
+        return report
+
+    array_info_html = html_table(array_info_dict)
+    repr_html = dataset_type + "<br>" + array_info_html if dataset_type is not None else array_info_html
+
+    # Array like might lack nbytes (h5py < 3.0) or size (DataIO object)
+    if hasattr(array, "nbytes"):
+        array_size_bytes = array.nbytes
+    else:
+        if hasattr(array, "size"):
+            array_size = array.size
+        else:
+            import math
+            array_size = math.prod(array.shape)
+        array_size_bytes = array_size * array.dtype.itemsize
+
+    # Heuristic for displaying data
+    array_is_small = array_size_bytes < 1024 * 0.1 # 10 % a kilobyte to display the array
+    if array_is_small:
+        repr_html += "<br>" + str(array[()])
+
+    return repr_html
 
 class LabelledDict(dict):
     """A dict wrapper that allows querying by an attribute of the values and running a callable on removed items.
@@ -1137,10 +1241,67 @@ class LabelledDict(dict):
         """update is not supported. A TypeError will be raised."""
         raise TypeError('update is not supported for %s' % self.__class__.__name__)
 
+    def _repr_html_(self):
+        """Generate an HTML representation of the LabelledDict.
+
+        This method produces an interactive HTML view similar to what is shown
+        when expanding a field in a Container's HTML representation. Each item
+        in the dict is displayed as an expandable section showing its own
+        HTML representation if available.
+        """
+        # CSS styles matching Container.css_style
+        css_style = """
+        <style>
+            .container-fields {
+                font-family: "Open Sans", Arial, sans-serif;
+            }
+            .container-fields .field-value {
+                color: #00788E;
+            }
+            .container-fields details > summary {
+                cursor: pointer;
+                display: list-item;
+            }
+            .container-fields details > summary:hover {
+                color: #0A6EAA;
+            }
+        </style>
+        """
+
+        html_repr = css_style
+        html_repr += "<div class='container-wrap'>"
+        html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{self.label}</h3></div></div>"
+
+        if len(self) == 0:
+            html_repr += "<div class='container-fields'><i>Empty</i></div>"
+            html_repr += "</div>"
+            return html_repr
+
+        for key, value in self.items():
+            # Get the class name for display
+            class_name = type(value).__name__
+            display_name = f"{key} <span style='font-weight: normal; color: #888;'>({class_name})</span>"
+
+            # Delegate to the item's _repr_html_ if available
+            if hasattr(value, '_repr_html_'):
+                inner_html = value._repr_html_()
+            else: # Edge case, I am not sure when if this can happen
+                inner_html = f"<span class='field-value'>{value}</span>"
+
+            html_repr += (
+                f"<details><summary style='display: list-item; margin-left: 0px;' "
+                f"class='container-fields field-key' title=\"['{key}']\"><b>{display_name}</b></summary>"
+            )
+            html_repr += f"<div style='margin-left: 20px;'>{inner_html}</div>"
+            html_repr += "</details>"
+
+        html_repr += "</div>"
+        return html_repr
+
 
 @docval_macro('array_data')
 class StrDataset(h5py.Dataset):
-    """Wrapper to decode strings on reading the dataset"""
+    """Wrapper to decode strings on reading the dataset. Use only for h5py 3+."""
     def __init__(self, dset, encoding, errors='strict'):
         self.dset = dset
         if encoding is None:

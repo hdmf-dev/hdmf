@@ -1,18 +1,11 @@
 version: 2
 updates:
-  # disable checking python requirements files because there are too
-  # many updates and dependabot will not ignore requirements-min.txt
-  # until https://github.com/dependabot/dependabot-core/issues/2883 is resolved
-  # workaround is to continue updating these files manually
-
-  # - package-ecosystem: "pip"
-  #   directory: "/"
-  #   schedule:
-  #     # Check for updates to requirements files and pyproject.toml every week
-  #     interval: "weekly"
-
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       # Check for updates to GitHub Actions every week
       interval: "weekly"
+    cooldown:
+      # Wait a week after a new action version is published before opening a PR,
+      # so a freshly published (potentially compromised) version is not adopted immediately.
+      default-days: 7

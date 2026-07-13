@@ -42,7 +42,7 @@ to learn more about how LinkML structures their schema.
 1. The name of the schema is up to the user, e.g., the name could be "Species" if the term set will
    contain species terms.
 2. The prefixes will be the standardized prefix of your source, followed by the URI to the terms.
-   For example, the NCBI Taxonomy is abbreviated as NCBI_TAXON, and Ensemble is simply Ensemble.
+   For example, the NCBI Taxonomy is abbreviated as NCBITaxon, and Ensemble is simply Ensemble.
    As mentioned prior, the URI needs to be to the terms; this is to allow the URI to later be coupled
    with the source id for the term to create a valid link to the term source page.
 3. The schema uses LinkML enumerations to list all the possible terms. To define the all the permissible
@@ -65,6 +65,8 @@ for this tutorial, which provides a concise example of how a term set schema loo
     For more information how to properly format the schema to support LinkML Dynamic Enumerations, please
     refer to https://linkml.io/linkml/schemas/enums.html#dynamic-enums.
 """
+# sphinx_gallery_thumbnail_path = 'figures/gallery_thumbnail_termset.png'
+
 from hdmf.common import DynamicTable, VectorData
 import os
 import numpy as np

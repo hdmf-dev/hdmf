@@ -1,9 +1,12 @@
 from hdmf import Data, Container
-from hdmf.common import get_type_map, load_type_config, unload_type_config
+from hdmf.common import get_type_map, load_type_config, unload_type_config, available_namespaces, _get_resources
 from hdmf.testing import TestCase
 
 
 class TestCommonTypeMap(TestCase):
+
+    def tearDown(self):
+        unload_type_config()
 
     def test_base_types(self):
         tm = get_type_map()
@@ -24,5 +27,16 @@ class TestCommonTypeMap(TestCase):
                  {'ExtensionContainer': {'description': None}}}}}
 
         self.assertEqual(tm.type_config.config, config)
-        self.assertEqual(tm.type_config.path, [path])
-        unload_type_config()
+        self.assertEqual(tm.type_config.paths, [path])
+
+
+class TestCommonInit(TestCase):
+    def test_available_namespaces(self):
+        ns = available_namespaces()
+        self.assertIn('hdmf-common', ns)
+        self.assertIn('hdmf-experimental', ns)
+
+    def test_get_resources_legacy(self):
+        """Test legacy _get_resources function."""
+        result = _get_resources()
+        self.assertIsInstance(result, dict)

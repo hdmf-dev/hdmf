@@ -1,4 +1,6 @@
-from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder, RegionBuilder
+import numpy as np
+
+from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from hdmf.testing import TestCase
 
 
@@ -54,6 +56,34 @@ class TestGroupBuilder(TestCase):
         gb1.location = 'location'
         gb1.location = 'new location'
         self.assertEqual(gb1.location, 'new location')
+
+    def test_matched_spec_default_none(self):
+        gb = GroupBuilder('gb')
+        db = DatasetBuilder('db', list(range(3)))
+        lb = LinkBuilder(gb, 'lb')
+        self.assertIsNone(gb.matched_spec)
+        self.assertIsNone(db.matched_spec)
+        self.assertIsNone(lb.matched_spec)
+
+    def test_set_matched_spec(self):
+        gb = GroupBuilder('gb')
+        sentinel = object()
+        gb.matched_spec = sentinel
+        self.assertIs(gb.matched_spec, sentinel)
+
+    def test_overwrite_matched_spec_raises(self):
+        gb = GroupBuilder('gb')
+        gb.matched_spec = object()
+        with self.assertRaisesRegex(AttributeError, 'Cannot overwrite matched_spec.'):
+            gb.matched_spec = object()
+
+    def test_matched_spec_independent_per_builder(self):
+        gb1 = GroupBuilder('gb1')
+        gb2 = GroupBuilder('gb2')
+        spec1 = object()
+        gb1.matched_spec = spec1
+        self.assertIs(gb1.matched_spec, spec1)
+        self.assertIsNone(gb2.matched_spec)
 
 
 class TestGroupBuilderSetters(TestCase):
@@ -352,6 +382,14 @@ class TestDatasetBuilder(TestCase):
         with self.assertRaisesWith(AttributeError, msg):
             db1.parent = gb1
 
+    def test_constructor_numpy_scalar_data(self):
+        """DatasetBuilder must accept numpy scalar types as data (numpy 2.x removed __iter__ from scalars)."""
+        for dtype in (np.uint8, np.uint16, np.uint32, np.uint64, np.int32, np.int64, np.float32, np.float64, np.bool_):
+            with self.subTest(dtype=dtype):
+                val = dtype(5)
+                db = DatasetBuilder(name='db', data=val)
+                self.assertIs(db.data, val)
+
     def test_repr(self):
         gb1 = GroupBuilder('gb1')
         db1 = DatasetBuilder(
@@ -391,13 +429,4 @@ class TestReferenceBuilder(TestCase):
     def test_constructor(self):
         db = DatasetBuilder('db1', [1, 2, 3])
         rb = ReferenceBuilder(db)
-        self.assertIs(rb.builder, db)
-
-
-class TestRegionBuilder(TestCase):
-
-    def test_constructor(self):
-        db = DatasetBuilder('db1', [1, 2, 3])
-        rb = RegionBuilder(slice(1, 3), db)
-        self.assertEqual(rb.region, slice(1, 3))
         self.assertIs(rb.builder, db)

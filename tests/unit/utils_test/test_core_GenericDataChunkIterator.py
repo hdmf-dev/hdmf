@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from tempfile import mkdtemp
 from shutil import rmtree
-from typing import Tuple, Iterable, Callable, Union
+from collections.abc import Iterable, Callable
 from sys import version_info
 
 import h5py
@@ -29,7 +29,7 @@ class PickleableNumpyArrayDataChunkIterator(GenericDataChunkIterator):
     def _get_data(self, selection) -> np.ndarray:
         return self.array[selection]
 
-    def _get_maxshape(self) -> Tuple[int, ...]:
+    def _get_maxshape(self) -> tuple[int, ...]:
         return self.array.shape
 
     def _get_dtype(self) -> np.dtype:
@@ -53,7 +53,7 @@ class GenericDataChunkIteratorTests(TestCase):
         def _get_data(self, selection) -> np.ndarray:
             return self.array[selection]
 
-        def _get_maxshape(self) -> Tuple[int, ...]:
+        def _get_maxshape(self) -> tuple[int, ...]:
             return self.array.shape
 
         def _get_dtype(self) -> np.dtype:
@@ -67,7 +67,7 @@ class GenericDataChunkIteratorTests(TestCase):
         def _get_data(self, selection) -> np.ndarray:
             return self.array[selection]
 
-        def _get_maxshape(self) -> Tuple[np.uint64, ...]:  # Undesirable return type, but can be handled
+        def _get_maxshape(self) -> tuple[np.uint64, ...]:  # Undesirable return type, but can be handled
             return tuple(np.uint64(x) for x in self.array.shape)
 
         def _get_dtype(self) -> np.dtype:
@@ -412,7 +412,7 @@ class GenericDataChunkIteratorTests(TestCase):
     def test_progress_bar_class(self):
 
         class MyCustomProgressBar(tqdm.tqdm):
-            def update(self, n: int = 1) -> Union[bool, None]:
+            def update(self, n: int = 1) -> bool | None:
                 displayed = super().update(n)
                 print(f"Custom injection on step {n}") # noqa: T201
 

@@ -3,7 +3,7 @@ from pandas.testing import assert_frame_equal
 import warnings
 
 from hdmf.backends.hdf5 import HDF5IO
-from hdmf.common import DynamicTable, VectorData, get_manager, AlignedDynamicTable, DynamicTableRegion
+from hdmf.common import DynamicTable, VectorData, get_manager, AlignedDynamicTable, DynamicTableRegion, MeaningsTable
 from hdmf.testing import TestCase, remove_test_file
 
 
@@ -586,3 +586,109 @@ class TestAlignedDynamicTableContainer(TestCase):
                              ('test3', 'c1'), ('test3', 'c2'), ('test3', 'c3')]
         self.assertListEqual(adt.get_colnames(include_category_tables=True, ignore_category_ids=True),
                              expected_colnames)
+
+    def test_get_meanings_for_column_main_table(self):
+        """Test getting a MeaningsTable for a column in the main table."""
+        # Create main table with a column
+        main_col = VectorData(name='stimulus_type', description='stimulus type', data=['a', 'b', 'c'])
+        adt = AlignedDynamicTable(
+            name='test_aligned_table',
+            description='Test aligned container',
+            columns=[main_col])
+
+        # Create and add MeaningsTable for the main table column
+        mt = MeaningsTable(target=adt['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        mt.add_row(value='c', meaning='stimulus C')
+        adt.add_meanings_table(mt)
+
+        # Test getting the MeaningsTable without specifying category (main table)
+        retrieved = adt.get_meanings_for_column('stimulus_type')
+        self.assertEqual(retrieved, mt)
+
+    def test_get_meanings_for_column_category_table(self):
+        """Test getting a MeaningsTable for a column in a category table."""
+        # Create category table with a column that will have meanings
+        category_col = VectorData(name='response_type', description='response type', data=['x', 'y', 'z'])
+        category_table = DynamicTable(
+            name='responses',
+            description='response category',
+            columns=[category_col])
+
+        # Create MeaningsTable for the category column
+        mt = MeaningsTable(target=category_table['response_type'])
+        mt.add_row(value='x', meaning='response X')
+        mt.add_row(value='y', meaning='response Y')
+        mt.add_row(value='z', meaning='response Z')
+        category_table.add_meanings_table(mt)
+
+        # Create AlignedDynamicTable with main column and category table
+        main_col = VectorData(name='trial_id', description='trial id', data=[1, 2, 3])
+        adt = AlignedDynamicTable(
+            name='test_aligned_table',
+            description='Test aligned container',
+            columns=[main_col],
+            category_tables=[category_table])
+
+        # Test getting the MeaningsTable by specifying the category
+        retrieved = adt.get_meanings_for_column('response_type', category='responses')
+        self.assertEqual(retrieved, mt)
+
+    def test_get_meanings_for_column_category_no_meanings(self):
+        """Test that None is returned when a valid category column has no MeaningsTable."""
+        # Create category table without a MeaningsTable
+        category_col = VectorData(name='response_type', description='response type', data=['x', 'y', 'z'])
+        category_table = DynamicTable(
+            name='responses',
+            description='response category',
+            columns=[category_col])
+
+        # Create AlignedDynamicTable
+        main_col = VectorData(name='trial_id', description='trial id', data=[1, 2, 3])
+        adt = AlignedDynamicTable(
+            name='test_aligned_table',
+            description='Test aligned container',
+            columns=[main_col],
+            category_tables=[category_table])
+
+        self.assertIsNone(adt.get_meanings_for_column('response_type', category='responses'))
+
+    def test_get_meanings_for_column_category_invalid_column(self):
+        """Test error when the column does not exist in the category table."""
+        category_col = VectorData(name='response_type', description='response type', data=['x', 'y', 'z'])
+        category_table = DynamicTable(
+            name='responses',
+            description='response category',
+            columns=[category_col])
+
+        main_col = VectorData(name='trial_id', description='trial id', data=[1, 2, 3])
+        adt = AlignedDynamicTable(
+            name='test_aligned_table',
+            description='Test aligned container',
+            columns=[main_col],
+            category_tables=[category_table])
+
+        with self.assertRaisesRegex(KeyError, "Column 'nonexistent' not found"):
+            adt.get_meanings_for_column('nonexistent', category='responses')
+
+    def test_get_meanings_for_column_main_no_meanings(self):
+        """Test that None is returned when a valid main-table column has no MeaningsTable."""
+        main_col = VectorData(name='stimulus_type', description='stimulus type', data=['a', 'b', 'c'])
+        adt = AlignedDynamicTable(
+            name='test_aligned_table',
+            description='Test aligned container',
+            columns=[main_col])
+
+        self.assertIsNone(adt.get_meanings_for_column('stimulus_type'))
+
+    def test_get_meanings_for_column_main_invalid_column(self):
+        """Test error when the column does not exist in the main table."""
+        main_col = VectorData(name='stimulus_type', description='stimulus type', data=['a', 'b', 'c'])
+        adt = AlignedDynamicTable(
+            name='test_aligned_table',
+            description='Test aligned container',
+            columns=[main_col])
+
+        with self.assertRaisesRegex(KeyError, "Column 'nonexistent' not found"):
+            adt.get_meanings_for_column('nonexistent')

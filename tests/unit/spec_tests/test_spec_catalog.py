@@ -161,6 +161,18 @@ class SpecCatalogTest(TestCase):
                              }
         self.assertDictEqual(full_hierarchy, expected_hierarchy)
 
+    def test_circular_hierarchy(self):
+        """Test that circular dependencies are detected and raise an error."""
+        # Create circular dependency: A -> B -> A
+        spec_a = GroupSpec(data_type_inc="TypeB", data_type_def="TypeA", doc="Group A")
+        spec_b = GroupSpec(data_type_inc="TypeA", data_type_def="TypeB", doc="Group B")
+        self.catalog.register_spec(spec_a, 'test.yaml')
+        self.catalog.register_spec(spec_b, 'test.yaml')
+
+        msg = "Circular reference detected in type hierarchy for TypeA"
+        with self.assertRaisesWith(ValueError, msg):
+            self.catalog.get_hierarchy('TypeA')
+
     def test_copy_spec_catalog(self):
         # Register the spec first
         self.catalog.register_spec(self.spec, 'test.yaml')
@@ -208,8 +220,10 @@ class SpecCatalogTest(TestCase):
         )
         source = 'test_extension.yaml'
         self.catalog.register_spec(spec1, source)
-        msg = "'Group1' - cannot overwrite existing specification"
-        with self.assertRaisesWith(ValueError, msg):
+        msg = (f"{source} defines a different specification for Group1 than the existing definition "
+               f"from {source}. Defaulting to the existing specification from {source}, but "
+               "compatibility issues may be present. Please update the extension version if possible.")
+        with self.assertWarnsWith(UserWarning, msg):
             self.catalog.register_spec(spec2, source)
 
     def test_catch_duplicate_spec_different_source(self):
@@ -224,6 +238,8 @@ class SpecCatalogTest(TestCase):
         source1 = 'test_extension1.yaml'
         source2 = 'test_extension2.yaml'
         self.catalog.register_spec(spec1, source1)
-        msg = "'Group1' - cannot overwrite existing specification"
-        with self.assertRaisesWith(ValueError, msg):
+        msg = (f"{source2} defines a different specification for Group1 than the existing definition "
+               f"from {source1}. Defaulting to the existing specification from {source1}, but "
+               "compatibility issues may be present. Please update the extension version if possible.")
+        with self.assertWarnsWith(UserWarning, msg):
             self.catalog.register_spec(spec2, source2)

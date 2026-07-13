@@ -32,6 +32,15 @@ class AttributeSpecTests(TestCase):
                           default_value=10            # <-- Default_value and value can't be set at the same time
                           )
 
+    def test_empty_shape(self):
+        with self.assertRaisesWith(ValueError, "'shape' must not be empty"):
+            AttributeSpec(
+                name='attribute1',
+                doc='my first attribute',
+                dtype='int',
+                shape=[],
+            )
+
     def test_colliding_shape_and_dims(self):
         with self.assertRaises(ValueError):
             AttributeSpec(name='attribute1',
@@ -57,6 +66,7 @@ class AttributeSpecTests(TestCase):
                              shape=shape)
         self.assertEqual(spec['shape'], shape)
         self.assertEqual(spec.shape, shape)
+        self.assertEqual(spec.dims, ('dim_0', 'dim_1'))
 
     def test_dims_without_shape(self):
         spec = AttributeSpec('attribute1',

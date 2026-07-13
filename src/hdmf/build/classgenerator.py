@@ -4,13 +4,13 @@ from collections.abc import Callable
 
 import numpy as np
 
-from ..container import Container, Data, DataRegion, MultiContainerInterface
-from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec
+from ..container import Container, Data, MultiContainerInterface
+from ..spec import AttributeSpec, LinkSpec, RefSpec, GroupSpec, DatasetSpec
 from ..spec.spec import BaseStorageSpec, ZERO_OR_MANY, ONE_OR_MANY
 from ..utils import docval, getargs, ExtenderMeta, get_docval, popargs, AllowPositional
 
 
-class ClassGenerator:
+class ClassGeneratorManager:
 
     def __init__(self):
         self.__custom_generators = []
@@ -21,7 +21,7 @@ class ClassGenerator:
 
     @docval({'name': 'generator', 'type': type, 'doc': 'the CustomClassGenerator class to register'})
     def register_generator(self, **kwargs):
-        """Add a custom class generator to this ClassGenerator.
+        """Add a custom class generator to this ClassGeneratorManager.
 
         Generators added later are run first. Duplicates are moved to the top of the list.
         """
@@ -33,9 +33,9 @@ class ClassGenerator:
         self.__custom_generators.insert(0, generator)
 
     @docval({'name': 'data_type', 'type': str, 'doc': 'the data type to create a AbstractContainer class for'},
-            {'name': 'spec', 'type': BaseStorageSpec, 'doc': ''},
-            {'name': 'parent_cls', 'type': type, 'doc': ''},
-            {'name': 'attr_names', 'type': dict, 'doc': ''},
+            {'name': 'spec', 'type': BaseStorageSpec, 'doc': 'The spec for the class to be generated.'},
+            {'name': 'parent_cls', 'type': type, 'doc': 'Parent class used for docval ancestor args.'},
+            {'name': 'attr_names', 'type': dict, 'doc': 'The names of the attributes from the spec.'},
             {'name': 'post_init_method', 'type': Callable, 'default': None,
              'doc': 'The function used as a post_init method to validate the class generation.'},
             {'name': 'type_map', 'type': 'hdmf.build.manager.TypeMap', 'doc': ''},
@@ -52,6 +52,9 @@ class ClassGenerator:
 
         not_inherited_fields = dict()
         for k, field_spec in attr_names.items():
+            """
+            Collect new fields that are actually part of this spec, not its ancestors.
+            """
             if k == 'help':  # pragma: no cover
                 # (legacy) do not add field named 'help' to any part of class object
                 continue
@@ -67,6 +70,10 @@ class ClassGenerator:
                 for class_generator in self.__custom_generators:  # pragma: no branch
                     # each generator can update classdict and docval_args
                     if class_generator.apply_generator_to_field(field_spec, bases, type_map):
+                        # process_field_spec extracts field metadata (name, type, doc, shape, default, constraints)
+                        # from the schema spec and adds it to classdict under __fields__ for later use in
+                        # generating dynamic properties.
+                        # Also creates a corresponding docval argument for the class constructor.
                         class_generator.process_field_spec(classdict, docval_args, parent_cls, attr_name,
                                                            not_inherited_fields, type_map, spec)
                         break  # each field_spec should be processed by only one generator
@@ -195,7 +202,7 @@ class CustomClassGenerator:
         if isinstance(dtype, tuple):
             for sub in dtype:
                 ret = ret or cls._ischild(sub)
-        elif isinstance(dtype, type) and issubclass(dtype, (Container, Data, DataRegion)):
+        elif isinstance(dtype, type) and issubclass(dtype, (Container, Data)):
             ret = True
         return ret
 
@@ -245,7 +252,7 @@ class CustomClassGenerator:
         docval_arg = dict(
             name=attr_name,
             doc=field_spec.doc,
-            type=cls._get_type(field_spec, type_map)
+            type=dtype,
         )
         shape = getattr(field_spec, 'shape', None)
         if shape is not None:
@@ -300,6 +307,48 @@ class CustomClassGenerator:
 
         # set default name in docval args if provided
         cls._set_default_name(docval_args, spec.default_name)
+
+        if isinstance(spec, DatasetSpec):
+            cls._update_data_docval_arg(docval_args, spec)
+
+    @classmethod
+    def _update_data_docval_arg(cls, docval_args: list, spec: DatasetSpec) -> None:
+        """Update the inherited 'data' docval arg in place to reflect the dataset spec.
+
+        Updates `type`, `doc`, `shape` (when the spec declares one), and `default` (when
+        the spec declares a `default_value`). Other keys are preserved from the parent
+        class's docval, so subclasses don't accidentally lose, e.g., VectorData's
+        empty-list default when the spec doesn't override it.
+
+        Fixed values (`value` on the spec) on dataset types are not yet applied to
+        generated classes.
+
+        :param docval_args: The list of docval arguments to update in place.
+        :param spec: The DatasetSpec for the container class to generate.
+        """
+        if spec.shape is None and spec.dims is None:
+            if spec.dtype is not None:
+                dtype = cls._get_type_from_spec_dtype(spec.dtype)
+            else:
+                dtype = ('scalar_data', 'array_data', 'data')
+        else:
+            dtype = ('array_data', 'data')
+
+        existing_data_arg = next((a for a in docval_args if a['name'] == 'data'), None)
+        if existing_data_arg is not None:
+            existing_data_arg['type'] = dtype
+            existing_data_arg['doc'] = spec.doc
+            if spec.shape is not None:
+                existing_data_arg['shape'] = spec.shape
+            if spec.default_value is not None:
+                existing_data_arg['default'] = spec.default_value
+        else:
+            new_arg = dict(name='data', doc=spec.doc, type=dtype)
+            if spec.shape is not None:
+                new_arg['shape'] = spec.shape
+            if spec.default_value is not None:
+                new_arg['default'] = spec.default_value
+            docval_args.append(new_arg)
 
     @classmethod
     def _get_attrs_not_to_set_init(cls, classdict, parent_docval_args):

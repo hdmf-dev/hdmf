@@ -5,6 +5,9 @@ on:
     types:
       - opened
 
+permissions:
+  contents: read
+
 jobs:
   add-to-project:
     name: Add issue to project
@@ -12,15 +15,18 @@ jobs:
     steps:
       - name: GitHub App token
         id: generate_token
-        uses: tibdex/github-app-token@v2
+        # The token is used to add issues to the org-level project boards, which the default GITHUB_TOKEN
+        # cannot reach; its scope is bounded by the GitHub App's own installed permissions.
+        # immutable release (see .github/zizmor.yml for the policy exception)
+        uses: actions/create-github-app-token@v3.2.0  # zizmor: ignore[github-app]
         with:
-          app_id: ${{ secrets.APP_ID }}
-          private_key: ${{ secrets.APP_PEM }}
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PEM }}
 
       - name: Add to Developer Board
         env:
           TOKEN: ${{ steps.generate_token.outputs.token }}
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd  # v2.0.0
         with:
           project-url: https://github.com/orgs/hdmf-dev/projects/7
           github-token: ${{ env.TOKEN }}
@@ -28,7 +34,7 @@ jobs:
       - name: Add to Community Board
         env:
           TOKEN: ${{ steps.generate_token.outputs.token }}
-        uses: actions/add-to-project@v1.0.1
+        uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd  # v2.0.0
         with:
           project-url: https://github.com/orgs/hdmf-dev/projects/8
           github-token: ${{ env.TOKEN }}

@@ -8,6 +8,9 @@ on:
       - 'latest-tmp'
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   run-tests:
     name: ${{ matrix.name }}
@@ -23,30 +26,28 @@ jobs:
       matrix:
         include:
           # NOTE config below with "upload-wheels: true" specifies that wheels should be uploaded as an artifact
-          - { name: linux-python3.8-minimum      , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: linux-python3.12             , test-tox-env: pytest-py312-pinned    , python-ver: "3.12", os: ubuntu-latest }
-          - { name: linux-python3.12-upgraded    , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: ubuntu-latest , upload-wheels: true }
-          - { name: windows-python3.8-minimum    , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: windows-latest }
-          - { name: windows-python3.12-upgraded  , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: windows-latest }
-          - { name: macos-python3.8-minimum      , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: macos-13 }
-          - { name: macos-python3.12-upgraded    , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: macos-latest }
+          - { name: linux-python3.10-minimum             , test-tox-env: pytest-py310-minimum           , python-ver: "3.10", os: ubuntu-latest }
+          - { name: linux-python3.14-upgraded            , test-tox-env: pytest-py314-upgraded          , python-ver: "3.14", os: ubuntu-latest }
+          - { name: linux-python3.14-upgraded-optional   , test-tox-env: pytest-py314-upgraded-optional , python-ver: "3.14", os: ubuntu-latest , upload-wheels: true }
+          - { name: windows-python3.10-minimum           , test-tox-env: pytest-py310-minimum           , python-ver: "3.10", os: windows-latest }
+          - { name: windows-python3.14-upgraded-optional , test-tox-env: pytest-py314-upgraded-optional , python-ver: "3.14", os: windows-latest }
+          - { name: macos-python3.10-minimum             , test-tox-env: pytest-py310-minimum           , python-ver: "3.10", os: macos-15-intel }
+          - { name: macos-python3.14-upgraded            , test-tox-env: pytest-py314-upgraded          , python-ver: "3.14", os: macos-latest }
+          # No prebuilt wheels for numcodecs==0.15.1 for Python 3.14 on PyPI and cannot build numcodecs == 0.15.1 on macos-latest
+          # So optional requirements testing on macos-latest (arm64) is disabled. See https://github.com/hdmf-dev/hdmf/pull/1367
+          - { name: macos-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
+          persist-credentials: false
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python and tox
+        uses: ./.github/actions/setup-python-tox
         with:
           python-version: ${{ matrix.python-ver }}
-
-      - name: Install build dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install tox
-          python -m pip list
 
       - name: Run tox tests
         run: |
@@ -67,7 +68,7 @@ jobs:
 
       - name: Upload distribution as a workspace artifact
         if: ${{ matrix.upload-wheels }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: distributions
           path: dist
@@ -85,95 +86,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-gallery-python3.8-minimum     , test-tox-env: gallery-py38-minimum   , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: linux-gallery-python3.12-upgraded   , test-tox-env: gallery-py312-upgraded , python-ver: "3.12", os: ubuntu-latest }
-          - { name: windows-gallery-python3.8-minimum   , test-tox-env: gallery-py38-minimum   , python-ver: "3.8" , os: windows-latest }
-          - { name: windows-gallery-python3.12-upgraded , test-tox-env: gallery-py312-upgraded , python-ver: "3.12", os: windows-latest }
+          - { name: linux-gallery-python3.10-minimum             , test-tox-env: gallery-py310-minimum           , python-ver: "3.10", os: ubuntu-latest }
+          - { name: linux-gallery-python3.14-upgraded-optional   , test-tox-env: gallery-py314-upgraded-optional , python-ver: "3.14", os: ubuntu-latest }
+          - { name: windows-gallery-python3.10-minimum           , test-tox-env: gallery-py310-minimum           , python-ver: "3.10", os: windows-latest }
+          - { name: windows-gallery-python3.14-upgraded-optional , test-tox-env: gallery-py314-upgraded-optional , python-ver: "3.14", os: windows-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
+          persist-credentials: false
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Python and tox
+        uses: ./.github/actions/setup-python-tox
         with:
           python-version: ${{ matrix.python-ver }}
-
-      - name: Install build dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install tox
-          python -m pip list
 
       - name: Run tox tests
         run: |
           tox -e ${{ matrix.test-tox-env }}
-
-  run-tests-on-conda:
-    name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
-    defaults:
-     run:
-       shell: bash -l {0}
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.name }}
-      cancel-in-progress: true
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { name: conda-linux-python3.8-minimum    , test-tox-env: pytest-py38-minimum    , python-ver: "3.8" , os: ubuntu-latest }
-          - { name: conda-linux-python3.12-upgraded  , test-tox-env: pytest-py312-upgraded  , python-ver: "3.12", os: ubuntu-latest }
-    steps:
-      - name: Checkout repo with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-          fetch-depth: 0  # tags are required to determine the version
-
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          auto-update-conda: true
-          python-version: ${{ matrix.python-ver }}
-          channels: conda-forge
-          mamba-version: "*"
-
-      - name: Install build dependencies
-        run: |
-          conda config --set always_yes yes --set changeps1 no
-          conda info
-          mamba install -c conda-forge "tox>=4"
-
-      - name: Conda reporting
-        run: |
-          conda info
-          conda config --show-sources
-          conda list --show-channel-urls
-
-      # NOTE tox installs packages from PyPI not conda-forge...
-      - name: Run tox tests
-        run: |
-          tox -e ${{ matrix.test-tox-env }}
-
-      - name: Build wheel and source distribution
-        run: |
-          tox -e build
-          ls -1 dist
-
-      - name: Test installation from a wheel
-        run: |
-          tox -e wheelinstall --installpkg dist/*-none-any.whl
-
-      - name: Test installation from a source distribution
-        run: |
-          tox -e wheelinstall --installpkg dist/*.tar.gz
 
   deploy-dev:
     name: Deploy pre-release from dev
-    needs: [run-tests, run-gallery-tests, run-tests-on-conda]
+    needs: [run-tests, run-gallery-tests]
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     concurrency:
@@ -181,18 +117,19 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
+          persist-credentials: false
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
-          python-version: '3.12'
+          python-version: '3.14'
 
       - name: Download wheel and source distributions from artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
           name: distributions
           path: dist
@@ -222,29 +159,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-python3.12-ros3  , python-ver: "3.12", os: ubuntu-latest }
+          - { name: linux-python3.14-ros3  , python-ver: "3.14", os: ubuntu-latest }
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
+          persist-credentials: false
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
         with:
           auto-update-conda: true
           activate-environment: ros3
           environment-file: environment-ros3.yml
           python-version: ${{ matrix.python-ver }}
           channels: conda-forge
-          auto-activate-base: false
-          mamba-version: "*"
+          auto-activate: false
 
       - name: Install run dependencies
         run: |
-          pip install .
-          pip list
+          python -m pip install .
+          python -m pip list
 
       - name: Conda reporting
         run: |
@@ -254,4 +191,4 @@ jobs:
 
       - name: Run ros3 tests  # TODO include gallery tests after they are written
         run: |
-          pytest tests/unit/test_io_hdf5_streaming.py
+          python -m pytest tests/unit/test_io_hdf5_streaming.py

@@ -18,6 +18,9 @@ inconsistencies.
 
 There are badges in the README_ file which shows the current condition of the dev branch.
 
+Additionally, HDMF runs tests against known NWB extensions to ensure that changes to core HDMF functionality
+don't break existing extensions.
+
 .. _GitHub Actions: https://github.com/hdmf-dev/hdmf/actions
 .. _README: https://github.com/hdmf-dev/hdmf/blob/dev/README.rst
 
@@ -45,7 +48,15 @@ pyproject.toml_ contains a list of package dependencies and their version ranges
 running HDMF. As a library, upper bound version constraints create more harm than good in the long term (see this
 `blog post`_) so we avoid setting upper bounds on requirements.
 
-If some of the packages are outdated, see :ref:`update_requirements_files`.
+When setting lower bounds, make sure to specify the lower bounds in the ``[project] dependencies`` key and
+``[project.optional-dependencies] min-reqs`` key in pyproject.toml_.
+The latter is used in automated testing to ensure that the package runs
+correctly using the minimum versions of dependencies.
+
+Minimum requirements should be updated manually if a new feature or bug fix is added in a dependency that is required
+for proper running of HDMF. Minimum requirements should also be updated if a user requests that HDMF be installable
+with an older version of a dependency, all tests pass using the older version, and there is no valid reason for the
+minimum version to be as high as it is.
 
 .. _pyproject.toml: https://github.com/hdmf-dev/hdmf/blob/dev/pyproject.toml
 .. _blog post: https://iscinumpy.dev/post/bound-version-constraints/
@@ -54,39 +65,27 @@ If some of the packages are outdated, see :ref:`update_requirements_files`.
 Testing Requirements
 --------------------
 
-There are several kinds of requirements files used for testing PyNWB.
+pyproject.toml_ contains the optional dependency group "test" with testing requirements.
 
-The first one is requirements-min.txt_, which lists the package dependencies and their minimum versions for
-installing HDMF.
+See tox.ini_ and the GitHub Actions workflows for how different testing environments are
+defined using the optional dependency groups.
 
-The second one is requirements.txt_, which lists the pinned (concrete) dependencies to reproduce
-an entire development environment to use HDMF.
+environment-ros3.yml_ lists the dependencies used to test ROS3 streaming in HDMF which
+can only be done in a Conda environment.
 
-The third one is requirements-dev.txt_, which list the pinned (concrete) dependencies to reproduce
-an entire development environment to use HDMF, run HDMF tests, check code style, compute coverage, and create test
-environments.
-
-The fourth one is requirements-opt.txt_, which lists the pinned (concrete) optional dependencies to use all
-available features in HDMF.
-
-The final one is environment-ros3.yml_, which lists the dependencies used to
-test ROS3 streaming in HDMF.
-
-.. _requirements-min.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-min.txt
-.. _requirements.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements.txt
-.. _requirements-dev.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-dev.txt
-.. _requirements-opt.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-opt.txt
+.. _tox.ini: https://github.com/hdmf-dev/hdmf/blob/dev/tox.ini
 .. _environment-ros3.yml: https://github.com/hdmf-dev/hdmf/blob/dev/environment-ros3.yml
 
 --------------------------
 Documentation Requirements
 --------------------------
 
-requirements-doc.txt_ lists the dependencies to generate the documentation for HDMF.
-Both this file and `requirements.txt` are used by ReadTheDocs_ to initialize the local environment for Sphinx to run.
+pyproject.toml_ contains the optional dependency group "docs" with documentation requirements.
+This dependency group is used by ReadTheDocs_ to initialize the local environment for Sphinx to run
+(see .readthedocs.yaml_).
 
-.. _requirements-doc.txt: https://github.com/hdmf-dev/hdmf/blob/dev/requirements-doc.txt
 .. _ReadTheDocs: https://readthedocs.org/projects/hdmf/
+.. _.readthedocs.yaml: https://github.com/hdmf-dev/hdmf/blob/dev/.readthedocs.yaml
 
 -------------------------
 Versioning and Releasing

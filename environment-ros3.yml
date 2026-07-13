@@ -1,15 +1,16 @@
-# pinned dependencies to reproduce an entire development environment to use PyNWB with ROS3 support
+# environment file used to test HDMF with ROS3 support
 name: ros3
 channels:
   - conda-forge
   - defaults
 dependencies:
-  - python==3.12
-  - h5py==3.11.0
-  - matplotlib==3.8.4
-  - numpy==2.0.0
-  - pandas==2.2.2
-  - python-dateutil==2.8.2
-  - pytest==8.1.2  # regression introduced in pytest 8.2.*, will be fixed in 8.3.0
-  - pytest-cov==5.0.0
-  - setuptools
+  - python==3.14
+  - pip
+  - h5py==3.16.0
+  - hdf5==2.1.0
+  - matplotlib==3.10.8
+  - numpy==2.4.2
+  - pandas==2.3.3
+  - python-dateutil==2.9.0.post0
+  - pytest==9.0.2
+  - pytest-cov==7.0.0

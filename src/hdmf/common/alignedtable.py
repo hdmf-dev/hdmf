@@ -24,6 +24,9 @@ class AlignedDynamicTable(DynamicTable):
     NOTE: To remain compatible with DynamicTable, the attribute colnames represents only the
           columns of the main table (not including the category tables). To get the full list of
           column names, use the get_colnames() function instead.
+
+    NOTE: MeaningsTables can exist for both the main table as well as for each of the category tables.
+          MeaningsTable for category tables are stored within the respective category DynamicTable.
     """
     __fields__ = ({'name': 'category_tables', 'child': True}, )
 
@@ -414,3 +417,22 @@ class AlignedDynamicTable(DynamicTable):
         ignore_category_tables = getargs('ignore_category_tables', kwargs)
         other_tables = None if ignore_category_tables else list(self.category_tables.values())
         return super().get_linked_tables(other_tables=other_tables)
+
+    @docval({'name': 'col_name', 'type': str,
+             'doc': 'The name of the column to get the MeaningsTable for.'},
+            {'name': 'category', 'type': str,
+             'doc': 'The category the column belongs to.', 'default': None},
+            returns="the MeaningsTable for the given column, or None if the column has no MeaningsTable",
+            rtype='MeaningsTable')
+    def get_meanings_for_column(self, **kwargs):
+        """Get the MeaningsTable for a column in this AlignedDynamicTable.
+
+        Return None if the column exists but has no MeaningsTable. Raise KeyError if the column
+        does not exist in the specified table.
+        """
+        col_name, category = getargs('col_name', 'category', kwargs)
+        if category is not None:
+            category_table = self.get_category(category)
+            return category_table.get_meanings_for_column(col_name=col_name)
+        else:
+            return super().get_meanings_for_column(col_name=col_name)

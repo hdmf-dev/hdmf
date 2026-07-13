@@ -3,10 +3,7 @@ HERD: HDMF External Resources Data Structure
 ==============================================
 
 This is a user guide to interacting with the
-:py:class:`~hdmf.common.resources.HERD` class. The HERD type
-is experimental and is subject to change in future releases. If you use this type,
-please provide feedback to the HDMF team so that we can improve the structure and
-access of data stored with this type for your use cases.
+:py:class:`~hdmf.common.resources.HERD` class.
 
 Introduction
 -------------
@@ -96,9 +93,11 @@ from hdmf import Container, HERDManager
 from hdmf import Data
 import numpy as np
 import os
-# Ignore experimental feature warnings in the tutorial to improve rendering
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning, message="HERD is experimental*")
+
+try:
+    import linkml_runtime  # noqa: F401
+except ImportError as e:
+    raise ImportError("Please install linkml-runtime to run this example: pip install linkml-runtime") from e
 
 try:
     dir_path = os.path.dirname(os.path.abspath(__file__))
@@ -110,6 +109,11 @@ except NameError:
 
 # Class to represent a file
 class HERDManagerContainer(Container, HERDManager):
+
+    __fields__ = (
+        {'name': 'external_resources', 'child': True, 'required_name': 'external_resources'},
+    )
+
     def __init__(self, **kwargs):
         kwargs['name'] = 'HERDManagerContainer'
         super().__init__(**kwargs)
@@ -133,18 +137,16 @@ file = HERDManagerContainer(name='file')
 data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
 data.parent = file
 herd.add_ref(
-    file=file,
     container=data,
     key='Homo sapiens',
-    entity_id='NCBI_TAXON:9606',
+    entity_id='NCBITaxon:9606',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9606'
 )
 
 herd.add_ref(
-    file=file,
     container=data,
     key='Mus musculus',
-    entity_id='NCBI_TAXON:10090',
+    entity_id='NCBITaxon:10090',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
 
@@ -167,7 +169,6 @@ genotypes.add_column(name='genotype_name', description="Name of genotypes")
 genotypes.add_row(id=0, genotype_name='Rorb')
 genotypes.parent = file
 herd.add_ref(
-    file=file,
     container=genotypes,
     attribute='genotype_name',
     key='Rorb',
@@ -182,11 +183,16 @@ herd.add_ref(
 # not the object_id of the genotypes table.
 
 ###############################################################################
-# Using the add_ref method without the file parameter.
+# How add_ref resolves the file
 # ------------------------------------------------------
-# Even though :py:class:`~hdmf.common.resources.File` is required to create/add a new reference,
-# the user can omit the file parameter if the :py:class:`~hdmf.common.resources.Object` has a file
-# in its parent hierarchy.
+# A reference can only be added to a container that has already been added to a file
+# (or more accurately to a :py:class:`~hdmf.container.Container` that is a
+# :py:class:`hdmf.container.HERDManager`, which in most practical cases is the file).
+# :py:func:`~hdmf.common.resources.HERD.add_ref` automatically resolves the file by walking
+# up the container's parent hierarchy to find the enclosing
+# :py:class:`~hdmf.container.HERDManager` (the file). If the container is not yet in a
+# file, ``add_ref`` raises an informative error. In the example below the column is reachable
+# from the file because its parent table has been added to the file.
 
 col1 = VectorData(
     name='Species_Data',
@@ -202,7 +208,7 @@ herd.add_ref(
     container=species,
     attribute='Species_Data',
     key='Ursus arctos horribilis',
-    entity_id='NCBI_TAXON:116960',
+    entity_id='NCBITaxon:116960',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id'
 )
 
@@ -242,9 +248,9 @@ species_key_object = herd.get_key(file=file,
                                 container=species['Species_Data'],
                                 key_name='Ursus arctos horribilis')
 
-# The :py:func:`~hdmf.common.resources.HERD.get_key` also will check the
-# :py:class:`~hdmf.common.resources.Object` for a :py:class:`~hdmf.common.resources.File` along the parent hierarchy
-# if the file is not provided as in :py:func:`~hdmf.common.resources.HERD.add_ref`
+# If the file is not provided, :py:func:`~hdmf.common.resources.HERD.get_key` also will check the
+# :py:class:`~hdmf.common.resources.Object` for a :py:class:`~hdmf.common.resources.File` along the
+# parent hierarchy, the same way :py:func:`~hdmf.common.resources.HERD.add_ref` always resolves the file.
 
 ###############################################################################
 # Using the add_ref method with a key_object
@@ -257,7 +263,6 @@ species_key_object = herd.get_key(file=file,
 # is used, a new :py:class:`~hdmf.common.resources.Key` will be created.
 
 herd.add_ref(
-    file=file,
     container=genotypes,
     attribute='genotype_name',
     key=genotype_key_object,
@@ -308,11 +313,10 @@ data = Data(
 data.parent = file
 
 herd.add_ref(
-    file=file,
     container=data,
     field='species',
     key='Mus musculus',
-    entity_id='NCBI_TAXON:txid10090',
+    entity_id='NCBITaxon:txid10090',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090'
 )
 
@@ -329,8 +333,7 @@ herd.add_ref(
 herd = HERD()
 terms = TermSet(term_schema_path=yaml_file)
 
-herd.add_ref_termset(file=file,
-                   container=species,
+herd.add_ref_termset(container=species,
                    attribute='Species_Data',
                    key='Ursus arctos horribilis',
                    termset=terms)
@@ -350,8 +353,7 @@ herd.add_ref_termset(file=file,
 herd = HERD()
 terms = TermSet(term_schema_path=yaml_file)
 
-herd.add_ref_termset(file=file,
-                   container=species,
+herd.add_ref_termset(container=species,
                    attribute='Species_Data',
                    termset=terms)
 

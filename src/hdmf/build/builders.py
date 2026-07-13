@@ -6,7 +6,6 @@ from collections.abc import Iterable
 from datetime import datetime, date
 
 import numpy as np
-from h5py import RegionReference
 
 from ..utils import docval, getargs, get_docval
 
@@ -29,6 +28,7 @@ class Builder(dict, metaclass=ABCMeta):
             self.__source = parent.source
         else:
             self.__source = None
+        self.__matched_spec = None
 
     @property
     def path(self):
@@ -68,6 +68,21 @@ class Builder(dict, metaclass=ABCMeta):
         self.__parent = p
         if self.__source is None:
             self.source = p.source
+
+    @property
+    def matched_spec(self):
+        """The subspec this builder was matched to, or None if unset.
+
+        Set by the matcher that pairs builders to subspecs (build and read paths).
+        Consumers should fall back to the type's def-site spec when this is None.
+        """
+        return self.__matched_spec
+
+    @matched_spec.setter
+    def matched_spec(self, spec):
+        if self.__matched_spec is not None:
+            raise AttributeError('Cannot overwrite matched_spec.')
+        self.__matched_spec = spec
 
     def __repr__(self):
         ret = "%s %s %s" % (self.path, self.__class__.__name__, super().__repr__())
@@ -320,16 +335,19 @@ class GroupBuilder(BaseBuilder):
 
 class DatasetBuilder(BaseBuilder):
     OBJECT_REF_TYPE = 'object'
-    REGION_REF_TYPE = 'region'
 
     @docval({'name': 'name', 'type': str, 'doc': 'The name of the dataset.'},
             {'name': 'data',
-             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', 'RegionBuilder', Iterable, datetime, date),
+             'type': ('array_data', 'scalar_data', 'data', 'DatasetBuilder', Iterable, datetime, date),
              'doc': 'The data in this dataset.', 'default': None},
             {'name': 'dtype', 'type': (type, np.dtype, str, list),
              'doc': 'The datatype of this dataset.', 'default': None},
             {'name': 'attributes', 'type': dict,
              'doc': 'A dictionary of attributes to create in this dataset.', 'default': dict()},
+            {'name': 'matched_spec_shape', 'type': tuple,
+             'doc': ('The shape defined in the spec that matches the shape of this dataset. Currently this is '
+                     'supplied only on build.'),
+             'default': None},
             {'name': 'dimension_labels', 'type': tuple,
              'doc': ('A list of labels for each dimension of this dataset from the spec. Currently this is '
                      'supplied only on build.'),
@@ -341,21 +359,27 @@ class DatasetBuilder(BaseBuilder):
             {'name': 'source', 'type': str, 'doc': 'The source of the data in this builder.', 'default': None})
     def __init__(self, **kwargs):
         """ Create a Builder object for a dataset """
-        name, data, dtype, attributes, dimension_labels, maxshape, chunks, parent, source = getargs(
-            'name', 'data', 'dtype', 'attributes', 'dimension_labels', 'maxshape', 'chunks', 'parent', 'source',
-            kwargs
+        name, data, dtype, attributes, matched_spec_shape, dimension_labels = getargs(
+            'name', 'data', 'dtype', 'attributes', 'matched_spec_shape', 'dimension_labels', kwargs
         )
+        maxshape, chunks, parent, source = getargs('maxshape', 'chunks', 'parent', 'source', kwargs)
         super().__init__(name, attributes, parent, source)
         self['data'] = data
         self['attributes'] = _copy.copy(attributes)
         self.__dimension_labels = dimension_labels
         self.__chunks = chunks
+        self.__matched_spec_shape = matched_spec_shape
         self.__maxshape = maxshape
         if isinstance(data, BaseBuilder):
             if dtype is None:
                 dtype = self.OBJECT_REF_TYPE
         self.__dtype = dtype
         self.__name = name
+
+    @property
+    def matched_spec_shape(self):
+        """The shape defined in the spec that matches the shape of this dataset."""
+        return self.__matched_spec_shape
 
     @property
     def data(self):
@@ -429,20 +453,3 @@ class ReferenceBuilder(dict):
     def builder(self):
         """The target builder object."""
         return self['builder']
-
-
-class RegionBuilder(ReferenceBuilder):
-
-    @docval({'name': 'region', 'type': (slice, tuple, list, RegionReference),
-             'doc': 'The region, i.e. slice or indices, into the target dataset.'},
-            {'name': 'builder', 'type': DatasetBuilder, 'doc': 'The dataset this region reference applies to.'})
-    def __init__(self, **kwargs):
-        """Create a builder object for a region reference."""
-        region, builder = getargs('region', 'builder', kwargs)
-        super().__init__(builder)
-        self['region'] = region
-
-    @property
-    def region(self):
-        """The selected region of the target dataset."""
-        return self['region']

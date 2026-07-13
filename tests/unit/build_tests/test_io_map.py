@@ -1,4 +1,4 @@
-from hdmf.utils import docval, getargs
+from hdmf.utils import StrDataset, docval, getargs
 from hdmf import Container, Data
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager, TypeMap, LinkBuilder,
@@ -7,10 +7,20 @@ from hdmf.build import (GroupBuilder, DatasetBuilder, ObjectMapper, BuildManager
 from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecNamespace, NamespaceCatalog, RefSpec,
                        LinkSpec)
 from hdmf.testing import TestCase
+import h5py
 from abc import ABCMeta, abstractmethod
 import unittest
+import numpy as np
 
 from tests.unit.helpers.utils import CORE_NAMESPACE, create_test_type_map
+
+try:
+    from hdmf_zarr import ZarrDataIO
+    HDMF_ZARR_INSTALLED = True
+except ImportError:
+    HDMF_ZARR_INSTALLED = False
+
+H5PY_3 = h5py.__version__.startswith('3')
 
 
 class Bar(Container):
@@ -20,24 +30,27 @@ class Bar(Container):
             {'name': 'attr1', 'type': str, 'doc': 'an attribute'},
             {'name': 'attr2', 'type': int, 'doc': 'another attribute'},
             {'name': 'attr3', 'type': float, 'doc': 'a third attribute', 'default': 3.14},
+            {'name': 'attr_array', 'type': 'array_data', 'doc': 'another attribute', 'default': (1, 2, 3)},
             {'name': 'foo', 'type': 'Foo', 'doc': 'a group', 'default': None})
     def __init__(self, **kwargs):
-        name, data, attr1, attr2, attr3, foo = getargs('name', 'data', 'attr1', 'attr2', 'attr3', 'foo', kwargs)
+        name, data, attr1, attr2, attr3, attr_array, foo = getargs('name', 'data', 'attr1', 'attr2', 'attr3',
+                                                                   'attr_array', 'foo', kwargs)
         super().__init__(name=name)
         self.__data = data
         self.__attr1 = attr1
         self.__attr2 = attr2
         self.__attr3 = attr3
+        self.__attr_array = attr_array
         self.__foo = foo
         if self.__foo is not None and self.__foo.parent is None:
             self.__foo.parent = self
 
     def __eq__(self, other):
-        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'foo')
+        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'attr_array', 'foo')
         return all(getattr(self, a) == getattr(other, a) for a in attrs)
 
     def __str__(self):
-        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'foo')
+        attrs = ('name', 'data', 'attr1', 'attr2', 'attr3', 'attr_array', 'foo')
         return ','.join('%s=%s' % (a, getattr(self, a)) for a in attrs)
 
     @property
@@ -59,6 +72,10 @@ class Bar(Container):
     @property
     def attr3(self):
         return self.__attr3
+
+    @property
+    def attr_array(self):
+        return self.__attr_array
 
     @property
     def foo(self):
@@ -85,6 +102,14 @@ class FooData(Data):
     @property
     def data_type(self):
         return 'FooData'
+
+
+class BazData(Data):
+    """A Data type with compound dtype for testing."""
+
+    @property
+    def data_type(self):
+        return 'BazData'
 
 
 class TestGetSubSpec(TestCase):
@@ -333,12 +358,15 @@ class TestMapStrings(TestCase):
                              datasets=[DatasetSpec('an example dataset', 'text', name='data', shape=(None,),
                                                    attributes=[AttributeSpec(
                                                        'attr2', 'an example integer attribute', 'int')])],
-                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+                             attributes=[AttributeSpec('attr1', 'an example string attribute', 'text'),
+                                         AttributeSpec('attr_array', 'an example array attribute', 'text',
+                                            shape=(None,))])
         type_map = self.customSetUp(bar_spec)
         type_map.register_map(Bar, BarMapper)
-        bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
+        bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10, attr_array=['a', 'b', 'c', 'd'])
         builder = type_map.build(bar_inst)
-        self.assertEqual(builder.get('data').data, ['a', 'b', 'c', 'd'])
+        np.testing.assert_array_equal(builder.get('data').data, np.array(['a', 'b', 'c', 'd']))
+        np.testing.assert_array_equal(builder.get('attr_array'), np.array(['a', 'b', 'c', 'd']))
 
     def test_build_scalar(self):
         bar_spec = GroupSpec('A test group specification with a data type',
@@ -352,6 +380,228 @@ class TestMapStrings(TestCase):
         bar_inst = Bar('my_bar', ['a', 'b', 'c', 'd'], 'value1', 10)
         builder = type_map.build(bar_inst)
         self.assertEqual(builder.get('data').data, "['a', 'b', 'c', 'd']")
+
+    def test_build_2d_lol(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, None),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
+                                      shape=(None, None))],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        str_lol_2d = [['aa', 'bb'], ['cc', 'dd']]
+        bar_inst = Bar('my_bar', str_lol_2d, 'value1', 10, attr_array=str_lol_2d)
+        builder = type_map.build(bar_inst)
+        self.assertEqual(builder.get('data').data, str_lol_2d)
+        self.assertEqual(builder.get('attr_array'), str_lol_2d)
+
+    def test_build_2d_ndarray(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, None),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
+                                      shape=(None, None))],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        str_array_2d = np.array([['aa', 'bb'], ['cc', 'dd']])
+        bar_inst = Bar('my_bar', str_array_2d, 'value1', 10, attr_array=str_array_2d)
+        builder = type_map.build(bar_inst)
+        np.testing.assert_array_equal(builder.get('data').data, str_array_2d)
+        np.testing.assert_array_equal(builder.get('attr_array'), str_array_2d)
+
+    def test_build_3d_lol(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, None, None),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
+                                      shape=(None, None, None))],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        str_lol_3d = [[['aa', 'bb'], ['cc', 'dd']], [['ee', 'ff'], ['gg', 'hh']]]
+        bar_inst = Bar('my_bar', str_lol_3d, 'value1', 10, attr_array=str_lol_3d)
+        builder = type_map.build(bar_inst)
+        self.assertEqual(builder.get('data').data, str_lol_3d)
+        self.assertEqual(builder.get('attr_array'), str_lol_3d)
+
+    def test_build_3d_ndarray(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, None, None),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
+                                      shape=(None, None, None))],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        str_array_3d = np.array([[['aa', 'bb'], ['cc', 'dd']], [['ee', 'ff'], ['gg', 'hh']]])
+        bar_inst = Bar('my_bar', str_array_3d, 'value1', 10, attr_array=str_array_3d)
+        builder = type_map.build(bar_inst)
+        np.testing.assert_array_equal(builder.get('data').data, str_array_3d)
+        np.testing.assert_array_equal(builder.get('attr_array'), str_array_3d)
+
+    @unittest.skipIf(not H5PY_3, "Use StrDataset only for h5py 3+")
+    def test_build_1d_h5py_3_dataset(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, ),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
+                                      shape=(None, ))],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        # create in-memory hdf5 file that is discarded after closing
+        with h5py.File("test.h5", "w", driver="core", backing_store=False) as f:
+            str_array_1d = np.array(
+                ['aa', 'bb', 'cc', 'dd'],
+                dtype=h5py.special_dtype(vlen=str)
+            )
+            # wrap the dataset in a StrDataset to mimic how HDF5IO would read this dataset with h5py 3+
+            dataset = StrDataset(f.create_dataset('data', data=str_array_1d), None)
+            bar_inst = Bar('my_bar', dataset, 'value1', 10, attr_array=dataset)
+            builder = type_map.build(bar_inst)
+            np.testing.assert_array_equal(builder.get('data').data, dataset[:])
+            np.testing.assert_array_equal(builder.get('attr_array'), dataset[:])
+
+    @unittest.skipIf(not H5PY_3, "Use StrDataset only for h5py 3+")
+    def test_build_3d_h5py_3_dataset(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, None, None),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
+                                      shape=(None, None, None))],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        # create in-memory hdf5 file that is discarded after closing
+        with h5py.File("test.h5", "w", driver="core", backing_store=False) as f:
+            str_array_3d = np.array(
+                [[['aa', 'bb'], ['cc', 'dd']], [['ee', 'ff'], ['gg', 'hh']]],
+                dtype=h5py.special_dtype(vlen=str)
+            )
+            # wrap the dataset in a StrDataset to mimic how HDF5IO would read this dataset with h5py 3+
+            dataset = StrDataset(f.create_dataset('data', data=str_array_3d), None)
+            bar_inst = Bar('my_bar', dataset, 'value1', 10, attr_array=dataset)
+            builder = type_map.build(bar_inst)
+            np.testing.assert_array_equal(builder.get('data').data, dataset[:])
+            np.testing.assert_array_equal(builder.get('attr_array'), dataset[:])
+
+    @unittest.skipIf(H5PY_3, "Create dataset differently for h5py < 3")
+    def test_build_1d_h5py_2_dataset(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, ),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
+                                      shape=(None, ))],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        # create in-memory hdf5 file that is discarded after closing
+        with h5py.File("test.h5", "w", driver="core", backing_store=False) as f:
+            str_array_1d = np.array(
+                ['aa', 'bb', 'cc', 'dd'],
+                dtype=h5py.special_dtype(vlen=str)
+            )
+            dataset = f.create_dataset('data', data=str_array_1d)
+            bar_inst = Bar('my_bar', dataset, 'value1', 10, attr_array=dataset)
+            builder = type_map.build(bar_inst)
+            np.testing.assert_array_equal(builder.get('data').data, dataset[:])
+            np.testing.assert_array_equal(builder.get('attr_array'), dataset[:])
+
+    @unittest.skipIf(H5PY_3, "Create dataset differently for h5py < 3")
+    def test_build_3d_h5py_2_dataset(self):
+        bar_spec = GroupSpec(
+            doc='A test group specification with a data type',
+            data_type_def='Bar',
+            datasets=[
+                DatasetSpec(
+                    doc='an example dataset',
+                    dtype='text',
+                    name='data',
+                    shape=(None, None, None),
+                    attributes=[AttributeSpec(name='attr2', doc='an example integer attribute', dtype='int')],
+                )
+            ],
+            attributes=[AttributeSpec(name='attr_array', doc='an example array attribute', dtype='text',
+                                      shape=(None, None, None))],
+        )
+        type_map = self.customSetUp(bar_spec)
+        type_map.register_map(Bar, BarMapper)
+        # create in-memory hdf5 file that is discarded after closing
+        with h5py.File("test.h5", "w", driver="core", backing_store=False) as f:
+            str_array_3d = np.array(
+                [[['aa', 'bb'], ['cc', 'dd']], [['ee', 'ff'], ['gg', 'hh']]],
+                dtype=h5py.special_dtype(vlen=str)
+            )
+            dataset = f.create_dataset('data', data=str_array_3d)
+            bar_inst = Bar('my_bar', dataset, 'value1', 10, attr_array=dataset)
+            builder = type_map.build(bar_inst)
+            np.testing.assert_array_equal(builder.get('data').data, dataset[:])
+            np.testing.assert_array_equal(builder.get('attr_array'), dataset[:])
 
     def test_build_dataio(self):
         bar_spec = GroupSpec('A test group specification with a data type',
@@ -516,6 +766,86 @@ class TestObjectMapperContainer(ObjectMapperMixin, TestCase):
         keys = set(attr_map.keys())
         expected = {'attr1', 'foo', 'attr2'}
         self.assertSetEqual(keys, expected)
+
+
+class TestConstructUnnamedLinkSubtype(TestCase):
+    """Regression test for #1481.
+
+    An anonymous (unnamed) typed link should map link targets whose type is the link's ``target_type``
+    or any subtype of it. Previously, subtype targets were dropped on construct because links were
+    matched by exact data type.
+    """
+
+    def setUp(self):
+        self.base_spec = GroupSpec(doc='A base type', data_type_def='LinkBase')
+        self.sub_spec = GroupSpec(doc='A subtype of LinkBase', data_type_def='LinkSub', data_type_inc='LinkBase')
+        self.holder_spec = GroupSpec(
+            doc='Holds anonymous links to LinkBase instances',
+            data_type_def='LinkHolder',
+            links=[LinkSpec(doc='links to LinkBase instances', target_type='LinkBase', quantity='*')],
+        )
+
+        class LinkBase(Container):
+            @property
+            def data_type(self):
+                return 'LinkBase'
+
+        class LinkSub(LinkBase):
+            @property
+            def data_type(self):
+                return 'LinkSub'
+
+        class LinkHolder(Container):
+
+            @docval({'name': 'name', 'type': str, 'doc': 'the name of this LinkHolder'},
+                    {'name': 'links', 'type': ('array_data', 'data'), 'doc': 'linked LinkBases', 'default': None})
+            def __init__(self, **kwargs):
+                name, links = getargs('name', 'links', kwargs)
+                super().__init__(name=name)
+                self.links = links
+
+            @property
+            def data_type(self):
+                return 'LinkHolder'
+
+        class LinkHolderMapper(ObjectMapper):
+            def __init__(self, spec):
+                super().__init__(spec)
+                # map the anonymous link spec to the 'links' constructor argument / field
+                self.map_spec('links', spec.links[0])
+
+        self.type_map = create_test_type_map(
+            [self.base_spec, self.sub_spec, self.holder_spec],
+            {'LinkBase': LinkBase, 'LinkSub': LinkSub, 'LinkHolder': LinkHolder},
+            {'LinkHolder': LinkHolderMapper},
+        )
+        self.manager = BuildManager(self.type_map)
+
+    def _construct_holder_linking(self, target_data_type):
+        base_builder = GroupBuilder(
+            name='my_base',
+            attributes={'data_type': target_data_type, 'namespace': CORE_NAMESPACE, 'object_id': 'base-id'},
+        )
+        holder_builder = GroupBuilder(
+            name='my_holder',
+            links={'my_base': LinkBuilder(builder=base_builder, name='my_base')},
+            attributes={'data_type': 'LinkHolder', 'namespace': CORE_NAMESPACE, 'object_id': 'holder-id'},
+        )
+        return self.manager.construct(holder_builder)
+
+    def test_construct_unnamed_link_exact_type(self):
+        """An anonymous link to an exact-type target is mapped to the field (unchanged behavior)."""
+        holder = self._construct_holder_linking('LinkBase')
+        self.assertIsNotNone(holder.links)
+        self.assertEqual(len(holder.links), 1)
+        self.assertEqual(holder.links[0].data_type, 'LinkBase')
+
+    def test_construct_unnamed_link_subtype(self):
+        """An anonymous link to a subtype target is mapped to the field (was dropped before #1481)."""
+        holder = self._construct_holder_linking('LinkSub')
+        self.assertIsNotNone(holder.links)
+        self.assertEqual(len(holder.links), 1)
+        self.assertEqual(holder.links[0].data_type, 'LinkSub')
 
 
 class TestLinkedContainer(TestCase):
@@ -910,3 +1240,69 @@ class TestObjectMapperBadValue(TestCase):
             self.mapper.build(container, self.manager)
 
     # TODO test passing a Container/Data/other object for a non-container/data array spec
+
+
+@unittest.skipIf(not HDMF_ZARR_INSTALLED, "hdmf_zarr not installed")
+class TestZarrDataIOCompoundDataset(TestCase):
+    """Test that ZarrDataIO parameters are correctly preserved when building compound datasets."""
+
+    def setUp(self):
+        """Set up test fixtures with a compound dataset spec."""
+        from hdmf.spec.spec import DtypeSpec
+
+        # Create a simple compound dtype (no references)
+        compound_dtype = [
+            DtypeSpec(name='id', dtype='int', doc='ID field'),
+            DtypeSpec(name='name', dtype='text', doc='Name field')
+        ]
+        baz_spec = DatasetSpec(
+            doc='A test dataset specification with compound dtype',
+            data_type_def='BazData',
+            dtype=compound_dtype
+        )
+
+        spec_catalog = SpecCatalog()
+        spec_catalog.register_spec(baz_spec, 'test.yaml')
+        namespace = SpecNamespace('a test namespace', CORE_NAMESPACE,
+                                  [{'source': 'test.yaml'}],
+                                  version='0.1.0',
+                                  catalog=spec_catalog)
+        namespace_catalog = NamespaceCatalog()
+        namespace_catalog.add_namespace(CORE_NAMESPACE, namespace)
+        type_map = TypeMap(namespace_catalog)
+        type_map.register_container_type(CORE_NAMESPACE, 'BazData', BazData)
+        self.manager = BuildManager(type_map)
+
+    def test_zarrdataio_preserves_filters_and_chunks(self):
+        """Test that ZarrDataIO preserves filters and chunks through the build process."""
+        # Create compound data with simple types
+        compound_data = np.array(
+            [(1, 'alice'), (2, 'bob'), (3, 'charlie')],
+            dtype=[('id', 'i4'), ('name', 'U10')]
+        )
+
+        # Define specific ZarrDataIO parameters to test
+        test_chunks = (2,)
+        test_filters = []
+
+        zarr_data = ZarrDataIO(
+            data=compound_data,
+            chunks=test_chunks,
+            filters=test_filters
+        )
+
+        baz_inst = BazData(name='my_baz', data=zarr_data)
+
+        # Build - this should trigger the compound dataset handling
+        baz_builder = self.manager.build(baz_inst, root=True)
+
+        # Extract the built ZarrDataIO
+        result_zarr_data = baz_builder.data
+
+        # Verify it's still ZarrDataIO
+        self.assertIsInstance(result_zarr_data, ZarrDataIO)
+
+        # Verify parameters match through get_io_params()
+        io_params = result_zarr_data.get_io_params()
+        self.assertEqual(io_params.get('chunks'), test_chunks)
+        self.assertEqual(io_params.get('filters'), test_filters)

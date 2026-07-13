@@ -1,12 +1,16 @@
 from datetime import datetime, date
-
 import numpy as np
+import h5py
+import unittest
+
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf.build import ObjectMapper
 from hdmf.data_utils import DataChunkIterator
 from hdmf.spec import DatasetSpec, RefSpec, DtypeSpec
 from hdmf.testing import TestCase
+from hdmf.utils import ZARR_INSTALLED, StrDataset
 
+H5PY_3 = h5py.__version__.startswith('3')
 
 class TestConvertDtype(TestCase):
 
@@ -321,6 +325,19 @@ class TestConvertDtype(TestCase):
                 self.assertIs(ret, value)
                 self.assertEqual(ret_dtype, 'utf8')
 
+    @unittest.skipIf(not H5PY_3, "Use StrDataset only for h5py 3+")
+    def test_text_spec_str_dataset(self):
+        text_spec_types = ['text', 'utf', 'utf8', 'utf-8']
+        for spec_type in text_spec_types:
+            with self.subTest(spec_type=spec_type):
+                with h5py.File("test.h5", "w", driver="core", backing_store=False) as f:
+                    spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+                    value = StrDataset(f.create_dataset('data', data=['a', 'b', 'c']), None)
+                    ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+                    self.assertIs(ret, value)
+                    self.assertEqual(ret_dtype, 'utf8')
+
     def test_ascii_spec(self):
         ascii_spec_types = ['ascii', 'bytes']
         for spec_type in ascii_spec_types:
@@ -498,27 +515,6 @@ class TestConvertDtype(TestCase):
         self.assertIs(type(ret), np.bool_)
         self.assertEqual(ret_dtype, np.bool_)
 
-    def test_override_type_int_restrict_precision(self):
-        spec = DatasetSpec('an example dataset', 'int8', name='data')
-        res = ObjectMapper.convert_dtype(spec, np.int64(1), 'int64')
-        self.assertTupleEqual(res, (np.int64(1), np.int64))
-
-    def test_override_type_numeric_to_uint(self):
-        spec = DatasetSpec('an example dataset', 'numeric', name='data')
-        res = ObjectMapper.convert_dtype(spec, np.uint32(1), 'uint8')
-        self.assertTupleEqual(res, (np.uint32(1), np.uint32))
-
-    def test_override_type_numeric_to_uint_list(self):
-        spec = DatasetSpec('an example dataset', 'numeric', name='data')
-        res = ObjectMapper.convert_dtype(spec, np.uint32((1, 2, 3)), 'uint8')
-        np.testing.assert_array_equal(res[0], np.uint32((1, 2, 3)))
-        self.assertEqual(res[1], np.uint32)
-
-    def test_override_type_none_to_bool(self):
-        spec = DatasetSpec('an example dataset', None, name='data')
-        res = ObjectMapper.convert_dtype(spec, True, 'bool')
-        self.assertTupleEqual(res, (True, np.bool_))
-
     def test_compound_type(self):
         """Test that convert_dtype passes through arguments if spec dtype is a list without any validation."""
         spec_type = [DtypeSpec('an int field', 'f1', 'int'), DtypeSpec('a float field', 'f2', 'float')]
@@ -551,3 +547,141 @@ class TestConvertDtype(TestCase):
         self.assertEqual(ret, b'2020-11-10')
         self.assertIs(type(ret), bytes)
         self.assertEqual(ret_dtype, 'ascii')
+
+    def test_isodatetime_spec_datetime_value(self):
+        """Raw datetime/date values must convert directly (typed-dataset path skips __convert_string)."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data')
+
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, datetime(2020, 11, 10))
+        self.assertEqual(ret, b'2020-11-10T00:00:00')
+        self.assertEqual(ret_dtype, 'ascii')
+
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, date(2020, 11, 10))
+        self.assertEqual(ret, b'2020-11-10')
+        self.assertEqual(ret_dtype, 'ascii')
+
+    def test_isodatetime_spec_bytes_value(self):
+        """Bytes input passes through _isoformat unchanged."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, b'2020-11-10T00:00:00')
+        self.assertEqual(ret, b'2020-11-10T00:00:00')
+        self.assertEqual(ret_dtype, 'ascii')
+
+    def test_isodatetime_spec_invalid_type(self):
+        """Non-datetime/str/bytes input to _isoformat raises ValueError."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data')
+        with self.assertRaisesRegex(ValueError, "Expected datetime, date, str, or bytes"):
+            ObjectMapper.convert_dtype(spec, 12345)
+
+    def test_isodatetime_spec_empty_list(self):
+        """Empty list/tuple branch returns 'ascii' for isodatetime spec."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, [])
+        self.assertEqual(ret, [])
+        self.assertEqual(ret_dtype, 'ascii')
+
+    def test_isodatetime_spec_ndarray_object(self):
+        """ndarray(dtype=object) of datetimes goes through the elementwise _isoformat branch."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        value = np.array([datetime(2020, 11, 10), datetime(2020, 11, 11)], dtype=object)
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(list(ret), [b'2020-11-10T00:00:00', b'2020-11-11T00:00:00'])
+        self.assertEqual(ret_dtype, 'ascii')
+
+    def test_isodatetime_spec_ndarray_string(self):
+        """ndarray of pre-formatted ISO strings takes the non-object astype('S') branch."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        value = np.array(['2020-11-10T00:00:00', '2020-11-11T00:00:00'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(list(ret), [b'2020-11-10T00:00:00', b'2020-11-11T00:00:00'])
+        self.assertEqual(ret_dtype, 'ascii')
+
+    def test_isodatetime_spec_data_chunk_iterator(self):
+        """DataChunkIterator with isodatetime spec returns 'ascii' ret_dtype."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        value = DataChunkIterator(data=[datetime(2020, 11, 10), datetime(2020, 11, 11)])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertIs(ret, value)
+        self.assertEqual(ret_dtype, 'ascii')
+
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_isodatetime_spec_zarr_array(self):
+        """Zarr arrays with isodatetime spec pass through with 'ascii' ret_dtype."""
+        import zarr
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        value = zarr.array(['2020-11-10T00:00:00', '2020-11-11T00:00:00'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertEqual(ret_dtype, 'ascii')
+
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_zarr_array_spec_vlen_utf8(self):
+        """Test that converting a zarr array with utf8 dtype for a variable length utf8 dtype spec
+        returns the same object with a utf8 ret_dtype."""
+        import zarr
+        import numcodecs
+
+        spec = DatasetSpec('an example dataset', 'text', name='data')
+
+        value = zarr.array(['a', 'b'])  # fixed length unicode (dtype = <U1)
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertIs(ret.dtype.type, np.str_)
+        self.assertEqual(ret_dtype, 'utf8')
+
+        value = zarr.array(['a', 'b'], dtype=object, object_codec=numcodecs.VLenUTF8())  # variable length unicode
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertIs(ret.dtype.type, np.object_)
+        self.assertEqual(ret_dtype, 'utf8')
+
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_zarr_array_spec_vlen_ascii(self):
+        """Test that converting a zarr array with fixed length utf8 dtype for a variable length ascii dtype spec
+        returns the same object with a ascii ret_dtype."""
+        import zarr
+        import numcodecs
+
+        spec = DatasetSpec('an example dataset', 'ascii', name='data')
+
+        value = zarr.array(['a', 'b'])  # fixed length unicode (dtype = <U1)
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertIs(ret.dtype.type, np.str_)  # the zarr array is not converted
+        self.assertEqual(ret_dtype, 'ascii')  # the dtype of the builder will be ascii
+
+        value = zarr.array(['a', 'b'], dtype=object, object_codec=numcodecs.VLenUTF8())  # variable length unicode
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(ret, value)
+        self.assertIs(type(ret), zarr.Array)
+        self.assertIs(ret.dtype.type, np.object_)  # the zarr array is not converted
+        self.assertEqual(ret_dtype, 'ascii')  # the dtype of the builder will be ascii
+
+    def test_complex_number_rejection(self):
+        """Test that complex numbers are properly rejected."""
+        spec = DatasetSpec('an example dataset', 'float64', name='data')
+
+        # Test single complex number
+        with self.assertRaisesWith(ValueError, "Complex numbers are not supported"):
+            ObjectMapper.convert_dtype(spec, 1 + 2j)
+
+        # Test complex numpy array
+        with self.assertRaisesWith(ValueError, "Complex numbers are not supported"):
+            ObjectMapper.convert_dtype(spec, np.array([1 + 2j, 3 + 4j]))
+
+        # Test list containing complex numbers
+        with self.assertRaisesWith(ValueError, "Complex numbers are not supported"):
+            ObjectMapper.convert_dtype(spec, [1.0, 2 + 3j, 4.0])
+
+        # Test that real numbers still work
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, np.array([1.0, 2.0, 3.0]))
+        self.assertIsInstance(ret, np.ndarray)
+        self.assertEqual(ret_dtype, np.float64)
+
+        # Test that regular Python float still works
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, 3.14)
+        self.assertIsInstance(ret, np.float64)
+        self.assertEqual(ret_dtype, np.float64)

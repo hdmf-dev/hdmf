@@ -1,14 +1,17 @@
 import numpy as np
 from uuid import uuid4, UUID
+from unittest.mock import patch, PropertyMock
+import h5py
 import os
 
 from hdmf.container import AbstractContainer, Container, Data, HERDManager
 from hdmf.common.resources import HERD
 from hdmf.testing import TestCase
 from hdmf.utils import docval
-from hdmf.common import DynamicTable, VectorData, DynamicTableRegion
+from hdmf.common import DynamicTable, VectorData, DynamicTableRegion, SimpleMultiContainer, get_manager
 from hdmf.backends.hdf5.h5tools import HDF5IO
 
+from tests.unit.helpers.io import DoNothingIO
 
 class Subcontainer(Container):
     pass
@@ -23,14 +26,69 @@ class ContainerWithChild(Container):
         self.field1 = kwargs['field1']
 
 
-class TestHERDManager(TestCase):
-    def test_link_and_get_resources(self):
-        em = HERDManager()
-        er = HERD()
+class ContainerWithHERD(HERDManager, Container):
+    """A test Container subclass that uses the HERDManager mixin."""
 
-        em.link_resources(er)
-        er_get = em.get_linked_resources()
-        self.assertEqual(er, er_get)
+    __fields__ = (
+        {'name': 'external_resources', 'child': True, 'required_name': 'external_resources'},
+    )
+
+
+class TestHERDManager(TestCase):
+
+    def test_subclass_has_external_resources_field(self):
+        """Test that a subclass declaring external_resources in __fields__ has it."""
+        self.assertIn('external_resources', ContainerWithHERD.__fields__)
+
+    def test_mixin_external_resources_default_none(self):
+        """Test that external_resources defaults to None when not set."""
+        container = ContainerWithHERD(name='test')
+        self.assertIsNone(container.external_resources)
+
+    def test_mixin_set_external_resources(self):
+        """Test setting external_resources on a Container subclass with HERDManager."""
+        container = ContainerWithHERD(name='test')
+        er = HERD()
+        container.external_resources = er
+        self.assertIs(container.external_resources, er)
+
+    def test_mixin_external_resources_is_child(self):
+        """Test that external_resources is registered as a child of the container."""
+        container = ContainerWithHERD(name='test')
+        er = HERD()
+        container.external_resources = er
+        self.assertIn(er, container.children)
+        self.assertIs(er.parent, container)
+
+    def test_link_resources(self):
+        """Test linking an external HERD object."""
+        container = ContainerWithHERD(name='test')
+        linked_herd = HERD()
+        container.link_resources(linked_herd)
+        self.assertIs(container.get_external_resources(linked=True), linked_herd)
+
+    def test_get_external_resources_default(self):
+        """Test get_external_resources returns the primary HERD by default."""
+        container = ContainerWithHERD(name='test')
+        er = HERD()
+        container.external_resources = er
+        self.assertIs(container.get_external_resources(), er)
+        self.assertIs(container.get_external_resources(linked=False), er)
+
+    def test_get_external_resources_linked_default_none(self):
+        """Test get_external_resources(linked=True) returns None when no linked HERD is set."""
+        container = ContainerWithHERD(name='test')
+        self.assertIsNone(container.get_external_resources(linked=True))
+
+    def test_link_resources_does_not_affect_primary(self):
+        """Test that linking a HERD does not overwrite the primary external_resources."""
+        container = ContainerWithHERD(name='test')
+        primary = HERD()
+        linked = HERD()
+        container.external_resources = primary
+        container.link_resources(linked)
+        self.assertIs(container.get_external_resources(), primary)
+        self.assertIs(container.get_external_resources(linked=True), linked)
 
 
 class TestContainer(TestCase):
@@ -179,6 +237,17 @@ class TestContainer(TestCase):
     def test_slash_restriction(self):
         self.assertRaises(ValueError, Container, 'bad/name')
 
+        # check no error raised in construct mode
+        child_obj = Container.__new__(Container, in_construct_mode=True)
+        child_obj.__init__('bad/name')
+
+    def test_colon_restriction(self):
+        self.assertRaises(ValueError, Container, 'bad:name')
+
+        # check no error raised in construct mode
+        child_obj = Container.__new__(Container, in_construct_mode=True)
+        child_obj.__init__('bad:name')
+
     def test_set_modified_parent(self):
         """Test that set modified properly sets parent modified
         """
@@ -200,18 +269,6 @@ class TestContainer(TestCase):
         species = DynamicTable(name='species', description='My species', columns=[col1])
         obj = species.all_objects
         self.assertEqual(sorted(list(obj.keys())), sorted([species.object_id, species.id.object_id, col1.object_id]))
-
-    def test_add_child(self):
-        """Test that add child creates deprecation warning and also properly sets child's parent and modified
-        """
-        parent_obj = Container('obj1')
-        child_obj = Container('obj2')
-        parent_obj.set_modified(False)
-        with self.assertWarnsWith(DeprecationWarning, 'add_child is deprecated. Set the parent attribute instead.'):
-            parent_obj.add_child(child_obj)
-        self.assertIs(child_obj.parent, parent_obj)
-        self.assertTrue(parent_obj.modified)
-        self.assertIs(parent_obj.children[0], child_obj)
 
     def test_parent_set_link_warning(self):
         col1 = VectorData(
@@ -423,6 +480,23 @@ class TestHTMLRepr(TestCase):
             self.data = kwargs['data']
             self.str = kwargs['str']
 
+    class ContainerWithData(Container):
+
+        __fields__ = (
+            "data",
+            "str"
+        )
+
+        @docval(
+            {'name': "data", "doc": 'data', 'type': 'array_data', "default": None},
+            {'name': "str", "doc": 'str', 'type': str, "default": None},
+
+        )
+        def __init__(self, **kwargs):
+            super().__init__('test name')
+            self.data = kwargs['data']
+            self.str = kwargs['str']
+
     def test_repr_html_(self):
         child_obj1 = Container('test child 1')
         obj1 = self.ContainerWithChildAndData(child=child_obj1, data=[1, 2, 3], str="hello")
@@ -444,7 +518,8 @@ class TestHTMLRepr(TestCase):
             'class=\'container-header\'><div class=\'xr-obj-type\'><h3>test name ('
             'ContainerWithChildAndData)</h3></div></div><details><summary style="display: list-item; margin-left: '
             '0px;" class="container-fields field-key" '
-            'title=".child"><b>child</b></summary></details><details><summary style="display: list-item; margin-left: '
+            'title=".child"><b>child <span style=\'font-weight: normal; color: #888;\'>(Container)</span></b>'
+            '</summary></details><details><summary style="display: list-item; margin-left: '
             '0px;" class="container-fields field-key" title=".data"><b>data</b></summary><div style="margin-left: '
             '20px;" class="container-fields"><span class="field-key" title=".data[0]">0: </span><span '
             'class="field-value">1</span></div><div style="margin-left: 20px;" class="container-fields"><span '
@@ -454,6 +529,187 @@ class TestHTMLRepr(TestCase):
             'class="container-fields"><span class="field-key" title=".str">str: </span><span '
             'class="field-value">hello</span></div></div>'
         )
+
+    def test_repr_html_array(self):
+        obj = self.ContainerWithData(data=np.array([1, 2, 3, 4], dtype=np.int64), str="hello")
+        expected_html_table = (
+            'class="container-fields">NumPy array<br><table class="data-info"><tbody><tr><th style="text-align: '
+            'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Shape'
+            '</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">Array size</th><td '
+            'style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]'
+        )
+        self.assertIn(expected_html_table, obj._repr_html_())
+
+    def test_repr_html_array_large_arrays_not_displayed(self):
+        obj = self.ContainerWithData(data=np.arange(200, dtype=np.int64), str="hello")
+        expected_html_table = (
+            'class="container-fields">NumPy array<br><table class="data-info"><tbody><tr><th style="text-align: '
+            'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Shape'
+            '</th><td style="text-align: left">(200,)</td></tr><tr><th style="text-align: left">Array size</th><td '
+            'style="text-align: left">1.56 KiB</td></tr></tbody></table></div></details>'
+        )
+        self.assertIn(expected_html_table, obj._repr_html_())
+
+    def test_repr_html_hdf5_dataset(self):
+        with HDF5IO('array_data.h5', mode='w') as io:
+            dataset = io._file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+            obj = self.ContainerWithData(data=dataset, str="hello")
+            obj.read_io = io
+
+            expected_html_table = (
+                'class="container-fields">HDF5 dataset<br><table class="data-info"><tbody><tr><th style="text-align: '
+                'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">'
+                'Shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">Array size'
+                '</th><td style="text-align: left">32.00 bytes</td></tr><tr><th style="text-align: left">Chunk shape'
+                '</th><td style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression</th><td '
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">Compression opts</th><td '
+                'style="text-align: left">None</td></tr><tr><th style="text-align: left">Uncompressed size (bytes)'
+                '</th><td style="text-align: left">32</td></tr><tr><th style="text-align: left">Compressed size '
+                '(bytes)</th><td style="text-align: left">32</td></tr><tr><th style="text-align: left">Compression '
+                'ratio</th><td style="text-align: left">1.0</td></tr></tbody></table><br>[1 2 3 4]'
+            )
+
+            self.assertIn(expected_html_table, obj._repr_html_())
+
+        os.remove('array_data.h5')
+
+    def test_repr_html_hdmf_io(self):
+        with HDF5IO('array_data.h5', mode='w') as io:
+            dataset = io._file.create_dataset(name='my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+            obj = self.ContainerWithData(data=dataset, str="hello")
+
+            obj.read_io = DoNothingIO()
+
+            expected_html_table = (
+                'class="container-fields"><table class="data-info"><tbody><tr><th style="text-align: '
+                'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">'
+                'Shape</th><td style="text-align: left">(4,)</td></tr><tr><th style="text-align: left">Array size'
+                '</th><td style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]'
+            )
+
+            self.assertIn(expected_html_table, obj._repr_html_())
+
+        os.remove('array_data.h5')
+
+    def test_repr_html_lindi_dataset(self):
+        """Test HTML repr for datasets without get_storage_size method (e.g., LINDI datasets)."""
+
+        # Create a regular HDF5 dataset using h5py
+        with h5py.File('array_data.h5', 'w') as f:
+            f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4, 5, 6, 7, 8], dtype=np.int64))
+
+        # Read the dataset and mock the id to simulate LINDI behavior
+        with h5py.File('array_data.h5', 'r') as f:
+            dataset = f['my_dataset']
+            original_id = dataset.id
+
+            # Create a wrapper that has all attributes except get_storage_size
+            class MockDatasetId:
+                """Mock DatasetID that raises AttributeError for get_storage_size."""
+                def __getattr__(self, name):
+                    if name == 'get_storage_size':
+                        raise AttributeError(f"'{type(self).__name__}' object has no attribute 'get_storage_size'")
+                    return getattr(original_id, name)
+
+            mock_id = MockDatasetId()
+
+            # Patch the dataset's id property
+            with patch.object(type(dataset), 'id', new_callable=PropertyMock) as mock_id_prop:
+                mock_id_prop.return_value = mock_id
+
+                # Test the generate_dataset_html method directly
+                result_html = HDF5IO.generate_dataset_html(dataset)
+
+                # Expected HTML should include basic fields
+                expected_fields = [
+                    'Data type',
+                    'Shape',
+                    'Array size',
+                ]
+
+                for field in expected_fields:
+                    self.assertIn(field, result_html)
+
+                # The HTML should be generated without errors even though the dataset
+                # doesn't have get_storage_size method (like LINDI datasets)
+                self.assertIsInstance(result_html, str)
+
+                # Should NOT include compressed size or compression ratio since get_storage_size is not available
+                self.assertNotIn('Compressed size (bytes)', result_html)
+                self.assertNotIn('Compression ratio', result_html)
+
+        # Cleanup
+        os.remove('array_data.h5')
+
+    def test_repr_html_hdf5_dataset_closed_file(self):
+        """Test that _repr_html_ shows a warning banner when the file is closed."""
+        smc = SimpleMultiContainer(name='root')
+        smc.add_container(Data(name='my_data', data=np.array([1, 2, 3, 4], dtype=np.int64)))
+
+        with HDF5IO('test_closed.h5', manager=get_manager(), mode='w') as io:
+            io.write(smc)
+
+        with HDF5IO('test_closed.h5', manager=get_manager(), mode='r') as io:
+            read_smc = io.read()
+
+        # File is now closed
+        html = read_smc._repr_html_()
+        self.assertIn("<b>Warning:</b>", html)
+        self.assertIn("The file backing this object is closed", html)
+
+        os.remove('test_closed.h5')
+
+    def test_repr_html_hdf5_dataset_field_closed_file(self):
+        """Test that _repr_html_ gracefully renders a closed h5py dataset field."""
+        with h5py.File('test_closed_field.h5', 'w') as f:
+            f.create_dataset('my_dataset', data=np.array([1, 2, 3, 4], dtype=np.int64))
+
+        io = HDF5IO('test_closed_field.h5', mode='r')
+        dataset = io._file['my_dataset']
+        obj = self.ContainerWithData(data=dataset, str="hello")
+        # Set read_io manually to simulate this container being read from disk
+        obj.read_io = io
+        io.close()
+
+        # File is now closed — accessing dataset.shape raises RuntimeError
+        html = obj._repr_html_()
+        self.assertIn("<b>Warning:</b>", html)
+        self.assertIn("unable to render", html)
+        self.assertIn("file backing this object is closed", html)
+
+        os.remove('test_closed_field.h5')
+
+    def test_repr_html_no_warning_banner_when_file_open(self):
+        """Test that _repr_html_ does not show a warning banner when the file is open."""
+        smc = SimpleMultiContainer(name='root')
+        smc.add_container(Data(name='my_data', data=np.array([1, 2, 3, 4], dtype=np.int64)))
+
+        with HDF5IO('test_open.h5', manager=get_manager(), mode='w') as io:
+            io.write(smc)
+
+        with HDF5IO('test_open.h5', manager=get_manager(), mode='r') as io:
+            read_smc = io.read()
+            html = read_smc._repr_html_()
+            self.assertNotIn("Warning", html)
+            self.assertNotIn("unable to render", html)
+
+        os.remove('test_open.h5')
+
+    def test_repr_html_no_warning_banner_without_io(self):
+        """Test that _repr_html_ does not show a warning banner when there is no read_io."""
+        obj = self.ContainerWithData(data=np.array([1, 2, 3]), str="hello")
+        html = obj._repr_html_()
+        self.assertNotIn("Warning", html)
+
+    def test_repr_html_field_rendering_error_shows_exception_message(self):
+        """Test that an error rendering a field in _generate_field_html shows the exception message."""
+        obj = self.ContainerWithData(data=np.array([1, 2, 3]), str="hello")
+
+        # Patch _generate_array_html to raise a non-file-closed error
+        with patch.object(type(obj), '_generate_array_html', side_effect=ValueError("custom error")):
+            html = obj._repr_html_()
+        self.assertIn("unable to render", html)
+        self.assertIn("custom error", html)
 
 
 class TestData(TestCase):
