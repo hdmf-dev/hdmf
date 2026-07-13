@@ -2,7 +2,7 @@ import inspect
 
 from hdmf.container import Container, Data, MultiContainerInterface
 from hdmf.testing import TestCase
-from hdmf.utils import LabelledDict, get_docval
+from hdmf.utils import LabelledDict, docval, get_docval, popargs
 
 
 class OData(Data):
@@ -650,3 +650,64 @@ class TestPreserveGetitem(TestCase):
         child = ChildMCI(name='test')
         result = child['test_key']
         self.assertEqual(result, "grandparent:test_key")
+
+
+class TestPreserveConstructor(TestCase):
+    """Test that MCI does not regenerate a constructor when an ancestor already defines __init__."""
+
+    def _make_table_class(self):
+        """Return an MCI class with a custom docval __init__ carrying an extra argument."""
+
+        class Table(MultiContainerInterface):
+
+            __clsconf__ = {'attr': 'items', 'type': Container, 'add': 'add_item', 'get': 'get_item'}
+
+            @docval(
+                {'name': 'name', 'type': str, 'doc': 'name'},
+                {'name': 'description', 'type': str, 'doc': 'description'},
+                {'name': 'items', 'type': Container, 'doc': 'items', 'default': None},
+            )
+            def __init__(self, **kwargs):
+                description, items = popargs('description', 'items', kwargs)
+                super().__init__(**kwargs)
+                self.description = description
+                if items is not None:
+                    self.add_item(items)
+
+        return Table
+
+    def test_subclass_inherits_custom_constructor(self):
+        """Test that a subclass without its own __init__ keeps the parent's full docval signature."""
+        Table = self._make_table_class()
+
+        class SubTable(Table):
+            pass
+
+        item = Container('item1')
+        sub = SubTable(name='t', description='d', items=item)
+        self.assertEqual(sub.name, 't')
+        self.assertEqual(sub.description, 'd')
+        self.assertIn('item1', sub.items)
+
+    def test_grandchild_inherits_custom_constructor(self):
+        """Test that the parent's constructor is preserved through two levels of subclassing."""
+        Table = self._make_table_class()
+
+        class SubTable(Table):
+            pass
+
+        class SubSubTable(SubTable):
+            pass
+
+        sub = SubSubTable(name='t', description='d')
+        self.assertEqual(sub.description, 'd')
+
+    def test_subclass_inherits_generated_constructor(self):
+        """Test that a subclass of an auto-generated MCI class still uses the generated constructor."""
+
+        class SubFooSingle(FooSingle):
+            pass
+
+        obj1 = Container('obj1')
+        sub = SubFooSingle(obj1)
+        self.assertDictEqual(sub.containers, {'obj1': obj1})

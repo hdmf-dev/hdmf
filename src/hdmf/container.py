@@ -1365,10 +1365,19 @@ class MultiContainerInterface(Container):
             container_type = clsconf[0].get('type')
             setattr(cls, '__getitem__', cls.__make_getitem(attr, container_type))
 
-        # create the constructor, only if it has not been overridden
-        # i.e. it is the same method as the parent class constructor
+        # create the constructor only when neither this class nor an intermediate class below
+        # MultiContainerInterface in the MRO defines __init__, so that a subclass inherits a custom
+        # or previously generated constructor from an ancestor
         if '__init__' not in cls.__dict__:
-            setattr(cls, '__init__', cls.__make_constructor(clsconf))
+            needs_constructor = True
+            for parent in cls.__mro__[1:]:
+                if parent is MultiContainerInterface:
+                    break
+                if '__init__' in parent.__dict__:
+                    needs_constructor = False
+                    break
+            if needs_constructor:
+                setattr(cls, '__init__', cls.__make_constructor(clsconf))
 
     @classmethod
     def __build_conf_methods(cls, conf_dict, conf_index, multi):
