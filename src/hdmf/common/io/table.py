@@ -164,7 +164,10 @@ class MeaningsTableMap(DynamicTableMap):
     def target_carg(self, builder, manager):
         """Supply ``target`` from a legacy hdmf-common 1.9.0 "target" link.
 
-        Returns the VectorData resolved from a removed "target" link, or None for files that store
-        "target" as an attribute, in which case the default object-reference resolution supplies it.
+        Returns the VectorData resolved from a removed "target" link. For files that store "target"
+        as an attribute there is no legacy link, so this returns the ``NO_OVERRIDE`` sentinel and the
+        default object-reference resolution supplies the value.
         """
+        if self.__legacy_target is None:
+            return self.NO_OVERRIDE
         return self.__legacy_target
