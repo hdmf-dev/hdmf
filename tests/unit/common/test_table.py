@@ -2886,6 +2886,60 @@ class TestDynamicTableAddEnumRoundTrip(H5RoundTripMixin, TestCase):
         return table
 
 
+class TestEnumDataReadResolve(TestCase):
+    """Resolve EnumData values after reading from disk (h5py-backed elements).
+
+    An h5py-backed elements dataset requires its selection indices to be sorted and unique. Enum
+    indices are arbitrarily ordered and repeat, so resolving them requires reading the elements
+    into memory, where indexing carries no such constraint.
+    """
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        self.io = None
+
+    def tearDown(self):
+        # close the read IO before removing the file so the removal succeeds on Windows,
+        # which cannot delete a file that is still open
+        if self.io is not None:
+            self.io.close()
+        remove_test_file(self.path)
+
+    def _write_and_read(self, data):
+        ed = EnumData(name='color', description='a test EnumData',
+                      data=np.asarray(data), elements=['red', 'green', 'blue', 'yellow'])
+        table = DynamicTable(name='table0', description='an example table',
+                             columns=[ed], colnames=['color'])
+        with HDF5IO(self.path, 'w', manager=get_manager()) as io:
+            io.write(table)
+        self.io = HDF5IO(self.path, 'r', manager=get_manager())
+        read_table = self.io.read()
+        return read_table['color']
+
+    def test_read_resolve_all(self):
+        # indices are non-monotonic and repeat, which h5py rejects without unique-sorted handling
+        col = self._write_and_read([0, 1, 2, 1, 3, 0, 2])
+        np.testing.assert_array_equal(
+            col[:], ['red', 'green', 'blue', 'green', 'yellow', 'red', 'blue']
+        )
+
+    def test_read_resolve_scalar(self):
+        col = self._write_and_read([0, 1, 2, 1, 3, 0, 2])
+        self.assertEqual(col[3], 'green')
+
+    def test_read_resolve_slice(self):
+        # the slice selects element indices [3, 0, 1], which are non-monotonic and would be
+        # rejected if passed directly to the h5py-backed elements dataset
+        col = self._write_and_read([2, 3, 0, 1, 2])
+        np.testing.assert_array_equal(col[1:4], ['yellow', 'red', 'green'])
+
+    def test_read_resolve_2d(self):
+        col = self._write_and_read([[0, 3], [1, 1], [2, 0]])
+        np.testing.assert_array_equal(
+            col[:], [['red', 'yellow'], ['green', 'green'], ['blue', 'red']]
+        )
+
+
 class TestDynamicTableAddEnum(TestCase):
 
     def test_enum(self):
@@ -3372,10 +3426,14 @@ class TestDynamicTableMeaningsTables(TestCase):
         retrieved = self.table.get_meanings_for_column('stimulus_type')
         self.assertEqual(retrieved, mt)
 
-    def test_get_meanings_for_column_not_found(self):
-        """Test error when no MeaningsTable exists for a column."""
+    def test_get_meanings_for_column_no_meanings(self):
+        """Test that None is returned when a valid column has no MeaningsTable."""
+        self.assertIsNone(self.table.get_meanings_for_column('stimulus_type'))
+
+    def test_get_meanings_for_column_invalid_column(self):
+        """Test error when the column does not exist."""
         with self.assertRaises(KeyError):
-            self.table.get_meanings_for_column('stimulus_type')
+            self.table.get_meanings_for_column('nonexistent')
 
     def test_get_meanings_table_not_found(self):
         """Test error when MeaningsTable not found."""
@@ -3493,6 +3551,56 @@ class TestMeaningsTableRoundTrip(H5RoundTripMixin, TestCase):
         self.assertEqual(len(mt), 3)
         self.assertEqual(list(mt['value'].data), ['a', 'b', 'c'])
         self.assertEqual(list(mt['meaning'].data), ['stimulus A', 'stimulus B', 'stimulus C'])
+
+
+class TestMeaningsTableLegacyTargetLinkRead(TestCase):
+    """Read a MeaningsTable written with the hdmf-common 1.9.0 "target" link layout.
+
+    hdmf-common 1.9.0 stored ``MeaningsTable.target`` as a link named "target"; 1.10.0 stores it as
+    an object-reference attribute named "target". A new-format file is written and then rewritten on
+    disk into the 1.9.0 layout (the "target" reference attribute is replaced with a "target" SoftLink
+    to the target column) so that MeaningsTableMap's backwards-compatibility path is exercised.
+    """
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        remove_test_file(self.path)
+
+    def _write_legacy_file(self):
+        table = DynamicTable(name='test_table', description='a test table')
+        table.add_column(name='stimulus_type', description='stimulus type')
+        table.add_row(stimulus_type='a')
+        table.add_row(stimulus_type='b')
+        table.add_row(stimulus_type='a')
+
+        mt = MeaningsTable(target=table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        table.add_meanings_table(mt)
+
+        with HDF5IO(self.path, 'w', manager=get_manager()) as io:
+            io.write(table)
+
+        # rewrite into the hdmf-common 1.9.0 layout: replace the "target" object-reference attribute
+        # with a "target" SoftLink to the target column
+        with h5py.File(self.path, 'r+') as f:
+            group = f['meanings_tables/stimulus_type_meanings']
+            del group.attrs['target']
+            group['target'] = h5py.SoftLink('/stimulus_type')
+
+    def test_read_legacy_target_link(self):
+        self._write_legacy_file()
+        with HDF5IO(self.path, 'r', manager=get_manager()) as io:
+            read_table = io.read()
+            mt = read_table.get_meanings_table('stimulus_type_meanings')
+            # the target link resolves to the target column, not an extra column of the table
+            self.assertEqual(tuple(mt.colnames), ('value', 'meaning'))
+            self.assertEqual(len(mt), 2)
+            self.assertEqual(list(mt['value'].data), ['a', 'b'])
+            self.assertEqual(list(mt['meaning'].data), ['stimulus A', 'stimulus B'])
+            self.assertIs(mt.target, read_table['stimulus_type'])
 
 
 class TestMeaningsTableLengthMismatchRoundTrip(H5RoundTripMixin, TestCase):

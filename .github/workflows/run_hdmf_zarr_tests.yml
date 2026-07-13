@@ -5,6 +5,9 @@ on:
     - cron: '0 5 * * *'  # once per day at midnight ET
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   run-hdmf-zarr-tests:
     runs-on: ubuntu-latest
@@ -13,13 +16,14 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
+          persist-credentials: false
           submodules: 'recursive'
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: '3.14'
 
@@ -31,7 +35,7 @@ jobs:
           python -m pip list
           git clone https://github.com/hdmf-dev/hdmf-zarr.git
           cd hdmf-zarr
-          python -m pip install ".[test]"  # this will install a different version of hdmf from the current one
+          python -m pip install . --group test  # this will install a different version of hdmf from the current one
           cd ..
           python -m pip uninstall -y hdmf  # uninstall the other version of hdmf
           python -m pip install .  # reinstall current branch of hdmf
