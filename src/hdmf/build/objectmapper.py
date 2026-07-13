@@ -121,6 +121,8 @@ def _parse_isoformat(value: str | bytes | datetime.datetime | datetime.date):
     :param value: the value to parse. ASCII-encoded bytes are decoded first; str values are
         parsed via ``datetime.fromisoformat`` or ``date.fromisoformat``; anything else
         (e.g., a ``datetime``/``date`` already produced by an earlier call) is returned as-is.
+        A trailing ``Z``/``z`` (UTC) designator is normalized to ``+00:00`` before parsing so
+        that ``Z``-terminated timestamps are readable on Python < 3.11 as well.
     :return: a ``datetime.datetime`` or ``datetime.date`` for parseable str/bytes input; the
         unchanged ``value`` otherwise.
     """
@@ -129,6 +131,12 @@ def _parse_isoformat(value: str | bytes | datetime.datetime | datetime.date):
     if not isinstance(value, str):
         return value
     if 'T' in value or ' ' in value:
+        # datetime.fromisoformat did not accept the 'Z' (UTC) designator until Python 3.11;
+        # normalize a trailing 'Z'/'z' to the equivalent '+00:00' offset (the form hdmf's own
+        # _isoformat writer emits) so timestamps written by other tools parse on every
+        # supported Python version. See issue #1524.
+        if value.endswith(('Z', 'z')):
+            value = value[:-1] + '+00:00'
         return datetime.datetime.fromisoformat(value)
     return datetime.date.fromisoformat(value)
 
