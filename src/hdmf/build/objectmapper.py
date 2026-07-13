@@ -635,7 +635,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
         self.map_const_arg(attr_carg, spec)
         self.map_attr(attr_carg, spec)
 
-    NO_OVERRIDE = object()  # non-None sentinel object that signals no override for constructor args and object attrs
+    NO_OVERRIDE = object()  # sentinel an override function returns to fall through to the built/read value
 
     def __get_override_carg(self, argname, builder, manager):
         if argname in self.constructor_args:
@@ -670,8 +670,12 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if attr_name is None:
             return None
         override = self.__get_override_attr(attr_name, container, manager)
-        if override is not self.NO_OVERRIDE:
+        if override is not self.NO_OVERRIDE and override is not None:
             return override
+        # No override function is registered (NO_OVERRIDE), or an override function returned None. In
+        # both cases the value is resolved from the container attribute.
+        # TODO(HDMF 8.0): return None directly when an override function returns None, instead of
+        # falling through to the container attribute.
         try:
             attr_val = getattr(container, attr_name)
         except AttributeError:
@@ -690,7 +694,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     msg = ("%s '%s' attribute '%s' has unexpected type."
                             % (container.__class__.__name__, container.name, attr_name))
                     raise ContainerConfigurationError(msg) from e
-            # else: attr_val is an attribute on the Container and its value is None
+        if override is None and attr_val is not None:
+            warnings.warn(
+                "Override function for attribute '%s' returned None, so the container's attribute "
+                "value is used. In HDMF 8.0, a None return will set the attribute to None; return "
+                "ObjectMapper.NO_OVERRIDE to keep using the container's attribute value." % attr_name,
+                DeprecationWarning, stacklevel=2,
+            )
         # attr_val can be None, an AbstractContainer, or a list of AbstractContainers
         return attr_val
 
@@ -1618,6 +1628,18 @@ class ObjectMapper(metaclass=ExtenderMeta):
         for const_arg in get_docval(cls.__init__):
             argname = const_arg['name']
             override = self.__get_override_carg(argname, builder, manager)
+            if override is None:
+                # TODO(HDMF 8.0): use None as the constructor argument value. Until then, an override
+                # function that returns None falls through to the value built from the file, so
+                # overrides that return None to signal "no override" keep working.
+                if const_args.get(argname) is not None:
+                    warnings.warn(
+                        "Override function for constructor argument '%s' returned None, so the value "
+                        "built from the file is used. In HDMF 8.0, a None return will set the argument "
+                        "to None; return ObjectMapper.NO_OVERRIDE to keep using the built value." % argname,
+                        DeprecationWarning, stacklevel=2,
+                    )
+                override = self.NO_OVERRIDE
             if override is not self.NO_OVERRIDE:
                 val = override
             elif argname in const_args:

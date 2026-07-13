@@ -2,10 +2,8 @@
 
 ## HDMF 6.2.0 (Upcoming)
 
-### Enhancements
-- Allow override of constructor args and object attrs in `hdmf.build.ObjectMapper` to return None. @rly [#1167](https://github.com/hdmf-dev/hdmf/pull/1167)
-
 ### Changed
+- Added `hdmf.build.ObjectMapper.NO_OVERRIDE`, a sentinel that a `constructor_arg` or `object_attr` override function returns to fall through to the value built from the file or read from the container. Returning `None` from an override function to signal "no override" is deprecated: it still falls through but now emits a `DeprecationWarning`. In HDMF 8.0, a `None` return will set the constructor argument or attribute to `None`. @rly [#1167](https://github.com/hdmf-dev/hdmf/pull/1167)
 - Added support for hdmf-common schema 1.10.0, which changes ``MeaningsTable.target`` from a link to an object-reference attribute (``dtype`` with ``reftype: object``, ``target_type: VectorData``). Files written with the hdmf-common 1.9.0 ``MeaningsTable`` (a link named "target") are still read correctly via a backwards-compatibility mapping in ``MeaningsTableMap``. There is no change in the read/write API; the change is limited to the representation on disk. @rly [#1525](https://github.com/hdmf-dev/hdmf/pull/1525)
 - ``DynamicTable.get_meanings_for_column`` (and the ``AlignedDynamicTable`` override) now returns ``None`` when the named column exists but has no ``MeaningsTable``, and raises ``KeyError`` only when the column itself does not exist. @rly [#1538](https://github.com/hdmf-dev/hdmf/pull/1538)
 
