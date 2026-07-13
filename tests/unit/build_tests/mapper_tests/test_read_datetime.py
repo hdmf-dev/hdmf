@@ -6,12 +6,13 @@ the construct path parses stored ISO 8601 str/bytes back into Python
 datetime/date objects.
 """
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import numpy as np
 
 from hdmf import Container, Data
 from hdmf.build import BuildManager, DatasetBuilder, GroupBuilder, ObjectMapper, TypeMap
+from hdmf.build.objectmapper import _parse_isoformat
 from hdmf.spec import (
     AttributeSpec,
     DatasetSpec,
@@ -125,6 +126,35 @@ class TestReadAttributeDatetime(TestCase):
             "r",
             attributes={
                 "created_at": b"2024-03-15T12:30:00+00:00",
+                "tag": "t",
+                "data_type": "TimestampedRecord",
+                "namespace": CORE_NAMESPACE,
+                "object_id": "rid",
+            },
+        )
+        record = _construct(spec, [], gb)
+        self.assertEqual(record.created_at, datetime(2024, 3, 15, 12, 30, tzinfo=timezone.utc))
+
+    def test_attribute_isodatetime_z_designator(self):
+        """A stored 'Z' (UTC) timestamp reads back equal to the '+00:00' form.
+
+        Regression test for issue #1524: datetime.fromisoformat did not accept the
+        'Z' designator until Python 3.11, so on the supported 3.10 floor a 'Z'
+        timestamp (as written by many peer tools) raised ValueError on read, even
+        though hdmf's own writer emits the equivalent '+00:00' offset.
+        """
+        spec = GroupSpec(
+            doc="record",
+            data_type_def="TimestampedRecord",
+            attributes=[
+                AttributeSpec("created_at", "when", "isodatetime"),
+                AttributeSpec("tag", "a tag", "text"),
+            ],
+        )
+        gb = GroupBuilder(
+            "r",
+            attributes={
+                "created_at": b"2024-03-15T12:30:00Z",
                 "tag": "t",
                 "data_type": "TimestampedRecord",
                 "namespace": CORE_NAMESPACE,
@@ -320,3 +350,60 @@ class TestReadDatasetDatetime(TestCase):
         )
         record = _construct(parent_spec, [child_def], gb)
         self.assertEqual(list(record.stamped.data), ints)
+
+
+class TestParseIsoformatZDesignator(TestCase):
+    """Directly exercise ``_parse_isoformat`` normalization of the 'Z' (UTC) designator.
+
+    ``datetime.fromisoformat`` did not accept a trailing 'Z' until Python 3.11
+    (bpo-35829), yet hdmf's writer emits the equivalent '+00:00' offset, so a
+    'Z'-terminated timestamp from a peer tool was unreadable on the supported 3.10
+    floor. These assertions hold on every supported Python version and guard the
+    fix for issue #1524. Crucially, asserting that the 'Z' and '+00:00' forms parse
+    to *equal* tz-aware UTC datetimes is a cross-version check: it fails on
+    Python < 3.11 without the fix and passes on all versions with it.
+    """
+
+    def test_z_equals_offset_and_is_utc(self):
+        z = _parse_isoformat("2026-07-02T08:27:27.216166Z")
+        offset = _parse_isoformat("2026-07-02T08:27:27.216166+00:00")
+        self.assertEqual(z, offset)
+        self.assertEqual(z.tzinfo, timezone.utc)
+        self.assertEqual(z.utcoffset(), timedelta(0))
+
+    def test_z_without_microseconds(self):
+        self.assertEqual(
+            _parse_isoformat("2024-03-15T12:30:00Z"),
+            datetime(2024, 3, 15, 12, 30, tzinfo=timezone.utc),
+        )
+
+    def test_lowercase_z(self):
+        # RFC 3339 permits a lowercase 'z'; stdlib fromisoformat accepts neither the
+        # lowercase 'z' (any version) nor an uppercase 'Z' before 3.11, so normalize both.
+        self.assertEqual(
+            _parse_isoformat("2024-03-15T12:30:00z"),
+            datetime(2024, 3, 15, 12, 30, tzinfo=timezone.utc),
+        )
+
+    def test_bytes_z(self):
+        self.assertEqual(
+            _parse_isoformat(b"2024-03-15T12:30:00Z"),
+            datetime(2024, 3, 15, 12, 30, tzinfo=timezone.utc),
+        )
+
+    def test_explicit_offset_unchanged(self):
+        # A real UTC offset (what hdmf writes) and a non-UTC offset must be untouched.
+        self.assertEqual(
+            _parse_isoformat("2024-03-15T12:30:00+00:00"),
+            datetime(2024, 3, 15, 12, 30, tzinfo=timezone.utc),
+        )
+        self.assertEqual(
+            _parse_isoformat("2024-03-15T12:30:00-05:00"),
+            datetime(2024, 3, 15, 12, 30, tzinfo=timezone(timedelta(hours=-5))),
+        )
+
+    def test_naive_string_unchanged(self):
+        # No trailing 'Z' => still naive; normalization must not attach a tzinfo.
+        result = _parse_isoformat("2024-03-15T12:30:00")
+        self.assertEqual(result, datetime(2024, 3, 15, 12, 30))
+        self.assertIsNone(result.tzinfo)
