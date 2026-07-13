@@ -2,12 +2,16 @@
 
 ## HDMF 6.2.0 (Upcoming)
 
+### Documentation and tutorial enhancements
+- Expanded the "Read HERD" section of the external resources tutorial to show how to inspect a `HERD` after reading it back with `HERD.from_zip`, using `to_dataframe`, the individual interlinked tables, and `get_object_entities`. This addresses confusion about a read `HERD` appearing empty in its default Jupyter display. @rly [#1535](https://github.com/hdmf-dev/hdmf/pull/1535)
+
 ### Changed
 - Added `hdmf.build.ObjectMapper.NO_OVERRIDE`, a sentinel that a `constructor_arg` or `object_attr` override function returns to fall through to the value built from the file or read from the container. Returning `None` from an override function to signal "no override" is deprecated: it still falls through but now emits a `DeprecationWarning`. In HDMF 8.0, a `None` return will set the constructor argument or attribute to `None`. @rly [#1167](https://github.com/hdmf-dev/hdmf/pull/1167)
 - Added support for hdmf-common schema 1.10.0, which changes ``MeaningsTable.target`` from a link to an object-reference attribute (``dtype`` with ``reftype: object``, ``target_type: VectorData``). Files written with the hdmf-common 1.9.0 ``MeaningsTable`` (a link named "target") are still read correctly via a backwards-compatibility mapping in ``MeaningsTableMap``. There is no change in the read/write API; the change is limited to the representation on disk. @rly [#1525](https://github.com/hdmf-dev/hdmf/pull/1525)
 - ``DynamicTable.get_meanings_for_column`` (and the ``AlignedDynamicTable`` override) now returns ``None`` when the named column exists but has no ``MeaningsTable``, and raises ``KeyError`` only when the column itself does not exist. @rly [#1538](https://github.com/hdmf-dev/hdmf/pull/1538)
 
 ### Fixed
+- Fixed subclassing a `MultiContainerInterface` type without redefining `__init__`. A subclass now inherits the ancestor's constructor (custom or auto-generated) instead of regenerating one that drops the parent's docval arguments. This restores the common "generate with `get_class`, subclass to customize one method, re-register with `@register_class`" extension idiom for `DynamicTable`-family subtypes. @rly [#1540](https://github.com/hdmf-dev/hdmf/pull/1540)
 - Fixed `ObjectMapper._parse_isoformat` raising `ValueError: Invalid isoformat string` when reading an ISO 8601 timestamp that ends in the `Z` (UTC) designator on Python < 3.11. `datetime.fromisoformat` did not accept a trailing `Z` until Python 3.11, but `requires-python` is `>=3.10` and hdmf's own writer emits the equivalent `+00:00` offset, so a `Z`-terminated timestamp written by a peer tool was unreadable on the supported 3.10 floor. A trailing `Z`/`z` is now normalized to `+00:00` before parsing. @Leonard013 [#1539](https://github.com/hdmf-dev/hdmf/pull/1539)
 - Fixed reading the resolved values of an `EnumData` column from an HDF5 file (e.g. `column[:]`). @rly [#1534](https://github.com/hdmf-dev/hdmf/pull/1534)
 - Fixed writing a 1D dataset of object references whose targets are `DynamicTable`s (or other sized, indexable containers). The shape of a reference (or compound) dataset is now taken from the reference array itself. @pauladkisson [#1533](https://github.com/hdmf-dev/hdmf/pull/1533)
