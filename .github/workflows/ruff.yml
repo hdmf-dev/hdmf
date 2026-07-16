@@ -14,4 +14,4 @@ jobs:
           persist-credentials: false
       - name: Run ruff
         # immutable release (see .github/zizmor.yml for the policy exception)
-        uses: astral-sh/ruff-action@v4.0.0
+        uses: astral-sh/ruff-action@v4.1.0
