@@ -16,6 +16,9 @@
 - Fixed reading the resolved values of an `EnumData` column from an HDF5 file (e.g. `column[:]`). @rly [#1534](https://github.com/hdmf-dev/hdmf/pull/1534)
 - Fixed writing a 1D dataset of object references whose targets are `DynamicTable`s (or other sized, indexable containers). The shape of a reference (or compound) dataset is now taken from the reference array itself. @pauladkisson [#1533](https://github.com/hdmf-dev/hdmf/pull/1533)
 
+### Internal improvements
+- Replaced `scikit-ci-addons` with the `gh` CLI in the `deploy-dev` CI job that publishes the rolling `latest` pre-release. `scikit-ci-addons` (last released 2019) drives `githubrelease` (last released 2022), which resolves a tag to the first release with a matching `tag_name` and moves the `latest` tag through a non-atomic rename dance; the two together can leave duplicate draft releases that later fail with a `404`. @rly [#1545](https://github.com/hdmf-dev/hdmf/pull/1545)
+
 
 ## HDMF 6.1.0 (June 25, 2026)
 
