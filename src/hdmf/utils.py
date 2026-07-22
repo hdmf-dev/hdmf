@@ -945,13 +945,16 @@ def _get_length(data) -> int:
 
 
 def _unwrap_scalar(value):
-    """If value is a 0-d ndarray, extract the numpy scalar via .item().
+    """If value is a 0-d ndarray or a numpy scalar, extract the Python scalar via .item().
 
     Array-API-conforming libraries (e.g., zarr v3) return 0-d ndarrays from
-    scalar indexing instead of numpy scalars. This converts them so that
-    isinstance checks against Python/numpy scalar types work correctly.
+    scalar indexing instead of numpy scalars, and HDF5 attributes read back as
+    numpy scalar types (np.bool_, np.int64, np.float64). This converts both so that
+    isinstance checks against Python scalar types work correctly.
     """
     if isinstance(value, np.ndarray) and value.ndim == 0:
+        return value.item()
+    if isinstance(value, np.generic):
         return value.item()
     return value
 
