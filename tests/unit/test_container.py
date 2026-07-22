@@ -540,6 +540,15 @@ class TestHTMLRepr(TestCase):
         )
         self.assertIn(expected_html_table, obj._repr_html_())
 
+    def test_repr_html_numpy_scalar_renders_inline(self):
+        """Numpy scalar bool/int attributes should render inline, not as an expandable array block."""
+        obj = self.ContainerWithData(data=[1, 2, 3], str="hello")
+        for value in (np.int64(3), np.bool_(True)):
+            html = obj._generate_field_html("field", value, 0, ".field")
+            self.assertIn(f'field: </span><span class="field-value">{value.item()}</span>', html)
+            self.assertNotIn("data-info", html)
+            self.assertNotIn("Shape", html)
+
     def test_repr_html_array_large_arrays_not_displayed(self):
         obj = self.ContainerWithData(data=np.arange(200, dtype=np.int64), str="hello")
         expected_html_table = (
