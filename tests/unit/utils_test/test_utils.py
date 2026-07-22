@@ -157,6 +157,24 @@ class TestUnwrapScalar(TestCase):
     def test_python_str_passthrough(self):
         self.assertEqual(_unwrap_scalar("hello"), "hello")
 
+    def test_numpy_int_scalar(self):
+        result = _unwrap_scalar(np.int64(42))
+        self.assertNotIsInstance(result, np.generic)
+        self.assertIsInstance(result, int)
+        self.assertEqual(result, 42)
+
+    def test_numpy_bool_scalar(self):
+        result = _unwrap_scalar(np.bool_(True))
+        self.assertNotIsInstance(result, np.generic)
+        self.assertIsInstance(result, bool)
+        self.assertTrue(result)
+
+    def test_numpy_float_scalar(self):
+        result = _unwrap_scalar(np.float64(3.14))
+        self.assertNotIsInstance(result, np.generic)
+        self.assertIsInstance(result, float)
+        self.assertEqual(result, 3.14)
+
     def test_1d_array_passthrough(self):
         arr = np.array([1, 2, 3])
         result = _unwrap_scalar(arr)
