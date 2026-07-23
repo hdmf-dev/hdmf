@@ -13,10 +13,8 @@ from warnings import warn
 
 
 # Track open HDMFIO instances so their files can be flushed and closed at interpreter
-# exit if the user forgot to close them. Weak references let instances be garbage
-# collected normally; close() is idempotent, so closing an already-closed instance is a
-# no-op. Cleanup runs here on the main thread at a controlled time, where a blocking
-# close cannot deadlock.
+# exit if the user forgot to close them. Cleanup runs here on the main thread at a 
+# controlled time, where a blocking close cannot deadlock.
 _open_ios = weakref.WeakSet()
 
 
