@@ -93,9 +93,10 @@ Versioning and Releasing
 
 HDMF uses setuptools_scm_ for versioning source and wheel distributions. `setuptools_scm` creates a semi-unique release
 name for the wheels that are created based on git tags.
-After all the tests pass, the "Deploy release" GitHub Actions workflow
-creates both a wheel (``\*.whl``) and source distribution (``\*.tar.gz``) for Python 3
-and uploads them back to GitHub as a release_.
+After all the tests pass, GitHub Actions creates both a wheel (``\*.whl``) and source distribution (``\*.tar.gz``)
+for Python 3 and uploads them back to GitHub as a release_. Pushing to "dev" attaches them to the rolling "latest"
+pre-release; pushing a MAJOR.MINOR.PATCH tag runs the "Deploy release" workflow, which attaches them to a release
+for that tag and uploads them to PyPI.
 
 It is important to note that GitHub automatically generates source code archives in ``.zip`` and ``.tar.gz`` formats and
 attaches those files to all releases as an asset. These files currently do not contain the submodules within HDMF and

@@ -13,10 +13,14 @@
 
 ### Fixed
 - Fixed a deadlock when exporting a Zarr file to HDF5 with `HDF5IO.export`. A zarr array is now read into memory before the HDF5 write (in `__list_fill__`/`__scalar_fill__`), so the read does not run while h5py's global lock is held. zarr v3 dispatches reads to a background event-loop thread; reading under that lock could deadlock against a garbage-collection finalizer that acquires the same lock on that thread. @rly [#1547](https://github.com/hdmf-dev/hdmf/pull/1547)
+- Fixed the Jupyter HTML representation (`_repr_html_`) rendering a scalar numpy `bool` or `int` attribute (e.g. `np.bool_`, `np.int64`, as read back from an HDF5 attribute) as an expandable "array" block reporting `Shape: ()`, while `float` and `str` scalars rendered inline. `_unwrap_scalar` now also unwraps numpy scalars (`np.generic`) so every scalar renders inline consistently. @h-mayorquin [#1546](https://github.com/hdmf-dev/hdmf/pull/1546)
 - Fixed subclassing a `MultiContainerInterface` type without redefining `__init__`. A subclass now inherits the ancestor's constructor (custom or auto-generated) instead of regenerating one that drops the parent's docval arguments. This restores the common "generate with `get_class`, subclass to customize one method, re-register with `@register_class`" extension idiom for `DynamicTable`-family subtypes. @rly [#1540](https://github.com/hdmf-dev/hdmf/pull/1540)
 - Fixed `ObjectMapper._parse_isoformat` raising `ValueError: Invalid isoformat string` when reading an ISO 8601 timestamp that ends in the `Z` (UTC) designator on Python < 3.11. `datetime.fromisoformat` did not accept a trailing `Z` until Python 3.11, but `requires-python` is `>=3.10` and hdmf's own writer emits the equivalent `+00:00` offset, so a `Z`-terminated timestamp written by a peer tool was unreadable on the supported 3.10 floor. A trailing `Z`/`z` is now normalized to `+00:00` before parsing. @Leonard013 [#1539](https://github.com/hdmf-dev/hdmf/pull/1539)
 - Fixed reading the resolved values of an `EnumData` column from an HDF5 file (e.g. `column[:]`). @rly [#1534](https://github.com/hdmf-dev/hdmf/pull/1534)
 - Fixed writing a 1D dataset of object references whose targets are `DynamicTable`s (or other sized, indexable containers). The shape of a reference (or compound) dataset is now taken from the reference array itself. @pauladkisson [#1533](https://github.com/hdmf-dev/hdmf/pull/1533)
+
+### Internal improvements
+- Replaced the unmaintained `scikit-ci-addons` with the `gh` CLI in the CI job that publishes the rolling `latest` pre-release. @rly [#1545](https://github.com/hdmf-dev/hdmf/pull/1545)
 
 
 ## HDMF 6.1.0 (June 25, 2026)
