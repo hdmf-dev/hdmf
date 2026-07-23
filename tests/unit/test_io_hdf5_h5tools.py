@@ -1,4 +1,5 @@
 """Test module to validate that HDF5IO is working"""
+import gc
 import os
 import unittest
 import warnings
@@ -3762,6 +3763,22 @@ class TestWriteHDF5withZarrInput(TestCase):
             self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist(),
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
+    def test_write_zarr_v3_dataset_materialized(self):
+        # Regression: a zarr array is read into memory before the HDF5 write, so the read
+        # does not run while the HDF5 lock is held (see HDF5IO.__list_fill__). Uses the
+        # zarr v3 API (zarr.create_array) directly.
+        base_data = np.arange(50).astype('int32')
+        store = os.path.join(self.zarr_path, 'arr.zarr')
+        z = zarr.create_array(store=store, shape=base_data.shape, chunks=(8,), dtype='int32')
+        z[:] = base_data
+        with HDF5IO(self.path, mode='a') as io:
+            f = io._file
+            io.write_dataset(f, DatasetBuilder(name='test_dataset', data=z, attributes={}))
+            dset = f['test_dataset']
+            self.assertTupleEqual(tuple(dset.shape), base_data.shape)
+            self.assertEqual(dset.dtype, base_data.dtype)
+            self.assertListEqual(dset[:].tolist(), base_data.tolist())
+
     def test_roundtrip_empty_dataset(self):
         zarr.save(self.zarr_path, np.asarray([]).astype('int64'))
         zarr_data = zarr.open(self.zarr_path, 'r')
@@ -4516,3 +4533,49 @@ class TestDefaultExpandableSubclasses(TestCase):
             # VectorData subclass (custom_col) should be expandable
             self.assertEqual(f['custom_col'].maxshape, (None,))
             self.assertIsNotNone(f['custom_col'].chunks)
+
+
+class TestHDMFIOFinalizer(TestCase):
+    """The IO finalizer surfaces an unclosed IO without a blocking close.
+
+    close() can acquire a lock that a garbage-collection finalizer must not block on, so
+    __del__ warns instead of closing. Cleanup of a still-open IO is deferred to an atexit
+    handler that runs on the main thread.
+    """
+
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_del_warns_when_still_open(self):
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            del io
+            gc.collect()
+        resource_warnings = [w for w in recorded if issubclass(w.category, ResourceWarning)]
+        self.assertEqual(len(resource_warnings), 1)
+        self.assertIn("was not closed", str(resource_warnings[0].message))
+
+    def test_del_does_not_warn_after_close(self):
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        io.close()
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            del io
+            gc.collect()
+        resource_warnings = [w for w in recorded if issubclass(w.category, ResourceWarning)]
+        self.assertEqual(len(resource_warnings), 0)
+
+    def test_open_io_registered_for_atexit_cleanup(self):
+        from hdmf.backends.io import _open_ios, _close_open_ios
+
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        self.assertIn(io, _open_ios)
+        self.assertTrue(io.is_open())
+        _close_open_ios()  # simulate interpreter-exit cleanup
+        self.assertFalse(io.is_open())

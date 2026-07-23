@@ -1,5 +1,7 @@
 from abc import ABCMeta, abstractmethod
+import atexit
 import os
+import weakref
 from pathlib import Path
 
 from ..build import BuildManager, GroupBuilder, TypeMap
@@ -8,6 +10,23 @@ from .errors import UnsupportedOperation
 from ..utils import docval, getargs, popargs, get_basic_array_info, generate_array_html_repr
 from ..spec import  NamespaceCatalog
 from warnings import warn
+
+
+# Track open HDMFIO instances so their files can be flushed and closed at interpreter
+# exit if the user forgot to close them. Weak references let instances be garbage
+# collected normally; close() is idempotent, so closing an already-closed instance is a
+# no-op. Cleanup runs here on the main thread at a controlled time, where a blocking
+# close cannot deadlock.
+_open_ios = weakref.WeakSet()
+
+
+@atexit.register
+def _close_open_ios():
+    for io in list(_open_ios):
+        try:
+            io.close()
+        except Exception:  # pragma: no cover - best-effort cleanup at interpreter exit
+            pass
 
 
 class HDMFIO(metaclass=ABCMeta):
@@ -33,6 +52,7 @@ class HDMFIO(metaclass=ABCMeta):
         self.herd_path = herd_path
         self.herd = None
         self.open()
+        _open_ios.add(self)
 
     @property
     def manager(self):
@@ -241,4 +261,21 @@ class HDMFIO(metaclass=ABCMeta):
         self.close()
 
     def __del__(self):
-        self.close()
+        # Do not close here. close() can acquire a lock (e.g. h5py's global lock), and
+        # finalizers run at unpredictable times on unpredictable threads (a background
+        # event-loop thread, or the main thread mid garbage collection), where a
+        # blocking, lock-acquiring close can deadlock. Surface the unclosed resource the
+        # way CPython does for files; _close_open_ios() and the backend's own file
+        # finalizer release the handle.
+        is_open = getattr(self, "is_open", None)
+        try:
+            still_open = bool(is_open()) if callable(is_open) else False
+        except Exception:
+            still_open = False
+        if still_open:
+            warn(
+                f"{type(self).__name__} was not closed before being garbage collected. "
+                "Use a context manager or call close() to release resources. "
+                f"Source: {self.source!r}",
+                ResourceWarning,
+            )
