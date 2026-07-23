@@ -270,10 +270,16 @@ class HDMFIO(metaclass=ABCMeta):
             still_open = bool(is_open()) if callable(is_open) else False
         except Exception:
             still_open = False
-        if still_open:
+        if not still_open:
+            return
+
+        try:
+            source = getattr(self, "source", None)
             warn(
                 f"{type(self).__name__} was not closed before being garbage collected. "
                 "Use a context manager or call close() to release resources. "
-                f"Source: {self.source!r}",
+                f"Source: {source!r}",
                 ResourceWarning,
             )
+        except Exception:
+            pass
