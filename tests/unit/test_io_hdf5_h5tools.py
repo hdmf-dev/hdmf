@@ -3763,10 +3763,11 @@ class TestWriteHDF5withZarrInput(TestCase):
             self.assertListEqual(foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist(),
                                  read_foofile.buckets['bucket1'].foos['foo1'].my_data[:].tolist())
 
+    @unittest.skipUnless(int(zarr.__version__.split(".")[0]) >= 3, "requires zarr v3")
     def test_write_zarr_v3_dataset_materialized(self):
         # Regression: a zarr array is read into memory before the HDF5 write, so the read
-        # does not run while the HDF5 lock is held (see HDF5IO.__list_fill__). Uses the
-        # zarr v3 API (zarr.create_array) directly.
+        # does not run while the HDF5 lock is held (see HDF5IO.__list_fill__). The deadlock
+        # this avoids is specific to zarr v3, which reads on a background thread.
         base_data = np.arange(50).astype('int32')
         store = os.path.join(self.zarr_path, 'arr.zarr')
         z = zarr.create_array(store=store, shape=base_data.shape, chunks=(8,), dtype='int32')
