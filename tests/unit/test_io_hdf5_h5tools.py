@@ -3,6 +3,7 @@ import gc
 import os
 import unittest
 import warnings
+import weakref
 from io import BytesIO
 from pathlib import Path
 import shutil
@@ -4556,10 +4557,17 @@ class TestHDMFIOFinalizer(TestCase):
         self.assertEqual(len(resource_warnings), 0)
 
     def test_open_io_registered_for_atexit_cleanup(self):
-        from hdmf.backends.io import _open_ios, _close_open_ios
+        import hdmf.backends.io as io_module
 
-        io = HDF5IO(self.path, manager=self.manager, mode='w')
-        self.assertIn(io, _open_ios)
-        self.assertTrue(io.is_open())
-        _close_open_ios()  # simulate interpreter-exit cleanup
-        self.assertFalse(io.is_open())
+        # Isolate the registry so the simulated cleanup only touches the IO created here,
+        # not IOs left open by other tests (which would couple test order and mask leaks).
+        original_open_ios = io_module._open_ios
+        io_module._open_ios = weakref.WeakSet()
+        try:
+            io = HDF5IO(self.path, manager=self.manager, mode='w')
+            self.assertIn(io, io_module._open_ios)
+            self.assertTrue(io.is_open())
+            io_module._close_open_ios()  # simulate interpreter-exit cleanup
+            self.assertFalse(io.is_open())
+        finally:
+            io_module._open_ios = original_open_ios
