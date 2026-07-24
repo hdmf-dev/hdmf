@@ -422,16 +422,17 @@ class AlignedDynamicTable(DynamicTable):
              'doc': 'The name of the column to get the MeaningsTable for.'},
             {'name': 'category', 'type': str,
              'doc': 'The category the column belongs to.', 'default': None},
-            returns='the MeaningsTable for the given column', rtype='MeaningsTable')
+            returns="the MeaningsTable for the given column, or None if the column has no MeaningsTable",
+            rtype='MeaningsTable')
     def get_meanings_for_column(self, **kwargs):
-        """Get a MeaningsTable for a column in this DynamicTable."""
+        """Get the MeaningsTable for a column in this AlignedDynamicTable.
+
+        Return None if the column exists but has no MeaningsTable. Raise KeyError if the column
+        does not exist in the specified table.
+        """
         col_name, category = getargs('col_name', 'category', kwargs)
         if category is not None:
             category_table = self.get_category(category)
-            meanings_table_name = f"{col_name}_meanings"
-            if meanings_table_name not in category_table.meanings_tables:
-                raise KeyError(f"No MeaningsTable found for column '{col_name}' in category '{category}' "
-                               f"of AlignedDynamicTable '{self.name}'")
-            return category_table.meanings_tables[meanings_table_name]
+            return category_table.get_meanings_for_column(col_name=col_name)
         else:
             return super().get_meanings_for_column(col_name=col_name)

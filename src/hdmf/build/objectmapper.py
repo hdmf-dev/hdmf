@@ -121,6 +121,8 @@ def _parse_isoformat(value: str | bytes | datetime.datetime | datetime.date):
     :param value: the value to parse. ASCII-encoded bytes are decoded first; str values are
         parsed via ``datetime.fromisoformat`` or ``date.fromisoformat``; anything else
         (e.g., a ``datetime``/``date`` already produced by an earlier call) is returned as-is.
+        A trailing ``Z``/``z`` (UTC) designator is normalized to ``+00:00`` before parsing so
+        that ``Z``-terminated timestamps are readable on Python < 3.11 as well.
     :return: a ``datetime.datetime`` or ``datetime.date`` for parseable str/bytes input; the
         unchanged ``value`` otherwise.
     """
@@ -129,6 +131,12 @@ def _parse_isoformat(value: str | bytes | datetime.datetime | datetime.date):
     if not isinstance(value, str):
         return value
     if 'T' in value or ' ' in value:
+        # datetime.fromisoformat did not accept the 'Z' (UTC) designator until Python 3.11;
+        # normalize a trailing 'Z'/'z' to the equivalent '+00:00' offset (the form hdmf's own
+        # _isoformat writer emits) so timestamps written by other tools parse on every
+        # supported Python version. See issue #1524.
+        if value.endswith(('Z', 'z')):
+            value = value[:-1] + '+00:00'
         return datetime.datetime.fromisoformat(value)
     return datetime.date.fromisoformat(value)
 
@@ -627,21 +635,21 @@ class ObjectMapper(metaclass=ExtenderMeta):
         self.map_const_arg(attr_carg, spec)
         self.map_attr(attr_carg, spec)
 
-    def __get_override_carg(self, *args):
-        name = args[0]
-        remaining_args = tuple(args[1:])
-        if name in self.constructor_args:
-            self.logger.debug("        Calling override function for constructor argument '%s'" % name)
-            func = self.constructor_args[name]
-            return func(self, *remaining_args)
-        return None
+    NO_OVERRIDE = object()  # sentinel an override function returns to fall through to the built/read value
+
+    def __get_override_carg(self, argname, builder, manager):
+        if argname in self.constructor_args:
+            self.logger.debug("        Calling override function for constructor argument '%s'" % argname)
+            func = self.constructor_args[argname]
+            return func(self, builder, manager)
+        return self.NO_OVERRIDE
 
     def __get_override_attr(self, name, container, manager):
         if name in self.obj_attrs:
             self.logger.debug("        Calling override function for attribute '%s'" % name)
             func = self.obj_attrs[name]
             return func(self, container, manager)
-        return None
+        return self.NO_OVERRIDE
 
     @docval({"name": "spec", "type": Spec, "doc": "the spec to get the attribute for"},
             returns='the attribute name', rtype=str)
@@ -661,27 +669,38 @@ class ObjectMapper(metaclass=ExtenderMeta):
         attr_name = self.get_attribute(spec)
         if attr_name is None:
             return None
-        attr_val = self.__get_override_attr(attr_name, container, manager)
-        if attr_val is None:
-            try:
-                attr_val = getattr(container, attr_name)
-            except AttributeError:
-                msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
-                       % (container.__class__.__name__, container.name, attr_name, spec))
-                raise ContainerConfigurationError(msg)
-            if isinstance(attr_val, TermSetWrapper):
-                attr_val = attr_val.value
-            if attr_val is not None:
-                attr_val = self.__convert_string(attr_val, spec)
-                spec_dt = self.__get_data_type(spec)
-                if spec_dt is not None:
-                    try:
-                        attr_val = self.__filter_by_spec_dt(attr_val, spec_dt, manager)
-                    except ValueError as e:
-                        msg = ("%s '%s' attribute '%s' has unexpected type."
-                               % (container.__class__.__name__, container.name, attr_name))
-                        raise ContainerConfigurationError(msg) from e
-            # else: attr_val is an attribute on the Container and its value is None
+        override = self.__get_override_attr(attr_name, container, manager)
+        if override is not self.NO_OVERRIDE and override is not None:
+            return override
+        # No override function is registered (NO_OVERRIDE), or an override function returned None. In
+        # both cases the value is resolved from the container attribute.
+        # TODO(HDMF 8.0): return None directly when an override function returns None, instead of
+        # falling through to the container attribute.
+        try:
+            attr_val = getattr(container, attr_name)
+        except AttributeError:
+            msg = ("%s '%s' does not have attribute '%s' for mapping to spec: %s"
+                    % (container.__class__.__name__, container.name, attr_name, spec))
+            raise ContainerConfigurationError(msg)
+        if isinstance(attr_val, TermSetWrapper):
+            attr_val = attr_val.value
+        if attr_val is not None:
+            attr_val = self.__convert_string(attr_val, spec)
+            spec_dt = self.__get_data_type(spec)
+            if spec_dt is not None:
+                try:
+                    attr_val = self.__filter_by_spec_dt(attr_val, spec_dt, manager)
+                except ValueError as e:
+                    msg = ("%s '%s' attribute '%s' has unexpected type."
+                            % (container.__class__.__name__, container.name, attr_name))
+                    raise ContainerConfigurationError(msg) from e
+        if override is None and attr_val is not None:
+            warnings.warn(
+                "Override function for attribute '%s' returned None, so the container's attribute "
+                "value is used. In HDMF 8.0, a None return will set the attribute to None; return "
+                "ObjectMapper.NO_OVERRIDE to keep using the container's attribute value." % attr_name,
+                DeprecationWarning, stacklevel=2,
+            )
         # attr_val can be None, an AbstractContainer, or a list of AbstractContainers
         return attr_val
 
@@ -987,8 +1006,10 @@ class ObjectMapper(metaclass=ExtenderMeta):
             any array-like object supported by :func:`get_data_shape`.
         spec
             The DatasetSpec or AttributeSpec providing ``shape``, ``dims``, and ``dtype`` to
-            match against. When ``spec.dtype`` is a list (compound dtype), the data is treated
-            as 1D with length equal to ``len(data)`` for the purpose of shape matching.
+            match against. When ``spec.dtype`` is a list (compound dtype), or a ``RefSpec``, or
+            when ``data`` holds references, the data is treated as 1D with length equal to
+            ``len(data)`` for the purpose of shape matching, since the backend writes such
+            datasets 1D with one element per entry.
 
         Returns
         -------
@@ -1007,7 +1028,13 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if spec_shape is None:
             return None, None
         else:
-            if isinstance(spec.dtype, list):
+            if isinstance(spec.dtype, (list, RefSpec)) or self.__is_reftype(data):
+                # A compound (list) or reference dataset is written 1D with one element per entry, so
+                # treat it as 1D of length len(data). This covers references declared in the spec
+                # (RefSpec) as well as an untyped column whose data are references. Using
+                # get_data_shape here would recurse into reference targets (e.g. a DynamicTable,
+                # which is len()/index-able) and report a spurious higher-rank shape, yielding a
+                # maxshape whose rank does not match the 1D dataset the backend actually writes.
                 data_shape = (_get_length(data),)
             else:
                 data_shape = get_data_shape(data)
@@ -1601,7 +1628,19 @@ class ObjectMapper(metaclass=ExtenderMeta):
         for const_arg in get_docval(cls.__init__):
             argname = const_arg['name']
             override = self.__get_override_carg(argname, builder, manager)
-            if override is not None:
+            if override is None:
+                # TODO(HDMF 8.0): use None as the constructor argument value. Until then, an override
+                # function that returns None falls through to the value built from the file, so
+                # overrides that return None to signal "no override" keep working.
+                if const_args.get(argname) is not None:
+                    warnings.warn(
+                        "Override function for constructor argument '%s' returned None, so the value "
+                        "built from the file is used. In HDMF 8.0, a None return will set the argument "
+                        "to None; return ObjectMapper.NO_OVERRIDE to keep using the built value." % argname,
+                        DeprecationWarning, stacklevel=2,
+                    )
+                override = self.NO_OVERRIDE
+            if override is not self.NO_OVERRIDE:
                 val = override
             elif argname in const_args:
                 val = const_args[argname]
