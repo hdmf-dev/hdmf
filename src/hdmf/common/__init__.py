@@ -210,7 +210,7 @@ def get_manager(**kwargs):
         returns="errors and warnings in the file", rtype=ValidationResult,
         is_method=False)
 def validate(**kwargs):
-    """Validate an file against a namespace."""
+    """Validate a file against a namespace."""
 
     io, namespace, experimental = getargs('io', 'namespace', 'experimental', kwargs)
     if experimental:
