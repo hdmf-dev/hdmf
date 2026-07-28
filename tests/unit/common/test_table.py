@@ -1345,6 +1345,20 @@ class TestDynamicTableRegion(TestCase):
         ]
         return DynamicTable(name="with_columns_and_data", description='a test table', columns=columns)
 
+    def with_array_columns(self):
+        """Build a table whose columns hold their data as numpy arrays instead of lists.
+
+        When ``VectorData.data`` is a list, ``Data.get`` indexes it elementwise, which tolerates a
+        non-integer index array. Only when the data is a numpy array is it indexed with the array
+        directly, so tests for the dtype of the index must use this table rather than the
+        list-backed ``with_columns_and_data``.
+        """
+        columns = [
+            VectorData(name='foo', description='foo column', data=np.array([1, 2, 3, 4, 5])),
+            VectorData(name='bar', description='bar column', data=np.array([10.0, 20.0, 30.0, 40.0, 50.0])),
+        ]
+        return DynamicTable(name='with_array_columns', description='a test table', columns=columns)
+
     def test_indexed_dynamic_table_region(self):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion(name='dtr', data=[1, 2, 2], description='desc', table=table)
@@ -1412,6 +1426,25 @@ class TestDynamicTableRegion(TestCase):
         self.assertListEqual(res, [1, 2, 3])
         res = dynamic_table_region[1:3, 'baz']
         self.assertListEqual(res, ['dog', 'bird'])
+
+    def test_dynamic_table_region_getitem_empty_slice(self):
+        table = self.with_array_columns()
+        dynamic_table_region = DynamicTableRegion(name='dtr', data=[0, 1, 2], description='desc', table=table)
+        res = dynamic_table_region[1:1]
+        self.assertEqual(len(res), 0)
+        self.assertListEqual(list(res.columns), ['foo', 'bar'])
+
+    def test_indexed_dynamic_table_region_getitem_empty_row(self):
+        target_table = self.with_array_columns()
+        table = DynamicTable(name='table', description='a test table')
+        table.add_column(name='dtr', description='indexed DynamicTableRegion', index=True, table=target_table)
+        table.add_row(dtr=[0])
+        table.add_row(dtr=[])
+
+        self.assertEqual(len(table['dtr'][0]), 1)
+        res = table['dtr'][1]
+        self.assertEqual(len(res), 0)
+        self.assertListEqual(list(res.columns), ['foo', 'bar'])
 
     def test_dynamic_table_region_getitem_bad_index(self):
         table = self.with_columns_and_data()
