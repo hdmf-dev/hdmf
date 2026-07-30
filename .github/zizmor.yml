@@ -11,4 +11,5 @@ rules:
         astral-sh/ruff-action: ref-pin
         codecov/codecov-action: ref-pin
         actions/create-github-app-token: ref-pin
+        actions/setup-python: ref-pin
         "*": hash-pin
