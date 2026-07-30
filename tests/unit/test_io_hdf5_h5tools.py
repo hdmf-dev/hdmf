@@ -1,7 +1,9 @@
 """Test module to validate that HDF5IO is working"""
+import gc
 import os
 import unittest
 import warnings
+import weakref
 from io import BytesIO
 from pathlib import Path
 import shutil
@@ -4516,3 +4518,56 @@ class TestDefaultExpandableSubclasses(TestCase):
             # VectorData subclass (custom_col) should be expandable
             self.assertEqual(f['custom_col'].maxshape, (None,))
             self.assertIsNotNone(f['custom_col'].chunks)
+
+
+class TestHDMFIOFinalizer(TestCase):
+    """The IO finalizer surfaces an unclosed IO without a blocking close.
+
+    close() can acquire a lock that a garbage-collection finalizer must not block on, so
+    __del__ warns instead of closing. Cleanup of a still-open IO is deferred to an atexit
+    handler that runs on the main thread.
+    """
+
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_del_warns_when_still_open(self):
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            del io
+            gc.collect()
+        resource_warnings = [w for w in recorded if issubclass(w.category, ResourceWarning)]
+        self.assertEqual(len(resource_warnings), 1)
+        self.assertIn("was not closed", str(resource_warnings[0].message))
+
+    def test_del_does_not_warn_after_close(self):
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        io.close()
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            del io
+            gc.collect()
+        resource_warnings = [w for w in recorded if issubclass(w.category, ResourceWarning)]
+        self.assertEqual(len(resource_warnings), 0)
+
+    def test_open_io_registered_for_atexit_cleanup(self):
+        import hdmf.backends.io as io_module
+
+        # Isolate the registry so the simulated cleanup only touches the IO created here,
+        # not IOs left open by other tests (which would couple test order and mask leaks).
+        original_open_ios = io_module._open_ios
+        io_module._open_ios = weakref.WeakSet()
+        try:
+            io = HDF5IO(self.path, manager=self.manager, mode='w')
+            self.assertIn(io, io_module._open_ios)
+            self.assertTrue(io.is_open())
+            io_module._close_open_ios()  # simulate interpreter-exit cleanup
+            self.assertFalse(io.is_open())
+        finally:
+            io_module._open_ios = original_open_ios
