@@ -358,7 +358,7 @@ class TestBuildGroupRefinedAttr(BuildGroupExtAttrsMixin, TestCase):
             },
         )
 
-        # TODO build should raise a conversion warning for converting 10 (int32) to np.int64
+        # TODO build should raise a conversion warning for converting 10 (int) to np.int64
         builder = self.manager.build(bar_holder_inst, source='test.h5')
         self.assertDictEqual(builder, expected)
 
