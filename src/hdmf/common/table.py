@@ -241,7 +241,7 @@ class VectorIndex(VectorData):
             if isinstance(arg, slice):
                 indices = list(range(*arg.indices(_get_length(self.data))))
             else:
-                if isinstance(arg[0], (bool, np.bool_)):
+                if len(arg) > 0 and isinstance(arg[0], (bool, np.bool_)):
                     arg = np.where(arg)[0]
                 indices = arg
             ret = list()

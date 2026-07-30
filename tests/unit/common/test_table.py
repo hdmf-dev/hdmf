@@ -1446,6 +1446,21 @@ class TestDynamicTableRegion(TestCase):
         self.assertEqual(len(res), 0)
         self.assertListEqual(list(res.columns), ['foo', 'bar'])
 
+    def test_indexed_dynamic_table_region_getitem_empty_row_ragged_target(self):
+        target_table = DynamicTable(name='target_table', description='a test table')
+        target_table.add_column(name='qux', description='a ragged column', index=True)
+        target_table.add_row(qux=[1, 2])
+        target_table.add_row(qux=[3])
+        table = DynamicTable(name='table', description='a test table')
+        table.add_column(name='dtr', description='indexed DynamicTableRegion', index=True, table=target_table)
+        table.add_row(dtr=[0])
+        table.add_row(dtr=[])
+
+        self.assertEqual(len(table['dtr'][0]), 1)
+        res = table['dtr'][1]
+        self.assertEqual(len(res), 0)
+        self.assertListEqual(list(res.columns), ['qux'])
+
     def test_dynamic_table_region_getitem_bad_index(self):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion(name='dtr', data=[0, 1, 2, 2], description='desc', table=table)
@@ -2783,6 +2798,15 @@ class TestVectorIndex(TestCase):
 
         self.assertEqual(result, [['a', 'b',], ['d', 'e']])
         self.assertEqual(len(result), 2)
+
+    def test_get_with_empty_selection(self):
+        """Test VectorIndex.get with an empty list, np.array, and slice"""
+        data = VectorData(name='data', description='desc', data=['a', 'b', 'c', 'd', 'e'])
+        index = VectorIndex(name='index', data=[2, 3, 5], target=data)
+
+        self.assertEqual(index.get([]), [])
+        self.assertEqual(index.get(np.array([], dtype=np.int64)), [])
+        self.assertEqual(index.get(slice(1, 1)), [])
 
     def test_get_target_data_single_index(self):
         """Test get_target_data returns the VectorData for a single ragged array."""
