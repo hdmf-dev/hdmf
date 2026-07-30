@@ -241,7 +241,7 @@ class VectorIndex(VectorData):
             if isinstance(arg, slice):
                 indices = list(range(*arg.indices(_get_length(self.data))))
             else:
-                if isinstance(arg[0], (bool, np.bool_)):
+                if len(arg) > 0 and isinstance(arg[0], (bool, np.bool_)):
                     arg = np.where(arg)[0]
                 indices = arg
             ret = list()
@@ -1684,7 +1684,12 @@ class DynamicTableRegion(VectorData):
                 #
                 # When not returning a DataFrame, we need to recursively sort the subelements
                 # of the list we are returning. This is carried out by the recursive method _index_lol
-                uniq = np.unique(ret)
+                #
+                # Region data are row indices, so the unique elements are cast to an integer dtype.
+                # This matters when `ret` is empty (a region row that references no target rows):
+                # np.unique of an empty list is float64, which is not a valid index into a column
+                # whose data is a numpy array.
+                uniq = np.unique(ret).astype(np.int64, copy=False)
                 lut = {val: i for i, val in enumerate(uniq)}
                 values = self.table.get(uniq, df=df, index=index, **kwargs)
                 if df:
