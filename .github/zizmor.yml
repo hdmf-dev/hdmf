@@ -12,4 +12,5 @@ rules:
         codecov/codecov-action: ref-pin
         actions/create-github-app-token: ref-pin
         actions/setup-python: ref-pin
+        pypa/gh-action-pypi-publish: ref-pin
         "*": hash-pin
