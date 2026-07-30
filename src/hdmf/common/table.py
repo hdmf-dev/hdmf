@@ -1684,6 +1684,7 @@ class DynamicTableRegion(VectorData):
                 #
                 # When not returning a DataFrame, we need to recursively sort the subelements
                 # of the list we are returning. This is carried out by the recursive method _index_lol
+                #
                 # Region data are row indices, so the unique elements are cast to an integer dtype.
                 # This matters when `ret` is empty (a region row that references no target rows):
                 # np.unique of an empty list is float64, which is not a valid index into a column

@@ -1346,12 +1346,10 @@ class TestDynamicTableRegion(TestCase):
         return DynamicTable(name="with_columns_and_data", description='a test table', columns=columns)
 
     def with_array_columns(self):
-        """Build a table whose columns hold their data as numpy arrays instead of lists.
+        """Build a table whose columns hold their data as numpy arrays.
 
-        When ``VectorData.data`` is a list, ``Data.get`` indexes it elementwise, which tolerates a
-        non-integer index array. Only when the data is a numpy array is it indexed with the array
-        directly, so tests for the dtype of the index must use this table rather than the
-        list-backed ``with_columns_and_data``.
+        ``Data.get`` passes the selection straight to a numpy-backed column, so the dtype of the
+        index array has to be a dtype numpy accepts as an index.
         """
         columns = [
             VectorData(name='foo', description='foo column', data=np.array([1, 2, 3, 4, 5])),
