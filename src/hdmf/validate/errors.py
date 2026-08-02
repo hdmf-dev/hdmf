@@ -62,7 +62,7 @@ class ValidationIssue:
 
     def __hash__(self):
         """Returns the hash value of this validation issue
-    
+
         Note: if the location property is set after creation, the hash value will
         change. Therefore, it is important to finalize the value of location
         before getting the hash value.
@@ -71,11 +71,11 @@ class ValidationIssue:
 
     def __equatable_str(self):
         """A string representation of the error which can be used to check for equality
-    
+
         For a single error, name can end up being different depending on whether it is
         generated from a base data type spec or from an inner type definition. These errors
         should still be considered equal because they are caused by the same problem.
-    
+
         When a location is provided, we only consider the name of the field and drop the
         rest of the spec name. However, when a location is not available, then we need to
         use the fully-provided name.
@@ -85,7 +85,7 @@ class ValidationIssue:
         else:
             equatable_name = self.name
         return self.__format_str(equatable_name, self.location, self.reason)
-    
+
 
 class Error(ValidationIssue):
     """A validation error"""
