@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 
-class Error:
+class ValidationIssue:
 
     @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
             {'name': 'reason', 'type': str, 'doc': 'the reason for the error'},
@@ -57,9 +57,12 @@ class Error:
     def __repr__(self):
         return self.__str__()
 
-    def __hash__(self):
-        """Returns the hash value of this Error
+    def __eq__(self, other):
+        return type(self) is type(other) and hash(self) == hash(other)
 
+    def __hash__(self):
+        """Returns the hash value of this validation issue
+    
         Note: if the location property is set after creation, the hash value will
         change. Therefore, it is important to finalize the value of location
         before getting the hash value.
@@ -68,11 +71,11 @@ class Error:
 
     def __equatable_str(self):
         """A string representation of the error which can be used to check for equality
-
+    
         For a single error, name can end up being different depending on whether it is
         generated from a base data type spec or from an inner type definition. These errors
         should still be considered equal because they are caused by the same problem.
-
+    
         When a location is provided, we only consider the name of the field and drop the
         rest of the spec name. However, when a location is not available, then we need to
         use the fully-provided name.
@@ -82,62 +85,16 @@ class Error:
         else:
             equatable_name = self.name
         return self.__format_str(equatable_name, self.location, self.reason)
+    
 
-    def __eq__(self, other):
-        return hash(self) == hash(other)
+class Error(ValidationIssue):
+    """A validation error"""
+    pass
 
 
-class ValidationWarning:
-
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
-            {'name': 'reason', 'type': str, 'doc': 'the reason for the warning'},
-            {'name': 'location', 'type': str, 'doc': 'the location of the warning', 'default': None})
-    def __init__(self, **kwargs):
-        self.__name = getargs('name', kwargs)
-        self.__reason = getargs('reason', kwargs)
-        self.__location = getargs('location', kwargs)
-
-    @property
-    def name(self):
-        return self.__name
-
-    @property
-    def reason(self):
-        return self.__reason
-
-    @property
-    def location(self):
-        return self.__location
-
-    @location.setter
-    def location(self, loc):
-        self.__location = loc
-
-    def __str__(self):
-        return self.__format_str(self.name, self.location, self.reason)
-
-    @staticmethod
-    def __format_str(name, location, reason):
-        if location is not None:
-            return "%s (%s): %s" % (name, location, reason)
-        else:
-            return "%s: %s" % (name, reason)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __hash__(self):
-        return hash(self.__equatable_str())
-
-    def __equatable_str(self):
-        if self.location is not None:
-            equatable_name = self.name.split('/')[-1]
-        else:
-            equatable_name = self.name
-        return self.__format_str(equatable_name, self.location, self.reason)
-
-    def __eq__(self, other):
-        return type(self) is type(other) and hash(self) == hash(other)
+class ValidationWarning(ValidationIssue):
+    """A validation warning"""
+    pass
 
 
 class ValidationResult:

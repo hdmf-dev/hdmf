@@ -2086,3 +2086,10 @@ class TestValidationResultWrapper(TestCase):
 
         assert isinstance(result, ValidationResult)
         assert result.warnings == []
+
+    def test_error_and_warning_with_same_attributes_are_not_equal(self):
+        """Test that an Error and a ValidationWarning with the same name, reason, and location are not equal. """
+        err = Error(name="TestIssue", reason="Same issue", location="root")
+        warn = ValidationWarning(name="TestIssue", reason="Same issue", location="root")
+
+        self.assertNotEqual(err, warn)
