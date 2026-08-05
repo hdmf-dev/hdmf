@@ -608,10 +608,25 @@ class GroupValidator(BaseStorageValidator):
                                  parent_builder.links.values())
         matcher.assign_to_specs(builder_children)
 
+        for child_spec, child_builder in matcher.type_mismatched_builders:
+            yield self.__construct_incorrect_data_type_error(child_spec, child_builder, parent_builder)
+
         for child_spec, matched_builders in matcher.spec_matches:
             yield from self.__validate_presence_and_quantity(child_spec, len(matched_builders), parent_builder)
             for child_builder in matched_builders:
                 yield from self.__validate_child_builder(child_spec, child_builder, parent_builder)
+
+    def __construct_incorrect_data_type_error(self, child_spec, child_builder, parent_builder):
+        """Returns an IncorrectDataType for a builder that matches a named child spec
+        by name but whose data type is not consistent with that spec.
+        """
+        if isinstance(child_builder, LinkBuilder):
+            child_builder = child_builder.builder
+        received = child_builder.attributes.get(self.spec.type_key())
+        return IncorrectDataType(self.get_spec_loc(child_spec),
+                                 expected=_resolve_data_type(child_spec),
+                                 received=received if received is not None else 'untyped',
+                                 location=self.get_builder_loc(parent_builder))
 
     def __validate_presence_and_quantity(self, child_spec, n_builders, parent_builder):
         """Validate that at least one matching builder exists if the spec is
@@ -750,6 +765,7 @@ class SpecMatcher:
         self.vmap = vmap
         self._spec_matches = [SpecMatches(spec) for spec in specs]
         self._unmatched_builders = SpecMatches(None)
+        self._type_mismatched_builders = list()
 
     @property
     def unmatched_builders(self):
@@ -759,6 +775,16 @@ class SpecMatcher:
         warning in the future.
         """
         return self._unmatched_builders.builders
+
+    @property
+    def type_mismatched_builders(self):
+        """Returns a list of tuples of (spec, builder) for builders that matched a
+        named spec by name but whose data type is not consistent with that spec.
+
+        These builders are not assigned to any spec, so without reporting them here
+        the mismatch would be silent whenever the named spec is optional.
+        """
+        return self._type_mismatched_builders
 
     @property
     def spec_matches(self):
@@ -795,9 +821,10 @@ class SpecMatcher:
         inheritance hierarchy. Future improvements to this matching algorithm
         should resolve these discrepancies.
         """
-        candidates = self._filter_by_name(self._spec_matches, builder)
-        candidates = self._filter_by_type(candidates, builder)
+        name_candidates = self._filter_by_name(self._spec_matches, builder)
+        candidates = self._filter_by_type(name_candidates, builder)
         if len(candidates) == 0:
+            self._record_type_mismatch(name_candidates, builder)
             return None
         elif len(candidates) == 1:
             return candidates[0]
@@ -811,12 +838,30 @@ class SpecMatcher:
     def _filter_by_name(self, candidates, builder):
         """Returns the candidate specs that either have the same name as the
         builder or do not specify a name.
-        """
-        def name_is_consistent(spec_matches):
-            spec = spec_matches.spec
-            return spec.name is None or spec.name == builder.name
 
-        return list(filter(name_is_consistent, candidates))
+        A spec that names the builder explicitly is authoritative, so when any
+        candidate does so, the candidates that do not specify a name are dropped.
+        Without this, a builder named after an optional named sub-spec whose data
+        type does not match would fall through to an unnamed sibling spec, such as
+        a wildcard spec of a parent type, and validate clean.
+        """
+        named_candidates = [sm for sm in candidates if sm.spec.name == builder.name]
+        if named_candidates:
+            return named_candidates
+        return [sm for sm in candidates if sm.spec.name is None]
+
+    def _record_type_mismatch(self, name_candidates, builder):
+        """Records a builder that matched a named spec by name but not by data type.
+
+        Such a builder is left unassigned, and an optional spec with no assigned
+        builders reports nothing, so the mismatch is recorded here in order for the
+        validator to report it.
+        """
+        for spec_matches in name_candidates:
+            spec = spec_matches.spec
+            if spec.name == builder.name and _resolve_data_type(spec) is not None:
+                self._type_mismatched_builders.append((spec, builder))
+                return
 
     def _filter_by_type(self, candidates, builder):
         """Returns the candidate specs which have a data type consistent with
