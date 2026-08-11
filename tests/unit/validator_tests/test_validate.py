@@ -878,6 +878,70 @@ class TestMultipleNamedChildrenOfSameType(TestCase):
         self.assertEqual(len(result), 0)
 
 
+class TestNamedSubspecTakesPrecedenceOverWildcard(TestCase):
+    """A builder whose name matches a named sub-spec is validated against that
+    sub-spec instead of falling through to an unnamed sibling wildcard spec of a
+    parent type. See https://github.com/hdmf-dev/hdmf/issues/1554
+    """
+
+    def set_up_spec(self, named_spec_quantity):
+        spec_catalog = SpecCatalog()
+        base_spec = DatasetSpec('A base vector', data_type_def='BaseVector', dtype='int')
+        typed_spec = DatasetSpec('A typed vector', data_type_def='TypedVector', data_type_inc='BaseVector')
+        container_spec = GroupSpec(
+            'A container holding vectors',
+            data_type_def='Container',
+            datasets=[
+                DatasetSpec('Any number of vectors', data_type_inc='BaseVector', quantity=ZERO_OR_MANY),
+                DatasetSpec('A named typed vector', name='col1', data_type_inc='TypedVector',
+                            quantity=named_spec_quantity),
+            ],
+        )
+        for spec in (base_spec, typed_spec, container_spec):
+            spec_catalog.register_spec(spec, 'test.yaml')
+        self.namespace = SpecNamespace(
+            'a test namespace', CORE_NAMESPACE, [{'source': 'test.yaml'}], version='0.1.0', catalog=spec_catalog)
+        self.vmap = ValidatorMap(self.namespace)
+
+    def validate_datasets(self, dataset_names_and_types, named_spec_quantity=ZERO_OR_ONE):
+        """Validate a Container builder holding the given (name, data_type) datasets"""
+        self.set_up_spec(named_spec_quantity)
+        datasets = [DatasetBuilder(name, [1, 2, 3], attributes={'data_type': data_type})
+                    for name, data_type in dataset_names_and_types]
+        builder = GroupBuilder('my_container', attributes={'data_type': 'Container'}, datasets=datasets)
+        return self.vmap.validate(builder)
+
+    def test_named_subspec_with_matching_type_is_valid(self):
+        """A builder named col1 whose type matches the named spec validates cleanly"""
+        result = self.validate_datasets([('col1', 'TypedVector')])
+        self.assertEqual(result, [])
+
+    def test_optional_named_subspec_with_wrong_type_returns_error(self):
+        """A builder named col1 of the wildcard's parent type does not fall through to
+        the wildcard spec, so the type mismatch is reported
+        """
+        result = self.validate_datasets([('col1', 'BaseVector')])
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], IncorrectDataType)
+        self.assertEqual(result[0].name, 'Container/col1')
+        self.assertEqual(result[0].reason, "incorrect data_type - expected 'TypedVector', got 'BaseVector'")
+
+    def test_required_named_subspec_with_wrong_type_returns_error(self):
+        """The same mismatch is reported when the named spec is required"""
+        result = self.validate_datasets([('col1', 'BaseVector')], named_spec_quantity=1)
+        self.assertTrue(any(isinstance(error, IncorrectDataType) for error in result))
+
+    def test_unnamed_builder_still_matches_wildcard(self):
+        """A builder whose name does not match the named spec still matches the wildcard"""
+        result = self.validate_datasets([('other', 'BaseVector')])
+        self.assertEqual(result, [])
+
+    def test_named_and_wildcard_builders_together_are_valid(self):
+        """Both specs are satisfied when each builder has the right type"""
+        result = self.validate_datasets([('col1', 'TypedVector'), ('other', 'BaseVector')])
+        self.assertEqual(result, [])
+
+
 class TestLinkAndChildMatchingDataType(TestCase):
     """If a link and a child dataset/group have the same specified data type,
     both the link and the child need to be validated
