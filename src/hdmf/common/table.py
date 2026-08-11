@@ -418,9 +418,7 @@ class DynamicTable(Container):
             if len(all_targets) != len(set(all_targets)):
                 raise ValueError("'columns' contains index columns with the same target: %s" % all_targets)
 
-            # TODO: check columns against __columns__
-            # mismatches should raise an error (e.g., a VectorData cannot be passed in with the same name as a
-            # prespecified table region column)
+            self.__check_columns_against_spec(columns)
 
             # check column lengths against each other and id length
             # set ids if non-zero cols are provided and ids is empty
@@ -633,6 +631,41 @@ class DynamicTable(Container):
             setattr(self, col.name, col)
 
     __reserved_colspec_keys = ['name', 'description', 'index', 'table', 'required', 'class']
+
+    @classmethod
+    def _get_spec_column_class(cls, colspec):
+        """Return the column class required by a ``__columns__`` entry, or None if it is unconstrained."""
+        col_cls = colspec.get('class')
+        if col_cls is not None:
+            return col_cls
+        if colspec.get('table', False):
+            return DynamicTableRegion
+        if colspec.get('enum', False):
+            return EnumData
+        return None
+
+    def __check_columns_against_spec(self, columns):
+        """
+        Warn for each column passed to the constructor whose class conflicts with __columns__.
+
+        A column whose name matches a predefined column but whose class is not the class
+        required by the spec (or a subclass of it) cannot be written validly, so the mismatch
+        is reported here instead of being silently accepted. A VectorData passed with the name
+        of a predefined table region column is one such case.
+        """
+        spec_by_name = {colspec['name']: colspec for colspec in self.__columns__}
+        for column in columns:
+            colspec = spec_by_name.get(column.name)
+            if colspec is None:
+                continue
+            spec_col_cls = self._get_spec_column_class(colspec)
+            if spec_col_cls is not None and not isinstance(column, spec_col_cls):
+                msg = ("Column '%s' is predefined in %s with class=%s which does not match the class %s of the "
+                       "column passed in the 'columns' argument. "
+                       "Please ensure the new column complies with the spec. "
+                       "This will raise an error in a future version of HDMF."
+                       % (column.name, self.__class__.__name__, spec_col_cls, type(column)))
+                warn(msg, stacklevel=4)
 
     def _init_class_columns(self):
         """
@@ -959,6 +992,13 @@ class DynamicTable(Container):
                 col_cls = EnumData
             if isinstance(enum, (list, tuple, np.ndarray, VectorData)):
                 ckwargs['elements'] = enum
+
+        # Use the class from the predefined column spec when the caller did not specify one, so that a
+        # predefined typed column is not silently created as a plain VectorData
+        spec_col_cls = self.__uninit_cols[name].get('class') if name in self.__uninit_cols else None
+        if col_cls is None and spec_col_cls is not None:
+            col_cls = spec_col_cls
+
         # Update col_cls to the default VectorData if col_cls is None
         if col_cls is None:
             col_cls = VectorData
@@ -966,7 +1006,6 @@ class DynamicTable(Container):
         if name in self.__uninit_cols:  # column is a predefined optional column from the spec
             # check the given values against the predefined optional column spec. if they do not match, raise a warning
             # and ignore the given arguments. users should not be able to override these values
-            spec_col_cls = self.__uninit_cols[name].get('class')
             if spec_col_cls is not None and col_cls != spec_col_cls:
                 msg = ("Column '%s' is predefined in %s with class=%s which does not match the entered "
                        "col_cls argument. The predefined class spec will be ignored. "

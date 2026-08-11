@@ -4,6 +4,7 @@ import numpy as np
 import os
 import pandas as pd
 import unittest
+import warnings
 
 from hdmf import Container
 from hdmf import TermSet, TermSetWrapper
@@ -2054,7 +2055,7 @@ class TestDynamicTableClassColumns(TestCase):
         self.assertEqual(type(table.get('col2')), VectorIndex)  # not VectorData
 
     def test_add_opt_column_mismatched_col_cls(self):
-        """Test that adding an optional column from __columns__ with non-matched table raises a warning."""
+        """Test that adding an optional column from __columns__ with a conflicting col_cls raises a warning."""
         table = SubTable(name='subtable', description='subtable description')
         msg = ("Column 'col10' is predefined in SubTable with class=<class 'hdmf.common.table.EnumData'> "
                "which does not match the entered col_cls "
@@ -2062,10 +2063,100 @@ class TestDynamicTableClassColumns(TestCase):
                "Please ensure the new column complies with the spec. "
                "This will raise an error in a future version of HDMF.")
         with self.assertWarnsWith(UserWarning, msg):
-            table.add_column(name='col10', description='column #10', index=True)
+            table.add_column(name='col10', description='column #10', index=True, col_cls=VectorData)
         self.assertEqual(table.col10.description, 'column #10')
         self.assertEqual(type(table.col10), VectorData)
         self.assertEqual(type(table.get('col10')), VectorIndex)
+
+    def test_add_opt_column_uses_spec_col_cls(self):
+        """Test that a predefined column is created with the class from __columns__ when col_cls is not given.
+
+        See https://github.com/hdmf-dev/hdmf/issues/1553
+        """
+        table = SubTable(name='subtable', description='subtable description')
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            table.add_column(name='col10', description='column #10', index=True)
+        mismatch_warnings = [w for w in caught if 'does not match the entered col_cls' in str(w.message)]
+        self.assertEqual(mismatch_warnings, [])
+        self.assertEqual(table.col10.description, 'column #10')
+        self.assertEqual(type(table.col10), EnumData)
+        self.assertEqual(type(table.get('col10')), VectorIndex)
+
+    @staticmethod
+    def _spec_compliant_required_columns(target):
+        """Return the required columns of SubTable with the classes that __columns__ requires."""
+        return [
+            VectorData(name='col1', description='column #1', data=[1, 2, 3]),
+            VectorData(name='col3', description='column #3', data=[1, 2, 3]),
+            DynamicTableRegion(name='col5', description='column #5', data=[0, 1, 2], table=target),
+            DynamicTableRegion(name='col7', description='column #7', data=[0, 1, 2], table=target),
+        ]
+
+    @staticmethod
+    def _target_table():
+        return DynamicTable(name='target', description='target table',
+                            columns=[VectorData(name='x', description='x', data=[1, 2, 3])])
+
+    def test_init_columns_mismatched_col_cls(self):
+        """Test that a column passed to the constructor with a class that conflicts with __columns__ warns.
+
+        See https://github.com/hdmf-dev/hdmf/issues/1553
+        """
+        target = self._target_table()
+        # col10 is predefined with class=EnumData, so a plain VectorData is a mismatch
+        msg = ("Column 'col10' is predefined in SubTable with class=<class 'hdmf.common.table.EnumData'> "
+               "which does not match the class <class 'hdmf.common.table.VectorData'> of the column passed "
+               "in the 'columns' argument. "
+               "Please ensure the new column complies with the spec. "
+               "This will raise an error in a future version of HDMF.")
+        columns = self._spec_compliant_required_columns(target)
+        columns.append(VectorData(name='col10', description='column #10', data=[1, 2, 3]))
+        with self.assertWarnsWith(UserWarning, msg):
+            SubTable(name='subtable', description='subtable description', columns=columns)
+
+    def test_init_columns_mismatched_table_region(self):
+        """Test that a VectorData passed with the name of a predefined table region column warns.
+
+        This is the case named in the TODO that https://github.com/hdmf-dev/hdmf/issues/1553 tracks.
+        """
+        target = self._target_table()
+        # col6 is predefined with table=True, so it must be a DynamicTableRegion
+        msg = ("Column 'col6' is predefined in SubTable with class=<class 'hdmf.common.table.DynamicTableRegion'> "
+               "which does not match the class <class 'hdmf.common.table.VectorData'> of the column passed "
+               "in the 'columns' argument. "
+               "Please ensure the new column complies with the spec. "
+               "This will raise an error in a future version of HDMF.")
+        columns = self._spec_compliant_required_columns(target)
+        columns.append(VectorData(name='col6', description='column #6', data=[1, 2, 3]))
+        with self.assertWarnsWith(UserWarning, msg):
+            SubTable(name='subtable', description='subtable description', columns=columns)
+
+    def test_init_columns_matching_spec_does_not_warn(self):
+        """Test that columns whose classes agree with __columns__ produce no mismatch warning."""
+        target = self._target_table()
+        columns = self._spec_compliant_required_columns(target)
+        columns.append(DynamicTableRegion(name='col6', description='column #6', data=[0, 1, 2], table=target))
+        columns.append(EnumData(name='col10', description='column #10', data=[0, 1, 2], elements=['a', 'b', 'c']))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            table = SubTable(name='subtable', description='subtable description', columns=columns)
+        self.assertEqual([str(w.message) for w in caught if 'is predefined in SubTable' in str(w.message)], [])
+        self.assertEqual(type(table['col6']), DynamicTableRegion)
+        self.assertEqual(type(table['col10']), EnumData)
+
+    def test_init_columns_subclass_of_spec_does_not_warn(self):
+        """Test that a subclass of the predefined column class satisfies the spec."""
+        class SubEnumData(EnumData):
+            pass
+
+        target = self._target_table()
+        columns = self._spec_compliant_required_columns(target)
+        columns.append(SubEnumData(name='col10', description='column #10', data=[0, 1, 2], elements=['a', 'b', 'c']))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            SubTable(name='subtable', description='subtable description', columns=columns)
+        self.assertEqual([str(w.message) for w in caught if 'is predefined in SubTable' in str(w.message)], [])
 
     def test_add_opt_column_twice(self):
         """Test that adding an optional column from __columns__ twice fails the second time."""
