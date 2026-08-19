@@ -394,6 +394,10 @@ class DynamicTable(Container):
         # map name to column specification
         self.__uninit_cols = dict()
 
+        # state that keeps the ragged check in add_row O(1) instead of a rescan of the whole column
+        self.__ragged_columns = set()                # columns found ragged, which are never checked again
+        self.__elements_checked_per_column = dict()  # column name to how many of its elements were checked
+
         # All tables must have ElementIdentifiers (i.e. a primary key column)
         # Here, we figure out what to do for that
         user_provided_ids = (id is not None)
@@ -849,11 +853,35 @@ class DynamicTable(Container):
                 col.add_vector(data[colname])
             else:
                 col.add_row(data[colname])
-                if check_ragged and is_ragged(col.data):
+                if check_ragged and self.__becomes_ragged(colname, col):
                     warn(("Data has elements with different lengths and therefore cannot be coerced into an "
                           "N-dimensional array. Use the 'index' argument when creating a column to add rows "
                           "with different lengths."),
                          stacklevel=3)
+
+    def __becomes_ragged(self, colname, col):
+        """
+        Whether the value just appended is the one that makes this column ragged.
+
+        A column is warned about once, on the row that makes it ragged: the message is the same for
+        every later row and a ragged column never becomes unragged. ``is_ragged`` answers this by
+        rescanning the whole column on every row, which makes add_row quadratic, so the appended
+        value is compared against the first element of the column instead. Everything between them
+        was checked when it was added, unless the column grew by something other than this one
+        append, which the count of checked elements catches and answers with a single rescan.
+        """
+        data = col.data
+        if colname in self.__ragged_columns or not isinstance(data, (list, tuple)):
+            return False  # is_ragged is False for anything that is not a list or a tuple
+        checked = self.__elements_checked_per_column.get(colname, 0)
+        self.__elements_checked_per_column[colname] = len(data)
+        if len(data) != checked + 1:
+            ragged = is_ragged(data)  # data did not get here through a single append, so rescan it once
+        else:
+            ragged = is_ragged([data[0], data[-1]])
+        if ragged:
+            self.__ragged_columns.add(colname)
+        return ragged
 
     def __eq__(self, other):
         """Compare if the two DynamicTables contain the same data.

@@ -1,10 +1,14 @@
 from collections import OrderedDict
 import h5py
+import itertools
 import numpy as np
 import os
 import pandas as pd
 import unittest
+import warnings
+from unittest.mock import patch
 
+import hdmf.common.table
 from hdmf import Container
 from hdmf import TermSet, TermSetWrapper
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
@@ -20,7 +24,7 @@ from hdmf.common import (
     get_manager,
     SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
-from hdmf.utils import StrDataset
+from hdmf.utils import StrDataset, is_ragged
 from hdmf.data_utils import DataChunkIterator
 
 from tests.unit.helpers.utils import (
@@ -530,6 +534,73 @@ class TestDynamicTable(TestCase):
         table.add_column(name='qux', description='qux column')
         table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3])
         table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3 ,4], check_ragged=False)
+
+    def test_add_row_ragged_check_matches_is_ragged(self):
+        """
+        For a column built one row at a time, the warning must fire on exactly the row where
+        is_ragged turns true and on no row after it, whatever the shapes of the values.
+        """
+        # one element per class is_ragged distinguishes: a scalar and a string, which both count as
+        # length 1, an empty sequence, sequences of length 1 and 2, a tuple, and a nested element that
+        # is ragged inside itself
+        element_shapes = (1, 'ab', [], [1], [1, 2], (1, 2), [[1], [2, 3]])
+        for combination in itertools.product(element_shapes, repeat=3):
+            column = VectorData(name='qux', description='qux column', data=[])
+            table = DynamicTable(name='table', description='table description', columns=[column])
+            data = []
+            was_ragged = False
+            for element in combination:
+                data.append(element)
+                with warnings.catch_warnings(record=True) as caught:
+                    warnings.simplefilter('always')
+                    table.add_row(qux=element)
+                warned = any('different lengths' in str(warning.message) for warning in caught)
+                self.assertEqual(warned, is_ragged(data) and not was_ragged, msg=str(data))
+                was_ragged = is_ragged(data)
+
+    def test_add_row_ragged_check_sees_elements_it_did_not_check(self):
+        """
+        Elements the check never saw, because the column already had data or because a row was added
+        with check_ragged=False, still count towards raggedness for the rows after them.
+        """
+        msg = ("Data has elements with different lengths and therefore cannot be coerced into an N-dimensional "
+               "array. Use the 'index' argument when creating a column to add rows with different lengths.")
+        # a column built with data before the first add_row is checked against all of it, and here the
+        # appended value matches the first element, so only the data already in the column makes it ragged
+        table = DynamicTable(name='table', description='table description',
+                             columns=[VectorData(name='qux', description='qux column', data=[[1], [2, 3]])])
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_row(qux=[4])
+
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column')
+        table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2])
+        table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3], check_ragged=False)
+        # again the new row matches the length of the first element, so only the skipped row makes this ragged
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_row(foo=5, bar=50.0, baz='lizard', qux=[4, 5])
+
+    def test_add_row_ragged_check_does_not_rescan_the_column(self):
+        """
+        The raggedness check must cost O(1) per row: rescanning the column makes add_row quadratic.
+        """
+        visited = 0
+        original_is_ragged = hdmf.common.table.is_ragged
+
+        def counting_is_ragged(data):
+            nonlocal visited
+            visited += len(data) if isinstance(data, (list, tuple)) else 1
+            return original_is_ragged(data)
+
+        num_rows = 1000
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column')
+        with patch.object(hdmf.common.table, 'is_ragged', counting_is_ragged):
+            for _ in range(num_rows):
+                table.add_row(foo=5, bar=50.0, baz='lizard', qux=1)
+
+        # rescanning the column would visit about num_rows ** 2 / 2 elements
+        self.assertLess(visited, 10 * num_rows)
 
     def test_add_column_auto_index_int(self):
         """
