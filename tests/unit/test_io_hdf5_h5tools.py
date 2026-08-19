@@ -3737,8 +3737,11 @@ class TestWriteHDF5withZarrInput(TestCase):
         self.path = get_temp_filepath()
         self.path = get_temp_filepath()
         self.zarr_path = tempfile.mkdtemp()
+        self.io = None
 
     def tearDown(self):
+        if self.io is not None:
+            self.io.close()
         if os.path.exists(self.path):
             os.remove(self.path)
         if os.path.exists(self.zarr_path):
@@ -3783,7 +3786,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
-        self.addCleanup(io.close)
+        self.io = io
         f = io._file
         io.write_dataset(f, DatasetBuilder(name='test_dataset', data=zarr_data, attributes={}))
         dset = f['test_dataset']
@@ -3798,7 +3801,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
-        self.addCleanup(io.close)
+        self.io = io
         f = io._file
         io.write_dataset(f, DatasetBuilder(name='test_dataset', data=zarr_data, attributes={}))
         dset = f['test_dataset']
@@ -3814,7 +3817,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
-        self.addCleanup(io.close)
+        self.io = io
         f = io._file
 
         io.write_dataset(f, DatasetBuilder('test_dataset1', zarr_data))  # no dtype specified
@@ -3844,7 +3847,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
-        self.addCleanup(io.close)
+        self.io = io
         f = io._file
 
         io.write_dataset(f, DatasetBuilder('test_dataset1', zarr_data))  # no dtype specified
@@ -3874,7 +3877,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         zarr_data = zarr.open(self.zarr_path, shape=(2,), dtype=object, object_codec=numcodecs.VLenUTF8())
         zarr_data[:] = base_data
         io = HDF5IO(self.path, mode='a')
-        self.addCleanup(io.close)
+        self.io = io
         f = io._file
 
         io.write_dataset(f, DatasetBuilder('test_dataset1', zarr_data))  # no dtype specified
@@ -3904,7 +3907,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         zarr_data = zarr.open(self.zarr_path, shape=(2,), dtype=object, object_codec=numcodecs.VLenBytes())
         zarr_data[:] = base_data
         io = HDF5IO(self.path, mode='a')
-        self.addCleanup(io.close)
+        self.io = io
         f = io._file
 
         io.write_dataset(f, DatasetBuilder('test_dataset1', zarr_data))  # no dtype specified
@@ -3938,7 +3941,7 @@ class TestWriteHDF5withZarrInput(TestCase):
                      shuffle=True,
                      fletcher32=True)
         io = HDF5IO(self.path, mode='a')
-        self.addCleanup(io.close)
+        self.io = io
         f = io._file
         io.write_dataset(f, DatasetBuilder('test_dataset', a, attributes={}))
         dset = f['test_dataset']
