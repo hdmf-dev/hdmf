@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 6.2.0 (Upcoming)
+## HDMF 6.2.0 (August 19, 2026)
 
 ### Documentation and tutorial enhancements
 - Expanded the "Read HERD" section of the external resources tutorial to show how to inspect a `HERD` after reading it back with `HERD.from_zip`, using `to_dataframe`, the individual interlinked tables, and `get_object_entities`. This addresses confusion about a read `HERD` appearing empty in its default Jupyter display. @rly [#1535](https://github.com/hdmf-dev/hdmf/pull/1535)
@@ -13,6 +13,7 @@
 - `DynamicTable.add_row` now warns at most once per column that the column has become ragged, on the row that makes it ragged, instead of on that row and every row after it. @h-mayorquin [#1561](https://github.com/hdmf-dev/hdmf/pull/1561)
 
 ### Fixed
+- Fixed issue #531 where invalid values were accepted for `GroupSpec.quantity` and `DatasetSpec.quantity`. Now only positive integers, string representations of positive integers, and '?', '*', and '+' are allowed. @jwbear [#1521](https://github.com/hdmf-dev/hdmf/pull/1521)
 - Fixed `DynamicTable.add_row` being quadratic in the number of rows when `check_ragged` is on, which is the default. Filling 16,000 rows into a one-column table drops from 22 s to 0.3 s. @h-mayorquin [#1561](https://github.com/hdmf-dev/hdmf/pull/1561)
 - Fixed a deadlock when exporting a Zarr file to HDF5 with `HDF5IO.export`. A zarr array is now read into memory before the HDF5 write (in `__list_fill__`/`__scalar_fill__`), so the read does not run while h5py's global lock is held. @rly [#1547](https://github.com/hdmf-dev/hdmf/pull/1547)
 - Fixed `IndexError` when selecting an empty region from an in-memory `DynamicTableRegion` (e.g. `table["region"][i]` for a ragged region row that references no target rows, or an empty slice), both when the target table's columns hold their data as numpy arrays and when the target table has ragged columns. @h-mayorquin [#1549](https://github.com/hdmf-dev/hdmf/pull/1549)
@@ -44,7 +45,6 @@
 - Hardened the GitHub Actions CI: added least-privilege `permissions` blocks, pinned actions to commit SHAs (or immutable release tags), deduplicated the test setup into a composite action, passed untrusted inputs through environment variables, and added a zizmor security audit of the workflows. @rly [#1518](https://github.com/hdmf-dev/hdmf/pull/1518)
 
 ### Fixed
-- Fixed issue #531 where invalid values were accepted for `GroupSpec.quantity` and `DatasetSpec.quantity`. Now only positive integers, string representations of positive integers, and '?', '*', and '+' are allowed. @jwbear [#1521](https://github.com/hdmf-dev/hdmf/pull/1521)
 - Fixed iterative HDF5 writes (e.g. from a `DataChunkIterator`) storing data as `float32` when no explicit dtype was set on the builder. The data's own dtype is now used, so e.g. integer data is stored as integers rather than silently downcast, and an `H5pyDeprecationWarning` is no longer emitted. @rly [#1519](https://github.com/hdmf-dev/hdmf/pull/1519)
 - Removed the broken `str` (object_id) option from the `container` argument of `HERD.add_ref`, `HERD.add_ref_termset`, `HERD.get_key`, and `HERD.get_object_entities`; these methods now require an `AbstractContainer` and reject a string with a clear type error. @rly [#1514](https://github.com/hdmf-dev/hdmf/pull/1514)
 - Fixed `HERD.get_object_entities(attribute=...)` not finding references added with `HERD.add_ref(attribute=...)`, which raised `KeyError`/`TypeError` for non-DataType attributes. Both methods now resolve the attribute the same way. @rly [#1504](https://github.com/hdmf-dev/hdmf/pull/1504)
