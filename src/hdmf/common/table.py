@@ -822,7 +822,7 @@ class DynamicTable(Container):
              'default': False},
             {'name': 'check_ragged', 'type': bool, 'default': True,
              'doc': ('whether or not to check for ragged arrays when adding data to the table. '
-                     'Set to False to avoid checking every element if performance issues occur.')},
+                     'Set to False to skip the check.')},
             allow_extra=True)
     def add_row(self, **kwargs):
         """
@@ -863,12 +863,16 @@ class DynamicTable(Container):
         """
         Whether the value just appended is the one that makes this column ragged.
 
-        A column is warned about once, on the row that makes it ragged: the message is the same for
-        every later row and a ragged column never becomes unragged. ``is_ragged`` answers this by
-        rescanning the whole column on every row, which makes add_row quadratic, so the appended
-        value is compared against the first element of the column instead. Everything between them
-        was checked when it was added, unless the column grew by something other than this one
-        append, which the count of checked elements catches and answers with a single rescan.
+        A column is warned about once, on the row that makes it ragged: a ragged column never becomes
+        unragged, so the same message on every later row carries no new information. ``is_ragged``
+        answers that question by scanning the whole column, which costs O(rows) per row and makes
+        filling a table quadratic. Every element the check has already seen has the same length as the
+        first element and is not ragged within itself, so the appended value makes the column ragged
+        exactly when it differs from the first element, which is what this compares. The count of
+        elements seen guards that invariant: when the column grew by anything other than this one
+        append, such as a row added with ``check_ragged=False``, the column is rescanned in full once.
+        The count tracks length, so it does not detect elements swapped in place by code that reaches
+        into ``col.data`` directly.
         """
         data = col.data
         if colname in self.__ragged_columns or not isinstance(data, (list, tuple)):

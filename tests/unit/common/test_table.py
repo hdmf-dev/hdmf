@@ -5,8 +5,8 @@ import numpy as np
 import os
 import pandas as pd
 import unittest
-import warnings
 from unittest.mock import patch
+import warnings
 
 import hdmf.common.table
 from hdmf import Container
