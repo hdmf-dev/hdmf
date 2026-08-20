@@ -1,0 +1,32 @@
+id: https://w3id.org/hdmf/test
+name: hdmf-common-test
+title: HDMF Common Test
+description: >-
+  Minimal test namespace for the HDMF to LinkML round trip. It declares the same namespace
+  metadata as the hdmf-common namespace but references only base.yaml and sparse.yaml.
+version: 1.10.0
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  hdmf_common_test: https://w3id.org/hdmf/test/
+default_prefix: hdmf_common_test
+
+imports:
+  - linkml:types
+  - hdmf-linkml-types
+  - base
+  - sparse
+
+annotations:
+  # merged from the HDMFSL namespace author and contact lists, which are positionally
+  # one-to-one, so that each name stays bound to its email
+  authors:
+    value:
+      - name: Andrew Tritt
+        email: ajtritt@lbl.gov
+      - name: Oliver Ruebel
+        email: oruebel@lbl.gov
+      - name: Ryan Ly
+        email: rly@lbl.gov
+      - name: Ben Dichter
+        email: bdichter@lbl.gov

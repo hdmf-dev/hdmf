@@ -1,5 +1,14 @@
 # HDMF Changelog
 
+## HDMF 6.3.0 (Upcoming)
+
+### Enhancements
+- Added a `linkml` optional dependency group providing `linkml-runtime`, and hand-authored LinkML translations of a minimal `hdmf-common` test namespace (`base.yaml` and `sparse.yaml`) under `tests/unit/linkml_tests/fixtures/`. These are the fixtures the forthcoming LinkML reader and writer are tested against. @rly [#1492](https://github.com/hdmf-dev/hdmf/pull/1492)
+
+### Documentation
+- Added documentation of the conventions for mapping HDMF schema language constructs to LinkML, scoped to the `base.yaml` and `CSRMatrix` types. @rly [#1492](https://github.com/hdmf-dev/hdmf/pull/1492)
+
+
 ## HDMF 6.2.0 (August 19, 2026)
 
 ### Documentation and tutorial enhancements

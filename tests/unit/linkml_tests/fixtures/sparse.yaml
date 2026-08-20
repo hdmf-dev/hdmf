@@ -1,0 +1,63 @@
+id: https://w3id.org/hdmf/test/sparse
+name: sparse
+title: Sparse data types
+description: data types for different types of sparse matrices
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  sparse: https://w3id.org/hdmf/test/sparse/
+default_prefix: sparse
+
+imports:
+  - linkml:types
+  - hdmf-linkml-types
+  - base
+
+classes:
+
+  CSRMatrix:
+    description: >-
+      A compressed sparse row matrix. Data are stored in the standard CSR format, where
+      column indices for row i are stored in indices[indptr[i]:indptr[i+1]] and their
+      corresponding values are stored in data[indptr[i]:indptr[i+1]].
+    is_a: Container
+    annotations:
+      spec_type: group
+    attributes:
+      shape:
+        description: The shape (number of rows, number of columns) of this sparse matrix.
+        range: uint
+        required: true
+        annotations:
+          spec_type: attribute
+        array:
+          dimensions:
+            - alias: number of rows, number of columns
+              exact_cardinality: 2
+      indices:
+        description: The column indices.
+        range: uint
+        required: true
+        annotations:
+          spec_type: dataset
+        array:
+          dimensions:
+            - alias: number of non-zero values
+      indptr:
+        description: The row index pointer.
+        range: uint
+        required: true
+        annotations:
+          spec_type: dataset
+        array:
+          dimensions:
+            - alias: number of rows in the matrix + 1
+      data:
+        description: The non-zero values in the matrix.
+        range: AnyType
+        required: true
+        annotations:
+          spec_type: dataset
+        array:
+          dimensions:
+            - alias: number of non-zero values
