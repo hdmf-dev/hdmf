@@ -480,12 +480,15 @@ class BaseStorageSpec(Spec):
             else:
                 self['default_name'] = default_name
         self.__attributes = dict()
-        if quantity in (ONE_OR_MANY, ZERO_OR_MANY):
-            if name is not None:
-                raise ValueError("Cannot give specific name to something that can "
-                                 "exist multiple times: name='%s', quantity='%s'" % (name, quantity))
+
+        # Validate Quantity
+        quantity = self.__validate_quantity(name, quantity)
+
+        # Prevent overwrite of DEF_Quantity
         if quantity != DEF_QUANTITY:
-            self['quantity'] = quantity
+            self["quantity"] = quantity
+
+
         if not linkable:
             self['linkable'] = False
 
@@ -512,6 +515,48 @@ class BaseStorageSpec(Spec):
         self.__data_type_inc_resolved = None
         self.__inc_spec_resolved = False
         self.__resolved = False
+
+    @staticmethod
+    def __validate_quantity(name, qty):
+        """
+        Ensure quantity is an integer >= 1 or in FLAGS and is a valid name/quantity combination.
+
+        :param name: Name string.
+        :type name: str
+        :param qty: Quantity string or number.
+        :type qty: str | int
+
+        :returns: The validated quantity.
+        :rtype: str | int
+
+        :raises ValueError: If quantity is invalid or is incompatible with the name.
+        """
+        invalid_name = (
+            f"Cannot give specific name to something that can exist multiple times: name='{name}', quantity='{qty}'"
+        )
+        valid_flags = ", ".join(FLAGS.values())
+        invalid_int = f"Invalid quantity '{qty}': must be greater than or equal to 1 or in '[{valid_flags}]'"
+        # Check FLAGS
+        if isinstance(qty, str) and ((qty in FLAGS.values()) or (qty in FLAGS)):
+            if qty in (ONE_OR_MANY, ZERO_OR_MANY):
+                if name is not None:
+                    raise ValueError(invalid_name)
+            return qty
+
+        # Convert numeric strings
+        if isinstance(qty, str):
+            try:
+                qty = int(qty)
+            except ValueError:
+                raise ValueError(invalid_int) from None
+
+        # Validate integers
+        if isinstance(qty, int):
+            if qty < 1:
+                raise ValueError(invalid_int)
+            return qty
+
+        raise ValueError(invalid_int)
 
     @property
     def default_name(self):

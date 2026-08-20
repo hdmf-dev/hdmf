@@ -1,7 +1,9 @@
 """Test module to validate that HDF5IO is working"""
+import gc
 import os
 import unittest
 import warnings
+import weakref
 from io import BytesIO
 from pathlib import Path
 import shutil
@@ -1155,8 +1157,8 @@ class TestHERDIO(TestCase):
     def test_io_read_herd(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=self.foofile,
-                   container=data,
+        data.parent = self.foofile
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -1170,8 +1172,8 @@ class TestHERDIO(TestCase):
     def test_io_read_herd_file_warn(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=self.foofile,
-                   container=data,
+        data.parent = self.foofile
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -1186,8 +1188,8 @@ class TestHERDIO(TestCase):
     def test_io_read_herd_value_warn(self):
         er = HERD()
         data = Data(name="species", data=['Homo sapiens', 'Mus musculus'])
-        er.add_ref(file=self.foofile,
-                   container=data,
+        data.parent = self.foofile
+        er.add_ref(container=data,
                    key='key1',
                    entity_id='entity_id1',
                    entity_uri='entity1')
@@ -1220,8 +1222,7 @@ class TestHERDIO(TestCase):
         foofile = FooFile(buckets=[foobucket])
 
         er = HERD(type_map=self.manager.type_map)
-        er.add_ref(file=foofile,
-                   container=foofile,
+        er.add_ref(container=foofile,
                    key='special',
                    entity_id="id11",
                    entity_uri='url11')
@@ -1238,7 +1239,7 @@ class TestHERDIO(TestCase):
 
             self.assertEqual(read_herd.keys.data, [('special',), ('Homo sapiens',)])
             self.assertEqual(read_herd.entities.data[0], ('id11', 'url11'))
-            self.assertEqual(read_herd.entities.data[1], ('NCBI_TAXON:9606',
+            self.assertEqual(read_herd.entities.data[1], ('NCBITaxon:9606',
             'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'))
             self.assertEqual(read_herd.objects.data[0],
             (0, read_foofile.object_id, 'FooFile', '', ''))
@@ -1261,7 +1262,6 @@ class TestHERDIO(TestCase):
 
         container.external_resources = herd
         herd.add_ref(
-            file=container,
             container=species,
             key='Homo sapiens',
             entity_id='NCBI:9606',
@@ -3737,8 +3737,11 @@ class TestWriteHDF5withZarrInput(TestCase):
         self.path = get_temp_filepath()
         self.path = get_temp_filepath()
         self.zarr_path = tempfile.mkdtemp()
+        self.io = None
 
     def tearDown(self):
+        if self.io is not None:
+            self.io.close()
         if os.path.exists(self.path):
             os.remove(self.path)
         if os.path.exists(self.zarr_path):
@@ -3783,6 +3786,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
+        self.io = io
         f = io._file
         io.write_dataset(f, DatasetBuilder(name='test_dataset', data=zarr_data, attributes={}))
         dset = f['test_dataset']
@@ -3797,6 +3801,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
+        self.io = io
         f = io._file
         io.write_dataset(f, DatasetBuilder(name='test_dataset', data=zarr_data, attributes={}))
         dset = f['test_dataset']
@@ -3812,6 +3817,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
+        self.io = io
         f = io._file
 
         io.write_dataset(f, DatasetBuilder('test_dataset1', zarr_data))  # no dtype specified
@@ -3841,6 +3847,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         zarr.save(self.zarr_path, base_data)
         zarr_data = zarr.open(self.zarr_path, 'r')
         io = HDF5IO(self.path, mode='a')
+        self.io = io
         f = io._file
 
         io.write_dataset(f, DatasetBuilder('test_dataset1', zarr_data))  # no dtype specified
@@ -3870,6 +3877,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         zarr_data = zarr.open(self.zarr_path, shape=(2,), dtype=object, object_codec=numcodecs.VLenUTF8())
         zarr_data[:] = base_data
         io = HDF5IO(self.path, mode='a')
+        self.io = io
         f = io._file
 
         io.write_dataset(f, DatasetBuilder('test_dataset1', zarr_data))  # no dtype specified
@@ -3899,6 +3907,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         zarr_data = zarr.open(self.zarr_path, shape=(2,), dtype=object, object_codec=numcodecs.VLenBytes())
         zarr_data[:] = base_data
         io = HDF5IO(self.path, mode='a')
+        self.io = io
         f = io._file
 
         io.write_dataset(f, DatasetBuilder('test_dataset1', zarr_data))  # no dtype specified
@@ -3932,6 +3941,7 @@ class TestWriteHDF5withZarrInput(TestCase):
                      shuffle=True,
                      fletcher32=True)
         io = HDF5IO(self.path, mode='a')
+        self.io = io
         f = io._file
         io.write_dataset(f, DatasetBuilder('test_dataset', a, attributes={}))
         dset = f['test_dataset']
@@ -4350,6 +4360,48 @@ class TestDefaultExpandableWithReferences(H5RoundTripMixin, TestCase):
             self.assertEqual(f[ref_ds[1]].name, '/group2')
 
 
+class TestDefaultExpandableWithTableReferences(H5RoundTripMixin, TestCase):
+    """Test that a VectorData column of references to DynamicTables is written 1D and expandable.
+
+    A DynamicTable is ``len()``/index-able, so inferring the reference column's shape by recursing
+    into the referenced tables reports a spurious higher-rank shape, producing a maxshape whose rank
+    does not match the 1D reference dataset the backend writes. Regression test: the shape must be
+    taken from the reference array (1D), not the referenced tables.
+    """
+
+    def setUpContainer(self):
+        target1 = DynamicTable(name='target1', description='a referenced table')
+        target1.add_column(name='x', description='a column')
+        target1.add_row(x=1.0)
+        target2 = DynamicTable(name='target2', description='another referenced table')
+        target2.add_column(name='x', description='a column')
+        target2.add_row(x=2.0)
+
+        table = DynamicTable(name='table0', description='an example table')
+        table.add_column(name='ref', description='a reference column to whole tables')
+        table.add_row(ref=target1)
+        table.add_row(ref=target2)
+
+        multi = SimpleMultiContainer(name='multi')
+        multi.add_container(target1)
+        multi.add_container(target2)
+        multi.add_container(table)
+        return multi
+
+    def test_roundtrip(self):
+        super().test_roundtrip()
+
+        with h5py.File(self.filename, 'r') as f:
+            ref_ds = f['table0/ref']
+            self.assertEqual(ref_ds.maxshape, (None,))
+            self.assertIsNotNone(ref_ds.chunks)
+            self.assertTrue(h5py.check_ref_dtype(ref_ds.dtype))
+            # Stored refs resolve to the expected target tables.
+            self.assertIsInstance(ref_ds[0], h5py.Reference)
+            self.assertEqual(f[ref_ds[0]].name, '/target1')
+            self.assertEqual(f[ref_ds[1]].name, '/target2')
+
+
 class TestDefaultExpandableExplicitOverride(H5RoundTripMixin, TestCase):
     """Test that explicit H5DataIO settings are not overridden by the default expandable behavior."""
 
@@ -4476,3 +4528,56 @@ class TestDefaultExpandableSubclasses(TestCase):
             # VectorData subclass (custom_col) should be expandable
             self.assertEqual(f['custom_col'].maxshape, (None,))
             self.assertIsNotNone(f['custom_col'].chunks)
+
+
+class TestHDMFIOFinalizer(TestCase):
+    """The IO finalizer surfaces an unclosed IO without a blocking close.
+
+    close() can acquire a lock that a garbage-collection finalizer must not block on, so
+    __del__ warns instead of closing. Cleanup of a still-open IO is deferred to an atexit
+    handler that runs on the main thread.
+    """
+
+    def setUp(self):
+        self.manager = get_foo_buildmanager()
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
+
+    def test_del_warns_when_still_open(self):
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            del io
+            gc.collect()
+        resource_warnings = [w for w in recorded if issubclass(w.category, ResourceWarning)]
+        self.assertEqual(len(resource_warnings), 1)
+        self.assertIn("was not closed", str(resource_warnings[0].message))
+
+    def test_del_does_not_warn_after_close(self):
+        io = HDF5IO(self.path, manager=self.manager, mode='w')
+        io.close()
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            del io
+            gc.collect()
+        resource_warnings = [w for w in recorded if issubclass(w.category, ResourceWarning)]
+        self.assertEqual(len(resource_warnings), 0)
+
+    def test_open_io_registered_for_atexit_cleanup(self):
+        import hdmf.backends.io as io_module
+
+        # Isolate the registry so the simulated cleanup only touches the IO created here,
+        # not IOs left open by other tests (which would couple test order and mask leaks).
+        original_open_ios = io_module._open_ios
+        io_module._open_ios = weakref.WeakSet()
+        try:
+            io = HDF5IO(self.path, manager=self.manager, mode='w')
+            self.assertIn(io, io_module._open_ios)
+            self.assertTrue(io.is_open())
+            io_module._close_open_ios()  # simulate interpreter-exit cleanup
+            self.assertFalse(io.is_open())
+        finally:
+            io_module._open_ios = original_open_ios

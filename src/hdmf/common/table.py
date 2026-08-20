@@ -241,7 +241,7 @@ class VectorIndex(VectorData):
             if isinstance(arg, slice):
                 indices = list(range(*arg.indices(_get_length(self.data))))
             else:
-                if isinstance(arg[0], (bool, np.bool_)):
+                if len(arg) > 0 and isinstance(arg[0], (bool, np.bool_)):
                     arg = np.where(arg)[0]
                 indices = arg
             ret = list()
@@ -393,6 +393,10 @@ class DynamicTable(Container):
         # hold names of optional columns that are defined in __columns__ that are not yet initialized
         # map name to column specification
         self.__uninit_cols = dict()
+
+        # state that keeps the ragged check in add_row O(1) instead of a rescan of the whole column
+        self.__ragged_columns = set()                # columns found ragged, which are never checked again
+        self.__elements_checked_per_column = dict()  # column name to how many of its elements were checked
 
         # All tables must have ElementIdentifiers (i.e. a primary key column)
         # Here, we figure out what to do for that
@@ -610,14 +614,18 @@ class DynamicTable(Container):
 
     @docval({'name': 'col_name', 'type': str,
              'doc': 'The name of the column to get the MeaningsTable for.'},
-            returns='the MeaningsTable for the given column', rtype='MeaningsTable')
+            returns="the MeaningsTable for the given column, or None if the column has no MeaningsTable",
+            rtype='MeaningsTable')
     def get_meanings_for_column(self, **kwargs):
-        """Get a MeaningsTable for a column in this DynamicTable."""
+        """Get the MeaningsTable for a column in this DynamicTable.
+
+        Return None if the column exists but has no MeaningsTable. Raise KeyError if the column
+        does not exist in this DynamicTable.
+        """
         col_name = getargs('col_name', kwargs)
-        meanings_table_name = f"{col_name}_meanings"
-        if meanings_table_name not in self.__meanings_tables:
-            raise KeyError(f"No MeaningsTable found for column '{col_name}' in DynamicTable '{self.name}'")
-        return self.__meanings_tables[meanings_table_name]
+        if col_name not in self:
+            raise KeyError(f"Column '{col_name}' not found in DynamicTable '{self.name}'")
+        return self.__meanings_tables.get(f"{col_name}_meanings")
 
     def __set_table_attr(self, col):
         if hasattr(self, col.name) and col.name not in self.__uninit_cols:
@@ -814,7 +822,7 @@ class DynamicTable(Container):
              'default': False},
             {'name': 'check_ragged', 'type': bool, 'default': True,
              'doc': ('whether or not to check for ragged arrays when adding data to the table. '
-                     'Set to False to avoid checking every element if performance issues occur.')},
+                     'Set to False to skip the check.')},
             allow_extra=True)
     def add_row(self, **kwargs):
         """
@@ -845,11 +853,39 @@ class DynamicTable(Container):
                 col.add_vector(data[colname])
             else:
                 col.add_row(data[colname])
-                if check_ragged and is_ragged(col.data):
+                if check_ragged and self.__becomes_ragged(colname, col):
                     warn(("Data has elements with different lengths and therefore cannot be coerced into an "
                           "N-dimensional array. Use the 'index' argument when creating a column to add rows "
                           "with different lengths."),
                          stacklevel=3)
+
+    def __becomes_ragged(self, colname, col):
+        """
+        Whether the value just appended is the one that makes this column ragged.
+
+        A column is warned about once, on the row that makes it ragged: a ragged column never becomes
+        unragged, so the same message on every later row carries no new information. ``is_ragged``
+        answers that question by scanning the whole column, which costs O(rows) per row and makes
+        filling a table quadratic. Every element the check has already seen has the same length as the
+        first element and is not ragged within itself, so the appended value makes the column ragged
+        exactly when it differs from the first element, which is what this compares. The count of
+        elements seen guards that invariant: when the column grew by anything other than this one
+        append, such as a row added with ``check_ragged=False``, the column is rescanned in full once.
+        The count tracks length, so it does not detect elements swapped in place by code that reaches
+        into ``col.data`` directly.
+        """
+        data = col.data
+        if colname in self.__ragged_columns or not isinstance(data, (list, tuple)):
+            return False  # is_ragged is False for anything that is not a list or a tuple
+        checked = self.__elements_checked_per_column.get(colname, 0)
+        self.__elements_checked_per_column[colname] = len(data)
+        if len(data) != checked + 1:
+            ragged = is_ragged(data)  # data did not get here through a single append, so rescan it once
+        else:
+            ragged = is_ragged([data[0], data[-1]])
+        if ragged:
+            self.__ragged_columns.add(colname)
+        return ragged
 
     def __eq__(self, other):
         """Compare if the two DynamicTables contain the same data.
@@ -1680,7 +1716,12 @@ class DynamicTableRegion(VectorData):
                 #
                 # When not returning a DataFrame, we need to recursively sort the subelements
                 # of the list we are returning. This is carried out by the recursive method _index_lol
-                uniq = np.unique(ret)
+                #
+                # Region data are row indices, so the unique elements are cast to an integer dtype.
+                # This matters when `ret` is empty (a region row that references no target rows):
+                # np.unique of an empty list is float64, which is not a valid index into a column
+                # whose data is a numpy array.
+                uniq = np.unique(ret).astype(np.int64, copy=False)
                 lut = {val: i for i, val in enumerate(uniq)}
                 values = self.table.get(uniq, df=df, index=index, **kwargs)
                 if df:
@@ -1862,7 +1903,14 @@ class EnumData(VectorData):
             return idx
         if not np.isscalar(idx):
             idx = np.asarray(idx)
-            ret = np.asarray(self.elements.get(idx.ravel(), **kwargs)).reshape(idx.shape)
+            # Load the full set of elements and index it in memory. An h5py-backed elements dataset
+            # requires its selection indices to be sorted and free of duplicates, while enum indices
+            # are arbitrarily ordered and repeat; indexing an in-memory array has no such constraint.
+            # The elements are a small fixed set, so reading them all is cheap. Selecting a small
+            # number of rows from an elements dataset with very high cardinality reads more than
+            # strictly needed, which is not the case EnumData is designed for.
+            elements = np.asarray(self.elements.get(np.s_[:], **kwargs))
+            ret = elements[idx]
             if join:
                 ret = ''.join(ret.ravel())
         else:
@@ -1902,14 +1950,14 @@ class EnumData(VectorData):
 @register_class('MeaningsTable')
 class MeaningsTable(DynamicTable):
     """
-    A table to store information about the meanings of values in a linked VectorData object.
+    A table to store information about the meanings of values in a referenced VectorData object.
 
-    All possible values of the linked VectorData object should be present in the 'value' column
+    All possible values of the referenced VectorData object should be present in the 'value' column
     of this table, even if the value is not observed in the data. Additional columns may be
     added to store additional metadata about each value.
 
     The name of the MeaningsTable is automatically set to "{target.name}_meanings" based on
-    the linked VectorData object. For example, if the linked VectorData object is named
+    the referenced VectorData object. For example, if the referenced VectorData object is named
     "stimulus_type", the MeaningsTable will be named "stimulus_type_meanings".
     """
 
@@ -1918,7 +1966,7 @@ class MeaningsTable(DynamicTable):
     )
 
     __columns__ = (
-        {'name': 'value', 'description': 'The value in the linked VectorData object.', 'required': True},
+        {'name': 'value', 'description': 'The value in the referenced VectorData object.', 'required': True},
         {'name': 'meaning', 'description': 'The meaning of the value.', 'required': True},
     )
 
@@ -1942,7 +1990,7 @@ class MeaningsTable(DynamicTable):
         super().__init__(**kwargs)
         self.target = target
 
-    @docval({'name': 'value', 'type': None, 'doc': 'the value in the linked VectorData object'},
+    @docval({'name': 'value', 'type': None, 'doc': 'the value in the referenced VectorData object'},
             {'name': 'meaning', 'type': str, 'doc': 'the meaning of the value'},
             {'name': 'id', 'type': int, 'doc': 'the ID for the row', 'default': None},
             {'name': 'enforce_unique_id', 'type': bool, 'doc': 'enforce that the id in the table must be unique',

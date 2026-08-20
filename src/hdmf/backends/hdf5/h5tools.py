@@ -1299,6 +1299,10 @@ class HDF5IO(HDMFIO):
             except Exception as exc:
                 msg = 'cannot add %s to %s - could not determine type' % (name, parent.name)
                 raise Exception(msg) from exc
+        # Read a zarr array into memory before creating the dataset so its read does not
+        # run while the HDF5 lock is held (see __list_fill__ for the deadlock this avoids).
+        if is_zarr_array(data):
+            data = np.asarray(data)
         try:
             dset = parent.create_dataset(name, data=data, shape=None, dtype=dtype, **io_settings)
         except Exception as exc:
@@ -1336,9 +1340,11 @@ class HDF5IO(HDMFIO):
         if 'maxshape' not in io_settings:
             io_settings['maxshape'] = data.maxshape
         if 'dtype' not in io_settings:
-            if (options is not None) and ('dtype' in options):
+            if (options is not None) and (options.get('dtype') is not None):
                 io_settings['dtype'] = options['dtype']
             else:
+                # fall back to the data's own dtype; passing dtype=None to create_dataset is deprecated
+                # and silently stores the data as float32
                 io_settings['dtype'] = data.dtype
             if isinstance(io_settings['dtype'], str):
                 # map to real dtype if we were given a string
@@ -1445,6 +1451,12 @@ class HDF5IO(HDMFIO):
             new_shape = list(dset.shape)
             new_shape[0] = _get_length(data)
             dset.resize(new_shape)
+        # Read a zarr array into memory before the assignment so its read does not run
+        # while the HDF5 lock is held. zarr v3 dispatches reads to a background
+        # event-loop thread; reading under the HDF5 lock can deadlock against a garbage
+        # collection finalizer that acquires the same lock on that thread.
+        if is_zarr_array(data):
+            data = np.asarray(data)
         try:
             dset[:] = data
         except Exception as e:

@@ -88,7 +88,7 @@ class ObjectTable(Table):
     __defaultname__ = 'objects'
 
     __columns__ = (
-        {'name': 'files_idx', 'type': int,
+        {'name': 'files_idx', 'type': (int, np.integer),
          'doc': 'The row idx for the file_object_id in FileTable containing the object.'},
         {'name': 'object_id', 'type': str,
          'doc': 'The object ID for the Container/Data.'},
@@ -119,9 +119,9 @@ class ObjectKeyTable(Table):
     __defaultname__ = 'object_keys'
 
     __columns__ = (
-        {'name': 'objects_idx', 'type': (int, Object),
+        {'name': 'objects_idx', 'type': (int, np.integer, Object),
          'doc': 'The index into the objects table for the Object that uses the Key.'},
-        {'name': 'keys_idx', 'type': (int, Key),
+        {'name': 'keys_idx', 'type': (int, np.integer, Key),
          'doc': 'The index into the keys table that is used to make an external resource reference.'}
     )
 
@@ -134,9 +134,9 @@ class EntityKeyTable(Table):
     __defaultname__ = 'entity_keys'
 
     __columns__ = (
-        {'name': 'entities_idx', 'type': (int, Entity),
+        {'name': 'entities_idx', 'type': (int, np.integer, Entity),
          'doc': 'The index into the EntityTable for the Entity that associated with the Key.'},
-        {'name': 'keys_idx', 'type': (int, Key),
+        {'name': 'keys_idx', 'type': (int, np.integer, Key),
          'doc': 'The index into the KeyTable that is used to make an external resource reference.'}
     )
 
@@ -202,7 +202,7 @@ class HERD(Container):
     @staticmethod
     def assert_external_resources_equal(left, right, check_dtype=True):
         """
-        Compare that the keys, resources, entities, objects, and object_keys tables match
+        Compare that the keys, files, entities, objects, object_keys, and entity_keys tables match
 
         :param left: HERD object to compare with right
         :param right: HERD object to compare with left
@@ -216,36 +216,13 @@ class HERD(Container):
             all found differences.
         """
         errors = []
-        try:
-            pd.testing.assert_frame_equal(left.keys.to_dataframe(),
-                                          right.keys.to_dataframe(),
-                                          check_dtype=check_dtype)
-        except AssertionError as e:
-            errors.append(e)
-        try:
-            pd.testing.assert_frame_equal(left.files.to_dataframe(),
-                                          right.files.to_dataframe(),
-                                          check_dtype=check_dtype)
-        except AssertionError as e:
-            errors.append(e)
-        try:
-            pd.testing.assert_frame_equal(left.objects.to_dataframe(),
-                                          right.objects.to_dataframe(),
-                                          check_dtype=check_dtype)
-        except AssertionError as e:
-            errors.append(e)
-        try:
-            pd.testing.assert_frame_equal(left.entities.to_dataframe(),
-                                          right.entities.to_dataframe(),
-                                          check_dtype=check_dtype)
-        except AssertionError as e:
-            errors.append(e)
-        try:
-            pd.testing.assert_frame_equal(left.object_keys.to_dataframe(),
-                                          right.object_keys.to_dataframe(),
-                                          check_dtype=check_dtype)
-        except AssertionError as e:
-            errors.append(e)
+        for table_name in ('keys', 'files', 'objects', 'entities', 'object_keys', 'entity_keys'):
+            try:
+                pd.testing.assert_frame_equal(getattr(left, table_name).to_dataframe(),
+                                              getattr(right, table_name).to_dataframe(),
+                                              check_dtype=check_dtype)
+            except AssertionError as e:
+                errors.append(e)
         if len(errors) > 0:
             msg = ''.join(str(e)+"\n\n" for e in errors)
             raise AssertionError(msg)
@@ -289,7 +266,7 @@ class HERD(Container):
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': 'The Container/Data object to add or the object id of the Container/Data object to add.'},
-            {'name': 'files_idx', 'type': int,
+            {'name': 'files_idx', 'type': (int, np.integer),
              'doc': 'The file_object_id row idx.'},
             {'name': 'object_type', 'type': str, 'default': None,
              'doc': ('The type of the object. This is also the parent in relative_path. If omitted, '
@@ -317,8 +294,8 @@ class HERD(Container):
         obj = Object(files_idx, container, object_type, relative_path, field, table=self.objects)
         return obj
 
-    @docval({'name': 'obj', 'type': (int, Object), 'doc': 'The Object that uses the Key.'},
-            {'name': 'key', 'type': (int, Key), 'doc': 'The Key that the Object uses.'})
+    @docval({'name': 'obj', 'type': (int, np.integer, Object), 'doc': 'The Object that uses the Key.'},
+            {'name': 'key', 'type': (int, np.integer, Key), 'doc': 'The Key that the Object uses.'})
     def _add_object_key(self, **kwargs):
         """
         Specify that an object (i.e. container and relative_path) uses a key to reference
@@ -327,8 +304,8 @@ class HERD(Container):
         obj, key = popargs('obj', 'key', kwargs)
         return ObjectKey(obj, key, table=self.object_keys)
 
-    @docval({'name': 'entity', 'type': (int, Entity), 'doc': 'The Entity associated with the Key.'},
-            {'name': 'key', 'type': (int, Key), 'doc': 'The Key that the connected to the Entity.'})
+    @docval({'name': 'entity', 'type': (int, np.integer, Entity), 'doc': 'The Entity associated with the Key.'},
+            {'name': 'key', 'type': (int, np.integer, Key), 'doc': 'The Key that the connected to the Entity.'})
     def _add_entity_key(self, **kwargs):
         """
         Add entity-key relationship to the EntityKeyTable.
@@ -336,64 +313,57 @@ class HERD(Container):
         entity, key = popargs('entity', 'key', kwargs)
         return EntityKey(entity, key, table=self.entity_keys)
 
-    @docval({'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.'},
-            {'name': 'container', 'type': AbstractContainer,
-             'doc': ('The Container/Data object that uses the key or '
-                     'the object id for the Container/Data object that uses the key.')},
-            {'name': 'relative_path', 'type': str,
-             'doc': ('The relative_path of the attribute of the object that uses ',
-                     'an external resource reference key. Use an empty string if not applicable.'),
-             'default': ''},
-            {'name': 'field', 'type': str, 'default': '',
-             'doc': ('The field of the compound data type using an external resource.')},
-            {'name': 'create', 'type': bool, 'default': True})
-    def _check_object_field(self, **kwargs):
+    def _find_object(self, file, container, relative_path, field):
         """
-        Check if a container, relative path, and field have been added.
+        Return the Object row matching ``file``, ``container``, ``relative_path``, and ``field``, or None.
 
-        The container can be either an object_id string or an AbstractContainer.
+        An object is identified by its file together with its object_id, relative_path, and field. The file
+        is part of the identity because an object_id is not unique across files: a file can be copied and
+        modified while keeping the same object_ids, so the same object_id may appear under different files.
+        Matches are therefore restricted to objects belonging to ``file``.
 
-        If the container, relative_path, and field have not been added, add them
-        and return the corresponding Object. Otherwise, just return the Object.
+        :returns: The matching Object row, or None if no object matches.
+        :raises ValueError: If multiple matching objects exist (only possible via direct ``_add_object`` use).
         """
-        file = kwargs['file']
-        container = kwargs['container']
-        relative_path = kwargs['relative_path']
-        field = kwargs['field']
-        create = kwargs['create']
+        matches = set(self.objects.which(object_id=container.object_id))
+        if matches:
+            matches &= set(self.objects.which(relative_path=relative_path))
+            matches &= set(self.objects.which(field=field))
+            # restrict to objects belonging to this file to disambiguate a shared object_id across files
+            objects_in_file = set()
+            for file_idx in self.files.which(file_object_id=file.object_id):
+                objects_in_file |= set(self.objects.which(files_idx=file_idx))
+            matches &= objects_in_file
+        matches = list(matches)
 
-        file_object_id = file.object_id
-        files_idx = self.files.which(file_object_id=file_object_id)
+        if len(matches) == 1:
+            return self.objects.row[matches[0]]
+        elif len(matches) > 1:  # pragma: no cover
+            # It isn't possible for this to happen unless the user used _add_object directly.
+            raise ValueError("Found multiple instances of the same object id, relative path, "
+                             "and field in objects table.")
+        return None
 
+    def _find_or_add_object(self, file, container, relative_path, field):
+        """
+        Return the Object row for ``file``, ``container``, ``relative_path``, and ``field``, adding it
+        (along with its file entry, if needed) when it is not already present.
+        """
+        object_field = self._find_object(file, container, relative_path, field)
+        if object_field is not None:
+            return object_field
+
+        files_idx = self.files.which(file_object_id=file.object_id)
         if len(files_idx) > 1:  # pragma: no cover
             # It isn't possible for len(files_idx) > 1 without the user directly using _add_file
             raise ValueError("Found multiple instances of the same file.")
         elif len(files_idx) == 1:
             files_idx = files_idx[0]
         else:
-            files_idx = None
-
-        objecttable_idx = self.objects.which(object_id=container.object_id)
-
-        if len(objecttable_idx) > 0:
-            relative_path_idx = self.objects.which(relative_path=relative_path)
-            field_idx = self.objects.which(field=field)
-            objecttable_idx = list(set(objecttable_idx) & set(relative_path_idx) & set(field_idx))
-        if len(objecttable_idx) == 1:
-            return self.objects.row[objecttable_idx[0]]
-        elif len(objecttable_idx) == 0 and create:
-            # Used for add_ref
-            return {'file_object_id': file_object_id,
-                    'files_idx': files_idx,
-                    'container': container,
-                    'relative_path': relative_path,
-                    'field': field}
-        elif len(objecttable_idx) == 0 and not create:
-            raise ValueError("Object not in Object Table.")
-        else:  # pragma: no cover
-            # It isn't possible for this to happen unless the user used _add_object.
-            raise ValueError("Found multiple instances of the same object id, relative path, "
-                             "and field in objects table.")
+            self._add_file(file.object_id)
+            files_idx = self.files.which(file_object_id=file.object_id)[0]
+        return self._add_object(files_idx=files_idx, container=container,
+                                relative_path=relative_path, field=field)
 
     @docval({'name': 'container', 'type': (str, AbstractContainer),
              'doc': ('The Container/Data object that uses the key or '
@@ -405,20 +375,24 @@ class HERD(Container):
         container = kwargs['container']
 
         if isinstance(container, HERDManager):
-            file = container
-            return file
-        else:
-            parent = container.parent
-            if parent is not None:
-                while parent is not None:
-                    if isinstance(parent, HERDManager):
-                        file = parent
-                        return file
-                    else:
-                        parent = parent.parent
-            else:
-                msg = 'Could not find file. Add container to the file.'
-                raise ValueError(msg)
+            return container
+
+        # Walk up the parent chain looking for the parent HERDManager.
+        # In most practical cases, this will be the root file, however, it is
+        # possible to construct a file that stores multiple Container objects
+        # that each act as separate HERDManager for their child objects
+        parent = container.parent
+        while parent is not None:
+            if isinstance(parent, HERDManager):
+                return parent
+            parent = parent.parent
+
+        # No HERDManager was found in the container's ancestry. This happens when the
+        # container has no parent (e.g., if it is has not been added to a file yet)  or because
+        # none of its ancestors are a HERDManager
+        msg = ("Could not find the file associated with container '%s'. Please add the container "
+               "to the file before adding an external reference." % getattr(container, 'name', container))
+        raise ValueError(msg)
 
     @docval({'name': 'objects', 'type': list,
              'doc': 'List of objects to check for TermSetWrapper within the fields.'})
@@ -469,18 +443,14 @@ class HERD(Container):
                 term_info = wrapper.termset[term]
                 entity_id = term_info[0]
                 entity_uri = term_info[2]
-                self.add_ref(file=root_container,
-                             container=container,
+                self.add_ref(container=container,
                              attribute=attr_name,
                              key=term,
                              entity_id=entity_id,
                              entity_uri=entity_uri)
 
-    @docval({'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
-             'default': None},
-            {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
-             'doc': ('The Container/Data object that uses the key or '
-                     'the object_id for the Container/Data object that uses the key.')},
+    @docval({'name': 'container', 'type': AbstractContainer, 'default': None,
+             'doc': 'The Container/Data object that uses the key.'},
             {'name': 'attribute', 'type': str,
              'doc': 'The attribute of the container for the external reference.', 'default': None},
             {'name': 'field', 'type': str, 'default': '',
@@ -498,15 +468,12 @@ class HERD(Container):
         in the TermSet. If valid, it will proceed to call add_ref. Otherwise, the method will return a dict of
         missing terms (terms not found in the TermSet).
         """
-        file = kwargs['file']
         container = kwargs['container']
         attribute = kwargs['attribute']
         key = kwargs['key']
         field = kwargs['field']
         termset = kwargs['termset']
 
-        if file is None:
-            file = self._get_file_from_container(container=container)
         # if key is provided then add_ref proceeds as normal
         if key is not None:
             data = [key]
@@ -534,8 +501,7 @@ class HERD(Container):
                 continue
             entity_id = term_info[0]
             entity_uri = term_info[2]
-            self.add_ref(file=file,
-                         container=container,
+            self.add_ref(container=container,
                          attribute=attribute,
                          key=term,
                          field=field,
@@ -544,66 +510,55 @@ class HERD(Container):
         if len(missing_terms)>0:
             return {"missing_terms": missing_terms}
 
-    def _validate_object(self, container, attribute, field, file):
+    def _resolve_object_target(self, container, attribute):
+        """
+        Resolve ``(container, attribute)`` to the ``(container, relative_path)`` that identify the object an
+        external reference is attached to.
+
+          - ``attribute`` is None: the reference is on the container itself (relative_path '').
+          - ``attribute`` names a DataType (an AbstractContainer): the reference is on that sub-container.
+          - ``attribute`` names a non-DataType attribute (e.g. ``DynamicTable.description``): the reference is on the
+            nearest container ancestor of the attribute spec, with the relative_path computed from the spec path.
+
+        :param container: The Container/Data object that the reference is attached to.
+        :param attribute: The name of the attribute on the container, or None for the container itself.
+        :returns: A ``(container, relative_path)`` tuple identifying the referenced object.
+        :raises ValueError: If the container is not the nearest data_type to the attribute.
+        """
         if attribute is None:  # Trivial Case
-            relative_path = ''
-            object_field = self._check_object_field(file=file,
-                                                    container=container,
-                                                    relative_path=relative_path,
-                                                    field=field)
-        else:  # DataType Attribute Case
-            attribute_object = getattr(container, attribute)  # returns attribute object
-            if isinstance(attribute_object, AbstractContainer):
-                relative_path = ''
-                object_field = self._check_object_field(file=file,
-                                                        container=attribute_object,
-                                                        relative_path=relative_path,
-                                                        field=field)
-            else:  # Non-DataType Attribute Case:
-                obj_mapper = self.type_map.get_map(container)
-                spec = obj_mapper.get_attr_spec(attr_name=attribute)
-                parent_spec = spec.parent  # return the parent spec of the attribute
-                if parent_spec.data_type is None:
-                    while parent_spec.data_type is None:
-                        parent_spec = parent_spec.parent  # find the closest parent with a data_type
-                    parent_cls = self.type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
-                    if isinstance(container, parent_cls):
-                        parent = container
-                        # We need to get the path of the spec for relative_path
-                        absolute_path = spec.path
-                        relative_path = absolute_path[absolute_path.find('/')+1:]
-                        object_field = self._check_object_field(file=file,
-                                                                container=parent,
-                                                                relative_path=relative_path,
-                                                                field=field)
-                    else:
-                        msg = 'Container not the nearest data_type'
-                        raise ValueError(msg)
-                else:
-                    parent = container  # container needs to be the parent
-                    absolute_path = spec.path
-                    relative_path = absolute_path[absolute_path.find('/')+1:]
-                    # this regex removes everything prior to the container on the absolute_path
-                    object_field = self._check_object_field(file=file,
-                                                            container=parent,
-                                                            relative_path=relative_path,
-                                                            field=field)
-        return object_field
+            return container, ''
+
+        attribute_object = getattr(container, attribute)
+        if isinstance(attribute_object, AbstractContainer):  # DataType Attribute Case
+            return attribute_object, ''
+
+        # Non-DataType Attribute Case: the reference is on the nearest container ancestor of the attribute spec
+        obj_mapper = self.type_map.get_map(container)
+        spec = obj_mapper.get_attr_spec(attr_name=attribute)
+        parent_spec = spec.parent  # the parent spec of the attribute
+        if parent_spec.data_type is None:
+            while parent_spec.data_type is None:
+                parent_spec = parent_spec.parent  # find the closest parent with a data_type
+            parent_cls = self.type_map.get_dt_container_cls(data_type=parent_spec.data_type, autogen=False)
+            if not isinstance(container, parent_cls):
+                raise ValueError('Container not the nearest data_type')
+        # strip everything prior to the container from the absolute spec path
+        relative_path = spec.path[spec.path.find('/')+1:]
+        return container, relative_path
 
 
-    @docval({'name': 'container', 'type': (str, AbstractContainer), 'default': None,
-             'doc': ('The Container/Data object that uses the key or '
-                     'the object_id for the Container/Data object that uses the key.')},
+    @docval({'name': 'container', 'type': AbstractContainer, 'default': None,
+             'doc': 'The Container/Data object that uses the key.'},
             {'name': 'attribute', 'type': str,
              'doc': 'The attribute of the container for the external reference.', 'default': None},
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')},
             {'name': 'key', 'type': (str, Key), 'default': None,
-             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
+             'doc': ('The name of the key or the Key object from the KeyTable for the key to add a resource for. '
+                     'If not provided and ``attribute`` names a scalar string attribute, the value of that '
+                     'attribute is used as the key.')},
             {'name': 'entity_id', 'type': str, 'doc': 'The identifier for the entity at the resource.'},
             {'name': 'entity_uri', 'type': str, 'doc': 'The URI for the identifier at the resource.', 'default': None},
-            {'name': 'file',  'type': HERDManager, 'doc': 'The file associated with the container.',
-             'default': None},
             )
     def add_ref(self, **kwargs):  # noqa: C901
         """
@@ -624,19 +579,29 @@ class HERD(Container):
         field = kwargs['field']
         entity_id = kwargs['entity_id']
         entity_uri = kwargs['entity_uri']
-        file = kwargs['file']
+
+        ##########################################
+        # Default the key from a scalar attribute
+        ##########################################
+        if key is None and attribute is not None:
+            if not isinstance(container, AbstractContainer):
+                msg = ("Cannot default 'key' from attribute '%s' because 'container' is not a "
+                       "Container/Data object. Provide 'key' explicitly." % attribute)
+                raise ValueError(msg)
+            attribute_value = getattr(container, attribute)
+            if not isinstance(attribute_value, str):
+                msg = ("Cannot default 'key' from attribute '%s' because its value is not a single "
+                       "string. Provide 'key' explicitly." % attribute)
+                raise ValueError(msg)
+            key = attribute_value
 
         ##################
-        # Set File if None
+        # Resolve the file
         ##################
-        if file is None:
-            file = self._get_file_from_container(container=container)
-        # TODO: Add this once you've created a HDMF_file to rework testing
-        # else:
-        #     file_from_container = self._get_file_from_container(container=container)
-        #     if file.object_id != file_from_container.object_id:
-        #         msg = "The file given does not match the file in which the container is stored."
-        #         raise ValueError(msg)
+        # The file is always resolved from the container so that a reference can only be
+        # added to a container that has already been added to a file. This raises a clear
+        # error when the container is not in a file.
+        file = self._get_file_from_container(container=container)
 
         ################
         # Set Key Checks
@@ -672,26 +637,22 @@ class HERD(Container):
             # The entity exists and so we need to check if an entity_key exists
             # for this entity and key combination.
             check_entity_key = True
-            if entity_uri is not None:
-                entity_uri = entity.entity_uri
-                msg = 'This entity already exists. Ignoring new entity uri'
+            # The existing entity_uri is always kept. Re-passing the same entity_uri is
+            # harmless and common when annotating many objects/files with the same entity,
+            # so only warn when a *different* entity_uri is provided.
+            if entity_uri is not None and entity_uri != entity.entity_uri:
+                msg = ("The provided entity_uri '%s' does not match the existing entity_uri '%s' "
+                       "for entity_id '%s'. The existing entity_uri is kept."
+                       % (entity_uri, entity.entity_uri, entity_id))
                 warn(msg, stacklevel=3)
 
-        object_field = self._validate_object(container, attribute, field, file)
+        # Resolve the object, adding it (and its file entry) to the tables if it is not already present.
+        target_container, relative_path = self._resolve_object_target(container, attribute)
+        object_field = self._find_or_add_object(file, target_container, relative_path, field)
 
         #######################################
         # Validate Parameters and Populate HERD
         #######################################
-        if isinstance(object_field, dict):
-            # Create the object and file
-            if object_field['files_idx'] is None:
-                self._add_file(object_field['file_object_id'])
-                object_field['files_idx'] = self.files.which(file_object_id=object_field['file_object_id'])[0]
-            object_field = self._add_object(files_idx=object_field['files_idx'],
-                                            container=object_field['container'],
-                                            relative_path=object_field['relative_path'],
-                                            field=object_field['field'])
-
         if add_key:
             # Now that object_field is set, we need to check if
             # the key has been associated with that object.
@@ -760,9 +721,8 @@ class HERD(Container):
     @docval({'name': 'key_name', 'type': str, 'doc': 'The name of the Key to get.'},
             {'name': 'file', 'type': HERDManager, 'doc': 'The file associated with the container.',
              'default': None},
-            {'name': 'container', 'type': (str, AbstractContainer), 'default': None,
-             'doc': ('The Container/Data object that uses the key or '
-                     'the object id for the Container/Data object that uses the key.')},
+            {'name': 'container', 'type': AbstractContainer, 'default': None,
+             'doc': 'The Container/Data object that uses the key.'},
             {'name': 'relative_path', 'type': str,
              'doc': ('The relative_path of the attribute of the object that uses ',
                      'an external resource reference key. Use an empty string if not applicable.'),
@@ -788,10 +748,9 @@ class HERD(Container):
                 file = self._get_file_from_container(container=container)
             # if same key is used multiple times, determine
             # which instance based on the Container
-            object_field = self._check_object_field(file=file,
-                                                    container=container,
-                                                    relative_path=relative_path,
-                                                    field=field)
+            object_field = self._find_object(file, container, relative_path, field)
+            if object_field is None:
+                raise ValueError("Object not in Object Table.")
             for row_idx in self.object_keys.which(objects_idx=object_field.idx):
                 key_idx = self.object_keys['keys_idx', row_idx]
                 if key_idx in key_idx_matches:
@@ -848,7 +807,7 @@ class HERD(Container):
 
     @docval({'name': 'file',  'type': HERDManager, 'doc': 'The file.',
              'default': None},
-            {'name': 'container', 'type': (str, AbstractContainer),
+            {'name': 'container', 'type': AbstractContainer,
              'doc': 'The Container/data object that is linked to resources/entities.'},
             {'name': 'attribute', 'type': str,
              'doc': 'The attribute of the container for the external reference.', 'default': None},
@@ -874,17 +833,14 @@ class HERD(Container):
         keys = []
         entities = []
         if attribute is None:
-            object_field = self._check_object_field(file=file,
-                                                    container=container,
-                                                    relative_path=relative_path,
-                                                    field=field,
-                                                    create=False)
+            target_container, target_relative_path = container, relative_path
         else:
-            object_field = self._check_object_field(file=file,
-                                                    container=container[attribute],
-                                                    relative_path=relative_path,
-                                                    field=field,
-                                                    create=False)
+            # resolve the attribute the same way add_ref does so that a reference added with an
+            # attribute can be retrieved with the same attribute
+            target_container, target_relative_path = self._resolve_object_target(container, attribute)
+        object_field = self._find_object(file, target_container, target_relative_path, field)
+        if object_field is None:
+            raise ValueError("Object not in Object Table.")
         # Find all keys associated with the object
         for row_idx in self.object_keys.which(objects_idx=object_field.idx):
             keys.append(self.object_keys['keys_idx', row_idx])
@@ -893,7 +849,9 @@ class HERD(Container):
             entity_key_row_idx = self.entity_keys.which(keys_idx=key_idx)
             for row_idx in entity_key_row_idx:
                 entity_idx = self.entity_keys['entities_idx', row_idx]
-                entities.append(self.entities.__getitem__(entity_idx))
+                # coerce the row to a tuple so a read-back numpy structured-array row
+                # (numpy.void) expands into columns the same as an in-memory list row
+                entities.append(tuple(self.entities[entity_idx]))
         df = pd.DataFrame(entities, columns=['entity_id', 'entity_uri'])
         return df
 
@@ -947,8 +905,9 @@ class HERD(Container):
         result_df.reset_index(inplace=True, drop=True)
         # ADD files
         file_id_col = []
+        files_df = self.files.to_dataframe()
         for idx in result_df['files_idx']:
-            file_id_val = self.files.to_dataframe().iloc[int(idx)]['file_object_id']
+            file_id_val = files_df.iloc[int(idx)]['file_object_id']
             file_id_col.append(file_id_val)
 
         result_df['file_object_id'] = file_id_col
@@ -969,6 +928,50 @@ class HERD(Container):
             result_df.columns = pd.MultiIndex.from_tuples(column_labels)
         # return the result
         return result_df
+
+    def __flattened_dataframe_or_none(self):
+        """Return the flattened ``to_dataframe()`` view, or None when there are no references.
+
+        ``to_dataframe`` raises when the HERD holds no object-key relationships and may fail if the
+        backing file is closed. The repr methods use this helper so they never raise on display.
+        """
+        if len(self.object_keys) == 0:
+            return None
+        try:
+            return self.to_dataframe()
+        except Exception:
+            return None
+
+    def __summary_line(self):
+        """Return a one-line summary of the table sizes."""
+        return ("%d key(s), %d entity(ies), %d object(s), %d file(s)"
+                % (len(self.keys), len(self.entities), len(self.objects), len(self.files)))
+
+    def __repr__(self):
+        cls = self.__class__
+        template = "%s %s.%s at 0x%d" % (self.name, cls.__module__, cls.__name__, id(self))
+        template += "\n  " + self.__summary_line()
+        df = self.__flattened_dataframe_or_none()
+        if df is not None and len(df) > 0:
+            template += "\n" + repr(df)
+        return template
+
+    def _repr_html_(self):
+        """Generate an HTML representation that surfaces the references as a flattened table."""
+        header_text = self.name if self.name == self.__class__.__name__ else \
+            f"{self.name} ({self.__class__.__name__})"
+        html_repr = self.css_style + self.js_script
+        html_repr += "<div class='container-wrap'>"
+        html_repr += f"<div class='container-header'><div class='xr-obj-type'><h3>{header_text}</h3></div></div>"
+        html_repr += self._closed_file_warning_html()
+        html_repr += f"<p class='container-fields'>{self.__summary_line()}</p>"
+        df = self.__flattened_dataframe_or_none()
+        if df is None or len(df) == 0:
+            html_repr += "<p class='container-fields'>No external resource references.</p>"
+        else:
+            html_repr += df.to_html()
+        html_repr += "</div>"
+        return html_repr
 
     @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
     def to_zip(self, **kwargs):
@@ -1001,88 +1004,63 @@ class HERD(Container):
         return directory
 
     @classmethod
-    @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
-    def from_zip(cls, **kwargs):  # noqa: C901
+    @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'},
+            {'name': 'type_map', 'type': TypeMap, 'default': None,
+             'doc': 'The TypeMap to use for the returned HERD. If None, the default TypeMap is used.'})
+    def from_zip(cls, **kwargs):
         """
         Method to read in zipped tsv files to populate HERD.
         """
-        zip_file = kwargs['path']
+        zip_file, type_map = popargs('path', 'type_map', kwargs)
         directory = cls.get_zip_directory(zip_file)
 
         with zipfile.ZipFile(zip_file, 'r') as zip:
             zip.extractall(directory)
         tsv_paths = glob(directory+'/*')
 
+        # the tsv file name (without extension) matches both the table attribute name and the table class
+        table_classes = {'files': FileTable,
+                         'keys': KeyTable,
+                         'entities': EntityTable,
+                         'objects': ObjectTable,
+                         'object_keys': ObjectKeyTable,
+                         'entity_keys': EntityKeyTable}
+        tables = {}
         for file in tsv_paths:
-            file_name = os.path.basename(file)
-            if file_name == 'files.tsv':
-                files_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
-                files = FileTable().from_dataframe(df=files_df, name='files', extra_ok=False)
-                os.remove(file)
+            name, ext = os.path.splitext(os.path.basename(file))
+            table_cls = table_classes.get(name) if ext == '.tsv' else None
+            if table_cls is None:
                 continue
-            if file_name == 'keys.tsv':
-                keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
-                keys = KeyTable().from_dataframe(df=keys_df, name='keys', extra_ok=False)
-                os.remove(file)
-                continue
-            if file_name == 'entities.tsv':
-                entities_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
-                entities = EntityTable().from_dataframe(df=entities_df, name='entities', extra_ok=False)
-                os.remove(file)
-                continue
-            if file_name == 'objects.tsv':
-                objects_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
-                objects = ObjectTable().from_dataframe(df=objects_df, name='objects', extra_ok=False)
-                os.remove(file)
-                continue
-            if file_name == 'object_keys.tsv':
-                object_keys_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
-                object_keys = ObjectKeyTable().from_dataframe(df=object_keys_df, name='object_keys', extra_ok=False)
-                os.remove(file)
-                continue
-            if file_name == 'entity_keys.tsv':
-                ent_key_df = pd.read_csv(file, sep='\t').replace(np.nan, '')
-                entity_keys = EntityKeyTable().from_dataframe(df=ent_key_df, name='entity_keys', extra_ok=False)
-                os.remove(file)
-                continue
+            df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+            tables[name] = table_cls().from_dataframe(df=df, name=name, extra_ok=False)
+            os.remove(file)
 
-        # we need to check the idx columns in entities, objects, and object_keys
-        entity_idx = entity_keys['entities_idx']
-        for idx in entity_idx:
-            if not int(idx) < len(entities):
-                msg = "Entity Index out of range in EntityTable. Please check for alterations."
-                raise ValueError(msg)
+        # check that the idx columns reference rows that exist in the target tables
+        cls._assert_idx_in_range(tables['entity_keys']['entities_idx'], len(tables['entities']),
+                                 "Entity Index out of range in EntityTable. Please check for alterations.")
+        cls._assert_idx_in_range(tables['objects']['files_idx'], len(tables['files']),
+                                 "File_ID Index out of range in ObjectTable. Please check for alterations.")
+        cls._assert_idx_in_range(tables['object_keys']['objects_idx'], len(tables['objects']),
+                                 "Object Index out of range in ObjectKeyTable. Please check for alterations.")
+        cls._assert_idx_in_range(tables['object_keys']['keys_idx'], len(tables['keys']),
+                                 "Key Index out of range in ObjectKeyTable. Please check for alterations.")
+        cls._assert_idx_in_range(tables['entity_keys']['keys_idx'], len(tables['keys']),
+                                 "Key Index out of range in EntityKeyTable. Please check for alterations.")
 
-        files_idx = objects['files_idx']
-        for idx in files_idx:
-            if not int(idx) < len(files):
-                msg = "File_ID Index out of range in ObjectTable. Please check for alterations."
-                raise ValueError(msg)
-
-        object_idx = object_keys['objects_idx']
-        for idx in object_idx:
-            if not int(idx) < len(objects):
-                msg = "Object Index out of range in ObjectKeyTable. Please check for alterations."
-                raise ValueError(msg)
-
-        keys_idx = object_keys['keys_idx']
-        for idx in keys_idx:
-            if not int(idx) < len(keys):
-                msg = "Key Index out of range in ObjectKeyTable. Please check for alterations."
-                raise ValueError(msg)
-
-        keys_idx = entity_keys['keys_idx']
-        for idx in keys_idx:
-            if not int(idx) < len(keys):
-                msg = "Key Index out of range in EntityKeyTable. Please check for alterations."
-                raise ValueError(msg)
-
-        er = HERD(
-            files=files,
-            keys=keys,
-            entities=entities,
-            entity_keys=entity_keys,
-            objects=objects,
-            object_keys=object_keys
+        er = cls(
+            files=tables['files'],
+            keys=tables['keys'],
+            entities=tables['entities'],
+            entity_keys=tables['entity_keys'],
+            objects=tables['objects'],
+            object_keys=tables['object_keys'],
+            type_map=type_map,
         )
         return er
+
+    @staticmethod
+    def _assert_idx_in_range(indices, limit, msg):
+        """Raise ``ValueError(msg)`` if any value in ``indices`` is not less than ``limit``."""
+        for idx in indices:
+            if not int(idx) < limit:
+                raise ValueError(msg)

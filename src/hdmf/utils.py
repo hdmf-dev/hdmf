@@ -9,10 +9,12 @@ from enum import Enum
 
 import h5py
 import numpy as np
+import pandas as pd
+from pandas.api.extensions import ExtensionArray as _PandasExtensionArray
 
 
 __macros = {
-    'array_data': [np.ndarray, list, tuple, h5py.Dataset],
+    'array_data': [np.ndarray, list, tuple, h5py.Dataset, pd.Series, _PandasExtensionArray],
     'scalar_data': [str, int, float, bytes, bool, datetime.datetime, datetime.date, np.generic],
     'data': []
 }
@@ -31,6 +33,47 @@ def is_zarr_array(value):
 def is_array_like(value):
     """Return True if ``value`` is a numpy ndarray, h5py Dataset, or zarr Array."""
     return isinstance(value, np.ndarray) or isinstance(value, h5py.Dataset) or is_zarr_array(value)
+
+
+def coerce_pandas_data(data):
+    """Convert a pandas Series or ExtensionArray to a numpy array for HDMF storage.
+
+    HDMF stores dataset values as numpy arrays (or array-likes such as h5py.Dataset).
+    Pandas Series and ExtensionArray inputs are normalized at the construction
+    boundary so that downstream code only has to handle numpy/list/tuple data.
+
+    Raises:
+        TypeError: if the input contains missing values (pd.NA / np.nan), which
+            cannot be serialized to HDF5 variable-length string datasets and which
+            HDMF does not support for other dtypes.
+    """
+    if isinstance(data, pd.Series):
+        underlying = data.array
+    elif isinstance(data, _PandasExtensionArray):
+        underlying = data
+    else:
+        return data
+
+    if pd.isna(underlying).any():
+        raise TypeError(
+            "Cannot construct an HDMF dataset from pandas data containing missing "
+            "values (pd.NA or NaN). HDF5 cannot serialize missing values in "
+            "variable-length string datasets, and HDMF does not yet support "
+            "missing values for other dtypes. Replace missing values with a "
+            "sentinel (e.g., empty string) before passing the data to HDMF."
+        )
+
+    # pandas nullable masked dtypes (e.g. Int64, boolean, Float64) expose the
+    # backing numpy dtype. Convert through it so the result keeps that dtype on
+    # all supported pandas versions; a plain to_numpy()/np.asarray() returns an
+    # object array on pandas < 2.2.
+    numpy_dtype = getattr(underlying.dtype, "numpy_dtype", None)
+    if numpy_dtype is not None:
+        return underlying.to_numpy(dtype=numpy_dtype)
+
+    if isinstance(data, pd.Series):
+        return data.to_numpy()
+    return np.asarray(data)
 
 if ZARR_INSTALLED:
     # optionally accept zarr.Array as array data to support conversion of data from Zarr to HDMF
@@ -902,13 +945,16 @@ def _get_length(data) -> int:
 
 
 def _unwrap_scalar(value):
-    """If value is a 0-d ndarray, extract the numpy scalar via .item().
+    """If value is a 0-d ndarray or a numpy scalar, extract the Python scalar via .item().
 
     Array-API-conforming libraries (e.g., zarr v3) return 0-d ndarrays from
-    scalar indexing instead of numpy scalars. This converts them so that
-    isinstance checks against Python/numpy scalar types work correctly.
+    scalar indexing instead of numpy scalars, and HDF5 attributes read back as
+    numpy scalar types (np.bool_, np.int64, np.float64). This converts both so that
+    isinstance checks against Python scalar types work correctly.
     """
     if isinstance(value, np.ndarray) and value.ndim == 0:
+        return value.item()
+    if isinstance(value, np.generic):
         return value.item()
     return value
 

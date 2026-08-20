@@ -1,6 +1,6 @@
 from .. import register_map
-from ..table import DynamicTable, VectorData, VectorIndex, DynamicTableRegion
-from ...build import ObjectMapper, BuildManager, CustomClassGenerator
+from ..table import DynamicTable, VectorData, VectorIndex, DynamicTableRegion, MeaningsTable
+from ...build import ObjectMapper, BuildManager, CustomClassGenerator, GroupBuilder
 from ...spec import Spec
 from ...utils import docval, getargs
 
@@ -123,3 +123,51 @@ class DynamicTableGenerator(CustomClassGenerator):
             column_names = [column_conf["name"] for column_conf in classdict["__columns__"]]
             attrs_not_to_set.update(column_names)
         return attrs_not_to_set
+
+
+@register_map(MeaningsTable)
+class MeaningsTableMap(DynamicTableMap):
+    """Object mapper for MeaningsTable.
+
+    In HDMF Common Schema 1.10.0+, ``MeaningsTable.target`` is stored as an object-reference attribute named "target".
+    hdmf-common 1.9.0 stored it as a link named "target". On read, a legacy "target" link is removed from the
+    builder so it is not matched as a VectorData column of the table, and the VectorData it points to
+    is supplied to the ``target`` constructor argument. Files that store "target" as the
+    object-reference attribute are handled by the default mapping.
+    """
+
+    def __init__(self, spec):
+        super().__init__(spec)
+        # Resolved target VectorData for the MeaningsTable builder currently being constructed,
+        # populated for legacy hdmf-common 1.9.0 files
+        self.__legacy_target = None
+
+    def construct(self, builder, manager, parent=None):
+        # Remove the legacy "target" link before the generic mapping runs, otherwise it is matched as
+        # a VectorData column of the table. This is too early for target_carg, so stash the resolved
+        # target for it to supply.
+        if isinstance(builder, GroupBuilder):
+            legacy_link = builder.links.pop('target', None)
+        else:
+            legacy_link = None
+        if legacy_link is not None:
+            builder.obj_type.pop('target', None)
+            self.__legacy_target = manager.construct(legacy_link.builder)
+        try:
+            return super().construct(builder, manager, parent)
+        finally:
+            # This mapper instance is shared across all MeaningsTable builders, so clear the stash,
+            # even on error, to avoid leaking this target into the next MeaningsTable constructed.
+            self.__legacy_target = None
+
+    @ObjectMapper.constructor_arg('target')
+    def target_carg(self, builder, manager):
+        """Supply ``target`` from a legacy hdmf-common 1.9.0 "target" link.
+
+        Returns the VectorData resolved from a removed "target" link. For files that store "target"
+        as an attribute there is no legacy link, so this returns the ``NO_OVERRIDE`` sentinel and the
+        default object-reference resolution supplies the value.
+        """
+        if self.__legacy_target is None:
+            return self.NO_OVERRIDE
+        return self.__legacy_target

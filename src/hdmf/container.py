@@ -12,7 +12,8 @@ import pandas as pd
 
 from .data_utils import DataIO, append_data, extend_data, AbstractDataChunkIterator
 from .utils import (docval, get_docval, getargs, ExtenderMeta, get_data_shape, popargs, LabelledDict,
-                    get_basic_array_info, generate_array_html_repr, _is_collection, _get_length, _unwrap_scalar)
+                    get_basic_array_info, generate_array_html_repr, _is_collection, _get_length, _unwrap_scalar,
+                    coerce_pandas_data)
 
 from .term_set import TermSet, TermSetWrapper
 
@@ -991,6 +992,7 @@ class Data(AbstractContainer):
         data = popargs('data', kwargs)
         super().__init__(**kwargs)
 
+        data = coerce_pandas_data(data)
         self._validate_new_data(data)
         self.__data = data
 
@@ -1084,6 +1086,7 @@ class Data(AbstractContainer):
 
         :param arg: The iterable to add to the end of this VectorData
         """
+        arg = coerce_pandas_data(arg)
         self._validate_new_data(arg)
         self.__data = extend_data(self.__data, arg)
 
@@ -1362,10 +1365,19 @@ class MultiContainerInterface(Container):
             container_type = clsconf[0].get('type')
             setattr(cls, '__getitem__', cls.__make_getitem(attr, container_type))
 
-        # create the constructor, only if it has not been overridden
-        # i.e. it is the same method as the parent class constructor
+        # create the constructor only when neither this class nor an intermediate class below
+        # MultiContainerInterface in the MRO defines __init__, so that a subclass inherits a custom
+        # or previously generated constructor from an ancestor
         if '__init__' not in cls.__dict__:
-            setattr(cls, '__init__', cls.__make_constructor(clsconf))
+            needs_constructor = True
+            for parent in cls.__mro__[1:]:
+                if parent is MultiContainerInterface:
+                    break
+                if '__init__' in parent.__dict__:
+                    needs_constructor = False
+                    break
+            if needs_constructor:
+                setattr(cls, '__init__', cls.__make_constructor(clsconf))
 
     @classmethod
     def __build_conf_methods(cls, conf_dict, conf_index, multi):

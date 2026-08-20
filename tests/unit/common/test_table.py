@@ -1,10 +1,14 @@
 from collections import OrderedDict
 import h5py
+import itertools
 import numpy as np
 import os
 import pandas as pd
 import unittest
+from unittest.mock import patch
+import warnings
 
+import hdmf.common.table
 from hdmf import Container
 from hdmf import TermSet, TermSetWrapper
 from hdmf.backends.hdf5 import H5DataIO, HDF5IO
@@ -20,7 +24,7 @@ from hdmf.common import (
     get_manager,
     SimpleMultiContainer)
 from hdmf.testing import TestCase, H5RoundTripMixin, remove_test_file
-from hdmf.utils import StrDataset
+from hdmf.utils import StrDataset, is_ragged
 from hdmf.data_utils import DataChunkIterator
 
 from tests.unit.helpers.utils import (
@@ -530,6 +534,73 @@ class TestDynamicTable(TestCase):
         table.add_column(name='qux', description='qux column')
         table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3])
         table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3 ,4], check_ragged=False)
+
+    def test_add_row_ragged_check_matches_is_ragged(self):
+        """
+        For a column built one row at a time, the warning must fire on exactly the row where
+        is_ragged turns true and on no row after it, whatever the shapes of the values.
+        """
+        # one element per class is_ragged distinguishes: a scalar and a string, which both count as
+        # length 1, an empty sequence, sequences of length 1 and 2, a tuple, and a nested element that
+        # is ragged inside itself
+        element_shapes = (1, 'ab', [], [1], [1, 2], (1, 2), [[1], [2, 3]])
+        for combination in itertools.product(element_shapes, repeat=3):
+            column = VectorData(name='qux', description='qux column', data=[])
+            table = DynamicTable(name='table', description='table description', columns=[column])
+            data = []
+            was_ragged = False
+            for element in combination:
+                data.append(element)
+                with warnings.catch_warnings(record=True) as caught:
+                    warnings.simplefilter('always')
+                    table.add_row(qux=element)
+                warned = any('different lengths' in str(warning.message) for warning in caught)
+                self.assertEqual(warned, is_ragged(data) and not was_ragged, msg=str(data))
+                was_ragged = is_ragged(data)
+
+    def test_add_row_ragged_check_sees_elements_it_did_not_check(self):
+        """
+        Elements the check never saw, because the column already had data or because a row was added
+        with check_ragged=False, still count towards raggedness for the rows after them.
+        """
+        msg = ("Data has elements with different lengths and therefore cannot be coerced into an N-dimensional "
+               "array. Use the 'index' argument when creating a column to add rows with different lengths.")
+        # a column built with data before the first add_row is checked against all of it, and here the
+        # appended value matches the first element, so only the data already in the column makes it ragged
+        table = DynamicTable(name='table', description='table description',
+                             columns=[VectorData(name='qux', description='qux column', data=[[1], [2, 3]])])
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_row(qux=[4])
+
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column')
+        table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2])
+        table.add_row(foo=5, bar=50.0, baz='lizard', qux=[1, 2, 3], check_ragged=False)
+        # again the new row matches the length of the first element, so only the skipped row makes this ragged
+        with self.assertWarnsWith(UserWarning, msg):
+            table.add_row(foo=5, bar=50.0, baz='lizard', qux=[4, 5])
+
+    def test_add_row_ragged_check_does_not_rescan_the_column(self):
+        """
+        The raggedness check must cost O(1) per row: rescanning the column makes add_row quadratic.
+        """
+        visited = 0
+        original_is_ragged = hdmf.common.table.is_ragged
+
+        def counting_is_ragged(data):
+            nonlocal visited
+            visited += len(data) if isinstance(data, (list, tuple)) else 1
+            return original_is_ragged(data)
+
+        num_rows = 1000
+        table = self.with_spec()
+        table.add_column(name='qux', description='qux column')
+        with patch.object(hdmf.common.table, 'is_ragged', counting_is_ragged):
+            for _ in range(num_rows):
+                table.add_row(foo=5, bar=50.0, baz='lizard', qux=1)
+
+        # rescanning the column would visit about num_rows ** 2 / 2 elements
+        self.assertLess(visited, 10 * num_rows)
 
     def test_add_column_auto_index_int(self):
         """
@@ -1345,6 +1416,18 @@ class TestDynamicTableRegion(TestCase):
         ]
         return DynamicTable(name="with_columns_and_data", description='a test table', columns=columns)
 
+    def with_array_columns(self):
+        """Build a table whose columns hold their data as numpy arrays.
+
+        ``Data.get`` passes the selection straight to a numpy-backed column, so the dtype of the
+        index array has to be a dtype numpy accepts as an index.
+        """
+        columns = [
+            VectorData(name='foo', description='foo column', data=np.array([1, 2, 3, 4, 5])),
+            VectorData(name='bar', description='bar column', data=np.array([10.0, 20.0, 30.0, 40.0, 50.0])),
+        ]
+        return DynamicTable(name='with_array_columns', description='a test table', columns=columns)
+
     def test_indexed_dynamic_table_region(self):
         table = self.with_columns_and_data()
         dynamic_table_region = DynamicTableRegion(name='dtr', data=[1, 2, 2], description='desc', table=table)
@@ -1412,6 +1495,40 @@ class TestDynamicTableRegion(TestCase):
         self.assertListEqual(res, [1, 2, 3])
         res = dynamic_table_region[1:3, 'baz']
         self.assertListEqual(res, ['dog', 'bird'])
+
+    def test_dynamic_table_region_getitem_empty_slice(self):
+        table = self.with_array_columns()
+        dynamic_table_region = DynamicTableRegion(name='dtr', data=[0, 1, 2], description='desc', table=table)
+        res = dynamic_table_region[1:1]
+        self.assertEqual(len(res), 0)
+        self.assertListEqual(list(res.columns), ['foo', 'bar'])
+
+    def test_indexed_dynamic_table_region_getitem_empty_row(self):
+        target_table = self.with_array_columns()
+        table = DynamicTable(name='table', description='a test table')
+        table.add_column(name='dtr', description='indexed DynamicTableRegion', index=True, table=target_table)
+        table.add_row(dtr=[0])
+        table.add_row(dtr=[])
+
+        self.assertEqual(len(table['dtr'][0]), 1)
+        res = table['dtr'][1]
+        self.assertEqual(len(res), 0)
+        self.assertListEqual(list(res.columns), ['foo', 'bar'])
+
+    def test_indexed_dynamic_table_region_getitem_empty_row_ragged_target(self):
+        target_table = DynamicTable(name='target_table', description='a test table')
+        target_table.add_column(name='qux', description='a ragged column', index=True)
+        target_table.add_row(qux=[1, 2])
+        target_table.add_row(qux=[3])
+        table = DynamicTable(name='table', description='a test table')
+        table.add_column(name='dtr', description='indexed DynamicTableRegion', index=True, table=target_table)
+        table.add_row(dtr=[0])
+        table.add_row(dtr=[])
+
+        self.assertEqual(len(table['dtr'][0]), 1)
+        res = table['dtr'][1]
+        self.assertEqual(len(res), 0)
+        self.assertListEqual(list(res.columns), ['qux'])
 
     def test_dynamic_table_region_getitem_bad_index(self):
         table = self.with_columns_and_data()
@@ -2751,6 +2868,15 @@ class TestVectorIndex(TestCase):
         self.assertEqual(result, [['a', 'b',], ['d', 'e']])
         self.assertEqual(len(result), 2)
 
+    def test_get_with_empty_selection(self):
+        """Test VectorIndex.get with an empty list, np.array, and slice"""
+        data = VectorData(name='data', description='desc', data=['a', 'b', 'c', 'd', 'e'])
+        index = VectorIndex(name='index', data=[2, 3, 5], target=data)
+
+        self.assertEqual(index.get([]), [])
+        self.assertEqual(index.get(np.array([], dtype=np.int64)), [])
+        self.assertEqual(index.get(slice(1, 1)), [])
+
     def test_get_target_data_single_index(self):
         """Test get_target_data returns the VectorData for a single ragged array."""
         foo = VectorData(name='foo', description='foo column', data=['a', 'b', 'c'])
@@ -2884,6 +3010,60 @@ class TestDynamicTableAddEnumRoundTrip(H5RoundTripMixin, TestCase):
         table.add_row(bar='a')
         table.add_row(bar='c')
         return table
+
+
+class TestEnumDataReadResolve(TestCase):
+    """Resolve EnumData values after reading from disk (h5py-backed elements).
+
+    An h5py-backed elements dataset requires its selection indices to be sorted and unique. Enum
+    indices are arbitrarily ordered and repeat, so resolving them requires reading the elements
+    into memory, where indexing carries no such constraint.
+    """
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        self.io = None
+
+    def tearDown(self):
+        # close the read IO before removing the file so the removal succeeds on Windows,
+        # which cannot delete a file that is still open
+        if self.io is not None:
+            self.io.close()
+        remove_test_file(self.path)
+
+    def _write_and_read(self, data):
+        ed = EnumData(name='color', description='a test EnumData',
+                      data=np.asarray(data), elements=['red', 'green', 'blue', 'yellow'])
+        table = DynamicTable(name='table0', description='an example table',
+                             columns=[ed], colnames=['color'])
+        with HDF5IO(self.path, 'w', manager=get_manager()) as io:
+            io.write(table)
+        self.io = HDF5IO(self.path, 'r', manager=get_manager())
+        read_table = self.io.read()
+        return read_table['color']
+
+    def test_read_resolve_all(self):
+        # indices are non-monotonic and repeat, which h5py rejects without unique-sorted handling
+        col = self._write_and_read([0, 1, 2, 1, 3, 0, 2])
+        np.testing.assert_array_equal(
+            col[:], ['red', 'green', 'blue', 'green', 'yellow', 'red', 'blue']
+        )
+
+    def test_read_resolve_scalar(self):
+        col = self._write_and_read([0, 1, 2, 1, 3, 0, 2])
+        self.assertEqual(col[3], 'green')
+
+    def test_read_resolve_slice(self):
+        # the slice selects element indices [3, 0, 1], which are non-monotonic and would be
+        # rejected if passed directly to the h5py-backed elements dataset
+        col = self._write_and_read([2, 3, 0, 1, 2])
+        np.testing.assert_array_equal(col[1:4], ['yellow', 'red', 'green'])
+
+    def test_read_resolve_2d(self):
+        col = self._write_and_read([[0, 3], [1, 1], [2, 0]])
+        np.testing.assert_array_equal(
+            col[:], [['red', 'yellow'], ['green', 'green'], ['blue', 'red']]
+        )
 
 
 class TestDynamicTableAddEnum(TestCase):
@@ -3372,10 +3552,14 @@ class TestDynamicTableMeaningsTables(TestCase):
         retrieved = self.table.get_meanings_for_column('stimulus_type')
         self.assertEqual(retrieved, mt)
 
-    def test_get_meanings_for_column_not_found(self):
-        """Test error when no MeaningsTable exists for a column."""
+    def test_get_meanings_for_column_no_meanings(self):
+        """Test that None is returned when a valid column has no MeaningsTable."""
+        self.assertIsNone(self.table.get_meanings_for_column('stimulus_type'))
+
+    def test_get_meanings_for_column_invalid_column(self):
+        """Test error when the column does not exist."""
         with self.assertRaises(KeyError):
-            self.table.get_meanings_for_column('stimulus_type')
+            self.table.get_meanings_for_column('nonexistent')
 
     def test_get_meanings_table_not_found(self):
         """Test error when MeaningsTable not found."""
@@ -3493,6 +3677,56 @@ class TestMeaningsTableRoundTrip(H5RoundTripMixin, TestCase):
         self.assertEqual(len(mt), 3)
         self.assertEqual(list(mt['value'].data), ['a', 'b', 'c'])
         self.assertEqual(list(mt['meaning'].data), ['stimulus A', 'stimulus B', 'stimulus C'])
+
+
+class TestMeaningsTableLegacyTargetLinkRead(TestCase):
+    """Read a MeaningsTable written with the hdmf-common 1.9.0 "target" link layout.
+
+    hdmf-common 1.9.0 stored ``MeaningsTable.target`` as a link named "target"; 1.10.0 stores it as
+    an object-reference attribute named "target". A new-format file is written and then rewritten on
+    disk into the 1.9.0 layout (the "target" reference attribute is replaced with a "target" SoftLink
+    to the target column) so that MeaningsTableMap's backwards-compatibility path is exercised.
+    """
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+
+    def tearDown(self):
+        remove_test_file(self.path)
+
+    def _write_legacy_file(self):
+        table = DynamicTable(name='test_table', description='a test table')
+        table.add_column(name='stimulus_type', description='stimulus type')
+        table.add_row(stimulus_type='a')
+        table.add_row(stimulus_type='b')
+        table.add_row(stimulus_type='a')
+
+        mt = MeaningsTable(target=table['stimulus_type'])
+        mt.add_row(value='a', meaning='stimulus A')
+        mt.add_row(value='b', meaning='stimulus B')
+        table.add_meanings_table(mt)
+
+        with HDF5IO(self.path, 'w', manager=get_manager()) as io:
+            io.write(table)
+
+        # rewrite into the hdmf-common 1.9.0 layout: replace the "target" object-reference attribute
+        # with a "target" SoftLink to the target column
+        with h5py.File(self.path, 'r+') as f:
+            group = f['meanings_tables/stimulus_type_meanings']
+            del group.attrs['target']
+            group['target'] = h5py.SoftLink('/stimulus_type')
+
+    def test_read_legacy_target_link(self):
+        self._write_legacy_file()
+        with HDF5IO(self.path, 'r', manager=get_manager()) as io:
+            read_table = io.read()
+            mt = read_table.get_meanings_table('stimulus_type_meanings')
+            # the target link resolves to the target column, not an extra column of the table
+            self.assertEqual(tuple(mt.colnames), ('value', 'meaning'))
+            self.assertEqual(len(mt), 2)
+            self.assertEqual(list(mt['value'].data), ['a', 'b'])
+            self.assertEqual(list(mt['meaning'].data), ['stimulus A', 'stimulus B'])
+            self.assertIs(mt.target, read_table['stimulus_type'])
 
 
 class TestMeaningsTableLengthMismatchRoundTrip(H5RoundTripMixin, TestCase):

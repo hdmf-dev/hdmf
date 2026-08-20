@@ -635,8 +635,8 @@ class TestAlignedDynamicTableContainer(TestCase):
         retrieved = adt.get_meanings_for_column('response_type', category='responses')
         self.assertEqual(retrieved, mt)
 
-    def test_get_meanings_for_column_category_not_found(self):
-        """Test error when no MeaningsTable exists for a column in a category."""
+    def test_get_meanings_for_column_category_no_meanings(self):
+        """Test that None is returned when a valid category column has no MeaningsTable."""
         # Create category table without a MeaningsTable
         category_col = VectorData(name='response_type', description='response type', data=['x', 'y', 'z'])
         category_table = DynamicTable(
@@ -652,18 +652,43 @@ class TestAlignedDynamicTableContainer(TestCase):
             columns=[main_col],
             category_tables=[category_table])
 
-        # Test error when no MeaningsTable exists
-        with self.assertRaisesRegex(KeyError, "No MeaningsTable found for column 'response_type'"):
-            adt.get_meanings_for_column('response_type', category='responses')
+        self.assertIsNone(adt.get_meanings_for_column('response_type', category='responses'))
 
-    def test_get_meanings_for_column_main_not_found(self):
-        """Test error when no MeaningsTable exists for a column in the main table."""
+    def test_get_meanings_for_column_category_invalid_column(self):
+        """Test error when the column does not exist in the category table."""
+        category_col = VectorData(name='response_type', description='response type', data=['x', 'y', 'z'])
+        category_table = DynamicTable(
+            name='responses',
+            description='response category',
+            columns=[category_col])
+
+        main_col = VectorData(name='trial_id', description='trial id', data=[1, 2, 3])
+        adt = AlignedDynamicTable(
+            name='test_aligned_table',
+            description='Test aligned container',
+            columns=[main_col],
+            category_tables=[category_table])
+
+        with self.assertRaisesRegex(KeyError, "Column 'nonexistent' not found"):
+            adt.get_meanings_for_column('nonexistent', category='responses')
+
+    def test_get_meanings_for_column_main_no_meanings(self):
+        """Test that None is returned when a valid main-table column has no MeaningsTable."""
         main_col = VectorData(name='stimulus_type', description='stimulus type', data=['a', 'b', 'c'])
         adt = AlignedDynamicTable(
             name='test_aligned_table',
             description='Test aligned container',
             columns=[main_col])
 
-        # Test error when no MeaningsTable exists
-        with self.assertRaisesRegex(KeyError, "No MeaningsTable found for column 'stimulus_type'"):
-            adt.get_meanings_for_column('stimulus_type')
+        self.assertIsNone(adt.get_meanings_for_column('stimulus_type'))
+
+    def test_get_meanings_for_column_main_invalid_column(self):
+        """Test error when the column does not exist in the main table."""
+        main_col = VectorData(name='stimulus_type', description='stimulus type', data=['a', 'b', 'c'])
+        adt = AlignedDynamicTable(
+            name='test_aligned_table',
+            description='Test aligned container',
+            columns=[main_col])
+
+        with self.assertRaisesRegex(KeyError, "Column 'nonexistent' not found"):
+            adt.get_meanings_for_column('nonexistent')

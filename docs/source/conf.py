@@ -83,6 +83,7 @@ intersphinx_mapping = {
 linkcheck_ignore = [
     "https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key",
     "https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request",
+    "https://nwb-users.slack.com",
 ]
 
 nitpicky = True
@@ -90,6 +91,7 @@ nitpick_ignore = [('py:class', 'Intracomm'),
                   ('py:class', 'h5py._hl.dataset.Dataset'),
                   ('py:class', 'function'),
                   ('py:class', 'unittest.case.TestCase'),
+                  ('py:class', 'pandas.ExtensionArray'),
                   ]
 
 suppress_warnings = ["config.cache"]
