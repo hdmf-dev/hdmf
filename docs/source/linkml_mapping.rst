@@ -9,6 +9,12 @@ These conventions cover the constructs used by ``base.yaml`` (``Data``, ``Contai
 namespace. This is **not** a complete mapping of HDMFSL; constructs not yet covered are
 listed at the end.
 
+The LinkML files that apply these conventions to that test namespace live in
+``tests/unit/linkml_tests/fixtures/``. They are the reference the reader and writer are
+tested against, and ``tests/unit/linkml_tests/test_fixtures.py`` checks that they load
+under ``linkml-runtime``'s ``SchemaView`` and cover every field of the ``Spec`` objects HDMF
+loads natively from the HDMFSL sources.
+
 Goal and guiding principles
 ---------------------------
 
@@ -21,6 +27,21 @@ HDMF can read LinkML into its ``Spec`` objects (``GroupSpec``, ``DatasetSpec``,
    classes carry (``name``, ``doc``, ``dtype``, ``dims``, ``shape``, ``required``,
    ``quantity``, ``data_type_def`` / ``data_type_inc``, containment) must be recoverable
    from the LinkML.
+
+   ``Spec`` subclasses ``dict`` and inherits ``dict`` equality, so the comparison is over
+   the keys actually present. This puts two requirements on the reader:
+
+   - **Defaults stay absent.** HDMF omits a field left at its default: an
+     ``AttributeSpec`` with ``required`` at its default carries no ``required`` key, and a
+     dataset or subgroup at ``quantity`` ``1`` carries no ``quantity`` key. A reader that
+     writes the default value out explicitly produces a ``Spec`` that does not compare
+     equal.
+   - **Order within a construct list is preserved.** ``attributes``, ``datasets``, and
+     ``groups`` are lists, so their order is part of the comparison. LinkML holds all three
+     kinds in one ``attributes`` block on the class, so the reader partitions the slots by
+     ``spec_type`` and keeps their relative order within each partition. Declaring the
+     slots in HDMFSL order (attributes, then datasets, then groups) makes the LinkML read
+     the same way as the HDMFSL source.
 2. **Annotations carry HDMFSL provenance.** LinkML flattens groups, datasets, and
    attributes into classes and slots; HDMF needs to recover which was which. We record
    that with a small, explicit annotation vocabulary rather than inferring it.
@@ -111,13 +132,18 @@ identifier slot, marked ``identifier: true``, is the one exception and carries n
 How the reader tells a **named, typed** dataset/attribute from a **typed include**
 (``data_type_inc``):
 
-- If the slot ``range`` is a **dtype** (or ``AnyType``) → a named dataset/attribute; the
-  slot name is the HDMFSL ``name``.
-- If the slot ``range`` is a **defined class** → an include of that type
+- If the slot ``range`` is a **dtype**, or the ``AnyType`` class → a named
+  dataset/attribute; the slot name is the HDMFSL ``name``. ``AnyType`` is a class rather
+  than a type (see dtypes), so it is called out here as the one class range that does not
+  mean an include.
+- If the slot ``range`` is any **other defined class** → an include of that type
   (``data_type_inc``). In scope, includes are unnamed, so the slot name is synthesized
   from the included type (snake_case) and is informational only (the writer re-emits the
   entry with ``data_type_inc`` and no ``name``). Named includes are deferred (see Out of
   scope).
+
+The HDMFSL ``doc`` on the entry becomes the slot ``description``, for includes as well as
+for named entries.
 
 A multivalued class-valued slot (an include with ``quantity`` ``*`` or ``+``) uses
 ``inlined_as_list: true``, so its contents serialize as a list of the included objects.
@@ -127,8 +153,9 @@ Naming and identity (the name identifier slot)
 
 LinkML requires an identifier for objects that are inlined as dictionaries, and HDMF
 objects are keyed by name in the file hierarchy. HDMFSL leaves this implicit (objects are
-named where they are used, not via a declared attribute); LinkML makes it explicit. Each
-class gets a ``name`` slot (``identifier: true``, ``range: string``, ``required: true``).
+named where they are used, not via a declared attribute); LinkML makes it explicit. A class
+with no ``is_a`` declares a ``name`` slot (``identifier: true``, ``range: string``,
+``required: true``); classes with an ``is_a`` inherit it.
 
 .. code-block:: yaml
 
@@ -137,51 +164,81 @@ class gets a ``name`` slot (``identifier: true``, ``range: string``, ``required:
          range: string
          required: true
 
+It is declared once at the root of each hierarchy (``Data`` and ``Container`` in the test
+namespace) because LinkML permits at most one identifier per class and inheritance already
+supplies it to every subclass. Every HDMF object therefore has an identifier, and the
+reader only ever sees the slot on the class that declares it.
+
 The reader handles the ``identifier`` slot specially: it represents the object's hierarchy
 name, not a declared attribute, so the reader never builds an ``AttributeSpec`` from it. No
 ``spec_type`` annotation is needed, because ``identifier: true`` already identifies this
-slot (LinkML allows at most one identifier per class, and it is always this slot).
+slot. The slot is required for LinkML inlining of data instances and for
+forward-compatibility with the Pydantic work.
 
-The ``name`` identifier slot is kept on every class. It is required for LinkML inlining of
-data instances and for forward-compatibility with the Pydantic work; the reader does not
-turn it into an ``AttributeSpec``.
+Fixed names and default names on a type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``name`` identifier slot above is the name an *instance* is keyed by. HDMFSL also lets
+a type constrain that name at the schema level, and those constraints map to the identifier
+slot rather than to a separate construct:
+
+- A ``data_type_def`` that also fixes a ``name`` (the name is not free) →
+  ``equals_string: <name>`` on the identifier slot.
+- ``default_name`` (a name used when the caller supplies none) →
+  ``ifabsent: string(<default_name>)`` on the identifier slot.
+
+Neither is used by the types in scope, so both are stated here as the convention and are
+not exercised by the fixtures. A type with neither is unnamed: its instances are named
+where they are used.
 
 dtypes
 ~~~~~~
 
-HDMFSL dtypes map to LinkML ranges via a companion ``hdmf-linkml-types`` schema that
-defines each dtype as its own ``TypeDefinition``, rather than collapsing to LinkML base
-types. Each HDMFSL dtype is a distinct named type, so dtypes are differentiated by
-**name**, not by their underlying ``typeof``: ``float32`` and ``float64`` are separate
-named types even though both build on a LinkML base type, and a slot distinguishes them
-with ``range: float32`` vs ``range: float64``. The reader recovers the exact HDMFSL dtype
-from the range name. This is what keeps precision through the round-trip (``uint`` stays
-``uint``, not a lossy ``integer``); ``typeof`` tracks the closest LinkML base type for
-native LinkML consumers but does not carry the round-trip identity.
+HDMFSL dtypes map to LinkML ranges via a companion ``hdmf-linkml-types`` schema. A slot's
+``range`` is the HDMFSL dtype string verbatim (``range: uint``), and the reader recovers the
+dtype from the range name.
+
+**Every HDMFSL dtype string is its own named type, synonyms included.** HDMFSL treats
+``uint`` and ``uint32``, or ``text`` / ``utf`` / ``utf8`` / ``utf-8``, as synonyms, and a
+``Spec`` stores whichever spelling the schema used. Collapsing synonyms onto a single type
+would rewrite ``dtype: uint`` as ``dtype: uint32`` on the way back and break the ``Spec``
+comparison, so each spelling is a separate ``TypeDefinition``. A synonym's ``typeof`` points
+at the primary dtype, which records the synonym relationship in LinkML itself; a primary
+dtype's ``typeof`` points at a LinkML base type and carries the width and sign constraints.
+Identity for the round trip is always the name, never ``typeof``.
+
+**The dtypes LinkML already provides are reused rather than redefined.** HDMFSL's ``float``,
+``double``, ``date``, and ``datetime`` collide by name with LinkML built-in types whose
+semantics agree (``xsd:float`` is 32 bit, ``xsd:double`` is 64 bit), so ``hdmf-linkml-types``
+imports ``linkml:types`` and leaves those four to it. Redefining them would shadow the
+built-ins for every schema in the import closure.
 
 .. code-block:: yaml
 
    # in hdmf-linkml-types
+   imports:
+     - linkml:types
    types:
-     uint:
+     uint32:
        typeof: integer
        minimum_value: 0
-     int32:
-       typeof: integer
+       maximum_value: 4294967295
+     uint:                      # synonym of uint32; kept distinct so the spelling survives
+       typeof: uint32
      float32:
-       typeof: float
-     float64:
-       typeof: double
+       typeof: float            # float comes from linkml:types
      text:
        typeof: string
-     # ... one per HDMFSL dtype
+     # ... one per HDMFSL dtype string
 
-- A slot's ``range`` is the HDMFSL dtype name (e.g. ``range: uint``).
-- A dataset or attribute with **no dtype** (the ``CSRMatrix`` ``data`` dataset) →
-  ``range: AnyType``, where ``AnyType`` is a class with ``class_uri: linkml:Any``. The
-  reader maps ``range: AnyType`` back to ``dtype = None``.
+A dataset or attribute with **no dtype** (the ``CSRMatrix`` ``data`` dataset) →
+``range: AnyType``, where ``AnyType`` is a class with ``class_uri: linkml:Any`` defined
+alongside the types. The reader maps ``range: AnyType`` back to ``dtype = None``. It is a
+class because LinkML expresses an unconstrained range that way, which is why the slot rules
+above name it as the one class range that is not an include.
 
-Compound and reference dtypes are deferred (see Out of scope).
+The reference dtype ``object`` is deferred along with reference and compound dtypes, so
+``hdmf-linkml-types`` does not define it (see Out of scope).
 
 Arrays (dims / shape)
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -214,7 +271,9 @@ one ``dimensions`` entry per axis. This applies uniformly to attributes and data
 quantity and required
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-- Attribute ``required`` (a boolean in HDMFSL) → slot ``required``.
+- Attribute ``required`` (a boolean in HDMFSL) → slot ``required``, always written out
+  explicitly. HDMFSL defaults an attribute to required while LinkML defaults a slot to
+  optional, so an omitted ``required`` on an attribute slot would flip the meaning.
 - Dataset/subgroup ``quantity`` → slot ``required`` + ``multivalued``:
 
 .. list-table::
@@ -236,9 +295,12 @@ quantity and required
      - true
      - true
 
+A dash means the key is omitted. The four combinations are distinct, so a dataset or
+subgroup slot recovers its ``quantity`` unambiguously.
+
 ``quantity`` (how many of the object) is independent of the array shape (the object's
-dimensions): a single required array dataset is ``required: true``, ``multivalued: false``,
-with an ``array`` expression.
+dimensions): a single required array dataset is ``required: true`` with no ``multivalued``,
+plus an ``array`` expression.
 
 Namespace-level mapping
 -----------------------
@@ -265,100 +327,49 @@ importing ``hdmf-common``) are out of scope; the test namespace is self-containe
 
 LinkML schemas require an ``id`` URI and use ``prefixes`` / ``default_prefix``. A
 placeholder base URI (e.g. ``https://w3id.org/hdmf/...``) is used for now; the final base
-URI convention for HDMF/NWB LinkML schemas will be settled with the LinkML team.
+URI convention for HDMF/NWB LinkML schemas will be settled with the LinkML team. A prefix
+is a CURIE prefix, so a namespace name containing a hyphen is spelled with underscores
+there (``hdmf-common-test`` → ``hdmf_common_test``); the schema ``name`` keeps the HDMFSL
+spelling, and that is what the reader reads the namespace name from.
 
 Worked example
 --------------
 
+These are the LinkML files for the test namespace, as committed under
+``tests/unit/linkml_tests/fixtures/``. They are shown here in full so the conventions above
+can be read against a complete example, and they are the same files the tests load, so the
+example cannot drift from what is validated.
+
+HDMFSL dtypes → hdmf-linkml-types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. literalinclude:: ../../tests/unit/linkml_tests/fixtures/hdmf-linkml-types.yaml
+   :language: yaml
+
 base.yaml → base LinkML schema
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: yaml
-
-   name: base
-   id: https://w3id.org/hdmf/test/base          # placeholder base URI (to be finalized)
-   imports:
-     - hdmf-linkml-types
-   default_prefix: base
-   classes:
-     Data:
-       description: An abstract data type for a dataset.
-       annotations:
-         spec_type: dataset
-       attributes:
-         name:
-           identifier: true
-           range: string
-           required: true
-     Container:
-       description: An abstract data type for a group storing collections of data and metadata. Base type for all data and metadata containers.
-       annotations:
-         spec_type: group
-       attributes:
-         name:
-           identifier: true
-           range: string
-           required: true
-     SimpleMultiContainer:
-       description: A simple Container for holding onto multiple containers.
-       is_a: Container
-       annotations:
-         spec_type: group
-       attributes:
-         name:
-           identifier: true
-           range: string
-           required: true
-         data:                       # datasets: - data_type_inc: Data, quantity: '*'  (unnamed include)
-           range: Data
-           multivalued: true
-           inlined_as_list: true
-           annotations:
-             spec_type: dataset
-         container:                  # groups: - data_type_inc: Container, quantity: '*'  (unnamed include)
-           range: Container
-           multivalued: true
-           inlined_as_list: true
-           annotations:
-             spec_type: group
+.. literalinclude:: ../../tests/unit/linkml_tests/fixtures/base.yaml
+   :language: yaml
 
 sparse.yaml → sparse LinkML schema
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-TBD
+.. literalinclude:: ../../tests/unit/linkml_tests/fixtures/sparse.yaml
+   :language: yaml
 
 Test namespace.yaml → namespace LinkML schema
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: yaml
-
-   name: hdmf-common-test
-   id: https://w3id.org/hdmf/test                # placeholder base URI (to be finalized)
-   description: Minimal test namespace for the HDMF ↔ LinkML round-trip (base + sparse only).
-   version: 0.1.0
-   imports:
-     - base
-     - sparse
-     - hdmf-linkml-types
-   default_prefix: hdmf-common-test
-   annotations:
-     authors:                        # merged from namespace.yaml author + contact (one-to-one)
-       value:
-       - name: Andrew Tritt
-         email: ajtritt@lbl.gov
-       - name: Oliver Ruebel
-         email: oruebel@lbl.gov
-       - name: Ryan Ly
-         email: rly@lbl.gov
-       - name: Ben Dichter
-         email: bdichter@lbl.gov
+.. literalinclude:: ../../tests/unit/linkml_tests/fixtures/namespace.yaml
+   :language: yaml
 
 Out of scope
 ------------
 
 - Dataset special cases: scalar-with-attributes, list-like datasets, class-range
   references.
-- Compound dtypes; reference dtypes; links.
+- Compound dtypes; reference dtypes, including the ``object`` dtype; links.
 - The ``DynamicTable`` family (``VectorData``, ``VectorIndex``, ``DynamicTableRegion``,
   ragged arrays, inter-table references).
 - Named includes (a ``data_type_inc`` entry that also fixes a ``name``).

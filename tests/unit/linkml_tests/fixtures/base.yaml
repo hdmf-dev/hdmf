@@ -1,0 +1,58 @@
+id: https://w3id.org/hdmf/test/base
+name: base
+title: Base data types
+description: base data types
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  base: https://w3id.org/hdmf/test/base/
+default_prefix: base
+
+imports:
+  - linkml:types
+  - hdmf-linkml-types
+
+classes:
+
+  Data:
+    description: An abstract data type for a dataset.
+    annotations:
+      spec_type: dataset
+    attributes:
+      name:
+        identifier: true
+        range: string
+        required: true
+
+  Container:
+    description: >-
+      An abstract data type for a group storing collections of data and metadata. Base type
+      for all data and metadata containers.
+    annotations:
+      spec_type: group
+    attributes:
+      name:
+        identifier: true
+        range: string
+        required: true
+
+  SimpleMultiContainer:
+    description: A simple Container for holding onto multiple containers.
+    is_a: Container
+    annotations:
+      spec_type: group
+    attributes:
+      data:
+        description: Data objects held within this SimpleMultiContainer.
+        range: Data
+        multivalued: true
+        inlined_as_list: true
+        annotations:
+          spec_type: dataset
+      container:
+        description: Container objects held within this SimpleMultiContainer.
+        range: Container
+        multivalued: true
+        inlined_as_list: true
+        annotations:
+          spec_type: group

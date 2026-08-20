@@ -1,0 +1,126 @@
+id: https://w3id.org/hdmf/test/hdmf-linkml-types
+name: hdmf-linkml-types
+title: HDMF Schema Language dtypes
+description: >-
+  LinkML type definitions for the HDMF Schema Language (HDMFSL) dtypes. Each HDMFSL dtype
+  string is a distinct named type, so a slot's range name is the HDMFSL dtype string
+  verbatim. HDMFSL dtype synonyms (for example uint and uint32, or text and utf8) are
+  separate named types related by typeof, so the exact spelling used in the HDMFSL schema
+  survives the round trip.
+
+  The dtypes float, double, date, and datetime are not redefined here. LinkML's built-in
+  types of those names carry the same semantics (xsd:float is 32 bit, xsd:double is 64
+  bit), so they are used directly.
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  hdmf_types: https://w3id.org/hdmf/test/hdmf-linkml-types/
+default_prefix: hdmf_types
+
+imports:
+  - linkml:types
+
+types:
+
+  # floating point
+  float32:
+    typeof: float
+    description: Single precision floating point. Synonym of the HDMFSL dtype float.
+  float64:
+    typeof: double
+    description: Double precision floating point. Synonym of the HDMFSL dtype double.
+
+  # signed integers
+  int8:
+    typeof: integer
+    description: 8 bit signed integer.
+    minimum_value: -128
+    maximum_value: 127
+  int16:
+    typeof: integer
+    description: 16 bit signed integer.
+    minimum_value: -32768
+    maximum_value: 32767
+  short:
+    typeof: int16
+    description: Synonym of the HDMFSL dtype int16.
+  int32:
+    typeof: integer
+    description: 32 bit signed integer.
+    minimum_value: -2147483648
+    maximum_value: 2147483647
+  int:
+    typeof: int32
+    description: Synonym of the HDMFSL dtype int32.
+  int64:
+    typeof: integer
+    description: 64 bit signed integer.
+    minimum_value: -9223372036854775808
+    maximum_value: 9223372036854775807
+  long:
+    typeof: int64
+    description: Synonym of the HDMFSL dtype int64.
+
+  # unsigned integers
+  uint8:
+    typeof: integer
+    description: 8 bit unsigned integer.
+    minimum_value: 0
+    maximum_value: 255
+  uint16:
+    typeof: integer
+    description: 16 bit unsigned integer.
+    minimum_value: 0
+    maximum_value: 65535
+  uint32:
+    typeof: integer
+    description: 32 bit unsigned integer.
+    minimum_value: 0
+    maximum_value: 4294967295
+  uint:
+    typeof: uint32
+    description: Synonym of the HDMFSL dtype uint32.
+  uint64:
+    typeof: integer
+    description: 64 bit unsigned integer.
+    minimum_value: 0
+    maximum_value: 18446744073709551615
+
+  # text
+  text:
+    typeof: string
+    description: Unicode (UTF-8) text.
+  utf:
+    typeof: text
+    description: Synonym of the HDMFSL dtype text.
+  utf8:
+    typeof: text
+    description: Synonym of the HDMFSL dtype text.
+  utf-8:
+    typeof: text
+    description: Synonym of the HDMFSL dtype text.
+  ascii:
+    typeof: string
+    description: ASCII (byte string) text.
+  bytes:
+    typeof: ascii
+    description: Synonym of the HDMFSL dtype ascii.
+
+  # other scalars
+  bool:
+    typeof: boolean
+    description: Boolean.
+  numeric:
+    typeof: decimal
+    description: Any numeric dtype. The concrete dtype is not constrained.
+  isodatetime:
+    typeof: datetime
+    description: An ISO 8601 date and time.
+
+classes:
+
+  AnyType:
+    class_uri: linkml:Any
+    description: >-
+      The range of a dataset or attribute declared in HDMFSL with no dtype. The reader maps
+      a slot with range AnyType back to a Spec with dtype None.
