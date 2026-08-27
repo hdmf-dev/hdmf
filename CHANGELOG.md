@@ -1,5 +1,16 @@
 # HDMF Changelog
 
+## HDMF 6.3.0 (Upcomping)
+
+### Enhancements
+- Added support for aliases in TermSet. Aliases can be used to look up terms in a TermSet using alternative names. @oruebel [#1565](https://github.com/hdmf-dev/hdmf/pull/1565)
+- Added `TermSet.suggest_term` to suggest a close matching term for a given term and `TermSet.get_primary_term` to look up the corresponding primary term for an alias. @oruebel [#1565](https://github.com/hdmf-dev/hdmf/pull/1565)
+- Added `TypeMap.get_configured_termsets` and `AbstractContainer.get_configured_termsets` convenience methods to simplify retrieving configured TermSet's for a particular types and container instance. @oruebel [#1565](https://github.com/hdmf-dev/hdmf/pull/1565)
+
+### Documentation and tutorial enhancements
+- Updated the TermSet and External Resources tutorials to describe the use of aliases. @oruebel [#1565](https://github.com/hdmf-dev/hdmf/pull/1565)
+
+
 ## HDMF 6.2.0 (August 19, 2026)
 
 ### Documentation and tutorial enhancements
