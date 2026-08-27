@@ -361,12 +361,12 @@ herd.add_ref_termset(container=species,
 ###############################################################################
 # Finding Configured Termsets and Resolving Aliases
 # ------------------------------------------------------
-# A common workflow in an HDMF ecosystem involves configuring datasets or attributes 
+# A common workflow in an HDMF ecosystem involves configuring datasets or attributes
 # to use specific TermSets globally. Using the :py:meth:`~hdmf.container.Container.get_configured_termsets`
 # method on a container class or instance lets you inspect which attributes are bound to a TermSet.
 # This makes it easy to automatically wire up :py:class:`~hdmf.common.resources.HERD` with the configured termsets.
 #
-# Additionally, :py:class:`~hdmf.term_set.TermSet` entries may have aliases. :py:class:`~hdmf.common.resources.HERD` 
+# Additionally, :py:class:`~hdmf.term_set.TermSet` entries may have aliases. :py:class:`~hdmf.common.resources.HERD`
 # takes advantage of these aliases under the hood. If your data uses an alias (e.g., "human" instead of "Homo sapiens"),
 # :py:func:`~hdmf.common.resources.HERD.add_ref_termset` uses
 # :py:meth:`~hdmf.term_set.TermSet.__getitem__` which automatically resolves the alias to its canonical term and
@@ -383,13 +383,13 @@ for attribute_name, ts in configured_termsets.items():
 ###############################################################################
 # Finding Configured Termsets and Resolving Aliases
 # ------------------------------------------------------
-# A common workflow in an HDMF ecosystem involves configuring datasets or attributes 
+# A common workflow in an HDMF ecosystem involves configuring datasets or attributes
 # to use specific TermSets globally. Using the :py:meth:`~hdmf.container.Container.get_configured_termsets`
 # method on a container class or instance lets you inspect which attributes are bound to a TermSet.
 # This makes it easy to automatically wire up :py:class:`~hdmf.common.resources.HERD` with the configured termsets.
 # We will use this to find the termsets for our data.
 #
-# Additionally, :py:class:`~hdmf.term_set.TermSet` entries may have aliases. :py:class:`~hdmf.common.resources.HERD` 
+# Additionally, :py:class:`~hdmf.term_set.TermSet` entries may have aliases. :py:class:`~hdmf.common.resources.HERD`
 # takes advantage of these aliases under the hood. If your data uses an alias (e.g., "human" instead of "Homo sapiens"),
 # :py:func:`~hdmf.common.resources.HERD.add_ref_termset` uses
 # :py:meth:`~hdmf.term_set.TermSet.__getitem__` which automatically resolves the alias to its canonical term and
