@@ -125,12 +125,13 @@ class TermSet:
 
     def __perm_value_key_info(self, perm_values_dict: dict, key: str):
         """
-        Private method to retrieve the id, description, and the meaning.
+        Private method to retrieve the id, description, meaning, and aliases.
         """
         prefix_dict = self.view.schema.prefixes
-        info_tuple = namedtuple("Term_Info", ["id", "description", "meaning"])
+        info_tuple = namedtuple("Term_Info", ["id", "description", "meaning", "aliases"])
         description = perm_values_dict[key]["description"]
         enum_meaning = perm_values_dict[key]["meaning"]
+        aliases = perm_values_dict[key].aliases if hasattr(perm_values_dict[key], "aliases") else []
 
         # filter for prefixes
         marker = ":"
@@ -142,7 +143,7 @@ class TermSet:
         # combine prefix and prefix_reference to make full term uri
         meaning = prefix_reference + id
 
-        return info_tuple(enum_meaning, description, meaning)
+        return info_tuple(enum_meaning, description, meaning, aliases)
 
     @docval({"name": "term", "type": str, "doc": "term to be validated"})
     def validate(self, **kwargs):
