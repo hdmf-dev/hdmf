@@ -875,9 +875,11 @@ class TypeMap:
             container_cls = container_cls.__class__
 
         configurator = self.type_config
+        empty_return_val = None if attribute is not None else dict()
+
         if not configurator.paths:
-            msg = "No TermSet configuration has been loaded onto this TypeMap."
-            raise ValueError(msg)
+            # No TermSet configuration has been loaded onto this TypeMap.
+            return empty_return_val
 
         namespace, data_type = self.get_container_cls_dt(container_cls)
         if namespace is None:
@@ -886,13 +888,13 @@ class TypeMap:
 
         termset_config = configurator.config
         if namespace not in termset_config['namespaces']:
-            msg = "No TermSet configuration found for namespace '%s'." % namespace
-            raise ValueError(msg)
+            # No TermSet configuration found for this namespace.
+            return empty_return_val
 
         config_namespace = termset_config['namespaces'][namespace]
         if data_type not in config_namespace['data_types']:
-            msg = "No TermSet configuration found for data_type '%s' in namespace '%s'." % (data_type, namespace)
-            raise ValueError(msg)
+            # No TermSet configuration found for this data_type in the namespace.
+            return empty_return_val
 
         config_data_type = config_namespace['data_types'][data_type]
         # NOTE: the config always has exactly one loaded path at a time (see TypeConfigurator);
@@ -906,8 +908,8 @@ class TypeMap:
         if attribute is not None:
             config_entry = config_data_type.get(attribute)
             if config_entry is None or 'termset' not in config_entry:
-                msg = "No TermSet configuration found for attribute '%s' on data_type '%s'." % (attribute, data_type)
-                raise ValueError(msg)
+                # No TermSet configuration found for this specific attribute on the data_type.
+                return empty_return_val
             return _resolve_termset(config_entry)
 
         termsets = dict()
@@ -916,8 +918,8 @@ class TypeMap:
                 termsets[attr_name] = _resolve_termset(config_entry)
 
         if not termsets:
-            msg = "No TermSet configuration found for data_type '%s'." % data_type
-            raise ValueError(msg)
+            # No TermSet configurations found for any attributes on this data_type.
+            return empty_return_val
 
         return termsets
 
