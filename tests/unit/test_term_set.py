@@ -281,6 +281,37 @@ class TestTermSetWrapper(TestCase):
         with self.assertRaises(ValueError):
             data_obj.extend(["bad_data"])
 
+    def test_wrapper_alias(self):
+        termset = TermSet(term_schema_path="tests/unit/example_test_term_set_alias.yaml")
+
+        # single value
+        wrapper = TermSetWrapper(termset=termset, value="human")
+        self.assertEqual(wrapper.value, "human")
+
+        # list
+        wrapper_list = TermSetWrapper(termset=termset, value=["human", "house mouse"])
+        self.assertEqual(wrapper_list.value, ["human", "house mouse"])
+
+        # tuple
+        wrapper_tuple = TermSetWrapper(termset=termset, value=("human", "house mouse"))
+        self.assertEqual(wrapper_tuple.value, ("human", "house mouse"))
+
+        # numpy array
+        wrapper_array = TermSetWrapper(termset=termset, value=np.array(["human", "house mouse"]))
+        np.testing.assert_array_equal(wrapper_array.value, np.array(["human", "house mouse"]))
+
+        # append (valid alias)
+        wrapper_list.append("Mus musculus")
+        self.assertEqual(wrapper_list.value, ["human", "house mouse", "Mus musculus"])
+        wrapper_list.append("human")
+        self.assertEqual(wrapper_list.value, ["human", "house mouse", "Mus musculus", "human"])
+
+        # extend (valid alias)
+        wrapper_list.extend(["house mouse", "Homo sapiens"])
+        self.assertEqual(
+            wrapper_list.value, ["human", "house mouse", "Mus musculus", "human", "house mouse", "Homo sapiens"]
+        )
+
 
 class TestTypeConfig(TestCase):
     def setUp(self):
@@ -366,20 +397,6 @@ class ExtensionContainer(Container):
         Return the spec data type associated with this container.
         """
         return "ExtensionContainer"
-
-    def test_wrapper_alias(self):
-        termset = TermSet(term_schema_path="tests/unit/example_test_term_set_alias.yaml")
-        wrapper = TermSetWrapper(termset=termset, value="human")
-        self.assertEqual(wrapper.value, "Homo sapiens")
-
-        wrapper_list = TermSetWrapper(termset=termset, value=["human", "house mouse"])
-        self.assertEqual(wrapper_list.value, ["Homo sapiens", "Mus musculus"])
-
-        wrapper_tuple = TermSetWrapper(termset=termset, value=("human", "house mouse"))
-        self.assertEqual(wrapper_tuple.value, ("Homo sapiens", "Mus musculus"))
-
-        wrapper_array = TermSetWrapper(termset=termset, value=np.array(["human", "house mouse"]))
-        np.testing.assert_array_equal(wrapper_array.value, np.array(["Homo sapiens", "Mus musculus"]))
 
 
 class TestGlobalTypeConfig(TestCase):

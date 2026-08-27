@@ -327,8 +327,7 @@ class TermSet:
                 from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
         except ImportError:  # pragma: no cover
             msg = (
-                "There is an issue with importing oaklib. Please make sure a compatible "
-                "version of oaklib is installed."
+                "There is an issue with importing oaklib. Please make sure a compatible version of oaklib is installed."
             )
             raise ImportError(msg)
         expander = ValueSetExpander()
@@ -360,55 +359,8 @@ class TermSetWrapper:
         self.__value = kwargs["value"]
         self.__termset = kwargs["termset"]
         self.__field = kwargs["field"]
-        self.__value = self.__resolve_aliases(self.__value)
 
         self.__validate()
-
-    def __resolve_aliases(self, value):
-        if self.__field is not None:
-            if isinstance(value, dict):
-                value_copy = dict(value)
-                value_copy[self.__field] = self.__resolve_aliases_list(value[self.__field])
-                return value_copy
-            else:
-                # If it's a compound array or similar, we might need to handle it.
-                # Since the current code does `values = self.__value[self.__field]`,
-                # we assume we can just replace that field if possible.
-                # However, for numpy recarrays, modifying fields is different.
-                # To be safe and simple, let's just resolve items if it's a list/tuple/array.
-                if isinstance(value, np.ndarray):
-                    # It's a compound array
-                    value_copy = value.copy()
-                    for i in range(len(value_copy)):
-                        try:
-                            term = value_copy[self.__field][i]
-                            if isinstance(term, str):
-                                value_copy[self.__field][i] = self.__termset.get_primary_term(term)
-                        except ValueError:
-                            pass
-                    return value_copy
-                return value
-        else:
-            return self.__resolve_aliases_list(value)
-
-    def __resolve_aliases_list(self, values):
-        if isinstance(values, str):
-            try:
-                return self.__termset.get_primary_term(values)
-            except ValueError:
-                return values
-        elif isinstance(values, list):
-            return [self.__resolve_aliases_list(v) for v in values]
-        elif isinstance(values, tuple):
-            return tuple(self.__resolve_aliases_list(v) for v in values)
-        elif isinstance(values, np.ndarray):
-            if values.dtype.kind in {"U", "S", "O"}:  # string or object
-                resolved = []
-                for v in values:
-                    resolved.append(self.__resolve_aliases_list(v))
-                return np.array(resolved, dtype=values.dtype)
-            return values
-        return values
 
     def __validate(self):
         if self.__field is not None:
