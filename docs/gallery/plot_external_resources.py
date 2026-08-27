@@ -362,7 +362,7 @@ herd.add_ref_termset(container=species,
 # Finding Configured Termsets and Resolving Aliases
 # ------------------------------------------------------
 # A common workflow in an HDMF ecosystem involves configuring datasets or attributes
-# to use specific TermSets globally. Using the :py:meth:`~hdmf.container.Container.get_configured_termsets`
+# to use specific TermSets globally. Using the :py:meth:`~hdmf.container.AbstractContainer.get_configured_termsets`
 # method on a container class or instance lets you inspect which attributes are bound to a TermSet.
 # This makes it easy to automatically wire up :py:class:`~hdmf.common.resources.HERD` with the configured termsets.
 #
@@ -384,7 +384,7 @@ for attribute_name, ts in configured_termsets.items():
 # Finding Configured Termsets and Resolving Aliases
 # ------------------------------------------------------
 # A common workflow in an HDMF ecosystem involves configuring datasets or attributes
-# to use specific TermSets globally. Using the :py:meth:`~hdmf.container.Container.get_configured_termsets`
+# to use specific TermSets globally. Using the :py:meth:`~hdmf.container.AbstractContainer.get_configured_termsets`
 # method on a container class or instance lets you inspect which attributes are bound to a TermSet.
 # This makes it easy to automatically wire up :py:class:`~hdmf.common.resources.HERD` with the configured termsets.
 # We will use this to find the termsets for our data.

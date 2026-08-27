@@ -134,7 +134,7 @@ print(f"Term: {term_info.id} matched 'human' with status {status}")
 print(f"Aliases for 'Homo sapiens': {terms['Homo sapiens'].aliases}")
 
 # In HDMF containers, you can inspect which fields are configured with TermSets
-# using the :py:meth:`~hdmf.container.Container.get_configured_termsets` method.
+# using the :py:meth:`~hdmf.container.AbstractContainer.get_configured_termsets` method.
 # For example, if ``VectorData`` had an attribute configured with a TermSet:
 # termsets = VectorData.get_configured_termsets()
 
@@ -154,7 +154,7 @@ perm_values_dict = terms.view.all_enums()[enumeration].permissible_values
 print(f"Aliases for 'Homo sapiens': {perm_values_dict['Homo sapiens'].aliases}")
 
 # In HDMF containers, you can inspect which fields are configured with TermSets
-# using the :py:meth:`~hdmf.container.Container.get_configured_termsets` method.
+# using the :py:meth:`~hdmf.container.AbstractContainer.get_configured_termsets` method.
 # For example, if ``VectorData`` had an attribute configured with a TermSet:
 # termsets = VectorData.get_configured_termsets()
 
