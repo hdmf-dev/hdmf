@@ -458,19 +458,16 @@ class TestGlobalTypeConfig(TestCase):
 
     def test_get_configured_termsets_instance_attribute_not_configured(self):
         data = VectorData(name="foo", data=[0], description="Homo sapiens")
-        with self.assertRaises(ValueError):
-            data.get_configured_termsets(attribute="name")
+        self.assertIsNone(data.get_configured_termsets(attribute="name"))
 
     def test_get_configured_termsets_no_config_loaded(self):
         data = VectorData(name="foo", data=[0], description="Homo sapiens")
         unload_type_config()
-        with self.assertRaises(ValueError):
-            data.get_configured_termsets()
+        self.assertEqual(data.get_configured_termsets(), dict())
 
     def test_get_configured_termsets_class_not_mapped(self):
         container = ExtensionContainer(name="foo", namespace="foo_namespace2", description="Homo sapiens")
-        with self.assertRaises(ValueError):
-            container.get_configured_termsets()
+        self.assertEqual(container.get_configured_termsets(), dict())
 
 
 @pytest.mark.skipif(not REQUIREMENTS_INSTALLED, reason="optional LinkML module is not installed")
@@ -515,13 +512,11 @@ class TestNonGlobalTypeConfig(TestCase):
         termsets1 = type_map1.get_configured_termsets(data)
         self.assertEqual(list(termsets1.keys()), ["description"])
 
-        with self.assertRaises(ValueError):
-            # "name" is only configured (with no termset) in hdmf_config2, not hdmf_config
-            type_map1.get_configured_termsets(data, attribute="name")
+        # "name" is only configured (with no termset) in hdmf_config2, not hdmf_config
+        self.assertIsNone(type_map1.get_configured_termsets(data, attribute="name"))
 
-        with self.assertRaises(ValueError):
-            # "description" is not configured with a termset for VectorData in hdmf_config2
-            type_map2.get_configured_termsets(data, attribute="description")
+        # "description" is not configured with a termset for VectorData in hdmf_config2
+        self.assertIsNone(type_map2.get_configured_termsets(data, attribute="description"))
 
         unload_type_config(type_map1)
         unload_type_config(type_map2)
@@ -556,14 +551,12 @@ class TestTypeMapGetConfiguredTermsets(TestCase):
 
     def test_get_configured_termsets_class_attribute_not_configured(self):
         load_type_config(config_path="tests/unit/hdmf_config.yaml", type_map=self.type_map)
-        with self.assertRaises(ValueError):
-            self.type_map.get_configured_termsets(VectorData, attribute="name")
+        self.assertIsNone(self.type_map.get_configured_termsets(VectorData, attribute="name"))
 
     def test_get_configured_termsets_data_type_not_in_config(self):
         load_type_config(config_path="tests/unit/hdmf_config2.yaml", type_map=self.type_map)
-        with self.assertRaises(ValueError):
-            # VectorData is configured in hdmf_config2 but with no termset entries (only "name": None)
-            self.type_map.get_configured_termsets(VectorData)
+        # VectorData is configured in hdmf_config2 but with no termset entries (only "name": None)
+        self.assertEqual(self.type_map.get_configured_termsets(VectorData), dict())
 
     def test_get_configured_termsets_class_not_mapped_to_data_type(self):
         load_type_config(config_path="tests/unit/hdmf_config.yaml", type_map=self.type_map)
@@ -571,12 +564,10 @@ class TestTypeMapGetConfiguredTermsets(TestCase):
         class Unmapped(Container):
             pass
 
-        with self.assertRaises(ValueError):
-            self.type_map.get_configured_termsets(Unmapped)
+        self.assertEqual(self.type_map.get_configured_termsets(Unmapped), dict())
 
     def test_get_configured_termsets_no_config_loaded(self):
-        with self.assertRaises(ValueError):
-            self.type_map.get_configured_termsets(VectorData)
+        self.assertEqual(self.type_map.get_configured_termsets(VectorData), dict())
 
 
 class TestOptionalDepsNotInstalled(TestCase):

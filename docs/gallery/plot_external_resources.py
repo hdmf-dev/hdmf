@@ -197,7 +197,7 @@ herd.add_ref(
 col1 = VectorData(
     name='Species_Data',
     description='species from NCBI and Ensemble',
-    data=['Homo sapiens', 'Ursus arctos horribilis'],
+    data=['Homo sapiens', 'Drosophila melanogaster'],
 )
 
 # Create a DynamicTable with this column and set the table parent to the file object created earlier
@@ -207,7 +207,7 @@ species.parent = file
 herd.add_ref(
     container=species,
     attribute='Species_Data',
-    key='Ursus arctos horribilis',
+    key='Drosophila melanogaster',
     entity_id='NCBITaxon:116960',
     entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id'
 )
@@ -246,7 +246,7 @@ genotype_key_object = herd.get_key(key_name='Rorb')
 # to provide the unique (file, container, relative_path, field, key) combination.
 species_key_object = herd.get_key(file=file,
                                 container=species['Species_Data'],
-                                key_name='Ursus arctos horribilis')
+                                key_name='Drosophila melanogaster')
 
 # If the file is not provided, :py:func:`~hdmf.common.resources.HERD.get_key` also will check the
 # :py:class:`~hdmf.common.resources.Object` for a :py:class:`~hdmf.common.resources.File` along the
@@ -335,7 +335,7 @@ terms = TermSet(term_schema_path=yaml_file)
 
 herd.add_ref_termset(container=species,
                    attribute='Species_Data',
-                   key='Ursus arctos horribilis',
+                   key='Drosophila melanogaster',
                    termset=terms)
 
 ###############################################################################
@@ -356,6 +356,51 @@ terms = TermSet(term_schema_path=yaml_file)
 herd.add_ref_termset(container=species,
                    attribute='Species_Data',
                    termset=terms)
+
+
+###############################################################################
+# Finding Configured Termsets and Resolving Aliases
+# ------------------------------------------------------
+# A common workflow in an HDMF ecosystem involves configuring datasets or attributes 
+# to use specific TermSets globally. Using the :py:meth:`~hdmf.container.Container.get_configured_termsets`
+# method on a container class or instance lets you inspect which attributes are bound to a TermSet.
+# This makes it easy to automatically wire up :py:class:`~hdmf.common.resources.HERD` with the configured termsets.
+#
+# Additionally, :py:class:`~hdmf.term_set.TermSet` entries may have aliases. :py:class:`~hdmf.common.resources.HERD` 
+# takes advantage of these aliases under the hood. If your data uses an alias (e.g., "human" instead of "Homo sapiens"),
+# :py:func:`~hdmf.common.resources.HERD.add_ref_termset` uses
+# :py:meth:`~hdmf.term_set.TermSet.__getitem__` which automatically resolves the alias to its canonical term and
+# URI, ensuring consistent mapping across your files.
+#
+# The following code automatically adds the configured termsets for the 'species' container to HERD.
+# In this tutorial, our 'species' container has not been globally configured with termsets, so we expect an empty dict.
+
+configured_termsets = species.get_configured_termsets()
+for attribute_name, ts in configured_termsets.items():
+    herd.add_ref_termset(container=species, attribute=attribute_name, termset=ts)
+
+
+###############################################################################
+# Finding Configured Termsets and Resolving Aliases
+# ------------------------------------------------------
+# A common workflow in an HDMF ecosystem involves configuring datasets or attributes 
+# to use specific TermSets globally. Using the :py:meth:`~hdmf.container.Container.get_configured_termsets`
+# method on a container class or instance lets you inspect which attributes are bound to a TermSet.
+# This makes it easy to automatically wire up :py:class:`~hdmf.common.resources.HERD` with the configured termsets.
+# We will use this to find the termsets for our data.
+#
+# Additionally, :py:class:`~hdmf.term_set.TermSet` entries may have aliases. :py:class:`~hdmf.common.resources.HERD` 
+# takes advantage of these aliases under the hood. If your data uses an alias (e.g., "human" instead of "Homo sapiens"),
+# :py:func:`~hdmf.common.resources.HERD.add_ref_termset` uses
+# :py:meth:`~hdmf.term_set.TermSet.__getitem__` which automatically resolves the alias to its canonical term and
+# URI, ensuring consistent mapping across your files.
+#
+# NOTE: The following is just an example of what using get_configured_termsets would look like.
+# In this tutorial, our 'species' container has not been globally configured with termsets, so we expect an empty dict.
+
+configured_termsets = species.get_configured_termsets()
+for attribute_name, ts in configured_termsets.items():
+    herd.add_ref_termset(container=species, attribute=attribute_name, termset=ts)
 
 ###############################################################################
 # Write HERD
