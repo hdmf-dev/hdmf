@@ -1,11 +1,23 @@
 import glob
 import os
 from collections import namedtuple
+from enum import Enum
+import difflib
+
 from .utils import docval
 import warnings
 import numpy as np
 from .data_utils import append_data, extend_data
 from ruamel.yaml import YAML
+
+
+class SuggestionStatus(str, Enum):
+    EXACT_MATCH = "exact_match"
+    ALIAS_MATCH = "alias_match"
+    TYPO_MATCH = "typo_match"
+    TYPO_ALIAS_MATCH = "typo_alias_match"
+    URI_MATCH = "uri_match"
+    MEANING_MATCH = "meaning_match"
 
 
 class TermSet:
@@ -19,11 +31,8 @@ class TermSet:
     :ivar schemasheets_folder: The path to the folder containing the LinkML TSV files
     :ivar expanded_termset_path: The path to the schema with the expanded enumerations
     """
-    def __init__(self,
-                 term_schema_path: str=None,
-                 schemasheets_folder: str=None,
-                 dynamic: bool=False
-                 ):
+
+    def __init__(self, term_schema_path: str = None, schemasheets_folder: str = None, dynamic: bool = False):
         """
         :param term_schema_path: The path to the LinkML YAML enumeration schema
         :param schemasheets_folder: The path to the folder containing the LinkML TSV files
@@ -61,38 +70,56 @@ class TermSet:
         self.sources = self.view.schema.prefixes
 
     def __repr__(self):
+        enumeration = list(self.view.all_enums())[0]
+        perm_values_dict = self.view.all_enums()[enumeration].permissible_values
         terms = list(self.view_set.keys())
 
         re = "Schema Path: %s\n" % self.term_schema_path
-        re += "Sources: " + ", ".join(list(self.sources.keys()))+"\n"
+        re += "Sources: " + ", ".join(list(self.sources.keys())) + "\n"
         re += "Terms: \n"
+
+        def format_term(term):
+            aliases = perm_values_dict[term].aliases
+            if aliases:
+                return "   - %s (aliases: %s)\n" % (term, ", ".join(aliases))
+            return "   - %s\n" % term
+
         if len(terms) > 4:
-            re += "   - %s\n" % terms[0]
-            re += "   - %s\n" % terms[1]
-            re += "   - %s\n" % terms[2]
+            re += format_term(terms[0])
+            re += format_term(terms[1])
+            re += format_term(terms[2])
             re += "   ... ... \n"
-            re += "   - %s\n" % terms[-1]
+            re += format_term(terms[-1])
         else:
             for term in terms:
-                re += "   - %s\n" % term
+                re += format_term(term)
         re += "Number of terms: %s" % len(terms)
         return re
 
     def _repr_html_(self):
+        enumeration = list(self.view.all_enums())[0]
+        perm_values_dict = self.view.all_enums()[enumeration].permissible_values
         terms = list(self.view_set.keys())
 
         re = "<b>" + "Schema Path: " + "</b>" + self.term_schema_path + "<br>"
         re += "<b>" + "Sources: " + "</b>" + ", ".join(list(self.sources.keys())) + "<br>"
         re += "<b> Terms: </b>"
+
+        def format_term_html(term):
+            aliases = perm_values_dict[term].aliases
+            if aliases:
+                return "<li> %s <i>(aliases: %s)</i> </li>" % (term, ", ".join(aliases))
+            return "<li> %s </li>" % term
+
         if len(terms) > 4:
-            re += "<li> %s </li>" % terms[0]
-            re += "<li> %s </li>" % terms[1]
-            re += "<li> %s </li>" % terms[2]
+            re += format_term_html(terms[0])
+            re += format_term_html(terms[1])
+            re += format_term_html(terms[2])
             re += "... ..."
-            re += "<li> %s </li>" % terms[-1]
+            re += format_term_html(terms[-1])
         else:
             for term in terms:
-                re += "<li> %s </li>" % term
+                re += format_term_html(term)
         re += "<i> Number of terms:</i> %s" % len(terms)
         return re
 
@@ -102,32 +129,110 @@ class TermSet:
         """
         prefix_dict = self.view.schema.prefixes
         info_tuple = namedtuple("Term_Info", ["id", "description", "meaning"])
-        description = perm_values_dict[key]['description']
-        enum_meaning = perm_values_dict[key]['meaning']
+        description = perm_values_dict[key]["description"]
+        enum_meaning = perm_values_dict[key]["meaning"]
 
         # filter for prefixes
-        marker = ':'
+        marker = ":"
         prefix = enum_meaning.split(marker, 1)[0]
         id = enum_meaning.split(marker, 1)[1]
         prefix_obj = prefix_dict[prefix]
-        prefix_reference = prefix_obj['prefix_reference']
+        prefix_reference = prefix_obj["prefix_reference"]
 
         # combine prefix and prefix_reference to make full term uri
-        meaning = prefix_reference+id
+        meaning = prefix_reference + id
 
         return info_tuple(enum_meaning, description, meaning)
 
-    @docval({'name': 'term', 'type': str, 'doc': "term to be validated"})
+    @docval({"name": "term", "type": str, "doc": "term to be validated"})
     def validate(self, **kwargs):
         """
         Validate term in dataset towards a termset.
         """
-        term = kwargs['term']
+        term = kwargs["term"]
         try:
             self[term]
             return True
         except ValueError:
             return False
+
+    @docval({"name": "term", "type": str, "doc": "term to get a suggestion for"})
+    def suggest_term(self, **kwargs):
+        """
+        Suggest a canonical term for a user-provided string.
+
+        Returns
+        -------
+        tuple of (Term_Info, SuggestionStatus, str) or None
+            A tuple containing the suggested canonical term info, a machine-readable status,
+            and a human-readable reason for the suggestion. Returns ``None`` when no suggestion is available.
+        """
+        term = kwargs["term"]
+        if not isinstance(term, str):
+            return None
+
+        stripped = term.strip()
+        if stripped == "":
+            return None
+
+        view_set_keys = list(self.view_set.keys())
+
+        # Check for exact canonical match
+        if stripped in view_set_keys:
+            return self[stripped], SuggestionStatus.EXACT_MATCH, f"'{stripped}' is a known primary term"
+
+        enumeration = list(self.view.all_enums())[0]
+        perm_values_dict = self.view.all_enums()[enumeration].permissible_values
+
+        # Check for URI or MEANING/Prefix ID match
+        # term_info.meaning contains the full URI (prefix_reference + id)
+        # term_info.id contains the MEANING (e.g. prefix:id)
+        for key in view_set_keys:
+            term_info = self[key]
+            if stripped == term_info.meaning:
+                return term_info, SuggestionStatus.URI_MATCH, f"'{stripped}' matches the URI of known term '{key}'"
+            if stripped == term_info.id:
+                return (
+                    term_info,
+                    SuggestionStatus.MEANING_MATCH,
+                    f"'{stripped}' matches the meaning ID of known term '{key}'",
+                )
+
+        # Recognized alias
+        for key, val in perm_values_dict.items():
+            if val.aliases and stripped in val.aliases:
+                return self[key], SuggestionStatus.ALIAS_MATCH, f"'{stripped}' is a recognized alias for '{key}'"
+
+        # Likely typo of a known primary term
+        close_matches = difflib.get_close_matches(stripped, view_set_keys, n=1, cutoff=0.85)
+        if close_matches:
+            canonical_name = close_matches[0]
+            return (
+                self[canonical_name],
+                SuggestionStatus.TYPO_MATCH,
+                f"'{stripped}' closely matches the known term '{canonical_name}'",
+            )
+
+        # Likely typo of an alias
+        all_aliases = []
+        alias_to_primary = {}
+        for key, val in perm_values_dict.items():
+            if val.aliases:
+                for alias in val.aliases:
+                    all_aliases.append(alias)
+                    alias_to_primary[alias] = key
+
+        if all_aliases:
+            close_aliases = difflib.get_close_matches(stripped, all_aliases, n=1, cutoff=0.85)
+            if close_aliases:
+                canonical_name = alias_to_primary[close_aliases[0]]
+                return (
+                    self[canonical_name],
+                    SuggestionStatus.TYPO_ALIAS_MATCH,
+                    f"'{stripped}' closely matches the alias '{close_aliases[0]}' for known term '{canonical_name}'",
+                )
+
+        return None
 
     @property
     def view_set(self):
@@ -139,8 +244,9 @@ class TermSet:
         perm_values_dict = self.view.all_enums()[enumeration].permissible_values
         enum_dict = {}
         for perm_value_key in perm_values_dict.keys():
-            enum_dict[perm_value_key] = self.__perm_value_key_info(perm_values_dict=perm_values_dict,
-                                                                   key=perm_value_key)
+            enum_dict[perm_value_key] = self.__perm_value_key_info(
+                perm_values_dict=perm_values_dict, key=perm_value_key
+            )
 
         return enum_dict
 
@@ -156,8 +262,28 @@ class TermSet:
             return term_info
 
         except KeyError:
-            msg = 'Term not in schema'
+            for key, val in perm_values_dict.items():
+                if val.aliases and term in val.aliases:
+                    return self.__perm_value_key_info(perm_values_dict=perm_values_dict, key=key)
+            msg = "Term not in schema"
             raise ValueError(msg)
+
+    def get_primary_term(self, term):
+        """
+        Method to retrieve the primary term name for a given term (which may be an alias).
+        """
+        enumeration = list(self.view.all_enums())[0]
+        perm_values_dict = self.view.all_enums()[enumeration].permissible_values
+
+        if term in perm_values_dict:
+            return term
+
+        for key, val in perm_values_dict.items():
+            if val.aliases and term in val.aliases:
+                return key
+
+        msg = "Term not in schema"
+        raise ValueError(msg)
 
     def __schemasheets_convert(self):
         """
@@ -168,7 +294,7 @@ class TermSet:
         try:
             from linkml_runtime.utils.schema_as_dict import schema_as_dict
             from schemasheets.schemamaker import SchemaMaker
-        except ImportError as e:   # pragma: no cover
+        except ImportError as e:  # pragma: no cover
             msg = (
                 "There is an issue with importing schemasheets. Please make sure a compatible "
                 "version of schemascheets is installed."
@@ -182,7 +308,7 @@ class TermSet:
         schemasheet_schema_path = os.path.join(self.schemasheets_folder, f"{schema_dict['name']}.yaml")
 
         with open(schemasheet_schema_path, "w") as f:
-            yaml=YAML(typ='safe')
+            yaml = YAML(typ="safe")
             yaml.dump(schema_dict, f)
 
         return schemasheet_schema_path
@@ -199,7 +325,7 @@ class TermSet:
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=DeprecationWarning)
                 from oaklib.utilities.subsets.value_set_expander import ValueSetExpander
-        except ImportError:   # pragma: no cover
+        except ImportError:  # pragma: no cover
             msg = (
                 "There is an issue with importing oaklib. Please make sure a compatible "
                 "version of oaklib is installed."
@@ -215,24 +341,74 @@ class TermSet:
 
         return output_path
 
+
 class TermSetWrapper:
     """
     This class allows any HDF5 dataset or attribute to have a TermSet.
     """
-    @docval({'name': 'termset',
-             'type': TermSet,
-             'doc': 'The TermSet to be used.'},
-            {'name': 'value',
-             'type': (list, np.ndarray, dict, str, tuple),
-             'doc': 'The target item that is wrapped, either data or attribute.'},
-            {'name': 'field', 'type': str, 'default': None,
-             'doc': 'The field within a compound array.'}
-            )
+
+    @docval(
+        {"name": "termset", "type": TermSet, "doc": "The TermSet to be used."},
+        {
+            "name": "value",
+            "type": (list, np.ndarray, dict, str, tuple),
+            "doc": "The target item that is wrapped, either data or attribute.",
+        },
+        {"name": "field", "type": str, "default": None, "doc": "The field within a compound array."},
+    )
     def __init__(self, **kwargs):
-        self.__value = kwargs['value']
-        self.__termset = kwargs['termset']
-        self.__field = kwargs['field']
+        self.__value = kwargs["value"]
+        self.__termset = kwargs["termset"]
+        self.__field = kwargs["field"]
+        self.__value = self.__resolve_aliases(self.__value)
+
         self.__validate()
+
+    def __resolve_aliases(self, value):
+        if self.__field is not None:
+            if isinstance(value, dict):
+                value_copy = dict(value)
+                value_copy[self.__field] = self.__resolve_aliases_list(value[self.__field])
+                return value_copy
+            else:
+                # If it's a compound array or similar, we might need to handle it.
+                # Since the current code does `values = self.__value[self.__field]`,
+                # we assume we can just replace that field if possible.
+                # However, for numpy recarrays, modifying fields is different.
+                # To be safe and simple, let's just resolve items if it's a list/tuple/array.
+                if isinstance(value, np.ndarray):
+                    # It's a compound array
+                    value_copy = value.copy()
+                    for i in range(len(value_copy)):
+                        try:
+                            term = value_copy[self.__field][i]
+                            if isinstance(term, str):
+                                value_copy[self.__field][i] = self.__termset.get_primary_term(term)
+                        except ValueError:
+                            pass
+                    return value_copy
+                return value
+        else:
+            return self.__resolve_aliases_list(value)
+
+    def __resolve_aliases_list(self, values):
+        if isinstance(values, str):
+            try:
+                return self.__termset.get_primary_term(values)
+            except ValueError:
+                return values
+        elif isinstance(values, list):
+            return [self.__resolve_aliases_list(v) for v in values]
+        elif isinstance(values, tuple):
+            return tuple(self.__resolve_aliases_list(v) for v in values)
+        elif isinstance(values, np.ndarray):
+            if values.dtype.kind in {"U", "S", "O"}:  # string or object
+                resolved = []
+                for v in values:
+                    resolved.append(self.__resolve_aliases_list(v))
+                return np.array(resolved, dtype=values.dtype)
+            return values
+        return values
 
     def __validate(self):
         if self.__field is not None:
@@ -251,8 +427,8 @@ class TermSetWrapper:
             validation = self.__termset.validate(term=term)
             if not validation:
                 bad_values.append(term)
-        if len(bad_values)!=0:
-            msg = ('"%s" is not in the term set.' % ', '.join([str(value) for value in bad_values]))
+        if len(bad_values) != 0:
+            msg = '"%s" is not in the term set.' % ", ".join([str(value) for value in bad_values])
             raise ValueError(msg)
 
     @property
@@ -269,7 +445,7 @@ class TermSetWrapper:
 
     @property
     def dtype(self):
-        return self.__getattr__('dtype')
+        return self.__getattr__("dtype")
 
     def __getattr__(self, val):
         """
@@ -312,7 +488,7 @@ class TermSetWrapper:
         the wrapper.
         """
         if isinstance(arg, np.ndarray):
-            if self.__field is not None: # compound array
+            if self.__field is not None:  # compound array
                 values = arg[self.__field]
             else:
                 msg = "Array needs to be a structured array with compound dtype. If this does not apply, use extend."
@@ -322,8 +498,8 @@ class TermSetWrapper:
 
         bad_values = self.__multi_validation(values)
 
-        if len(bad_values)!=0:
-            msg = ('"%s" is not in the term set.' % ', '.join([str(value) for value in bad_values]))
+        if len(bad_values) != 0:
+            msg = '"%s" is not in the term set.' % ", ".join([str(value) for value in bad_values])
             raise ValueError(msg)
 
         self.__value = append_data(self.__value, arg)
@@ -334,7 +510,7 @@ class TermSetWrapper:
         the wrapper.
         """
         if isinstance(arg, np.ndarray):
-            if self.__field is not None: # compound array
+            if self.__field is not None:  # compound array
                 values = arg[self.__field]
             else:
                 values = arg
@@ -343,11 +519,12 @@ class TermSetWrapper:
 
         bad_data = self.__multi_validation(values)
 
-        if len(bad_data)==0:
+        if len(bad_data) == 0:
             self.__value = extend_data(self.__value, arg)
         else:
-            msg = ('"%s" is not in the term set.' % ', '.join([str(item) for item in bad_data]))
+            msg = '"%s" is not in the term set.' % ", ".join([str(item) for item in bad_data])
             raise ValueError(msg)
+
 
 class TypeConfigurator:
     """
@@ -355,7 +532,8 @@ class TypeConfigurator:
     When toggled on, every instance of a configuration file supported data type will be validated
     according to the corresponding TermSet.
     """
-    @docval({'name': 'paths', 'type': list, 'doc': 'Paths to configuration files.', 'default': None})
+
+    @docval({"name": "paths", "type": list, "doc": "Paths to configuration files.", "default": None})
     def __init__(self, **kwargs):
         self.config = None
         self.paths = []
@@ -363,56 +541,56 @@ class TypeConfigurator:
             for p in kwargs["paths"]:
                 self.load_type_config(p)
 
-    @docval({'name': 'data_type', 'type': str,
-             'doc': 'The desired data type within the configuration file.'},
-            {'name': 'namespace', 'type': str,
-             'doc': 'The namespace for the data type.'})
+    @docval(
+        {"name": "data_type", "type": str, "doc": "The desired data type within the configuration file."},
+        {"name": "namespace", "type": str, "doc": "The namespace for the data type."},
+    )
     def get_config(self, data_type, namespace):
         """
         Return the config for that data type in the given namespace.
         """
         try:
-            namespace_config = self.config['namespaces'][namespace]
+            namespace_config = self.config["namespaces"][namespace]
         except KeyError:
-            msg = 'The namespace %s was not found within the configuration.' % namespace
+            msg = "The namespace %s was not found within the configuration." % namespace
             raise ValueError(msg)
 
         try:
-            type_config = namespace_config['data_types'][data_type]
+            type_config = namespace_config["data_types"][data_type]
             return type_config
         except KeyError:
-            msg = '%s was not found within the configuration for that namespace.' % data_type
+            msg = "%s was not found within the configuration for that namespace." % data_type
             raise ValueError(msg)
 
-    @docval({'name': 'config_path', 'type': str, 'doc': 'Path to the configuration file.'})
+    @docval({"name": "config_path", "type": str, "doc": "Path to the configuration file."})
     def load_type_config(self, config_path):
         """
         Load the configuration file for validation on the fields defined for the objects within the file.
         """
-        with open(config_path, 'r') as config:
-            yaml = YAML(typ='safe')
+        with open(config_path, "r") as config:
+            yaml = YAML(typ="safe")
             termset_config = yaml.load(config)
-            if self.config is None: # set the initial config/load after config has been unloaded
+            if self.config is None:  # set the initial config/load after config has been unloaded
                 self.config = termset_config
-                if len(self.paths) == 0: # for loading after an unloaded config
+                if len(self.paths) == 0:  # for loading after an unloaded config
                     self.paths.append(config_path)
-            else: # append/replace to the existing config
+            else:  # append/replace to the existing config
                 if config_path in self.paths:
-                    msg = 'This configuration file path already exists within the configurator.'
+                    msg = "This configuration file path already exists within the configurator."
                     raise ValueError(msg)
                 else:
-                    for namespace in termset_config['namespaces']:
-                        if namespace not in self.config['namespaces']: # append namespace config if not present
-                            self.config['namespaces'][namespace] = termset_config['namespaces'][namespace]
-                        else: # check for any needed overrides within existing namespace configs
-                            for data_type in termset_config['namespaces'][namespace]['data_types']:
+                    for namespace in termset_config["namespaces"]:
+                        if namespace not in self.config["namespaces"]:  # append namespace config if not present
+                            self.config["namespaces"][namespace] = termset_config["namespaces"][namespace]
+                        else:  # check for any needed overrides within existing namespace configs
+                            for data_type in termset_config["namespaces"][namespace]["data_types"]:
                                 # NOTE: these two branches effectively do the same thing, but are split for clarity.
-                                if data_type in self.config['namespaces'][namespace]['data_types']:
-                                    replace_config = termset_config['namespaces'][namespace]['data_types'][data_type]
-                                    self.config['namespaces'][namespace]['data_types'][data_type] = replace_config
-                                else: # append to config
-                                    new_config = termset_config['namespaces'][namespace]['data_types'][data_type]
-                                    self.config['namespaces'][namespace]['data_types'][data_type] = new_config
+                                if data_type in self.config["namespaces"][namespace]["data_types"]:
+                                    replace_config = termset_config["namespaces"][namespace]["data_types"][data_type]
+                                    self.config["namespaces"][namespace]["data_types"][data_type] = replace_config
+                                else:  # append to config
+                                    new_config = termset_config["namespaces"][namespace]["data_types"][data_type]
+                                    self.config["namespaces"][namespace]["data_types"][data_type] = new_config
 
                     # append path to self.paths
                     self.paths.append(config_path)
