@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 6.2.1 (Upcoming)
+
+### Fixed
+- Fixed `HERD.to_dataframe` raising `ValueError: No objects to concatenate` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. A `HERD` is in this state before any reference is added, and also after `HERD.add_ref_termset` finds none of its terms in the `TermSet` and returns them all as `missing_terms`. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)
+
 ## HDMF 6.2.0 (August 19, 2026)
 
 ### Documentation and tutorial enhancements
