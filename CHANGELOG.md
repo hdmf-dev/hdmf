@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 6.3.0 (Upcoming)
+
+### Fixed
+- Fixed containers being silently written as a registered ancestor, with the fields their own type declares dropped, after a second class object is registered for the same `(namespace, data_type)`. `register_container_type` now removes only a `TypeSource` placeholder from the class-to-data-type map instead of any previous class, so containers built before a module re-import keep their type. @h-mayorquin [#1575](https://github.com/hdmf-dev/hdmf/pull/1575)
+
 ## HDMF 6.2.0 (August 19, 2026)
 
 ### Documentation and tutorial enhancements
