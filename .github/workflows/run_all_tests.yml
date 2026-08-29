@@ -129,6 +129,7 @@ jobs:
   run-ros3-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20  # backstop so a hang costs minutes rather than the 6 hour job limit
     defaults:
       run:
         shell: bash -l {0}  # necessary for conda
@@ -173,4 +174,4 @@ jobs:
 
       - name: Run ros3 tests  # TODO include gallery tests after they are written
         run: |
-          python -m pytest tests/unit/test_io_hdf5_streaming.py
+          python scripts/test_ros3.py tests/unit/test_io_hdf5_streaming.py
