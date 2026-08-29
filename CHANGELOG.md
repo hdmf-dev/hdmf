@@ -1,5 +1,10 @@
 # HDMF Changelog
 
+## HDMF 6.2.1 (Upcoming)
+
+### Changed
+- `HERD.add_ref_termset` works on a container/attribute wrapped in a `TermSetWrapper`. The bulk-add path (no `key` given) reads the terms off the wrapper, for both a sequence and a scalar value, and `termset` defaults to the wrapper's own `TermSet`, so a single wrapped field needs only `container` and `attribute`. `key` also accepts a list, tuple, or array of terms. @rly [#1568](https://github.com/hdmf-dev/hdmf/issues/1568) [#1569](https://github.com/hdmf-dev/hdmf/issues/1569)
+
 ## HDMF 6.2.0 (August 19, 2026)
 
 ### Documentation and tutorial enhancements
