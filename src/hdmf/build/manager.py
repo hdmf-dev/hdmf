@@ -830,10 +830,13 @@ class TypeMap:
         self.__ns_dt_to_container_cls.setdefault(namespace, dict())
         previous_cls = self.__ns_dt_to_container_cls[namespace].get(data_type)
         self.__ns_dt_to_container_cls[namespace][data_type] = container_cls
-        # Remove the previous reverse-map entry only if it belongs to this (namespace, data_type).
-        # A class can appear in multiple namespaces' forward maps (e.g. via include_namespace),
-        # so we must not remove an entry that belongs to a different namespace.
-        if previous_cls is not None and self.__container_cls_to_ns_dt.get(previous_cls) == (namespace, data_type):
+        # Remove the previous reverse-map entry only if it is a TypeSource placeholder for this
+        # (namespace, data_type). A real class is never removed: re-importing a module that defines a
+        # class with @register_class registers a second class object for the same data type, and
+        # containers built before that are still instances of the first one. Dropping its entry would
+        # send them up the MRO to a registered ancestor and write them as that ancestor.
+        previous_is_placeholder = isinstance(previous_cls, TypeSource)
+        if previous_is_placeholder and self.__container_cls_to_ns_dt.get(previous_cls) == (namespace, data_type):
             self.__container_cls_to_ns_dt.pop(previous_cls)
         # Only set the reverse map and class attributes on first registration. Base namespaces
         # are loaded before extensions (topological sort in NamespaceCatalog._order_deps), so
