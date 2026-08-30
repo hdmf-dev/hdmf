@@ -555,6 +555,83 @@ class TestHERD(TestCase):
         self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
 
     @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_key_sequence(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens', 'Mus musculus', 'Ursus arctos horribilis'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+        species.parent = em
+
+        er.add_ref_termset(
+                    container=species,
+                    attribute='Species_Data',
+                    key=['Homo sapiens', 'Mus musculus'],
+                    termset=terms
+                   )
+        # the third term of the column is not referenced, so the sequence selected a subset
+        self.assertEqual(er.keys.data, [('Homo sapiens',), ('Mus musculus',)])
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'),
+        ('NCBITaxon:10090',
+         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=10090')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_wrapped_attribute(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=TermSetWrapper(value=['Homo sapiens', 'Mus musculus'], termset=terms))
+        col1.parent = em
+
+        er.add_ref_termset(container=col1, attribute='data')
+        self.assertEqual(er.keys.data, [('Homo sapiens',), ('Mus musculus',)])
+        self.assertEqual(er.entities.data, [('NCBITaxon:9606',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=9606'),
+        ('NCBITaxon:10090',
+         'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=10090')])
+        self.assertEqual(er.objects.data, [(0, col1.object_id, 'VectorData', '', '')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_wrapped_scalar(self):
+        terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
+        er = HERD()
+        em = HERDManagerContainer()
+
+        col1 = VectorData(name='Species_Data',
+                          description=TermSetWrapper(value='Mus musculus', termset=terms),
+                          data=['Homo sapiens'])
+        col1.parent = em
+
+        er.add_ref_termset(container=col1, attribute='description')
+        self.assertEqual(er.keys.data, [('Mus musculus',)])
+        self.assertEqual(er.entities.data, [('NCBITaxon:10090',
+        'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=10090')])
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
+    def test_add_ref_termset_no_termset_error(self):
+        er = HERD()
+
+        col1 = VectorData(name='Species_Data',
+                          description='species from NCBI and Ensemble',
+                          data=['Homo sapiens'])
+
+        species = DynamicTable(name='species', description='My species', columns=[col1],)
+
+        with self.assertRaisesWith(ValueError,
+                                   "No TermSet was provided and the container/attribute is not wrapped in a "
+                                   "TermSetWrapper. Please provide a TermSet."):
+            er.add_ref_termset(container=species, attribute='Species_Data')
+
+    @unittest.skipIf(not LINKML_INSTALLED, "optional LinkML module is not installed")
     def test_add_ref_termset_missing_terms(self):
         terms = TermSet(term_schema_path='tests/unit/example_test_term_set.yaml')
         er = HERD()

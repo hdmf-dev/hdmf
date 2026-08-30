@@ -455,10 +455,12 @@ class HERD(Container):
              'doc': 'The attribute of the container for the external reference.', 'default': None},
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')},
-            {'name': 'key', 'type': (str, Key), 'default': None,
-             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
-            {'name': 'termset', 'type': TermSet,
-             'doc': 'The TermSet to be used if the container/attribute does not have one.'}
+            {'name': 'key', 'type': (str, Key, list, tuple, np.ndarray), 'default': None,
+             'doc': ('The name of the key or the Key object from the KeyTable for the key to add a resource for, '
+                     'or a sequence of them.')},
+            {'name': 'termset', 'type': TermSet, 'default': None,
+             'doc': ('The TermSet to be used. Defaults to the TermSet of the container/attribute when it is wrapped '
+                     'in a TermSetWrapper.')}
             )
     def add_ref_termset(self, **kwargs):
         """
@@ -474,16 +476,32 @@ class HERD(Container):
         field = kwargs['field']
         termset = kwargs['termset']
 
-        # if key is provided then add_ref proceeds as normal
-        if key is not None:
-            data = [key]
-        else:
-            # if the key is not provided, proceed to "bulk add"
+        data_object = None
+        if container is not None:
             if attribute is None:
                 data_object = container
             else:
                 data_object = getattr(container, attribute)
-            if isinstance(data_object, (Data, DataIO)):
+
+        if termset is None:
+            # a wrapped container/attribute carries the TermSet its data was validated against
+            if isinstance(data_object, TermSetWrapper):
+                termset = data_object.termset
+            else:
+                msg = ("No TermSet was provided and the container/attribute is not wrapped in a TermSetWrapper. "
+                       "Please provide a TermSet.")
+                raise ValueError(msg)
+
+        # if key is provided then add_ref proceeds as normal
+        if key is not None:
+            data = [key] if isinstance(key, (str, Key)) else key
+        else:
+            # if the key is not provided, proceed to "bulk add"
+            if isinstance(data_object, TermSetWrapper):
+                value = data_object.value
+                # a wrapped scalar becomes a one-element list for a simple iteration downstream
+                data = value if isinstance(value, (list, tuple, np.ndarray)) else [value]
+            elif isinstance(data_object, (Data, DataIO)):
                 data = data_object.data
             elif isinstance(data_object, (list, tuple, np.ndarray)):
                 data = data_object
