@@ -1513,6 +1513,9 @@ class HDF5IO(HDMFIO):
             The shape of the dataset.
         dtype : numpy.dtype or type
             The data type, used to determine bytes per element.
+        target_chunk_bytes : int, optional
+            Target chunk size in bytes. Default is 4 MB.
+        neurodata_type : str, optional
         target_chunk_bytes : int
             Target chunk size in bytes. Default is 4 MB.
         neurodata_type : str
@@ -1521,6 +1524,7 @@ class HDF5IO(HDMFIO):
 
         Returns
         -------
+        tuple or True
         tuple or bool
             The computed chunk shape, or ``True`` to fall back to h5py auto-chunking when a shape
             cannot be computed (unsupported dtype or zero-length trailing dimension).
