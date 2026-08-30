@@ -2,6 +2,9 @@
 
 ## HDMF 6.2.1 (Upcoming)
 
+### Fixed
+- Fixed `HERD.to_dataframe` raising `ValueError` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)
+
 ### Changed
 - Worked around the HDF5 ros3 shutdown deadlock on Windows ([HDFGroup/hdf5#6560](https://github.com/HDFGroup/hdf5/issues/6560)), which left the `windows-python3.14-ros3` job of the daily "Run all tests" workflow hanging for the full 6 hour GitHub Actions limit after its tests had passed. The ros3 tests run through `scripts/test_ros3.py`, which runs pytest as a child process and terminates it once it has reported an exit code without exiting, and the job carries a `timeout-minutes` backstop. @rly [#1571](https://github.com/hdmf-dev/hdmf/issues/1571)
 
