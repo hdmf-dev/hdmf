@@ -1,6 +1,9 @@
 # HDMF Changelog
 
-## HDMF 6.3.0 (Upcomping)
+## HDMF 6.2.1 (Upcoming)
+
+### Changed
+- Worked around the HDF5 ros3 shutdown deadlock on Windows ([HDFGroup/hdf5#6560](https://github.com/HDFGroup/hdf5/issues/6560)), which left the `windows-python3.14-ros3` job of the daily "Run all tests" workflow hanging for the full 6 hour GitHub Actions limit after its tests had passed. The ros3 tests run through `scripts/test_ros3.py`, which runs pytest as a child process and terminates it once it has reported an exit code without exiting, and the job carries a `timeout-minutes` backstop. @rly [#1571](https://github.com/hdmf-dev/hdmf/issues/1571)
 
 ### Enhancements
 - Added support for aliases in TermSet. Aliases can be used to look up terms in a TermSet using alternative names. @oruebel [#1565](https://github.com/hdmf-dev/hdmf/pull/1565)
