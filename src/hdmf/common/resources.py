@@ -881,12 +881,17 @@ class HERD(Container):
         Convert the data from the keys, resources, entities, objects, and object_keys tables
         to a single joint dataframe. I.e., here data is being denormalized, e.g., keys that
         are used across multiple entities or objects will duplicated across the corresponding
-        rows.
+        rows. A HERD that holds no references yields an empty DataFrame with the same columns and dtypes.
 
         Returns: :py:class:`~pandas.DataFrame` with all data merged into a single, flat, denormalized table.
 
         """
         use_categories = popargs('use_categories', kwargs)
+        column_labels = [('files', 'file_object_id'),
+                         ('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'files_idx'),
+                         ('objects', 'object_type'), ('objects', 'relative_path'), ('objects', 'field'),
+                         ('keys', 'keys_idx'), ('keys', 'key'),
+                         ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
         # Step 1: Combine the entities, keys, and entity_keys table
         ent_key_df = self.entity_keys.to_dataframe()
         entities_mapped_df = self.entities.to_dataframe().iloc[ent_key_df['entities_idx']].reset_index(drop=True)
@@ -905,38 +910,39 @@ class HERD(Container):
                                               axis=1,
                                               verify_integrity=False)
         # Step 3: merge the combined entities_df and object_keys_df DataFrames
-        result_df = pd.concat(
-            # Create for each row in the objects_keys table a DataFrame with all corresponding data from all tables
-            objs=[pd.merge(
-                    # Find all entities that correspond to the row i of the object_keys_table
-                    ent_key_df[ent_key_df['keys_idx'] == object_keys_df['keys_idx'].iloc[i]].reset_index(drop=True),
-                    # Get a DataFrame for row i of the objects_keys_table
-                    file_object_object_key_df.iloc[[i, ]],
-                    # Merge the entities and object_keys on the keys_idx column so that the values from the single
-                    # object_keys_table row are copied across all corresponding rows in the entities table
-                    on='keys_idx')
-                  for i in range(len(object_keys_df))],
-            # Concatenate the rows of the objs
-            axis=0,
-            verify_integrity=False)
-        # Step 4: Clean up the index and sort columns by table type and name
-        result_df.reset_index(inplace=True, drop=True)
-        # ADD files
-        file_id_col = []
-        files_df = self.files.to_dataframe()
-        for idx in result_df['files_idx']:
-            file_id_val = files_df.iloc[int(idx)]['file_object_id']
-            file_id_col.append(file_id_val)
+        if len(object_keys_df) == 0:
+            # A HERD with no object-key relationships has no rows to merge, so build the empty frame directly
+            result_df = pd.DataFrame(columns=[c[1] for c in column_labels])
+        else:
+            result_df = pd.concat(
+                # Create for each row in the objects_keys table a DataFrame with all corresponding data
+                # from all tables
+                objs=[pd.merge(
+                        # Find all entities that correspond to the row i of the object_keys_table
+                        ent_key_df[ent_key_df['keys_idx'] == object_keys_df['keys_idx'].iloc[i]]
+                        .reset_index(drop=True),
+                        # Get a DataFrame for row i of the objects_keys_table
+                        file_object_object_key_df.iloc[[i, ]],
+                        # Merge the entities and object_keys on the keys_idx column so that the values from the
+                        # single object_keys_table row are copied across all corresponding rows in the entities table
+                        on='keys_idx')
+                      for i in range(len(object_keys_df))],
+                # Concatenate the rows of the objs
+                axis=0,
+                verify_integrity=False)
+            # Step 4: Clean up the index and sort columns by table type and name
+            result_df.reset_index(inplace=True, drop=True)
+            # ADD files
+            file_id_col = []
+            files_df = self.files.to_dataframe()
+            for idx in result_df['files_idx']:
+                file_id_val = files_df.iloc[int(idx)]['file_object_id']
+                file_id_col.append(file_id_val)
 
-        result_df['file_object_id'] = file_id_col
-        column_labels = [('files', 'file_object_id'),
-                         ('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'files_idx'),
-                         ('objects', 'object_type'), ('objects', 'relative_path'), ('objects', 'field'),
-                         ('keys', 'keys_idx'), ('keys', 'key'),
-                         ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
-        # sort the columns based on our custom order
-        result_df = result_df.reindex(labels=[c[1] for c in column_labels],
-                                      axis=1)
+            result_df['file_object_id'] = file_id_col
+            # sort the columns based on our custom order
+            result_df = result_df.reindex(labels=[c[1] for c in column_labels],
+                                          axis=1)
         result_df = result_df.astype({'keys_idx': 'uint32',
                                       'objects_idx': 'uint32',
                                       'files_idx': 'uint32',
@@ -948,13 +954,11 @@ class HERD(Container):
         return result_df
 
     def __flattened_dataframe_or_none(self):
-        """Return the flattened ``to_dataframe()`` view, or None when there are no references.
+        """Return the flattened ``to_dataframe()`` view, or None when it cannot be built.
 
-        ``to_dataframe`` raises when the HERD holds no object-key relationships and may fail if the
-        backing file is closed. The repr methods use this helper so they never raise on display.
+        ``to_dataframe`` may fail if the backing file is closed. The repr methods use this helper so
+        they never raise on display.
         """
-        if len(self.object_keys) == 0:
-            return None
         try:
             return self.to_dataframe()
         except Exception:

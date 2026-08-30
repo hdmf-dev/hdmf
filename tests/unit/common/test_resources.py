@@ -131,9 +131,36 @@ class TestHERD(TestCase):
                                           'entities_idx': 'uint32'})
         pd.testing.assert_frame_equal(result_df, expected_df)
 
+    def populated_herd(self):
+        """Return a HERD holding a single reference."""
+        er = HERD()
+        file = HERDManagerContainer(name='file')
+        container = Container(name='Container')
+        container.parent = file
+        er.add_ref(container=container,
+                   key='Mus musculus',
+                   entity_id='NCBI:txid10090',
+                   entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        return er
+
+    def test_to_dataframe_empty(self):
+        # An empty HERD yields an empty frame whose columns match those of a populated one
+        populated_df = self.populated_herd().to_dataframe()
+        result_df = HERD().to_dataframe()
+        self.assertEqual(len(result_df), 0)
+        self.assertListEqual(list(result_df.columns), list(populated_df.columns))
+        for col in ('keys_idx', 'objects_idx', 'files_idx', 'entities_idx'):
+            self.assertEqual(result_df[col].dtype, populated_df[col].dtype)
+
+    def test_to_dataframe_empty_use_categories(self):
+        populated_df = self.populated_herd().to_dataframe(use_categories=True)
+        result_df = HERD().to_dataframe(use_categories=True)
+        self.assertEqual(len(result_df), 0)
+        self.assertListEqual(list(result_df.columns), list(populated_df.columns))
+
     def test_repr_empty(self):
         er = HERD()
-        # repr and HTML repr must not raise on an empty HERD (to_dataframe raises when empty)
+        # repr and HTML repr must not raise on an empty HERD
         self.assertIn('0 key(s)', repr(er))
         html = er._repr_html_()
         self.assertIn('No external resource references', html)
