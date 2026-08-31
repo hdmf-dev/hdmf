@@ -5,6 +5,15 @@
 ### Fixed
 - Fixed containers being silently written as a registered ancestor, with the fields their own type declares dropped, after a second class object is registered for the same `(namespace, data_type)`. `register_container_type` now removes only a `TypeSource` placeholder from the class-to-data-type map instead of any previous class, so containers built before a module re-import keep their type. @h-mayorquin [#1575](https://github.com/hdmf-dev/hdmf/pull/1575)
 
+## HDMF 6.2.1 (Upcoming)
+
+### Fixed
+- Fixed `HERD.to_dataframe` raising `ValueError` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)
+- Fixed the windows-python3.14-ros3 job failing on Windows by working around the HDF5 ros3 shutdown deadlock. @rly [#1572](https://github.com/hdmf-dev/hdmf/pull/1572)
+
+### Changed
+- `HERD.add_ref_termset` now works on a container/attribute wrapped in a `TermSetWrapper`. `key` now also accepts a list, tuple, or array of terms. @rly [#1570](https://github.com/hdmf-dev/hdmf/pull/1570)
+
 ## HDMF 6.2.0 (August 19, 2026)
 
 ### Documentation and tutorial enhancements
