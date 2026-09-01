@@ -1,6 +1,15 @@
 # HDMF Changelog
 
-## HDMF 6.2.0 (Upcoming)
+## HDMF 6.2.1 (Upcoming)
+
+### Fixed
+- Fixed `HERD.to_dataframe` raising `ValueError` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)
+- Fixed the windows-python3.14-ros3 job failing on Windows by working around the HDF5 ros3 shutdown deadlock. @rly [#1572](https://github.com/hdmf-dev/hdmf/pull/1572)
+
+### Changed
+- `HERD.add_ref_termset` now works on a container/attribute wrapped in a `TermSetWrapper`. `key` now also accepts a list, tuple, or array of terms. @rly [#1570](https://github.com/hdmf-dev/hdmf/pull/1570)
+
+## HDMF 6.2.0 (August 19, 2026)
 
 ### Enhancements
 - Refactored validator return type to `ValidationResult` to support upcoming validation warnings. @sejalpunwatkar [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
@@ -13,8 +22,11 @@
 - Added support for hdmf-common schema 1.10.0, which changes ``MeaningsTable.target`` from a link to an object-reference attribute (``dtype`` with ``reftype: object``, ``target_type: VectorData``). Files written with the hdmf-common 1.9.0 ``MeaningsTable`` (a link named "target") are still read correctly via a backwards-compatibility mapping in ``MeaningsTableMap``. There is no change in the read/write API; the change is limited to the representation on disk. @rly [#1525](https://github.com/hdmf-dev/hdmf/pull/1525)
 - ``DynamicTable.get_meanings_for_column`` (and the ``AlignedDynamicTable`` override) now returns ``None`` when the named column exists but has no ``MeaningsTable``, and raises ``KeyError`` only when the column itself does not exist. @rly [#1538](https://github.com/hdmf-dev/hdmf/pull/1538)
 - `HDMFIO.__del__` emits a `ResourceWarning` for an IO that was not closed instead of calling `close()`. Still-open IOs are flushed and closed by an `atexit` handler on the main thread. @rly [#1547](https://github.com/hdmf-dev/hdmf/pull/1547)
+- `DynamicTable.add_row` now warns at most once per column that the column has become ragged, on the row that makes it ragged, instead of on that row and every row after it. @h-mayorquin [#1561](https://github.com/hdmf-dev/hdmf/pull/1561)
 
 ### Fixed
+- Fixed issue #531 where invalid values were accepted for `GroupSpec.quantity` and `DatasetSpec.quantity`. Now only positive integers, string representations of positive integers, and '?', '*', and '+' are allowed. @jwbear [#1521](https://github.com/hdmf-dev/hdmf/pull/1521)
+- Fixed `DynamicTable.add_row` being quadratic in the number of rows when `check_ragged` is on, which is the default. Filling 16,000 rows into a one-column table drops from 22 s to 0.3 s. @h-mayorquin [#1561](https://github.com/hdmf-dev/hdmf/pull/1561)
 - Fixed a deadlock when exporting a Zarr file to HDF5 with `HDF5IO.export`. A zarr array is now read into memory before the HDF5 write (in `__list_fill__`/`__scalar_fill__`), so the read does not run while h5py's global lock is held. @rly [#1547](https://github.com/hdmf-dev/hdmf/pull/1547)
 - Fixed `IndexError` when selecting an empty region from an in-memory `DynamicTableRegion` (e.g. `table["region"][i]` for a ragged region row that references no target rows, or an empty slice), both when the target table's columns hold their data as numpy arrays and when the target table has ragged columns. @h-mayorquin [#1549](https://github.com/hdmf-dev/hdmf/pull/1549)
 - Fixed the Jupyter HTML representation (`_repr_html_`) rendering a scalar numpy `bool` or `int` attribute (e.g. `np.bool_`, `np.int64`, as read back from an HDF5 attribute) as an expandable "array" block reporting `Shape: ()`, while `float` and `str` scalars rendered inline. `_unwrap_scalar` now also unwraps numpy scalars (`np.generic`) so every scalar renders inline consistently. @h-mayorquin [#1546](https://github.com/hdmf-dev/hdmf/pull/1546)
@@ -45,7 +57,6 @@
 - Hardened the GitHub Actions CI: added least-privilege `permissions` blocks, pinned actions to commit SHAs (or immutable release tags), deduplicated the test setup into a composite action, passed untrusted inputs through environment variables, and added a zizmor security audit of the workflows. @rly [#1518](https://github.com/hdmf-dev/hdmf/pull/1518)
 
 ### Fixed
-- Fixed issue #531 where invalid values were accepted for `GroupSpec.quantity` and `DatasetSpec.quantity`. Now only positive integers, string representations of positive integers, and '?', '*', and '+' are allowed. @jwbear [#1521](https://github.com/hdmf-dev/hdmf/pull/1521)
 - Fixed iterative HDF5 writes (e.g. from a `DataChunkIterator`) storing data as `float32` when no explicit dtype was set on the builder. The data's own dtype is now used, so e.g. integer data is stored as integers rather than silently downcast, and an `H5pyDeprecationWarning` is no longer emitted. @rly [#1519](https://github.com/hdmf-dev/hdmf/pull/1519)
 - Removed the broken `str` (object_id) option from the `container` argument of `HERD.add_ref`, `HERD.add_ref_termset`, `HERD.get_key`, and `HERD.get_object_entities`; these methods now require an `AbstractContainer` and reject a string with a clear type error. @rly [#1514](https://github.com/hdmf-dev/hdmf/pull/1514)
 - Fixed `HERD.get_object_entities(attribute=...)` not finding references added with `HERD.add_ref(attribute=...)`, which raised `KeyError`/`TypeError` for non-DataType attributes. Both methods now resolve the attribute the same way. @rly [#1504](https://github.com/hdmf-dev/hdmf/pull/1504)
