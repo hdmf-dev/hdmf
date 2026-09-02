@@ -268,8 +268,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
         warning_msg = None
         # Numpy Array or Zarr array
         # NOTE: Numpy < 2.0 has only fixed-length strings.
-        # Numpy 2.0 introduces variable-length strings (dtype=np.dtypes.StringDType()).
-        # HDMF does not yet do any special handling of numpy arrays with variable-length strings.
+        # Numpy 2.0 introduces variable-length strings (dtype=np.dtypes.StringDType(), kind 'T').
+        # These are treated as utf8 and passed through uncoerced, like object arrays of strings.
         if is_zarr_array(value):
             if spec_dtype_type is _unicode:
                 # Zarr stores strings as objects, so we cannot convert to unicode dtype
@@ -288,7 +288,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 ret_dtype = ret.dtype.type
         elif isinstance(value, (np.ndarray, StrDataset)):
             if spec_dtype_type is _unicode:
-                if isinstance(value, StrDataset):
+                if isinstance(value, StrDataset) or value.dtype.kind == 'T':
                     ret = value
                 else:
                     ret = value.astype('U')
@@ -416,6 +416,9 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 elif np.issubdtype(value.dtype, np.dtype('O')):
                     # Only variable-length strings should ever appear as generic objects.
                     # Everything else should have a well-defined type
+                    ret_dtype = 'utf8'
+                elif value.dtype.kind == 'T':
+                    # numpy variable-length strings (StringDType)
                     ret_dtype = 'utf8'
                 else:
                     ret_dtype = value.dtype.type

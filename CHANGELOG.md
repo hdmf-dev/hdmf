@@ -5,6 +5,7 @@
 ### Fixed
 - Fixed `HERD.to_dataframe` raising `ValueError` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)
 - Fixed the windows-python3.14-ros3 job failing on Windows by working around the HDF5 ros3 shutdown deadlock. @rly [#1572](https://github.com/hdmf-dev/hdmf/pull/1572)
+- Fixed `ObjectMapper.convert_dtype` raising `TypeError` on a numpy variable-length string array (`np.dtypes.StringDType`, kind `T`) for a text spec, and inferring `str` instead of `utf8` for such an array when the spec has no dtype. These arrays are now treated as `utf8` and passed through uncoerced, like object arrays of strings. @h-mayorquin [#1576](https://github.com/hdmf-dev/hdmf/pull/1576)
 
 ### Changed
 - `HERD.add_ref_termset` now works on a container/attribute wrapped in a `TermSetWrapper`. `key` now also accepts a list, tuple, or array of terms. @rly [#1570](https://github.com/hdmf-dev/hdmf/pull/1570)
