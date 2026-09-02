@@ -14,6 +14,7 @@ jobs:
   run-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     defaults:
       run:
         shell: bash
@@ -44,9 +45,11 @@ jobs:
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python and tox
-        uses: ./.github/actions/setup-python-tox
+        uses: $/.github/actions/setup-python-tox
         with:
           python-version: ${{ matrix.python-ver }}
+          # the leg that uploads wheels feeds the "latest" pre-release, so it builds from a cold cache
+          pip-cache: ${{ matrix.upload-wheels && 'false' || 'true' }}
 
       - name: Run tox tests
         run: |
@@ -71,10 +74,12 @@ jobs:
         with:
           name: distributions
           path: dist
+          retention-days: 1  # the deploy-dev job consumes this within the same run
 
   run-gallery-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     defaults:
       run:
         shell: bash
@@ -98,7 +103,7 @@ jobs:
           fetch-depth: 0  # tags are required to determine the version
 
       - name: Set up Python and tox
-        uses: ./.github/actions/setup-python-tox
+        uses: $/.github/actions/setup-python-tox
         with:
           python-version: ${{ matrix.python-ver }}
 
@@ -111,6 +116,7 @@ jobs:
     needs: [run-tests, run-gallery-tests]
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
@@ -147,6 +153,7 @@ jobs:
   run-ros3-tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     defaults:
       run:
         shell: bash -l {0}  # necessary for conda

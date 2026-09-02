@@ -9,6 +9,9 @@
 ### Changed
 - `HERD.add_ref_termset` now works on a container/attribute wrapped in a `TermSetWrapper`. `key` now also accepts a list, tuple, or array of terms. @rly [#1570](https://github.com/hdmf-dev/hdmf/pull/1570)
 
+### Internal improvements
+- Tidied the GitHub Actions CI, following [NeurodataWithoutBorders/pynwb#2262](https://github.com/NeurodataWithoutBorders/pynwb/pull/2262): per-job timeouts, self-repository action references, pip caching off for published builds, a Codecov upload that no longer fails on pull requests from forks, and zizmor run through its own action so Dependabot keeps it current. @rly [#1577](https://github.com/hdmf-dev/hdmf/pull/1577)
+
 ## HDMF 6.2.0 (August 19, 2026)
 
 ### Documentation and tutorial enhancements

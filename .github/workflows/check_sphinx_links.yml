@@ -11,6 +11,7 @@ permissions:
 jobs:
   check-sphinx-links:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true

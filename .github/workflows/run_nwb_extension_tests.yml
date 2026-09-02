@@ -54,6 +54,7 @@ permissions:
 jobs:
   generate-extension-matrix:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
     steps:
@@ -87,6 +88,7 @@ jobs:
   run-nwb-extension-tests:
     needs: generate-extension-matrix
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     name: run-nwb-extension-tests - ${{ matrix.extension.name }}
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.extension.name }}
