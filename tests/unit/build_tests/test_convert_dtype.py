@@ -350,7 +350,6 @@ class TestConvertDtype(TestCase):
                 value = np.array(['a', 'bb'], dtype=np.dtypes.StringDType())
                 ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
                 self.assertIs(ret, value)
-                self.assertEqual(ret.dtype.kind, 'T')
                 self.assertEqual(ret_dtype, 'utf8')
 
     def test_ascii_spec(self):
@@ -490,7 +489,6 @@ class TestConvertDtype(TestCase):
         value = np.array(['aa', 'bb'], dtype=np.dtypes.StringDType())
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         self.assertIs(ret, value)
-        self.assertEqual(ret.dtype.kind, 'T')
         self.assertEqual(ret_dtype, 'utf8')
 
     def test_numeric_spec(self):

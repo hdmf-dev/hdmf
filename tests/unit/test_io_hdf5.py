@@ -1,5 +1,6 @@
 import json
 import os
+import unittest
 from numbers import Number
 
 import numpy as np
@@ -9,6 +10,8 @@ from hdmf.build import GroupBuilder, DatasetBuilder, LinkBuilder
 from hdmf.testing import TestCase
 from hdmf.utils import get_data_shape
 from tests.unit.helpers.utils import Foo, get_foo_buildmanager
+
+NUMPY_2 = int(np.__version__.split('.')[0]) >= 2
 
 
 class HDF5Encoder(json.JSONEncoder):
@@ -205,6 +208,28 @@ class TestHDF5Writer(GroupBuilderTestCase):
         f = self.check_fields()
         self.assertIsInstance(f.attrs['ref_attribute'], Reference)
         self.assertEqual(f['test_bucket/foo_holder/foo1'], f[f.attrs['ref_attribute']])
+
+    @unittest.skipIf(not NUMPY_2, "StringDType requires numpy 2.0+")
+    def test_write_attribute_stringdtype_array(self):
+        """Test that an attribute holding a numpy variable-length string array is written as text."""
+        value = np.array(['a', 'bb'], dtype=np.dtypes.StringDType())
+        self.builder.set_attribute('str_attribute', value)
+        with HDF5IO(self.path, manager=self.manager, mode='a') as writer:
+            writer.write_builder(self.builder)
+        f = self.check_fields()
+        self.assertEqual(list(f.attrs['str_attribute']), ['a', 'bb'])
+        f.close()
+
+    @unittest.skipIf(not NUMPY_2, "StringDType requires numpy 2.0+")
+    def test_write_attribute_stringdtype_scalar(self):
+        """Test that an attribute holding a numpy variable-length string scalar is written as text."""
+        value = np.array('a', dtype=np.dtypes.StringDType())
+        self.builder.set_attribute('str_attribute', value)
+        with HDF5IO(self.path, manager=self.manager, mode='a') as writer:
+            writer.write_builder(self.builder)
+        f = self.check_fields()
+        self.assertEqual(f.attrs['str_attribute'], 'a')
+        f.close()
 
     def test_write_context_manager(self):
         with HDF5IO(self.path, manager=self.manager, mode='a') as writer:
