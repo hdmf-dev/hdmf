@@ -5,6 +5,7 @@
 ### Fixed
 - Fixed `HERD.to_dataframe` raising `ValueError` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)
 - Fixed the windows-python3.14-ros3 job failing on Windows by working around the HDF5 ros3 shutdown deadlock. @rly [#1572](https://github.com/hdmf-dev/hdmf/pull/1572)
+- Fixed the tag filter on the "Run all tests" workflow, which was written as a regular expression and so matched no tag. The full test matrix now runs when a release tag is pushed. @rly [#1577](https://github.com/hdmf-dev/hdmf/pull/1577)
 
 ### Changed
 - `HERD.add_ref_termset` now works on a container/attribute wrapped in a `TermSetWrapper`. `key` now also accepts a list, tuple, or array of terms. @rly [#1570](https://github.com/hdmf-dev/hdmf/pull/1570)
