@@ -5,6 +5,9 @@
 !.vscode/extensions.json
 .history
 
+### Coding Agents ###
+.claude/
+
 ### HDMF ###
 
 # Auto-generated apidocs RST files
