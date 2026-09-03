@@ -5,9 +5,10 @@ from h5py import File
 from ruamel.yaml import YAML
 
 from hdmf.backends.hdf5 import HDF5IO
-from hdmf.common import Container, get_manager, get_hdf5io
+from hdmf.common import Container, get_manager, get_hdf5io, validate
 from hdmf.spec import NamespaceCatalog
 from hdmf.testing import TestCase, remove_test_file
+from hdmf.validate import ValidationResult
 
 from tests.unit.helpers.utils import get_temp_filepath
 
@@ -156,3 +157,23 @@ class TestGetHdf5IO(TestCase):
         manager = get_manager()
         with get_hdf5io(self.path, "w", manager=manager) as io:
             self.assertIs(io.manager, manager)
+
+
+class TestValidate(TestCase):
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        with HDF5IO(self.path, manager=get_manager(), mode='w') as io:
+            io.write(Container('dummy'))
+
+    def tearDown(self):
+        remove_test_file(self.path)
+
+    def test_validate_clean_file(self):
+        """Test that validating a file that matches the namespace reports no errors and no warnings."""
+        with HDF5IO(self.path, manager=get_manager(), mode='r') as io:
+            result = validate(io)
+        self.assertIsInstance(result, ValidationResult)
+        self.assertFalse(result)
+        self.assertEqual(result, [])
+        self.assertEqual(result.warnings, [])

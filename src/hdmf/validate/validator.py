@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 
 from .errors import Error, DtypeError, MissingError, MissingDataType, ShapeError, IllegalLinkError, IncorrectDataType
-from .errors import ExpectedArrayError, IncorrectQuantityError, ValidationResult
+from .errors import ExpectedArrayError, IncorrectQuantityError, ValidationWarning
 from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
@@ -249,6 +249,50 @@ def check_shape(expected, received):
     return ret
 
 
+class ValidationResult:
+    """The errors and warnings found by a validation run.
+
+    The result behaves like its list of errors for the purposes of iteration, indexing, ``len``,
+    truth testing, and equality against a list, so that a caller which handles only errors can
+    treat the result as the list of errors. Warnings are reached through the ``warnings`` attribute.
+
+    Attributes:
+        errors (list): The :py:class:`~hdmf.validate.errors.Error` objects found, which make the
+            data invalid.
+        warnings (list): The :py:class:`~hdmf.validate.errors.ValidationWarning` objects found,
+            which leave the data valid.
+    """
+
+    @docval({'name': 'errors', 'type': (list, tuple), 'doc': 'the validation errors found', 'default': None},
+            {'name': 'warnings', 'type': (list, tuple), 'doc': 'the validation warnings found', 'default': None})
+    def __init__(self, **kwargs):
+        errors, warnings = getargs('errors', 'warnings', kwargs)
+        self.errors = list(errors) if errors is not None else []
+        self.warnings = list(warnings) if warnings is not None else []
+
+    def __iter__(self):
+        return iter(self.errors)
+
+    def __len__(self):
+        return len(self.errors)
+
+    def __bool__(self):
+        return bool(self.errors)
+
+    def __getitem__(self, i):
+        return self.errors[i]
+
+    def __eq__(self, other):
+        if isinstance(other, ValidationResult):
+            return self.errors == other.errors and self.warnings == other.warnings
+        if isinstance(other, list):
+            return self.errors == other
+        return NotImplemented
+
+    def __repr__(self):
+        return "ValidationResult(errors=%r, warnings=%r)" % (self.errors, self.warnings)
+
+
 class ValidatorMap:
     """A class for keeping track of Validator objects for all data types in a namespace"""
 
@@ -325,7 +369,7 @@ class ValidatorMap:
             raise ValueError(msg)
 
     @docval({'name': 'builder', 'type': BaseBuilder, 'doc': 'the builder to validate'},
-            returns="A ValidationResult containing the errors and warnings found", rtype=ValidationResult)
+            returns="a ValidationResult containing the errors and warnings found", rtype=ValidationResult)
     def validate(self, **kwargs):
         """Validate a builder against a Spec
 
@@ -338,8 +382,10 @@ class ValidatorMap:
             msg = "builder must have data type defined with attribute '%s'" % self.__type_key
             raise ValueError(msg)
         validator = self.get_validator(dt)
-        errors_list = validator.validate(builder)
-        return ValidationResult(errors=errors_list, warnings=[])
+        issues = validator.validate(builder)
+        warnings = [issue for issue in issues if isinstance(issue, ValidationWarning)]
+        errors = [issue for issue in issues if not isinstance(issue, ValidationWarning)]
+        return ValidationResult(errors=errors, warnings=warnings)
 
 
 class Validator(metaclass=ABCMeta):

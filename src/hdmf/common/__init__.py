@@ -207,11 +207,10 @@ def get_manager(**kwargs):
          'doc': 'the namespace to validate against', 'default': CORE_NAMESPACE},
         {'name': 'experimental', 'type': bool,
          'doc': 'data type is an experimental data type', 'default': False},
-        returns="errors and warnings in the file", rtype=ValidationResult,
+        returns="the errors and warnings found in the file", rtype=ValidationResult,
         is_method=False)
 def validate(**kwargs):
     """Validate a file against a namespace."""
-
     io, namespace, experimental = getargs('io', 'namespace', 'experimental', kwargs)
     if experimental:
         namespace = EXP_NAMESPACE

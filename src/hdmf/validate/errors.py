@@ -4,6 +4,7 @@ from ..spec.spec import DtypeHelper
 from ..utils import docval, getargs
 
 __all__ = [
+    "ValidationIssue",
     "Error",
     "DtypeError",
     "MissingError",
@@ -14,15 +15,15 @@ __all__ = [
     "IncorrectDataType",
     "IncorrectQuantityError",
     "ValidationWarning",
-    "ValidationResult"
 ]
 
 
 class ValidationIssue:
+    """A single finding reported by the validator, identified by its name, reason, and location"""
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
-            {'name': 'reason', 'type': str, 'doc': 'the reason for the error'},
-            {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that the issue applies to'},
+            {'name': 'reason', 'type': str, 'doc': 'the reason for the issue'},
+            {'name': 'location', 'type': str, 'doc': 'the location of the issue', 'default': None})
     def __init__(self, **kwargs):
         self.__name = getargs('name', kwargs)
         self.__reason = getargs('reason', kwargs)
@@ -70,10 +71,10 @@ class ValidationIssue:
         return hash(self.__equatable_str())
 
     def __equatable_str(self):
-        """A string representation of the error which can be used to check for equality
+        """A string representation of the issue which can be used to check for equality
 
-        For a single error, name can end up being different depending on whether it is
-        generated from a base data type spec or from an inner type definition. These errors
+        For a single issue, name can end up being different depending on whether it is
+        generated from a base data type spec or from an inner type definition. These issues
         should still be considered equal because they are caused by the same problem.
 
         When a location is provided, we only consider the name of the field and drop the
@@ -88,35 +89,11 @@ class ValidationIssue:
 
 
 class Error(ValidationIssue):
-    """A validation error"""
-    pass
+    """A validation issue that makes the data invalid"""
 
 
 class ValidationWarning(ValidationIssue):
-    """A validation warning"""
-    pass
-
-
-class ValidationResult:
-
-    def __init__(self, errors = None, warnings = None):
-        self.errors = list(errors) if errors is not None else []
-        self.warnings = list(warnings) if warnings is not None else []
-
-    def __iter__(self):
-        return iter(self.errors)
-
-    def __len__(self):
-        return len(self.errors)
-
-    def __bool__(self):
-        return bool(self.errors)
-
-    def __getitem__(self, i):
-        return self.errors[i]
-
-    def __repr__(self):
-        return "ValidationResult(errors=%r, warnings=%r)" % (self.errors, self.warnings)
+    """A validation issue that is worth reporting but leaves the data valid"""
 
 
 class DtypeError(Error):

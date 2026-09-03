@@ -10,10 +10,10 @@ from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecN
                        LinkSpec, RefSpec, NamespaceCatalog, DtypeSpec)
 from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase, remove_test_file
-from hdmf.validate import ValidatorMap
+from hdmf.validate import ValidatorMap, ValidationResult, GroupValidator
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
                                   IncorrectQuantityError, IllegalLinkError, ShapeError, IncorrectDataType,
-                                  ValidationWarning, ValidationResult, Error)
+                                  ValidationWarning, Error)
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.utils import ZARR_INSTALLED, StrDataset
 
@@ -2045,51 +2045,95 @@ class TestISODateTimeTimezone(ValidatorTestBase):
                 self.assertIsInstance(result[0], Error)
 
 
-class TestValidationResultWrapper(TestCase):
-    """Unit tests for the ValidationResult container and ValidationWarning class.
+class TestValidationResult(ValidatorTestBase):
+    """Tests for the ValidationResult returned by ValidatorMap.validate.
 
-    These tests verify that the ValidationResult wrapper correctly isolates
-    warnings while maintaining perfect backward compatibility by ensuring that
-    magic methods (__len__, __bool__, __iter__, __getitem__) reflect the errors
-    list only.
+    The cases here follow how validation results are consumed:
+    - Testing the result for truth and iterating it
+    - Taking its length and indexing into it
+    - Accumulating results for several namespaces into one list with ``+=``
+    - Reading name, reason, and location off each item
+    - Comparing a clean result against ``[]``
     """
 
-    def test_validation_result_basic_behavior(self):
-        err = Error(name="TestError", reason="Critical issue", location="root")
-        warn = ValidationWarning(name="TestWarning", reason="Minor issue", location="root")
+    def getSpecs(self):
+        ret = GroupSpec('A test group specification with a data type',
+                        data_type_def='Bar',
+                        datasets=[DatasetSpec('an example dataset', 'int', name='data',
+                                              attributes=[AttributeSpec(
+                                                  'attr2', 'an example integer attribute', 'int')])],
+                        attributes=[AttributeSpec('attr1', 'an example string attribute', 'text')])
+        return (ret,)
 
-        result = ValidationResult(errors=[err], warnings=[warn])
-        self.assertEqual(result.errors, [err])
-        self.assertEqual(result.warnings, [warn])
-        self.assertEqual(len(result), 1)
-        self.assertTrue(bool(result))
-        self.assertEqual(result[0], err)
-        self.assertEqual(list(result), [err])
+    def valid_builder(self):
+        return GroupBuilder('my_bar',
+                            attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
+                            datasets=[DatasetBuilder('data', 100, attributes={'attr2': 10})])
 
-    def test_validation_result_empty_behavior(self):
-        empty_result = ValidationResult()
-        assert len(empty_result) == 0
-        assert bool(empty_result) is False
-        assert empty_result.warnings == []
+    def invalid_builder(self):
+        """A builder that is missing both the 'attr1' attribute and the 'data' dataset"""
+        return GroupBuilder('my_bar', attributes={'data_type': 'Bar'})
 
-    def test_validate_method_returns_empty_warnings(self):
-        """Test that the validate method returns a ValidationResult with empty warnings for clean data."""
+    def test_clean_result_is_falsy_and_equal_to_empty_list(self):
+        result = self.vmap.validate(self.valid_builder())
+        self.assertIsInstance(result, ValidationResult)
+        self.assertFalse(result)
+        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
+        self.assertEqual([], result)
+        self.assertEqual(result.warnings, [])
 
-        catalog = SpecCatalog()
-        catalog.register_spec(GroupSpec('A dummy spec', data_type_def='Dummy'), 'test.yaml')
-        namespace = SpecNamespace('test ns', 'test_ns', [{'source': 'test.yaml'}], version='0.1.0', catalog=catalog)
-        vmap = ValidatorMap(namespace)
+    def test_result_with_errors_is_truthy_and_equal_to_a_list_of_those_errors(self):
+        result = self.vmap.validate(self.invalid_builder())
+        self.assertTrue(result)
+        self.assertNotEqual(result, [])
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result, [MissingError(name='Bar/attr1', location='my_bar'),
+                                  MissingError(name='Bar/data', location='my_bar')])
 
-        builder = GroupBuilder('root', attributes={'data_type': 'Dummy'})
+    def test_result_supports_indexing_and_iteration(self):
+        result = self.vmap.validate(self.invalid_builder())
+        self.assertValidationError(result[0], MissingError, name='Bar/attr1')
+        self.assertValidationError(result[1], MissingError, name='Bar/data')
+        self.assertEqual([(issue.name, issue.reason, issue.location) for issue in result],
+                         [('Bar/attr1', 'argument missing', 'my_bar'),
+                          ('Bar/data', 'argument missing', 'my_bar')])
 
-        result = vmap.validate(builder)
+    def test_results_accumulate_into_a_list(self):
+        accumulated = []
+        accumulated += self.vmap.validate(self.invalid_builder())
+        accumulated += self.vmap.validate(self.valid_builder())
+        self.assertEqual([str(issue) for issue in accumulated],
+                         ['Bar/attr1 (my_bar): argument missing', 'Bar/data (my_bar): argument missing'])
 
-        assert isinstance(result, ValidationResult)
-        assert result.warnings == []
+    def test_warnings_are_reported_separately_from_errors(self):
+        error = Error(name='Bar/attr1', reason='argument missing', location='my_bar')
+        warning = ValidationWarning(name='Bar/attr9', reason='unrecognized attribute', location='my_bar')
+        validator = self.vmap.get_validator('Bar')
+        with mock.patch.object(validator, 'validate', return_value=[error, warning]):
+            result = self.vmap.validate(self.invalid_builder())
+        self.assertEqual(result.errors, [error])
+        self.assertEqual(result.warnings, [warning])
+
+    def test_a_result_with_only_warnings_is_falsy(self):
+        warning = ValidationWarning(name='Bar/attr9', reason='unrecognized attribute', location='my_bar')
+        validator = self.vmap.get_validator('Bar')
+        with mock.patch.object(validator, 'validate', return_value=[warning]):
+            result = self.vmap.validate(self.valid_builder())
+        self.assertFalse(result)
+        self.assertEqual(result, [])
+        self.assertEqual(result.warnings, [warning])
 
     def test_error_and_warning_with_same_attributes_are_not_equal(self):
         """Test that an Error and a ValidationWarning with the same name, reason, and location are not equal. """
-        err = Error(name="TestIssue", reason="Same issue", location="root")
-        warn = ValidationWarning(name="TestIssue", reason="Same issue", location="root")
+        error = Error(name="TestIssue", reason="Same issue", location="root")
+        warning = ValidationWarning(name="TestIssue", reason="Same issue", location="root")
 
-        self.assertNotEqual(err, warn)
+        self.assertNotEqual(error, warning)
+
+    def test_warning_survives_deduplication_against_a_matching_error(self):
+        """Test that GroupValidator dedup keeps a warning whose text matches that of an error."""
+        error = Error(name="TestIssue", reason="Same issue", location="root")
+        warning = ValidationWarning(name="TestIssue", reason="Same issue", location="root")
+
+        self.assertEqual(GroupValidator._remove_duplicates([error, warning]), [error, warning])

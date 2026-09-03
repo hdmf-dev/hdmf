@@ -8,11 +8,10 @@
 
 ### Changed
 - `HERD.add_ref_termset` now works on a container/attribute wrapped in a `TermSetWrapper`. `key` now also accepts a list, tuple, or array of terms. @rly [#1570](https://github.com/hdmf-dev/hdmf/pull/1570)
+- `ValidatorMap.validate` and `hdmf.common.validate` now return a `ValidationResult` instead of a list. `ValidationResult` carries an `errors` list and a `warnings` list, and it iterates, indexes, reports its `len`, tests for truth, and compares equal to a list as its `errors` list, so existing callers do not need to change. Added `ValidationWarning`, a validation issue that leaves the data valid, and `ValidationIssue`, the common base class of `Error` and `ValidationWarning`. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
+- Two validation issues are now equal only when they have the same class. Previously any two issues with the same name, reason, and location were equal, and an issue also compared equal to that string. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
 
 ## HDMF 6.2.0 (August 19, 2026)
-
-### Enhancements
-- Refactored validator return type to `ValidationResult` to support upcoming validation warnings. @sejalpunwatkar [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
 
 ### Documentation and tutorial enhancements
 - Expanded the "Read HERD" section of the external resources tutorial to show how to inspect a `HERD` after reading it back with `HERD.from_zip`, using `to_dataframe`, the individual interlinked tables, and `get_object_entities`. This addresses confusion about a read `HERD` appearing empty in its default Jupyter display. @rly [#1535](https://github.com/hdmf-dev/hdmf/pull/1535)
@@ -129,7 +128,6 @@
 - Moved `test`, `docs`, and `min-reqs` from `[project.optional-dependencies]` to `[dependency-groups]` (PEP 735). `min-reqs` was renamed to `test-min-deps`. @rly [#1395](https://github.com/hdmf-dev/hdmf/pull/1395)
 - Removed `test-min-deps` dependency group and replaced it with `uv pip install --resolution lowest-direct` in tox, making the project compatible with uv. @h-mayorquin [#1408](https://github.com/hdmf-dev/hdmf/pull/1408)
 - Changed `get_data_shape` to check `shape` before `maxshape`, so that objects with both attributes (e.g., h5py datasets) return their actual shape rather than their maximum shape. @rly [#1180](https://github.com/hdmf-dev/hdmf/pull/1180)
-
 
 ### Removed
 - Dropped support for Python 3.9. The minimum supported version is now Python 3.10. @rly [#xxx](https://github.com/hdmf-dev/hdmf/pull/xxx)
