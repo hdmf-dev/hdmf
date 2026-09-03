@@ -59,7 +59,7 @@ class ValidationIssue:
         return self.__str__()
 
     def __eq__(self, other):
-        return type(self) is type(other) and hash(self) == hash(other)
+        return type(self) is type(other) and self.__equatable_str() == other.__equatable_str()
 
     def __hash__(self):
         """Returns the hash value of this validation issue
