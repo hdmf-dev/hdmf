@@ -1,6 +1,6 @@
 # HDMF Changelog
 
-## HDMF 6.2.1 (Upcoming)
+## HDMF 6.3.0 (Upcoming)
 
 ### Fixed
 - Fixed `HERD.to_dataframe` raising `ValueError` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)
@@ -8,7 +8,7 @@
 
 ### Changed
 - `HERD.add_ref_termset` now works on a container/attribute wrapped in a `TermSetWrapper`. `key` now also accepts a list, tuple, or array of terms. @rly [#1570](https://github.com/hdmf-dev/hdmf/pull/1570)
-- `ValidatorMap.validate` and `hdmf.common.validate` now return a `ValidationResult` instead of a list. `ValidationResult` carries an `errors` list and a `warnings` list, and it iterates, indexes, reports its `len`, tests for truth, and compares equal to a list as its `errors` list, so existing callers do not need to change. Added `ValidationWarning`, a validation issue that leaves the data valid, and `ValidationIssue`, the common base class of `Error` and `ValidationWarning`. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
+- `ValidatorMap.validate` and `hdmf.common.validate` now return a `ValidationResult` instead of a list. `ValidationResult` carries an `errors` list and a `warnings` list, and it iterates, indexes, reports its `len`, tests for truth, and compares equal to a list as its `errors` list. Added `ValidationWarning`, a validation issue that leaves the data valid, and `ValidationIssue`, the common base class of `Error` and `ValidationWarning`. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
 - Two validation issues are now equal only when they have the same class. Previously any two issues with the same name, reason, and location were equal, and an issue also compared equal to that string. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
 
 ## HDMF 6.2.0 (August 19, 2026)
