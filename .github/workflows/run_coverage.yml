@@ -16,6 +16,7 @@ jobs:
   run-coverage:
     name: ${{ matrix.os }}, opt reqs ${{ matrix.opt_req }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     # TODO handle forks
     # run pipeline on either a push event or a PR event on a fork
     # if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
@@ -70,6 +71,9 @@ jobs:
           pytest --cov --cov-report=xml --cov-report=term
 
       - name: Upload coverage to Codecov
+        # CODECOV_TOKEN is not exposed to a pull request from a fork, so the upload is skipped
+        # there and the tests above still run.
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         # immutable release (see .github/zizmor.yml for the policy exception)
         uses: codecov/codecov-action@v7.0.0
         with:
@@ -81,6 +85,7 @@ jobs:
   run-ros3-coverage:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     defaults:
       run:
         shell: bash -l {0}  # necessary for conda
@@ -126,6 +131,9 @@ jobs:
           python -m pytest --cov --cov-report=xml --cov-report=term tests/unit/test_io_hdf5_streaming.py
 
       - name: Upload coverage to Codecov
+        # CODECOV_TOKEN is not exposed to a pull request from a fork, so the upload is skipped
+        # there and the tests above still run.
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         # immutable release (see .github/zizmor.yml for the policy exception)
         uses: codecov/codecov-action@v7.0.0
         with:

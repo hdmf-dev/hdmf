@@ -5,11 +5,16 @@
 ### Fixed
 - Fixed `HERD.to_dataframe` raising `ValueError` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)
 - Fixed the windows-python3.14-ros3 job failing on Windows by working around the HDF5 ros3 shutdown deadlock. @rly [#1572](https://github.com/hdmf-dev/hdmf/pull/1572)
+- Fixed the tag filter on the "Run all tests" workflow, which was written as a regular expression and so matched no tag. The full test matrix now runs when a release tag is pushed. @rly [#1577](https://github.com/hdmf-dev/hdmf/pull/1577)
 
 ### Changed
 - `HERD.add_ref_termset` now works on a container/attribute wrapped in a `TermSetWrapper`. `key` now also accepts a list, tuple, or array of terms. @rly [#1570](https://github.com/hdmf-dev/hdmf/pull/1570)
 - `ValidatorMap.validate` and `hdmf.common.validate` now return a `ValidationResult` instead of a list. `ValidationResult` carries an `errors` list and a `warnings` list, and it iterates, indexes, reports its `len`, tests for truth, and compares equal to a list as its `errors` list. Added `ValidationWarning`, a validation issue that leaves the data valid, and `ValidationIssue`, the common base class of `Error` and `ValidationWarning`. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
 - Two validation issues are now equal only when they have the same class. Previously any two issues with the same name, reason, and location were equal, and an issue also compared equal to that string. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
+
+### Internal improvements
+- Tidied the GitHub Actions CI, following [NeurodataWithoutBorders/pynwb#2262](https://github.com/NeurodataWithoutBorders/pynwb/pull/2262): per-job timeouts and concurrency groups, self-repository action references, pip caching off for published builds, a Codecov upload that no longer fails on pull requests from forks, and zizmor run through its own action so Dependabot keeps it current. @rly [#1577](https://github.com/hdmf-dev/hdmf/pull/1577)
+- Added a `twine check --strict` gate on the built distributions, with twine pinned to the version the PyPI publish action bundles, so a metadata problem fails CI rather than the release upload. @rly [#1577](https://github.com/hdmf-dev/hdmf/pull/1577)
 
 ## HDMF 6.2.0 (August 19, 2026)
 
