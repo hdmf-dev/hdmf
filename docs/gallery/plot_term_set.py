@@ -121,6 +121,45 @@ print(terms.view_set)
 terms['Homo sapiens']
 
 ######################################################
+# Using Aliases and get_configured_termsets
+# ----------------------------------------------------
+# :py:class:`~hdmf.term_set.TermSet` allows terms to define `aliases`. These aliases provide alternative strings
+# that map to the same exact term. You can test this using the :py:meth:`~hdmf.term_set.TermSet.suggest_term` method,
+# which returns the canonical term information, a machine-readable status, and a human-readable reason.
+term_info, status, reason = terms.suggest_term(term="human")
+print(f"Term: {term_info.id} matched 'human' with status {status}")
+
+# You can also retrieve the aliases for a given term directly from the TermSet lookup.
+# `TermSet.__getitem__` returns a `Term_Info` namedtuple which contains `id`, `description`, `meaning`, and `aliases`.
+print(f"Aliases for 'Homo sapiens': {terms['Homo sapiens'].aliases}")
+
+# In HDMF containers, you can inspect which fields are configured with TermSets
+# using the :py:meth:`~hdmf.container.AbstractContainer.get_configured_termsets` method.
+# For example, if ``VectorData`` had an attribute configured with a TermSet:
+# termsets = VectorData.get_configured_termsets()
+
+
+######################################################
+# Using Aliases and get_configured_termsets
+# ----------------------------------------------------
+# :py:class:`~hdmf.term_set.TermSet` allows terms to define `aliases`. These aliases provide alternative strings
+# that map to the same exact term. You can test this using the :py:meth:`~hdmf.term_set.TermSet.suggest_term` method,
+# which returns the canonical term information, a machine-readable status, and a human-readable reason.
+term_info, status, reason = terms.suggest_term(term="human")
+print(f"Term: {term_info.id} matched 'human' with status {status}")
+
+# You can also retrieve the aliases for a given term directly from the permissible values dict.
+enumeration = list(terms.view.all_enums())[0]
+perm_values_dict = terms.view.all_enums()[enumeration].permissible_values
+print(f"Aliases for 'Homo sapiens': {perm_values_dict['Homo sapiens'].aliases}")
+
+# In HDMF containers, you can inspect which fields are configured with TermSets
+# using the :py:meth:`~hdmf.container.AbstractContainer.get_configured_termsets` method.
+# For example, if ``VectorData`` had an attribute configured with a TermSet:
+# termsets = VectorData.get_configured_termsets()
+
+
+######################################################
 # Validate Data with TermSetWrapper
 # ----------------------------------------------------
 # :py:class:`~hdmf.term_set.TermSetWrapper` can be wrapped around data.
@@ -168,8 +207,8 @@ data = VectorData(
     data=TermSetWrapper(value=['Homo sapiens'], termset=terms)
     )
 
-data.append('Ursus arctos horribilis')
-data.extend(['Mus musculus', 'Myrmecophaga tridactyla'])
+data.append('Drosophila melanogaster')
+data.extend(['Mus musculus', 'Rattus norvegicus'])
 
 ######################################################
 # Validate Data in a DynamicTable
@@ -208,4 +247,4 @@ species.add_row(Species_1='Mus musculus', Species_2='Mus musculus')
 # method as if you were making a new instance of :py:class:`~hdmf.common.table.VectorData`.
 species.add_column(name='Species_3',
                    description='...',
-                   data=TermSetWrapper(value=['Ursus arctos horribilis', 'Mus musculus'], termset=terms),)
+                   data=TermSetWrapper(value=['Drosophila melanogaster', 'Mus musculus'], termset=terms),)

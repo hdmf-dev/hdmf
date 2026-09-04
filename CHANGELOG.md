@@ -11,6 +11,15 @@
 - `ValidatorMap.validate` and `hdmf.common.validate` now return a `ValidationResult` instead of a list. `ValidationResult` carries an `errors` list and a `warnings` list, and it iterates, indexes, reports its `len`, tests for truth, and compares equal to a list as its `errors` list. Added `ValidationWarning`, a validation issue that leaves the data valid, and `ValidationIssue`, the common base class of `Error` and `ValidationWarning`. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
 - Two validation issues are now equal only when they have the same class. Previously any two issues with the same name, reason, and location were equal, and an issue also compared equal to that string. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
 
+### Enhancements
+- Added support for aliases in TermSet. Aliases can be used to look up terms in a TermSet using alternative names. @oruebel [#1565](https://github.com/hdmf-dev/hdmf/pull/1565)
+- Added `TermSet.suggest_term` to suggest a close matching term for a given term and `TermSet.get_primary_term` to look up the corresponding primary term for an alias. @oruebel [#1565](https://github.com/hdmf-dev/hdmf/pull/1565)
+- Added `TypeMap.get_configured_termsets` and `AbstractContainer.get_configured_termsets` convenience methods to simplify retrieving configured TermSet's for a particular types and container instance. @oruebel [#1565](https://github.com/hdmf-dev/hdmf/pull/1565)
+
+### Documentation and tutorial enhancements
+- Updated the TermSet and External Resources tutorials to describe the use of aliases. @oruebel [#1565](https://github.com/hdmf-dev/hdmf/pull/1565)
+
+
 ## HDMF 6.2.0 (August 19, 2026)
 
 ### Documentation and tutorial enhancements
