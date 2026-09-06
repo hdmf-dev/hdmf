@@ -4,6 +4,7 @@ from ..spec.spec import DtypeHelper
 from ..utils import docval, getargs
 
 __all__ = [
+    "ValidationIssue",
     "Error",
     "DtypeError",
     "MissingError",
@@ -12,15 +13,17 @@ __all__ = [
     "MissingDataType",
     "IllegalLinkError",
     "IncorrectDataType",
-    "IncorrectQuantityError"
+    "IncorrectQuantityError",
+    "ValidationWarning",
 ]
 
 
-class Error:
+class ValidationIssue:
+    """A single finding reported by the validator, identified by its name, reason, and location"""
 
-    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that is erroneous'},
-            {'name': 'reason', 'type': str, 'doc': 'the reason for the error'},
-            {'name': 'location', 'type': str, 'doc': 'the location of the error', 'default': None})
+    @docval({'name': 'name', 'type': str, 'doc': 'the name of the component that the issue applies to'},
+            {'name': 'reason', 'type': str, 'doc': 'the reason for the issue'},
+            {'name': 'location', 'type': str, 'doc': 'the location of the issue', 'default': None})
     def __init__(self, **kwargs):
         self.__name = getargs('name', kwargs)
         self.__reason = getargs('reason', kwargs)
@@ -55,8 +58,11 @@ class Error:
     def __repr__(self):
         return self.__str__()
 
+    def __eq__(self, other):
+        return type(self) is type(other) and self.__equatable_str() == other.__equatable_str()
+
     def __hash__(self):
-        """Returns the hash value of this Error
+        """Returns the hash value of this validation issue
 
         Note: if the location property is set after creation, the hash value will
         change. Therefore, it is important to finalize the value of location
@@ -65,10 +71,10 @@ class Error:
         return hash(self.__equatable_str())
 
     def __equatable_str(self):
-        """A string representation of the error which can be used to check for equality
+        """A string representation of the issue which can be used to check for equality
 
-        For a single error, name can end up being different depending on whether it is
-        generated from a base data type spec or from an inner type definition. These errors
+        For a single issue, name can end up being different depending on whether it is
+        generated from a base data type spec or from an inner type definition. These issues
         should still be considered equal because they are caused by the same problem.
 
         When a location is provided, we only consider the name of the field and drop the
@@ -81,8 +87,13 @@ class Error:
             equatable_name = self.name
         return self.__format_str(equatable_name, self.location, self.reason)
 
-    def __eq__(self, other):
-        return hash(self) == hash(other)
+
+class Error(ValidationIssue):
+    """A validation issue that makes the data invalid"""
+
+
+class ValidationWarning(ValidationIssue):
+    """A validation issue that is worth reporting but leaves the data valid"""
 
 
 class DtypeError(Error):

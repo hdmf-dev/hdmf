@@ -455,10 +455,12 @@ class HERD(Container):
              'doc': 'The attribute of the container for the external reference.', 'default': None},
             {'name': 'field', 'type': str, 'default': '',
              'doc': ('The field of the compound data type using an external resource.')},
-            {'name': 'key', 'type': (str, Key), 'default': None,
-             'doc': 'The name of the key or the Key object from the KeyTable for the key to add a resource for.'},
-            {'name': 'termset', 'type': TermSet,
-             'doc': 'The TermSet to be used if the container/attribute does not have one.'}
+            {'name': 'key', 'type': (str, Key, list, tuple, np.ndarray), 'default': None,
+             'doc': ('The name of the key or the Key object from the KeyTable for the key to add a resource for, '
+                     'or a sequence of them.')},
+            {'name': 'termset', 'type': TermSet, 'default': None,
+             'doc': ('The TermSet to be used. Defaults to the TermSet of the container/attribute when it is wrapped '
+                     'in a TermSetWrapper.')}
             )
     def add_ref_termset(self, **kwargs):
         """
@@ -474,16 +476,32 @@ class HERD(Container):
         field = kwargs['field']
         termset = kwargs['termset']
 
-        # if key is provided then add_ref proceeds as normal
-        if key is not None:
-            data = [key]
-        else:
-            # if the key is not provided, proceed to "bulk add"
+        data_object = None
+        if container is not None:
             if attribute is None:
                 data_object = container
             else:
                 data_object = getattr(container, attribute)
-            if isinstance(data_object, (Data, DataIO)):
+
+        if termset is None:
+            # a wrapped container/attribute carries the TermSet its data was validated against
+            if isinstance(data_object, TermSetWrapper):
+                termset = data_object.termset
+            else:
+                msg = ("No TermSet was provided and the container/attribute is not wrapped in a TermSetWrapper. "
+                       "Please provide a TermSet.")
+                raise ValueError(msg)
+
+        # if key is provided then add_ref proceeds as normal
+        if key is not None:
+            data = [key] if isinstance(key, (str, Key)) else key
+        else:
+            # if the key is not provided, proceed to "bulk add"
+            if isinstance(data_object, TermSetWrapper):
+                value = data_object.value
+                # a wrapped scalar becomes a one-element list for a simple iteration downstream
+                data = value if isinstance(value, (list, tuple, np.ndarray)) else [value]
+            elif isinstance(data_object, (Data, DataIO)):
                 data = data_object.data
             elif isinstance(data_object, (list, tuple, np.ndarray)):
                 data = data_object
@@ -863,12 +881,17 @@ class HERD(Container):
         Convert the data from the keys, resources, entities, objects, and object_keys tables
         to a single joint dataframe. I.e., here data is being denormalized, e.g., keys that
         are used across multiple entities or objects will duplicated across the corresponding
-        rows.
+        rows. A HERD that holds no references yields an empty DataFrame with the same columns and dtypes.
 
         Returns: :py:class:`~pandas.DataFrame` with all data merged into a single, flat, denormalized table.
 
         """
         use_categories = popargs('use_categories', kwargs)
+        column_labels = [('files', 'file_object_id'),
+                         ('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'files_idx'),
+                         ('objects', 'object_type'), ('objects', 'relative_path'), ('objects', 'field'),
+                         ('keys', 'keys_idx'), ('keys', 'key'),
+                         ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
         # Step 1: Combine the entities, keys, and entity_keys table
         ent_key_df = self.entity_keys.to_dataframe()
         entities_mapped_df = self.entities.to_dataframe().iloc[ent_key_df['entities_idx']].reset_index(drop=True)
@@ -887,38 +910,39 @@ class HERD(Container):
                                               axis=1,
                                               verify_integrity=False)
         # Step 3: merge the combined entities_df and object_keys_df DataFrames
-        result_df = pd.concat(
-            # Create for each row in the objects_keys table a DataFrame with all corresponding data from all tables
-            objs=[pd.merge(
-                    # Find all entities that correspond to the row i of the object_keys_table
-                    ent_key_df[ent_key_df['keys_idx'] == object_keys_df['keys_idx'].iloc[i]].reset_index(drop=True),
-                    # Get a DataFrame for row i of the objects_keys_table
-                    file_object_object_key_df.iloc[[i, ]],
-                    # Merge the entities and object_keys on the keys_idx column so that the values from the single
-                    # object_keys_table row are copied across all corresponding rows in the entities table
-                    on='keys_idx')
-                  for i in range(len(object_keys_df))],
-            # Concatenate the rows of the objs
-            axis=0,
-            verify_integrity=False)
-        # Step 4: Clean up the index and sort columns by table type and name
-        result_df.reset_index(inplace=True, drop=True)
-        # ADD files
-        file_id_col = []
-        files_df = self.files.to_dataframe()
-        for idx in result_df['files_idx']:
-            file_id_val = files_df.iloc[int(idx)]['file_object_id']
-            file_id_col.append(file_id_val)
+        if len(object_keys_df) == 0:
+            # A HERD with no object-key relationships has no rows to merge, so build the empty frame directly
+            result_df = pd.DataFrame(columns=[c[1] for c in column_labels])
+        else:
+            result_df = pd.concat(
+                # Create for each row in the objects_keys table a DataFrame with all corresponding data
+                # from all tables
+                objs=[pd.merge(
+                        # Find all entities that correspond to the row i of the object_keys_table
+                        ent_key_df[ent_key_df['keys_idx'] == object_keys_df['keys_idx'].iloc[i]]
+                        .reset_index(drop=True),
+                        # Get a DataFrame for row i of the objects_keys_table
+                        file_object_object_key_df.iloc[[i, ]],
+                        # Merge the entities and object_keys on the keys_idx column so that the values from the
+                        # single object_keys_table row are copied across all corresponding rows in the entities table
+                        on='keys_idx')
+                      for i in range(len(object_keys_df))],
+                # Concatenate the rows of the objs
+                axis=0,
+                verify_integrity=False)
+            # Step 4: Clean up the index and sort columns by table type and name
+            result_df.reset_index(inplace=True, drop=True)
+            # ADD files
+            file_id_col = []
+            files_df = self.files.to_dataframe()
+            for idx in result_df['files_idx']:
+                file_id_val = files_df.iloc[int(idx)]['file_object_id']
+                file_id_col.append(file_id_val)
 
-        result_df['file_object_id'] = file_id_col
-        column_labels = [('files', 'file_object_id'),
-                         ('objects', 'objects_idx'), ('objects', 'object_id'), ('objects', 'files_idx'),
-                         ('objects', 'object_type'), ('objects', 'relative_path'), ('objects', 'field'),
-                         ('keys', 'keys_idx'), ('keys', 'key'),
-                         ('entities', 'entities_idx'), ('entities', 'entity_id'), ('entities', 'entity_uri')]
-        # sort the columns based on our custom order
-        result_df = result_df.reindex(labels=[c[1] for c in column_labels],
-                                      axis=1)
+            result_df['file_object_id'] = file_id_col
+            # sort the columns based on our custom order
+            result_df = result_df.reindex(labels=[c[1] for c in column_labels],
+                                          axis=1)
         result_df = result_df.astype({'keys_idx': 'uint32',
                                       'objects_idx': 'uint32',
                                       'files_idx': 'uint32',
@@ -930,13 +954,11 @@ class HERD(Container):
         return result_df
 
     def __flattened_dataframe_or_none(self):
-        """Return the flattened ``to_dataframe()`` view, or None when there are no references.
+        """Return the flattened ``to_dataframe()`` view, or None when it cannot be built.
 
-        ``to_dataframe`` raises when the HERD holds no object-key relationships and may fail if the
-        backing file is closed. The repr methods use this helper so they never raise on display.
+        ``to_dataframe`` may fail if the backing file is closed. The repr methods use this helper so
+        they never raise on display.
         """
-        if len(self.object_keys) == 0:
-            return None
         try:
             return self.to_dataframe()
         except Exception:
