@@ -300,11 +300,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
                     # produces a space-separated form.
                     flat = np.array([_isoformat(v) for v in value.ravel()], dtype='S')
                     ret = flat.reshape(value.shape)
+                elif value.dtype.kind == 'T':
+                    ret = np.char.encode(value, 'ascii')
                 else:
                     ret = value.astype('S')
                 ret_dtype = "ascii"
             elif spec_dtype_type is _ascii:
-                ret = value.astype('S')
+                if value.dtype.kind == 'T':
+                    ret = np.char.encode(value, 'ascii')
+                else:
+                    ret = value.astype('S')
                 ret_dtype = "ascii"
             else:
                 dtype_func, warning_msg = cls.__resolve_numeric_dtype(value.dtype, spec_dtype_type)
