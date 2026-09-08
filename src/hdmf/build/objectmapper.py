@@ -724,7 +724,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
             # NOTE: if a user passes a h5py.Dataset that is not wrapped with a hdmf.utils.StrDataset,
             # then this conversion may not be correct. Users should unpack their string h5py.Datasets
             # into a numpy array (or wrap them in StrDataset) before passing them to a container object.
-            if hasattr(value, '__iter__') and not isinstance(value, (str, bytes)):
+            if (hasattr(value, '__iter__') or is_array_like(value)) and not isinstance(value, (str, bytes)):
                 return [__apply_string_type(item, string_type) for item in value]
             else:
                 return string_type(value)
