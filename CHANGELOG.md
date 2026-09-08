@@ -5,6 +5,7 @@
 ### Fixed
 - Fixed `HERD.to_dataframe` raising `ValueError` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)
 - Fixed the windows-python3.14-ros3 job failing on Windows by working around the HDF5 ros3 shutdown deadlock. @rly [#1572](https://github.com/hdmf-dev/hdmf/pull/1572)
+- Fixed  `ObjectMapper.__apply_string_type` to allow for Zarr V3 array-like objects. @oruebel [#1580](https://github.com/hdmf-dev/hdmf/pull/1580)
 
 ### Changed
 - `HERD.add_ref_termset` now works on a container/attribute wrapped in a `TermSetWrapper`. `key` now also accepts a list, tuple, or array of terms. @rly [#1570](https://github.com/hdmf-dev/hdmf/pull/1570)
