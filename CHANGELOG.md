@@ -6,6 +6,7 @@
 - Fixed `HERD.to_dataframe` raising `ValueError` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)
 - Fixed the windows-python3.14-ros3 job failing on Windows by working around the HDF5 ros3 shutdown deadlock. @rly [#1572](https://github.com/hdmf-dev/hdmf/pull/1572)
 - Fixed  `ObjectMapper.__apply_string_type` to allow for Zarr V3 array-like objects. @oruebel [#1580](https://github.com/hdmf-dev/hdmf/pull/1580)
+- Fixed reading an `EnumData` from a zarr v3 store raising `ConstructError` with `unhashable type: 'numpy.ndarray'`. `_map_elements` indexed the elements dataset one item at a time and used each item as a dict key, and zarr v3 returns a 0-d array for a single index instead of a scalar. The elements are now read in one slice and iterated in memory. @h-mayorquin [#1581](https://github.com/hdmf-dev/hdmf/pull/1581)
 
 ### Changed
 - `HERD.add_ref_termset` now works on a container/attribute wrapped in a `TermSetWrapper`. `key` now also accepts a list, tuple, or array of terms. @rly [#1570](https://github.com/hdmf-dev/hdmf/pull/1570)
