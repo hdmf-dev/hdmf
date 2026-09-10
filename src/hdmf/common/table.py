@@ -1835,7 +1835,7 @@ def _uint_precision(elements):
 
 def _map_elements(uint, elements):
     """ Map CV terms to their uint index """
-    return {t[1]: uint(t[0]) for t in enumerate(elements)}
+    return {element: uint(index) for index, element in enumerate(elements[:])}
 
 
 @register_class('EnumData', EXP_NAMESPACE)
