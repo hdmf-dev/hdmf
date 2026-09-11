@@ -914,7 +914,9 @@ class HDF5IO(HDMFIO):
                 else:
                     self.logger.debug("Setting %s '%s' attribute '%s' to %s"
                                       % (obj.__class__.__name__, obj.name, key, value.__class__.__name__))
-                    if isinstance(value, np.ndarray) and value.dtype.kind == 'U':
+                    # kind 'U' is a fixed-length string, kind 'T' a numpy variable-length string
+                    # (np.dtypes.StringDType). h5py writes strings through its own vlen str dtype.
+                    if isinstance(value, np.ndarray) and value.dtype.kind in ('U', 'T'):
                         value = np.array(value, dtype=H5_TEXT)
                     obj.attrs[key] = value  # a regular scalar
             except Exception as e:

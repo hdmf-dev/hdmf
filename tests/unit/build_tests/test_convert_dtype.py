@@ -11,6 +11,7 @@ from hdmf.testing import TestCase
 from hdmf.utils import ZARR_INSTALLED, StrDataset
 
 H5PY_3 = h5py.__version__.startswith('3')
+NUMPY_2 = int(np.__version__.split('.')[0]) >= 2
 
 class TestConvertDtype(TestCase):
 
@@ -338,6 +339,19 @@ class TestConvertDtype(TestCase):
                     self.assertIs(ret, value)
                     self.assertEqual(ret_dtype, 'utf8')
 
+    @unittest.skipIf(not NUMPY_2, "StringDType requires numpy 2.0+")
+    def test_text_spec_stringdtype(self):
+        """Test that a numpy variable-length string array for a text spec passes through as utf8."""
+        text_spec_types = ['text', 'utf', 'utf8', 'utf-8']
+        for spec_type in text_spec_types:
+            with self.subTest(spec_type=spec_type):
+                spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+                value = np.array(['a', 'bb'], dtype=np.dtypes.StringDType())
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
+                self.assertIs(ret, value)
+                self.assertEqual(ret_dtype, 'utf8')
+
     def test_ascii_spec(self):
         ascii_spec_types = ['ascii', 'bytes']
         for spec_type in ascii_spec_types:
@@ -391,6 +405,23 @@ class TestConvertDtype(TestCase):
                 ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)  # no conversion
                 self.assertIs(ret, value)
                 self.assertEqual(ret_dtype, 'ascii')
+
+    @unittest.skipIf(not NUMPY_2, "StringDType requires numpy 2.0+")
+    def test_ascii_spec_stringdtype(self):
+        """Test that a numpy variable-length string array for an ascii spec is encoded to bytes."""
+        ascii_spec_types = ['ascii', 'bytes']
+        for spec_type in ascii_spec_types:
+            with self.subTest(spec_type=spec_type):
+                spec = DatasetSpec('an example dataset', spec_type, name='data')
+
+                value = np.array(['a', 'b'], dtype=np.dtypes.StringDType())
+                ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+                np.testing.assert_array_equal(ret, np.array(['a', 'b'], dtype='S1'))
+                self.assertEqual(ret_dtype, 'ascii')
+
+                value = np.array(['caf\u00e9'], dtype=np.dtypes.StringDType())
+                with self.assertRaises(UnicodeEncodeError):
+                    ObjectMapper.convert_dtype(spec, value)
 
     def test_no_spec(self):
         spec_type = None
@@ -466,6 +497,16 @@ class TestConvertDtype(TestCase):
         msg = "Cannot infer dtype of empty list or tuple. Please use numpy array with specified dtype."
         with self.assertRaisesWith(ValueError, msg):
             ObjectMapper.convert_dtype(spec, value)
+
+    @unittest.skipIf(not NUMPY_2, "StringDType requires numpy 2.0+")
+    def test_no_spec_stringdtype(self):
+        """Test that the dtype of a numpy variable-length string array is inferred as utf8."""
+        spec = DatasetSpec('an example dataset', None, name='data')
+
+        value = np.array(['aa', 'bb'], dtype=np.dtypes.StringDType())
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertIs(ret, value)
+        self.assertEqual(ret_dtype, 'utf8')
 
     def test_numeric_spec(self):
         spec_type = 'numeric'
@@ -592,6 +633,15 @@ class TestConvertDtype(TestCase):
         """ndarray of pre-formatted ISO strings takes the non-object astype('S') branch."""
         spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
         value = np.array(['2020-11-10T00:00:00', '2020-11-11T00:00:00'])
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
+        self.assertEqual(list(ret), [b'2020-11-10T00:00:00', b'2020-11-11T00:00:00'])
+        self.assertEqual(ret_dtype, 'ascii')
+
+    @unittest.skipIf(not NUMPY_2, "StringDType requires numpy 2.0+")
+    def test_isodatetime_spec_ndarray_stringdtype(self):
+        """ndarray of ISO strings with StringDType takes the np.char.encode branch."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        value = np.array(['2020-11-10T00:00:00', '2020-11-11T00:00:00'], dtype=np.dtypes.StringDType())
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         self.assertEqual(list(ret), [b'2020-11-10T00:00:00', b'2020-11-11T00:00:00'])
         self.assertEqual(ret_dtype, 'ascii')

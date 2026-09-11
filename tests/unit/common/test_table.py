@@ -40,6 +40,8 @@ try:
 except ImportError:
     REQUIREMENTS_INSTALLED = False
 
+NUMPY_2 = int(np.__version__.split('.')[0]) >= 2
+
 
 class TestDynamicTable(TestCase):
 
@@ -1392,6 +1394,17 @@ class TestEmptyDynamicTableRoundTrip(H5RoundTripMixin, TestCase):
 
     def setUpContainer(self):
         table = DynamicTable(name='table0', description='an example table')
+        return table
+
+
+@unittest.skipIf(not NUMPY_2, "StringDType requires numpy 2.0+")
+class TestStringDTypeColumnRoundTrip(H5RoundTripMixin, TestCase):
+    """Test roundtripping a DynamicTable with a column of numpy variable-length strings (StringDType)."""
+
+    def setUpContainer(self):
+        table = DynamicTable(name='table0', description='an example table', id=[0, 1, 2])
+        data = np.array(['cat', 'dog', 'café'], dtype=np.dtypes.StringDType())
+        table.add_column(name='baz', description='a string column', data=data)
         return table
 
 

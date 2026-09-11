@@ -11,6 +11,7 @@ from hdmf.spec import (GroupSpec, AttributeSpec, DatasetSpec, SpecCatalog, SpecN
 from hdmf.spec.spec import ONE_OR_MANY, ZERO_OR_MANY, ZERO_OR_ONE
 from hdmf.testing import TestCase, remove_test_file
 from hdmf.validate import ValidatorMap, ValidationResult, GroupValidator
+from hdmf.validate.validator import get_type
 from hdmf.validate.errors import (DtypeError, MissingError, ExpectedArrayError, MissingDataType,
                                   IncorrectQuantityError, IllegalLinkError, ShapeError, IncorrectDataType,
                                   ValidationWarning, Error)
@@ -18,6 +19,9 @@ from hdmf.backends.hdf5 import HDF5IO
 from hdmf.utils import ZARR_INSTALLED, StrDataset
 
 CORE_NAMESPACE = 'test_core'
+# reading a dataset as a numpy variable-length string array needs numpy 2.0+ and h5py 3.14+
+STRINGDTYPE_READ = (int(np.__version__.split('.')[0]) >= 2
+                    and tuple(int(p) for p in h5py.__version__.split('.')[:2]) >= (3, 14))
 
 
 class ValidatorTestBase(TestCase, metaclass=ABCMeta):
@@ -1764,6 +1768,17 @@ class TestVlenStringData(ValidatorTestBase):
         self.assertEqual(len(results), 1)
         self.assertIsInstance(results[0], DtypeError)
         self.assertEqual("Foo/data (my_foo/data): incorrect type - expected 'bytes', got 'utf'", str(results[0]))
+
+    @skipIf(not STRINGDTYPE_READ, "Reading a dataset as StringDType requires numpy 2.0+ and h5py 3.14+")
+    def test_stringdtype_array_utf(self):
+        """Test that the dtype of a lazy dataset holding numpy variable-length strings is detected as 'utf'.
+
+        A zarr v3 array of strings reports this dtype, as does an h5py dataset viewed with astype.
+        """
+        f = h5py.File(name='test_stringdtype_validation.h5', mode='w', driver='core', backing_store=False)
+        dset = f.create_dataset('data', data=['string1', 'string2', 'string3']).astype(np.dtypes.StringDType())
+        self.assertEqual(dset.dtype.kind, 'T')
+        self.assertEqual(get_type(dset), ('utf', None))
 
     def test_dataset_reference_type_validation_hierarchy_success(self):
         """Test that subtype references are accepted via type hierarchy."""
