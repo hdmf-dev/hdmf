@@ -7,6 +7,7 @@
 - Fixed the windows-python3.14-ros3 job failing on Windows by working around the HDF5 ros3 shutdown deadlock. @rly [#1572](https://github.com/hdmf-dev/hdmf/pull/1572)
 - Fixed `ObjectMapper.__apply_string_type` to support zarr v3 arrays and other array-like objects that lack `__iter__`, and to convert rank-0 arrays as scalars. This affects `text` and `isodatetime` specs that declare a shape or dims. @oruebel [#1580](https://github.com/hdmf-dev/hdmf/pull/1580)
 - Fixed reading an `EnumData` from a zarr v3 store raising `ConstructError` with `unhashable type: 'numpy.ndarray'`. `_map_elements` indexed the elements dataset one item at a time and used each item as a dict key, and zarr v3 returns a 0-d array for a single index instead of a scalar. The elements are now read in one slice and iterated in memory. @h-mayorquin [#1581](https://github.com/hdmf-dev/hdmf/pull/1581)
+- Fixed numpy variable-length string arrays (`np.dtypes.StringDType`, numpy 2.0+) raising an error when written to a dataset or attribute, and failing validation when read from a store that returns them, such as zarr v3. @h-mayorquin @rly [#1576](https://github.com/hdmf-dev/hdmf/pull/1576)
 
 ### Changed
 - `HERD.add_ref_termset` now works on a container/attribute wrapped in a `TermSetWrapper`. `key` now also accepts a list, tuple, or array of terms. @rly [#1570](https://github.com/hdmf-dev/hdmf/pull/1570)
