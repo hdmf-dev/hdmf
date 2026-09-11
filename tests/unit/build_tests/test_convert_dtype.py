@@ -20,6 +20,7 @@ class DataContainer(Container):
         super().__init__(name='test_container')
         self.data = data
 
+
 class TestConvertDtype(TestCase):
 
     def test_value_none(self):
@@ -672,6 +673,30 @@ class TestConvertDtype(TestCase):
         ret = mapper.get_attr_value(spec=spec, container=DataContainer(value), manager=BuildManager(TypeMap()))
 
         self.assertEqual(ret, '2020-11-10T00:00:00')
+
+    def test_get_attr_value_text_spec_0d_ndarray_object(self):
+        """A top-level 0-d ndarray for a text spec is converted to a scalar string."""
+        spec = DatasetSpec(doc='an example dataset', dtype='text', name='data', dims=(None,))
+        mapper = ObjectMapper(spec)
+        mapper.map_spec('data', spec)
+        value = np.array('Alice', dtype=object)
+
+        ret = mapper.get_attr_value(spec=spec, container=DataContainer(value), manager=BuildManager(TypeMap()))
+
+        self.assertEqual(ret, 'Alice')
+
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_get_attr_value_text_spec_zarr_array(self):
+        """A zarr array for a text spec is converted elementwise to strings."""
+        import zarr
+        spec = DatasetSpec(doc='an example dataset', dtype='text', name='data', dims=(None,))
+        mapper = ObjectMapper(spec)
+        mapper.map_spec('data', spec)
+        value = zarr.array(['Alice', 'Bob'])
+
+        ret = mapper.get_attr_value(spec=spec, container=DataContainer(value), manager=BuildManager(TypeMap()))
+
+        self.assertEqual(ret, ['Alice', 'Bob'])
 
     @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
     def test_zarr_array_spec_vlen_utf8(self):
