@@ -4,7 +4,8 @@ import h5py
 import unittest
 
 from hdmf.backends.hdf5 import H5DataIO
-from hdmf.build import ObjectMapper
+from hdmf.build import ObjectMapper, BuildManager, TypeMap
+from hdmf.container import Container
 from hdmf.data_utils import DataChunkIterator
 from hdmf.spec import DatasetSpec, RefSpec, DtypeSpec
 from hdmf.testing import TestCase
@@ -12,6 +13,14 @@ from hdmf.utils import ZARR_INSTALLED, StrDataset
 
 H5PY_3 = h5py.__version__.startswith('3')
 NUMPY_2 = int(np.__version__.split('.')[0]) >= 2
+
+
+class DataContainer(Container):
+
+    def __init__(self, data):
+        super().__init__(name='test_container')
+        self.data = data
+
 
 class TestConvertDtype(TestCase):
 
@@ -629,6 +638,31 @@ class TestConvertDtype(TestCase):
         self.assertEqual(list(ret), [b'2020-11-10T00:00:00', b'2020-11-11T00:00:00'])
         self.assertEqual(ret_dtype, 'ascii')
 
+    def test_get_attr_value_isodatetime_spec_ndarray_object(self):
+        """0-d ndarray elements from an object array should be converted as scalars."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        mapper = ObjectMapper(spec)
+        value = np.array([
+            np.array('2020-11-10T00:00:00', dtype=object),
+            np.array('2020-11-11T00:00:00', dtype=object),
+        ], dtype=object)
+        mapper.map_spec('data', spec)
+
+        ret = mapper.get_attr_value(spec=spec, container=DataContainer(value), manager=BuildManager(TypeMap()))
+
+        self.assertEqual(ret, ['2020-11-10T00:00:00', '2020-11-11T00:00:00'])
+
+    def test_get_attr_value_isodatetime_spec_0d_ndarray_object(self):
+        """A top-level 0-d ndarray should be converted to a scalar string."""
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        mapper = ObjectMapper(spec)
+        mapper.map_spec('data', spec)
+        value = np.array('2020-11-10T00:00:00', dtype=object)
+
+        ret = mapper.get_attr_value(spec=spec, container=DataContainer(value), manager=BuildManager(TypeMap()))
+
+        self.assertEqual(ret, '2020-11-10T00:00:00')
+
     def test_isodatetime_spec_ndarray_string(self):
         """ndarray of pre-formatted ISO strings takes the non-object astype('S') branch."""
         spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
@@ -663,6 +697,56 @@ class TestConvertDtype(TestCase):
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         self.assertIs(type(ret), zarr.Array)
         self.assertEqual(ret_dtype, 'ascii')
+
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_get_attr_value_isodatetime_spec_zarr_array(self):
+        """0-d arrays from zarr scalar indexing should be converted as scalars."""
+        import zarr
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        mapper = ObjectMapper(spec)
+        mapper.map_spec('data', spec)
+        value = zarr.array(['2020-11-10T00:00:00', '2020-11-11T00:00:00'])
+
+        ret = mapper.get_attr_value(spec=spec, container=DataContainer(value), manager=BuildManager(TypeMap()))
+
+        self.assertEqual(ret, ['2020-11-10T00:00:00', '2020-11-11T00:00:00'])
+
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_get_attr_value_isodatetime_spec_0d_zarr_array(self):
+        """A top-level 0-d zarr array should be converted to a scalar string."""
+        import zarr
+        spec = DatasetSpec(doc='an example dataset', dtype='isodatetime', name='data', dims=(None,))
+        mapper = ObjectMapper(spec)
+        mapper.map_spec('data', spec)
+        value = zarr.array('2020-11-10T00:00:00')
+
+        ret = mapper.get_attr_value(spec=spec, container=DataContainer(value), manager=BuildManager(TypeMap()))
+
+        self.assertEqual(ret, '2020-11-10T00:00:00')
+
+    def test_get_attr_value_text_spec_0d_ndarray_object(self):
+        """A top-level 0-d ndarray for a text spec is converted to a scalar string."""
+        spec = DatasetSpec(doc='an example dataset', dtype='text', name='data', dims=(None,))
+        mapper = ObjectMapper(spec)
+        mapper.map_spec('data', spec)
+        value = np.array('Alice', dtype=object)
+
+        ret = mapper.get_attr_value(spec=spec, container=DataContainer(value), manager=BuildManager(TypeMap()))
+
+        self.assertEqual(ret, 'Alice')
+
+    @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
+    def test_get_attr_value_text_spec_zarr_array(self):
+        """A zarr array for a text spec is converted elementwise to strings."""
+        import zarr
+        spec = DatasetSpec(doc='an example dataset', dtype='text', name='data', dims=(None,))
+        mapper = ObjectMapper(spec)
+        mapper.map_spec('data', spec)
+        value = zarr.array(['Alice', 'Bob'])
+
+        ret = mapper.get_attr_value(spec=spec, container=DataContainer(value), manager=BuildManager(TypeMap()))
+
+        self.assertEqual(ret, ['Alice', 'Bob'])
 
     @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
     def test_zarr_array_spec_vlen_utf8(self):
