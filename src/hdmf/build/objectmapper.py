@@ -269,14 +269,17 @@ class ObjectMapper(metaclass=ExtenderMeta):
         # Numpy Array or Zarr array
         # NOTE: Numpy < 2.0 has only fixed-length strings.
         # Numpy 2.0 introduces variable-length strings (dtype=np.dtypes.StringDType(), kind 'T').
-        # These are treated as utf8 and passed through uncoerced, like object arrays of strings.
+        # For a text spec, a numpy array of kind 'T' is returned unchanged as utf8. For an ascii or isodatetime
+        # spec, it is encoded to fixed-length ascii bytes, which raises UnicodeEncodeError on a non-ASCII character.
         if is_zarr_array(value):
             if spec_dtype_type is _unicode:
-                # Zarr stores strings as objects, so we cannot convert to unicode dtype
+                # Zarr stores strings as variable-length object (Zarr v2) or StringDType (Zarr v3) arrays,
+                # so the array is returned unconverted
                 ret = value
                 ret_dtype = "utf8"
             elif spec_dtype_type in (_ascii, _isoformat):
-                # Zarr stores strings as objects, so we cannot convert to ascii dtype
+                # Zarr stores strings as variable-length object (Zarr v2) or StringDType (Zarr v3) arrays,
+                # so the array is returned unconverted
                 ret = value
                 ret_dtype = "ascii"
             else:
