@@ -3,6 +3,7 @@
 ## HDMF 6.3.0 (Upcoming)
 
 ### Fixed
+- Fixed containers being silently written as a registered ancestor, with the fields their own type declares dropped, after a second class object is registered for the same `(namespace, data_type)`. `register_container_type` now removes only a `TypeSource` placeholder from the class-to-data-type map instead of any previous class, so containers built before a module re-import keep their type. @h-mayorquin [#1575](https://github.com/hdmf-dev/hdmf/pull/1575)
 - Fixed `HERD.to_dataframe` raising `ValueError` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)
 - Fixed the windows-python3.14-ros3 job failing on Windows by working around the HDF5 ros3 shutdown deadlock. @rly [#1572](https://github.com/hdmf-dev/hdmf/pull/1572)
 - Fixed `ObjectMapper.__apply_string_type` to support zarr v3 arrays and other array-like objects that lack `__iter__`, and to convert rank-0 arrays as scalars. This affects `text` and `isodatetime` specs that declare a shape or dims. @oruebel [#1580](https://github.com/hdmf-dev/hdmf/pull/1580)
