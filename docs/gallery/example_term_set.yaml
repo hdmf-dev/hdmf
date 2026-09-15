@@ -1,8 +1,8 @@
-id: termset/species_example
-name: Species
-version: 0.0.1
+id: termset/nwb_subject_species_starter
+name: NWBSubjectSpeciesStarter
+version: 0.1.0
 prefixes:
-  NCBITaxon: https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=
+  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_
 imports:
   - linkml:types
 default_range: string
@@ -11,14 +11,122 @@ enums:
   Species:
     permissible_values:
       Homo sapiens:
-        description: the species is human
+        description: Human.
         meaning: NCBITaxon:9606
+        aliases:
+          - human
       Mus musculus:
-        description: the species is a house mouse
+        description: House mouse.
         meaning: NCBITaxon:10090
-      Ursus arctos horribilis:
-        description: the species is a grizzly bear
-        meaning: NCBITaxon:116960
-      Myrmecophaga tridactyla:
-        description: the species is an anteater
-        meaning: NCBITaxon:71006
+        aliases:
+          - mouse
+          - house mouse
+      Rattus norvegicus:
+        description: Brown rat.
+        meaning: NCBITaxon:10116
+        aliases:
+          - rat
+          - norway rat
+      Macaca mulatta:
+        description: Rhesus macaque.
+        meaning: NCBITaxon:9544
+        aliases:
+          - macaque
+          - rhesus macaque
+          - rhesus monkey
+      Drosophila melanogaster:
+        description: Fruit fly.
+        meaning: NCBITaxon:7227
+        aliases:
+          - fruit fly
+          - fly
+      Danio rerio:
+        description: Zebrafish.
+        meaning: NCBITaxon:7955
+        aliases:
+          - zebrafish
+      Macaca nemestrina:
+        description: Pig-tailed macaque.
+        meaning: NCBITaxon:9545
+        aliases:
+          - pig-tailed macaque
+      Cricetulus griseus:
+        description: Chinese hamster.
+        meaning: NCBITaxon:10029
+        aliases:
+          - chinese hamster
+      Canis lupus familiaris:
+        description: Domestic dog.
+        meaning: NCBITaxon:9615
+        aliases:
+          - dog
+      Ooceraea biroi:
+        description: Clonal raider ant.
+        meaning: NCBITaxon:2015173
+        aliases:
+          - clonal raider ant
+      Caenorhabditis elegans:
+        description: Nematode worm.
+        meaning: NCBITaxon:6239
+        aliases:
+          - worm
+          - c. elegans
+      Oryctolagus cuniculus:
+        description: Rabbit.
+        meaning: NCBITaxon:9986
+        aliases:
+          - rabbit
+      Bos taurus:
+        description: Cattle.
+        meaning: NCBITaxon:9913
+        aliases:
+          - cattle
+      unidentified:
+        description: Unspecified or unidentified organism label.
+        meaning: NCBITaxon:32644
+      Callithrix jacchus:
+        description: Common marmoset.
+        meaning: NCBITaxon:9483
+        aliases:
+          - marmoset
+          - common marmoset
+      Macaca fascicularis:
+        description: Cynomolgus macaque.
+        meaning: NCBITaxon:9541
+        aliases:
+          - cynomolgus macaque
+          - crab-eating macaque
+      Meriones unguiculatus:
+        description: Mongolian gerbil.
+        meaning: NCBITaxon:10047
+        aliases:
+          - mongolian gerbil
+      Microtus ochrogaster:
+        description: Prairie vole.
+        meaning: NCBITaxon:79684
+        aliases:
+          - prairie vole
+      Procambarus clarkii:
+        description: Red swamp crayfish.
+        meaning: NCBITaxon:6728
+        aliases:
+          - red swamp crayfish
+      Saimiri boliviensis:
+        description: Bolivian squirrel monkey.
+        meaning: NCBITaxon:27679
+        aliases:
+          - bolivian squirrel monkey
+      Sus scrofa domesticus:
+        description: Domestic pig.
+        meaning: NCBITaxon:9825
+        aliases:
+          - domestic pig
+          - pig
+      Taeniopygia guttata:
+        description: Zebra finch.
+        meaning: NCBITaxon:59729
+        aliases:
+          - zebra finch
+      Drosophila persimilis:
+        description: Drosophila persimilis.
+        meaning: NCBITaxon:7234
