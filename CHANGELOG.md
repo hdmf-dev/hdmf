@@ -14,6 +14,9 @@
 - `ValidatorMap.validate` and `hdmf.common.validate` now return a `ValidationResult` instead of a list. `ValidationResult` carries an `errors` list and a `warnings` list, and it iterates, indexes, reports its `len`, tests for truth, and compares equal to a list as its `errors` list. Added `ValidationWarning`, a validation issue that leaves the data valid, and `ValidationIssue`, the common base class of `Error` and `ValidationWarning`. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
 - Two validation issues are now equal only when they have the same class. Previously any two issues with the same name, reason, and location were equal, and an issue also compared equal to that string. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
 
+### Documentation and tutorial enhancements
+- Added the NWB Assistant chat widget from the Open Science Assistant (OSA) to the docs. @bendichter [#1587](https://github.com/hdmf-dev/hdmf/pull/1587)
+
 ## HDMF 6.2.0 (August 19, 2026)
 
 ### Documentation and tutorial enhancements
