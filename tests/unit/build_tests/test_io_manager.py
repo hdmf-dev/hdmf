@@ -913,6 +913,39 @@ class TestRegisterContainerTypeCrossNamespace(TestCase):
         self.assertEqual(ns, 'ns1')
         self.assertEqual(dt, 'Bar')
 
+    def test_reregistration_keeps_the_previous_class_mapped(self):
+        """A live class must keep its data type when a second class object registers for the same type.
+
+        Re-importing a module that defines a class with @register_class builds a second class object for
+        the same data type. Containers created before that are still instances of the first one, so it
+        must keep its entry in the class-to-data-type map, otherwise the build walks up the MRO and
+        writes them as a registered ancestor with the subtype's own fields dropped.
+        """
+        base_spec = GroupSpec(doc='A base type with no datasets', data_type_def='Base')
+        sub_spec = GroupSpec(
+            doc='A subtype that declares a dataset',
+            data_type_def='Sub',
+            data_type_inc='Base',
+            datasets=[DatasetSpec(doc='the payload', name='payload', dtype='text')],
+        )
+        create_load_namespace_yaml('ns1', [base_spec, sub_spec], self.test_dir, {}, self.type_map)
+        Base = self.type_map.get_dt_container_cls('Base', 'ns1')
+        Sub = self.type_map.get_dt_container_cls('Sub', 'ns1')
+        container = Sub(name='thing', payload='important text')
+
+        class SubReimported(Base):
+            pass
+
+        self.type_map.register_container_type('ns1', 'Sub', SubReimported)
+
+        ns, dt = self.type_map.get_container_cls_dt(Sub)
+        self.assertEqual(ns, 'ns1')
+        self.assertEqual(dt, 'Sub')
+
+        builder = BuildManager(self.type_map).build(container, source='test.h5')
+        self.assertEqual(builder.attributes['data_type'], 'Sub')
+        self.assertIn('payload', builder.datasets)
+
     def test_typesource_replacement_updates_reverse_map(self):
         """Replacing a TypeSource with a real class in the same namespace must update the reverse map."""
         bar_spec = GroupSpec(doc='A test group spec', data_type_def='Bar')
