@@ -211,6 +211,29 @@ class AbstractContainer(metaclass=ExtenderMeta):
         val = TermSetWrapper(value=val, termset=termset)
         return val
 
+    def get_configured_termsets(self, attribute=None):
+        """
+        Get the configured TermSet(s) for this container's type.
+
+        This delegates to :py:meth:`~hdmf.build.manager.TypeMap.get_configured_termsets` on the
+        TypeMap returned by ``self._get_type_map()``. Using the instance-bound TypeMap (rather
+        than always looking up ``hdmf.common.get_type_map()``) ensures that the correct TypeMap
+        is used even when a downstream package (e.g. PyNWB) overrides ``_get_type_map`` to use
+        its own TypeMap/TypeConfigurator.
+
+        :param attribute: The name of a specific spec attribute (e.g., 'species') to get the
+            TermSet for. If None, returns a dictionary mapping all configured attribute names to
+            their TermSet.
+
+        :return: If ``attribute`` is provided, the :py:class:`~hdmf.term_set.TermSet` configured
+            for that attribute. If ``attribute`` is None, a dict mapping attribute names to their
+            configured :py:class:`~hdmf.term_set.TermSet`.
+        :raises ValueError: If no TermSet configuration is found for this class or attribute, or
+            if no TermSet configuration has been loaded at all.
+        """
+        type_map = self._get_type_map()
+        return type_map.get_configured_termsets(self, attribute=attribute)
+
     @classmethod
     def _getter(cls, field):
         """
