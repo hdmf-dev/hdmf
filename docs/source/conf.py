@@ -192,6 +192,12 @@ html_favicon = "hdmf_logo-180x180.png"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
+# NWB Assistant chat widget (Open Science Assistant); see _static/js/nwb_assistant.js
+html_js_files = [
+    "https://demo.osc.earth/osa-chat-widget.js",
+    "js/nwb_assistant.js",
+]
+
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
 # html_last_updated_fmt = '%b %d, %Y'
