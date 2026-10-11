@@ -1447,7 +1447,8 @@ class ObjectMapper(metaclass=ExtenderMeta):
             elif isinstance(attr_val, ReferenceBuilder):
                 ret[attr_spec] = manager.construct(attr_val.builder)
             else:
-                ret[attr_spec] = self.__parse_if_datetime(attr_val, attr_spec)
+                attr_val = self.__parse_if_datetime(attr_val, attr_spec)
+                ret[attr_spec] = self.__cast_scalar_to_spec_dtype(attr_val, attr_spec)
         if isinstance(spec, GroupSpec):
             if not isinstance(builder, GroupBuilder):  # pragma: no cover
                 raise ValueError("__get_subspec_values - must pass GroupBuilder with GroupSpec")
@@ -1518,6 +1519,27 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if isinstance(data, ReferenceResolver):
             return data.invert()
         return data
+
+    @classmethod
+    def __cast_scalar_to_spec_dtype(cls, value, spec):
+        """Cast a Python int, float, or bool read for a scalar numeric spec to the numpy type of the spec dtype.
+
+        h5py returns numeric attributes as numpy scalars, but backends that store attributes as JSON, such as Zarr,
+        return Python scalars, which carry no precision. Cast those to the type the spec declares, e.g., ``3`` to
+        ``np.int64(3)`` for an ``int64`` attribute, so that a value reads the same from every backend. A value that
+        the spec dtype cannot hold exactly is returned unchanged.
+        """
+        if type(value) not in (int, float, bool) or spec.shape is not None or not isinstance(spec.dtype, str):
+            return value
+        dtype = cls.__dtypes.get(spec.dtype)
+        if not (isinstance(dtype, type) and issubclass(dtype, np.generic)):
+            return value  # text, ascii, and isodatetime specs
+        try:
+            cast = dtype(value)
+        except (OverflowError, ValueError):
+            return value
+        # compare as Python scalars: numpy compares np.float32(0.1) == 0.1 in float32, which is True
+        return cast if cast.item() == value else value
 
     @staticmethod
     def __parse_if_datetime(value, spec):
