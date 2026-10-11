@@ -1470,7 +1470,7 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 if subspec.name is not None and subspec.name in links:
                     ret[subspec] = manager.construct(links[subspec.name].builder)
                     consumed_link_names.add(subspec.name)
-                else:
+                elif subspec.name is None:
                     sub_builder = link_dt.get(subspec.target_type)
                     if sub_builder is not None:
                         ret[subspec] = self.__flatten(sub_builder, subspec, manager)
