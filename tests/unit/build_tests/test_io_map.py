@@ -848,6 +848,42 @@ class TestConstructUnnamedLinkSubtype(TestCase):
         self.assertEqual(holder.links[0].data_type, 'LinkSub')
 
 
+class TestConstructMissingNamedLink(TestCase):
+    """Regression test for #1595.
+
+    A named link that is absent from the file should be left unset on construct. Previously the link was
+    filled with the targets of other links whose type matched its ``target_type``, which became a list of
+    every link in the group once subtypes matched (#1481).
+    """
+
+    def setUp(self):
+        base_spec = GroupSpec(doc='A base type', data_type_def='LinkBase')
+        sub_spec = GroupSpec(doc='A subtype of LinkBase', data_type_def='LinkSub', data_type_inc='LinkBase')
+        holder_spec = GroupSpec(
+            doc='Holds two optional named links',
+            data_type_def='LinkHolder',
+            links=[LinkSpec(doc='any LinkBase', name='source', target_type='LinkBase', quantity='?'),
+                   LinkSpec(doc='a LinkSub', name='other', target_type='LinkSub', quantity='?')],
+        )
+        self.type_map = create_test_type_map([base_spec, sub_spec, holder_spec], {})
+        self.manager = BuildManager(self.type_map)
+
+    def test_construct_missing_named_link(self):
+        target_builder = GroupBuilder(
+            name='target',
+            attributes={'data_type': 'LinkSub', 'namespace': CORE_NAMESPACE, 'object_id': 'target-id'},
+        )
+        holder_builder = GroupBuilder(
+            name='holder',
+            links={'other': LinkBuilder(builder=target_builder, name='other')},
+            attributes={'data_type': 'LinkHolder', 'namespace': CORE_NAMESPACE, 'object_id': 'holder-id'},
+        )
+        GroupBuilder(name='root', groups={'target': target_builder, 'holder': holder_builder})
+        holder = self.manager.construct(holder_builder)
+        self.assertEqual(holder.other.name, 'target')
+        self.assertIsNone(holder.source)
+
+
 class TestLinkedContainer(TestCase):
 
     def setUp(self):
