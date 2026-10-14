@@ -812,6 +812,42 @@ class TestDocValidatorChain(TestCase):
         obj2 = MyChainClass(self.obj1, [[10, 20], [30, 40], [50, 60]], [[10, 20]])
         obj3 = MyChainClass(self.obj1, obj2, [[100, 200]])
         self.assertListEqual(obj3.arg3, obj2.arg3)
+        self.assertIs(obj3._arg3, obj2)
+
+    def test_shape_unpack_preserves_chain(self):
+        """Shape validation must not replace a required argument with the linked data."""
+        for use_keyword in (False, True):
+            with self.subTest(use_keyword=use_keyword):
+                source = MyChainClass('source', [[1, 2]])
+                if use_keyword:
+                    linked = MyChainClass(arg1='linked', arg3=source)
+                    chained = MyChainClass(arg1='chained', arg3=linked)
+                else:
+                    linked = MyChainClass('linked', source)
+                    chained = MyChainClass('chained', linked)
+                self.assertIs(linked._arg3, source)
+                self.assertIs(chained._arg3, linked)
+                source.arg3 = [[3, 4], [5, 6]]
+                self.assertListEqual(chained.arg3, source.arg3)
+
+    def test_shape_unpack_nested_objects(self):
+        """Unwrapping multiple levels for any accepted shape preserves the outer object."""
+        class WrappedData:
+            def __init__(self, data):
+                self.data = data
+
+        @docval({'name': 'data', 'type': WrappedData, 'doc': 'wrapped data',
+                 'shape': ((None,), (None, 2))}, is_method=False)
+        def validated(**kwargs):
+            return kwargs['data']
+
+        for data in (np.arange(4), np.zeros((4, 2)), None):
+            with self.subTest(data=data):
+                outer = WrappedData(WrappedData(data))
+                self.assertIs(validated(data=outer), outer)
+
+        with self.assertRaisesRegex(ValueError, 'incorrect shape for data'):
+            validated(data=WrappedData(WrappedData(np.zeros((4, 3)))))
 
     def test_shape_invalid_unpack(self):
         """Test that passing an object for an argument with required shape and object.argument has an invalid shape
@@ -849,6 +885,7 @@ class TestDocValidatorChain(TestCase):
         obj2.arg3 = None
         obj3 = MyChainClass(self.obj1, obj2, [[100, 200]])
         self.assertIsNone(obj3.arg3)
+        self.assertIs(obj3._arg3, obj2)
 
     def test_shape_other_unpack(self):
         """Test that passing an object for an argument with required shape and object.argument is an object without
@@ -867,6 +904,7 @@ class TestDocValidatorChain(TestCase):
         obj2 = MyChainClass(self.obj1, [[10, 20], [30, 40], [50, 60]], arg4=[[10, 20]])
         obj3 = MyChainClass(self.obj1, [[100, 200], [300, 400], [500, 600]], arg4=obj2)
         self.assertListEqual(obj3.arg4, obj2.arg4)
+        self.assertIs(obj3._arg4, obj2)
 
     def test_shape_invalid_unpack_default(self):
         """Test that passing an object for an argument with required shape and a default value and object.argument has
