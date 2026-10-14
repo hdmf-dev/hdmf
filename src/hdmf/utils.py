@@ -357,19 +357,20 @@ def __parse_args(validator, args, kwargs, enforce_type=True, enforce_shape=True,
                             fmt_val = (argname, type(argval).__name__, __format_type(arg['type']))
                             type_errors.append("incorrect type for '%s' (got '%s', expected '%s')" % fmt_val)
                 if enforce_shape and 'shape' in arg:
-                    valshape = get_data_shape(argval)
+                    value_to_check = argval
+                    valshape = get_data_shape(value_to_check)
                     while valshape is None:
-                        if argval is None:
+                        if value_to_check is None:
                             break
-                        if not hasattr(argval, argname):
-                            fmt_val = (argval, argname, arg['shape'])
+                        if not hasattr(value_to_check, argname):
+                            fmt_val = (value_to_check, argname, arg['shape'])
                             value_errors.append("cannot check shape of object '%s' for argument '%s' "
                                                 "(expected shape '%s')" % fmt_val)
                             break
                         # unpack, e.g. if TimeSeries is passed for arg 'data', then TimeSeries.data is checked
-                        argval = getattr(argval, argname)
-                        valshape = get_data_shape(argval)
-                    if valshape is not None and not __shape_okay_multi(argval, arg['shape']):
+                        value_to_check = getattr(value_to_check, argname)
+                        valshape = get_data_shape(value_to_check)
+                    if valshape is not None and not __shape_okay_multi(value_to_check, arg['shape']):
                         value_errors.append(__shape_error_message(argname, valshape, arg['shape']))
                 if 'enum' in arg:
                     err = __check_enum(argval, arg)
