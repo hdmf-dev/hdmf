@@ -894,6 +894,21 @@ class TestConvertDtypeList(TestCase):
                     received = self._convert_outcome(ObjectMapper.convert_dtype, spec, value)
                     self.assertEqual(received, expected)
 
+    def test_no_convert_type_list(self):
+        class NoConvert:
+            pass
+
+        ObjectMapper.no_convert(NoConvert)
+        self.addCleanup(ObjectMapper._ObjectMapper__no_convert.discard, NoConvert)
+        spec = DatasetSpec('an example dataset', 'int', name='data')
+        value = [NoConvert(), NoConvert()]
+        expected = self._convert_outcome(_convert_elementwise, spec, value)
+        received = self._convert_outcome(ObjectMapper.convert_dtype, spec, value)
+        self.assertEqual(received, expected)
+        ret, _ = ObjectMapper.convert_dtype(spec, value)
+        self.assertIs(ret[0], value[0])
+        self.assertIs(ret[1], value[1])
+
     def test_int_list(self):
         spec = DatasetSpec('an example dataset', 'int', name='data')
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, [1, 2, 3])
