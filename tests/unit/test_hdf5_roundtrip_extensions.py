@@ -5,8 +5,8 @@ import tempfile
 
 from hdmf.backends.hdf5 import HDF5IO
 from hdmf.build import BuildManager
-from hdmf.common import get_type_map
-from hdmf.spec import AttributeSpec, DatasetSpec, GroupSpec
+from hdmf.common import DynamicTable, SimpleMultiContainer, get_type_map
+from hdmf.spec import AttributeSpec, DatasetSpec, DtypeSpec, GroupSpec, RefSpec
 from hdmf.testing import TestCase
 from tests.unit.helpers.utils import CORE_NAMESPACE, create_load_namespace_yaml
 
@@ -150,3 +150,79 @@ class TestExtensionDatetime(TestCase):
             self.assertContainerEqual(group_read, group, ignore_hdmf_attrs=True)
             self.assertEqual(list(group_read.my_array_data.data), times)
             self.assertEqual(list(group_read.my_untyped_array), times)
+
+
+class TestExtensionColumnDtype(TestCase):
+    """A column added with add_column whose type declares its own dtype keeps that dtype on write and read."""
+
+    def setUp(self):
+        self.reference_column_spec = DatasetSpec(
+            data_type_def='ReferenceColumn',
+            data_type_inc='VectorData',
+            doc='a column of references to row ranges of a DynamicTable',
+            dtype=[
+                DtypeSpec(name='idx_start', doc='the first row', dtype='int32'),
+                DtypeSpec(name='count', doc='the number of rows', dtype='int32'),
+                DtypeSpec(name='table', doc='the referenced table', dtype=RefSpec('DynamicTable', 'object')),
+            ],
+        )
+        self.datetime_column_spec = DatasetSpec(
+            data_type_def='DatetimeColumn',
+            data_type_inc='VectorData',
+            doc='a column of datetimes',
+            dtype='isodatetime',
+        )
+
+        self.test_dir = tempfile.mkdtemp()
+        self.type_map = get_type_map()
+        create_load_namespace_yaml(
+            namespace_name=CORE_NAMESPACE,
+            specs=[self.reference_column_spec, self.datetime_column_spec],
+            output_dir=self.test_dir,
+            incl_types={'hdmf-common': None},
+            type_map=self.type_map,
+        )
+        self.manager = BuildManager(self.type_map)
+
+        self.ReferenceColumn = self.type_map.get_dt_container_cls('ReferenceColumn', CORE_NAMESPACE)
+        self.DatetimeColumn = self.type_map.get_dt_container_cls('DatetimeColumn', CORE_NAMESPACE)
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.test_dir)
+
+    def test_roundtrip_compound_column_with_reference(self):
+        target = DynamicTable(name='target', description='the referenced table')
+        target.add_column(name='x', description='a column')
+        for x in range(3):
+            target.add_row(x=x)
+        table = DynamicTable(name='table', description='a table with a reference column')
+        table.add_column(name='ref_col', description='row ranges of target', col_cls=self.ReferenceColumn)
+        table.add_row(ref_col=(0, 2, target))
+        table.add_row(ref_col=(2, 1, target))
+        root = SimpleMultiContainer(name='root', containers=[target, table])
+
+        h5_path = os.path.join(self.test_dir, 'test_reference_column.h5')
+        with HDF5IO(h5_path, 'w', manager=self.manager) as f:
+            f.write(root)
+        with HDF5IO(h5_path, 'r', manager=self.manager) as f:
+            root_read = f.read()
+            ref_col = root_read.containers['table']['ref_col']
+            self.assertIsInstance(ref_col, self.ReferenceColumn)
+            self.assertEqual([(row['idx_start'], row['count']) for row in ref_col.data], [(0, 2), (2, 1)])
+            for row in ref_col.data:
+                self.assertIs(row['table'], root_read.containers['target'])
+
+    def test_roundtrip_isodatetime_column(self):
+        times = [datetime.datetime(2020, 1, 1) + datetime.timedelta(days=i) for i in range(2)]
+        table = DynamicTable(name='table', description='a table with a datetime column')
+        table.add_column(name='time_col', description='datetimes', col_cls=self.DatetimeColumn)
+        for time in times:
+            table.add_row(time_col=time)
+
+        h5_path = os.path.join(self.test_dir, 'test_datetime_column.h5')
+        with HDF5IO(h5_path, 'w', manager=self.manager) as f:
+            f.write(table)
+        with HDF5IO(h5_path, 'r', manager=self.manager) as f:
+            table_read = f.read()
+            self.assertIsInstance(table_read['time_col'], self.DatetimeColumn)
+            self.assertEqual(list(table_read['time_col'].data), times)
