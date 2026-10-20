@@ -857,6 +857,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
         '''
         container, manager, parent, source = getargs('container', 'manager', 'parent', 'source', kwargs)
         builder, matched_spec = getargs('builder', 'matched_spec', kwargs)
+        if matched_spec is not None and matched_spec.data_type != self.__spec.data_type_def:
+            # The parent's subspec declares a more general type than this container's, e.g., the generic
+            # VectorData column of DynamicTable holding a VectorData subtype. It does not carry this type's
+            # dtype, shape, or attributes, so build from this type's own spec.
+            matched_spec = None
         name = manager.get_builder_name(container)
         if isinstance(self.__spec, GroupSpec):
             self.logger.debug("Building %s '%s' as a group (source: %s)"
@@ -1575,13 +1580,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 matched = builder_dt.get(dt)
                 if matched is not None:
                     for b in matched:
-                        self.__set_matched_spec(b, subspec)
+                        # skip builders of a subtype of dt; see the matched_spec check in build
+                        if manager.get_builder_dt(b) == dt:
+                            self.__set_matched_spec(b, subspec)
                     ret[subspec] = self.__flatten(matched, subspec, manager)
             else:
                 sub_builder = sub_builders.get(subspec.name)
                 if sub_builder is None:
                     continue
-                self.__set_matched_spec(sub_builder, subspec)
+                if dt is None or manager.get_builder_dt(sub_builder) == dt:
+                    self.__set_matched_spec(sub_builder, subspec)
                 if dt is None:
                     # recurse
                     ret.update(self.__get_subspec_values(sub_builder, subspec, manager))
