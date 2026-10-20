@@ -2,9 +2,10 @@ from datetime import datetime, date
 import numpy as np
 import h5py
 import unittest
+import warnings
 
 from hdmf.backends.hdf5 import H5DataIO
-from hdmf.build import ObjectMapper, BuildManager, TypeMap
+from hdmf.build import ObjectMapper, BuildManager, TypeMap, DtypeConversionWarning
 from hdmf.container import Container
 from hdmf.data_utils import DataChunkIterator
 from hdmf.spec import DatasetSpec, RefSpec, DtypeSpec
@@ -819,3 +820,158 @@ class TestConvertDtype(TestCase):
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, 3.14)
         self.assertIsInstance(ret, np.float64)
         self.assertEqual(ret_dtype, np.float64)
+
+
+def _convert_elementwise(spec, value):
+    """Convert a list or tuple one element at a time, recursing into nested lists and tuples.
+
+    This is the reference behavior for lists and tuples: each element is converted on its own, the
+    container type is kept, and the returned dtype is the dtype of the last element.
+    """
+    if not isinstance(value, (list, tuple)) or len(value) == 0:
+        return ObjectMapper.convert_dtype(spec, value)
+    ret = list()
+    for elem in value:
+        tmp, ret_dtype = _convert_elementwise(spec, elem)
+        ret.append(tmp)
+    return type(value)(ret), ret_dtype
+
+
+def _describe(value):
+    """Describe a converted value by the type and repr of each element so that the comparison is exact."""
+    if isinstance(value, (list, tuple)):
+        return type(value), tuple(_describe(elem) for elem in value)
+    if isinstance(value, np.ndarray):
+        return type(value), value.dtype, repr(value.tolist())
+    return type(value), repr(value)
+
+
+class TestConvertDtypeList(TestCase):
+    """Test that converting a list or tuple gives the same result as converting each element on its own."""
+
+    spec_dtypes = ['float', 'float32', 'double', 'float64', 'long', 'int64', 'int', 'int32', 'short', 'int16',
+                   'int8', 'uint', 'uint64', 'uint32', 'uint16', 'uint8', 'bool', 'text', 'utf8', 'ascii',
+                   'isodatetime']
+
+    values = [
+        [1, 2, 3], (1, 2, 3), [-1, 0, 5], [0, 255, 256], [-129, 127], [2 ** 31, 7],
+        [2 ** 53 + 1, 3, -(2 ** 53) - 1], [2 ** 63 - 1, -(2 ** 63)], [2 ** 63], [2 ** 64], [-(2 ** 63) - 1],
+        [1.5, -2.25, 3.0], [float('nan'), 1.0], [float('inf'), -1.0], [-0.0, 0.0], [1e20, 2.0], [3.9, -3.9],
+        [True, False], (True,),
+        [1, 2.5], [2.5, 1], [True, 2], [2, True], [1.0, False],
+        [1, None, 3], [None, None], [None, 1],
+        ['a', 'b'], [b'a', b'b'], ['a', b'b'], ['é', 'x'], [b'\xc3\xa9'], ['1', '2'], ['1.5'], ['x'],
+        [1, 'a'], ['a', 1],
+        [[1, 2], [3, 4]], [[1, 2], [3]], [[1.5, 2], [True, 4]], [[[1], [2]], [[3], [4]]], [[1], []],
+        [np.float32(1.5), np.float32(2)], [np.float16(1.5)], [np.int8(-1), np.int8(3)], [np.int8(1), np.int8(3)],
+        [np.uint64(5), np.uint64(2 ** 64 - 1)], [np.float64(1.0), np.float64(2.0)], [np.bool_(True)],
+        [np.int64(-1)], [np.int64(5)], [np.int32(-7), np.int32(9)], [np.uint8(200)], [np.float64('nan')],
+        [np.float32('inf')], [np.float64(1.5), 2.5], [np.int64(1), 1], [np.str_('a')], [np.bytes_(b'a')],
+        [datetime(2020, 1, 2, 3, 4, 5), date(2020, 1, 2)], ['2020-01-01', datetime(2020, 1, 2)],
+        [np.array([1, 2]), np.array([3, 4])], [object()],
+        list(range(1000)), [i / 7 for i in range(1000)], [i % 2 == 0 for i in range(100)],
+    ]
+
+    @staticmethod
+    def _convert_outcome(func, spec, value):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            try:
+                ret, ret_dtype = func(spec, value)
+                result = (_describe(ret), ret_dtype)
+            except Exception as ex:
+                result = (type(ex), str(ex))
+        # a warning that is repeated for many elements of a list may be emitted only once for the whole list
+        warns = list(dict.fromkeys((x.category, str(x.message)) for x in w))
+        return result, warns
+
+    def test_same_as_elementwise(self):
+        for spec_dtype in self.spec_dtypes:
+            spec = DatasetSpec('an example dataset', spec_dtype, name='data')
+            for value in self.values:
+                with self.subTest(spec_dtype=spec_dtype, value=repr(value)[:50]):
+                    expected = self._convert_outcome(_convert_elementwise, spec, value)
+                    received = self._convert_outcome(ObjectMapper.convert_dtype, spec, value)
+                    self.assertEqual(received, expected)
+
+    def test_int_list(self):
+        spec = DatasetSpec('an example dataset', 'int', name='data')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, [1, 2, 3])
+        self.assertIs(type(ret), list)
+        self.assertEqual(ret, [1, 2, 3])
+        self.assertEqual([type(x) for x in ret], [np.dtype(int).type] * 3)
+        self.assertIs(ret_dtype, np.dtype(int).type)
+
+    def test_float_tuple(self):
+        spec = DatasetSpec('an example dataset', 'float32', name='data')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, (0.5, 1.5))
+        self.assertIs(type(ret), tuple)
+        self.assertEqual(ret, (0.5, 1.5))
+        self.assertEqual([type(x) for x in ret], [np.float64, np.float64])
+        self.assertIs(ret_dtype, np.float64)
+
+    def test_mixed_bool_int_list(self):
+        spec = DatasetSpec('an example dataset', 'int8', name='data')
+        msg = "Spec 'data': Value with data type bool is being converted to data type int8 as specified."
+        with self.assertWarnsWith(DtypeConversionWarning, msg):
+            ret, ret_dtype = ObjectMapper.convert_dtype(spec, [True, 2])
+        self.assertEqual([type(x) for x in ret], [np.int8, np.dtype(int).type])
+        self.assertEqual(ret, [1, 2])
+        self.assertIs(ret_dtype, np.dtype(int).type)
+
+    def test_list_with_none(self):
+        spec = DatasetSpec('an example dataset', 'int', name='data')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, [1, None])
+        self.assertEqual(ret, [1, None])
+        self.assertIs(type(ret[0]), np.dtype(int).type)
+        self.assertEqual(ret_dtype, 'int')
+
+    def test_nested_list(self):
+        spec = DatasetSpec('an example dataset', 'float64', name='data')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, [[1.5, 2.5], [3.5, 4.5]])
+        self.assertEqual(ret, [[1.5, 2.5], [3.5, 4.5]])
+        self.assertEqual([type(x) for row in ret for x in row], [np.float64] * 4)
+        self.assertIs(ret_dtype, np.float64)
+
+    def test_str_bytes_list(self):
+        spec = DatasetSpec('an example dataset', 'text', name='data')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, ['a', b'b'])
+        self.assertEqual(ret, ['a', 'b'])
+        self.assertEqual(ret_dtype, 'utf8')
+
+        spec = DatasetSpec('an example dataset', 'ascii', name='data')
+        ret, ret_dtype = ObjectMapper.convert_dtype(spec, ['a', b'b'])
+        self.assertEqual(ret, [b'a', b'b'])
+        self.assertEqual(ret_dtype, 'ascii')
+
+    def test_nan_list_int_spec(self):
+        spec = DatasetSpec('an example dataset', 'int32', name='data')
+        with self.assertWarns(DtypeConversionWarning):
+            with self.assertRaisesWith(ValueError, "cannot convert float NaN to integer"):
+                ObjectMapper.convert_dtype(spec, [1.5, float('nan')])
+
+    def test_int_list_bool_spec(self):
+        spec = DatasetSpec('an example dataset', 'bool', name='data')
+        msg = "expected bool, received %s - must supply bool" % np.dtype(int).name
+        with self.assertRaisesWith(ValueError, msg):
+            ObjectMapper.convert_dtype(spec, [1, 0])
+
+    def test_nested_complex_number(self):
+        spec = DatasetSpec('an example dataset', 'float64', name='data')
+        with self.assertRaisesWith(ValueError, "Complex numbers are not supported"):
+            ObjectMapper.convert_dtype(spec, [[1.0, 2.0], [3.0, 4j]])
+        with self.assertRaisesWith(ValueError, "Complex numbers are not supported"):
+            ObjectMapper.convert_dtype(spec, [np.array([1.0]), np.array([1j])])
+
+    def test_warn_once_per_list(self):
+        """Test that converting a list warns once for the list and not once per element."""
+        spec = DatasetSpec('an example dataset', 'float32', name='data')
+        msg = ("Spec 'data': Value with data type %s is being converted to data type float64 "
+               "(min specification: float32)." % np.dtype(int).name)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            ret, ret_dtype = ObjectMapper.convert_dtype(spec, list(range(100)))
+        self.assertEqual([(x.category, str(x.message)) for x in w], [(DtypeConversionWarning, msg)])
+        self.assertEqual(ret, list(range(100)))
+        self.assertEqual({type(x) for x in ret}, {np.float64})
+        self.assertIs(ret_dtype, np.float64)
