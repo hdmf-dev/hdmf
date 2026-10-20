@@ -2,6 +2,7 @@
 import gc
 import os
 import unittest
+from unittest import mock
 import warnings
 import weakref
 from io import BytesIO
@@ -2210,6 +2211,32 @@ class TestLinkData(TestCase):
         with File(self.link_path, mode='r') as f:
             self.assertFalse(isinstance(f.get('link_to_test_dataset', getlink=True), ExternalLink))
             self.assertListEqual(f.get('link_to_test_dataset')[:].tolist(), [1, 2, 3, 4])
+
+    def test_link_string_column_not_read_elementwise(self):
+        """Test that writing a column linked to a string dataset in another file does not read it one element
+        at a time."""
+        with File(self.target_path, mode='a') as f:
+            f.create_dataset('strings', data=['a%d' % i for i in range(100)], dtype=h5py.string_dtype())
+
+        n_reads = 0
+        getitem = h5py.Dataset.__getitem__
+
+        def counting_getitem(dset, *args, **kwargs):
+            nonlocal n_reads
+            n_reads += 1
+            return getitem(dset, *args, **kwargs)
+
+        with File(self.target_path, mode='r') as f:
+            column = VectorData(name='col', description='linked strings', data=f['strings'])
+            table = DynamicTable(name='table', description='a table', id=np.arange(100), columns=[column])
+            with mock.patch.object(h5py.Dataset, '__getitem__', counting_getitem):
+                with HDF5IO(self.link_path, manager=get_manager(), mode='w') as write_io:
+                    write_io.write(table, link_data=True)
+        self.assertLess(n_reads, 10)
+
+        with File(self.link_path, mode='r') as f:
+            self.assertIsInstance(f.get('col', getlink=True), ExternalLink)
+            self.assertListEqual(f['col'].asstr()[:].tolist(), ['a%d' % i for i in range(100)])
 
 
 class TestLoadNamespaces(TestCase):

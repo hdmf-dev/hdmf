@@ -1146,6 +1146,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 (isinstance(data, DataIO) and isinstance(data.data, AbstractDataChunkIterator))):
             return False
 
+        # An array with a non-object dtype (e.g., numeric or fixed-length string) cannot hold containers, and
+        # neither can an h5py dataset of variable-length strings or references, whose dtype carries 'vlen' or 'ref'
+        # metadata. Use the dtype instead of iterating, which reads a dataset from a file one element at a time.
+        dtype = getattr(data.data if isinstance(data, DataIO) else data, 'dtype', None)
+        if isinstance(dtype, np.dtype) and not isinstance(data, AbstractContainer):
+            if dtype.kind != 'O' or (dtype.metadata is not None and
+                                     ('vlen' in dtype.metadata or 'ref' in dtype.metadata)):
+                return False
+
         tmp = data
         while _is_collection(tmp) and not isinstance(tmp, AbstractContainer):
             tmptmp = None
