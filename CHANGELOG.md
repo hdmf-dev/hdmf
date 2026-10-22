@@ -3,6 +3,7 @@
 ## HDMF 6.3.0 (Upcoming)
 
 ### Fixed
+- Fixed `DataIO.shape` raising `AttributeError` when the wrapped data is an `AbstractDataChunkIterator`, which has `maxshape` but no `shape`. It now returns the iterator's `maxshape`, as `DataIO.__len__` already does. Callers that fall back to iterating to learn a shape, such as NWB Inspector's `get_data_shape`, took the iterator's first chunk, so the data written afterwards started at the second chunk. @cboulay [#XXXX](https://github.com/hdmf-dev/hdmf/pull/XXXX)
 - Fixed `HERD.to_dataframe` raising `ValueError` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)
 - Fixed the windows-python3.14-ros3 job failing on Windows by working around the HDF5 ros3 shutdown deadlock. @rly [#1572](https://github.com/hdmf-dev/hdmf/pull/1572)
 - Fixed `ObjectMapper.__apply_string_type` to support zarr v3 arrays and other array-like objects that lack `__iter__`, and to convert rank-0 arrays as scalars. This affects `text` and `isodatetime` specs that declare a shape or dims. @oruebel [#1580](https://github.com/hdmf-dev/hdmf/pull/1580)

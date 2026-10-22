@@ -1063,6 +1063,8 @@ class DataIO:
     @property
     def shape(self):
         """Get the wrapped data object"""
+        if self.__shape is None and isinstance(self.data, AbstractDataChunkIterator):
+            return self.data.maxshape  # as __len__ does: an iterator has no shape
         return self.__shape or self.__getattr__("shape")
 
     def __copy__(self):
