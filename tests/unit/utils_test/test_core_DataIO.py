@@ -1,7 +1,7 @@
 from copy import copy, deepcopy
 
 import numpy as np
-from hdmf.data_utils import DataIO
+from hdmf.data_utils import DataChunkIterator, DataIO
 from hdmf.testing import TestCase
 
 
@@ -48,3 +48,13 @@ class DataIOTests(TestCase):
         dataio = DataIO(shape=(3,), dtype=int)
         with self.assertRaisesRegex(ValueError, "Setting data when dtype and shape are not None is not supported"):
             dataio.data = np.arange(5)
+
+    def test_shape_of_an_iterator_is_its_maxshape_and_reads_nothing(self):
+        """A DataChunkIterator has maxshape but no shape. Without this, DataIO.shape raised
+        AttributeError, so callers that learn a shape by iterating (e.g. NWB Inspector's
+        get_data_shape) took the first chunk, and the write then started from the second."""
+        data = np.arange(30).reshape(10, 3)
+        dataio = DataIO(data=DataChunkIterator(data=data, buffer_size=4))
+        self.assertEqual(dataio.shape, (10, 3))
+        self.assertEqual(len(dataio), 10)
+        np.testing.assert_array_equal(np.concatenate([c.data for c in dataio.data]), data)
