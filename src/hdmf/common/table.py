@@ -1701,10 +1701,7 @@ class DynamicTableRegion(VectorData):
         elif isinstance(arg, (list, slice, np.ndarray)):
             idx = arg
             # get the data at the specified indices
-            if isinstance(self.data, (tuple, list)) and isinstance(idx, (list, np.ndarray)):
-                ret = [self.data[i] for i in idx]
-            else:
-                ret = self.data[idx]
+            ret = super().get(idx)
 
             # dereference them if necessary
             if not index:
