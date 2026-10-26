@@ -5,6 +5,7 @@ import h5py
 import os
 
 from hdmf.container import AbstractContainer, Container, Data, HERDManager
+from hdmf.data_utils import DataChunkIterator, DataIO
 from hdmf.common.resources import HERD
 from hdmf.testing import TestCase
 from hdmf.utils import docval
@@ -488,7 +489,7 @@ class TestHTMLRepr(TestCase):
         )
 
         @docval(
-            {'name': "data", "doc": 'data', 'type': 'array_data', "default": None},
+            {'name': "data", "doc": 'data', 'type': ('array_data', 'data'), "default": None},
             {'name': "str", "doc": 'str', 'type': str, "default": None},
 
         )
@@ -539,6 +540,18 @@ class TestHTMLRepr(TestCase):
             'style="text-align: left">32.00 bytes</td></tr></tbody></table><br>[1 2 3 4]'
         )
         self.assertIn(expected_html_table, obj._repr_html_())
+
+    def test_repr_html_dataio_wrapping_iterator(self):
+        """A DataIO wrapping an iterator renders its dtype and maxshape and does not consume the iterator."""
+        data = np.arange(12, dtype=np.int64).reshape(4, 3)
+        obj = self.ContainerWithData(data=DataIO(data=DataChunkIterator(data=data, buffer_size=2)), str="hello")
+        expected_html_table = (
+            'class="container-fields">DataIO<br><table class="data-info"><tbody><tr><th style="text-align: '
+            'left">Data type</th><td style="text-align: left">int64</td></tr><tr><th style="text-align: left">Shape'
+            '</th><td style="text-align: left">(4, 3)</td></tr></tbody></table></div>'
+        )
+        self.assertIn(expected_html_table, obj._repr_html_())
+        np.testing.assert_array_equal(np.concatenate([c.data for c in obj.data.data]), data)
 
     def test_repr_html_numpy_scalar_renders_inline(self):
         """Numpy scalar bool/int attributes should render inline, not as an expandable array block."""

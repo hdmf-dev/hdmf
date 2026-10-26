@@ -1056,6 +1056,8 @@ def generate_array_html_repr(array_info_dict, array, dataset_type=None):
 
     array_info_html = html_table(array_info_dict)
     repr_html = dataset_type + "<br>" + array_info_html if dataset_type is not None else array_info_html
+    if array is None:  # e.g., a DataChunkIterator, whose data cannot be shown without consuming it
+        return repr_html
 
     # Array like might lack nbytes (h5py < 3.0) or size (DataIO object)
     if hasattr(array, "nbytes"):
