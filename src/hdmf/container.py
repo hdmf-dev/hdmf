@@ -803,7 +803,7 @@ class Container(AbstractContainer):
         try:
             # Detects array-like objects that conform to the Array Interface specification
             # (e.g., NumPy arrays, HDF5 datasets, DataIO objects). Objects must have both
-            # 'shape' and 'dtype' attributes. Iterators are excluded as they lack 'shape'.
+            # 'shape' and 'dtype' attributes. Bare iterators are excluded as they lack 'shape'.
             # This approach keeps the implementation generic without coupling to specific backends methods
             is_array_data = hasattr(value, "shape") and hasattr(value, "dtype")
 
@@ -852,6 +852,10 @@ class Container(AbstractContainer):
         if is_numpy_array:
             array_info_dict = get_basic_array_info(array)
             repr_html = generate_array_html_repr(array_info_dict, array, "NumPy array")
+        elif is_data_io and isinstance(array.data, AbstractDataChunkIterator):
+            # An iterator is single-pass, so describe it without reading from it
+            array_info_dict = {"Data type": array.dtype, "Shape": array.shape}
+            repr_html = generate_array_html_repr(array_info_dict, None, "DataIO")
         elif is_data_io:
             array_info_dict = get_basic_array_info(array.data)
             repr_html = generate_array_html_repr(array_info_dict, array.data, "DataIO")
