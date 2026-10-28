@@ -1998,4 +1998,10 @@ class MeaningsTable(DynamicTable):
             allow_extra=True)
     def add_row(self, **kwargs):
         """Add a row to the table mapping a value to its meaning."""
+        value = getargs('value', kwargs)
+        if value in self['value'].data:
+            raise ValueError(
+                f"MeaningsTable '{self.name}' already has a row for value {value!r}. "
+                "Each value can have only one meaning."
+            )
         super().add_row(**kwargs)
