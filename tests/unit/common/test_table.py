@@ -3534,6 +3534,16 @@ class TestMeaningsTable(TestCase):
             mt.add_row(value='a', meaning='stimulus A again')
         self.assertEqual(len(mt), 1)
 
+    def test_constructor_repeated_value(self):
+        """Test that constructing a table with columns that repeat a value raises an error."""
+        target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])
+        value = VectorData(name='value', description='value column', data=['a', 'a'])
+        meaning = VectorData(name='meaning', description='meaning column', data=['stimulus A', 'stimulus A again'])
+        msg = ("MeaningsTable 'stimulus_type_meanings' has more than one row for the same value. "
+               "Each value can have only one meaning.")
+        with self.assertRaisesWith(ValueError, msg):
+            MeaningsTable(target=target, columns=[value, meaning])
+
     def test_required_columns(self):
         """Test that MeaningsTable has required value and meaning columns."""
         target = VectorData(name='stimulus_type', description='stimulus type column', data=['a', 'b', 'c'])

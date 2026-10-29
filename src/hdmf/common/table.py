@@ -1989,6 +1989,12 @@ class MeaningsTable(DynamicTable):
             kwargs['description'] = f"Meanings for values in '{target.name}'"
         super().__init__(**kwargs)
         self.target = target
+        values = self['value'].data[:]
+        if len(set(values)) != len(values):
+            self._error_on_new_warn_on_construct(
+                f"MeaningsTable '{self.name}' has more than one row for the same value. "
+                "Each value can have only one meaning."
+            )
 
     @docval({'name': 'value', 'type': None, 'doc': 'the value in the referenced VectorData object'},
             {'name': 'meaning', 'type': str, 'doc': 'the meaning of the value'},
