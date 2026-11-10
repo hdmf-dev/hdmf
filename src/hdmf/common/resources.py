@@ -8,8 +8,9 @@ from ..data_utils import DataIO
 from ..utils import docval, popargs, AllowPositional
 from ..build import TypeMap
 from ..term_set import TermSetWrapper
-from glob import glob
 import os
+from pathlib import PurePosixPath
+from tempfile import TemporaryDirectory
 import zipfile
 from collections import namedtuple
 from warnings import warn
@@ -1001,20 +1002,16 @@ class HERD(Container):
         Write the tables in HERD to zipped tsv files.
         """
         zip_file = kwargs['path']
-        directory = os.path.dirname(zip_file)
+        with TemporaryDirectory() as directory:
+            members = []
+            for index, child in enumerate(self.children):
+                path = os.path.join(directory, str(index))
+                child.to_dataframe().to_csv(path, sep='\t', index=False)
+                members.append((path, f'{child.name}.tsv'))
 
-        files = [os.path.join(directory, child.name)+'.tsv' for child in self.children]
-        for i in range(len(self.children)):
-            df = self.children[i].to_dataframe()
-            df.to_csv(files[i], sep='\t', index=False)
-
-        with zipfile.ZipFile(zip_file, 'w') as zipF:
-          for file in files:
-              zipF.write(file)
-
-        # remove tsv files
-        for file in files:
-            os.remove(file)
+            with zipfile.ZipFile(zip_file, 'w') as archive:
+                for path, name in members:
+                    archive.write(path, arcname=name)
 
     @classmethod
     @docval({'name': 'path', 'type': str, 'doc': 'The path to the zip file.'})
@@ -1034,11 +1031,6 @@ class HERD(Container):
         Method to read in zipped tsv files to populate HERD.
         """
         zip_file, type_map = popargs('path', 'type_map', kwargs)
-        directory = cls.get_zip_directory(zip_file)
-
-        with zipfile.ZipFile(zip_file, 'r') as zip:
-            zip.extractall(directory)
-        tsv_paths = glob(directory+'/*')
 
         # the tsv file name (without extension) matches both the table attribute name and the table class
         table_classes = {'files': FileTable,
@@ -1048,14 +1040,21 @@ class HERD(Container):
                          'object_keys': ObjectKeyTable,
                          'entity_keys': EntityKeyTable}
         tables = {}
-        for file in tsv_paths:
-            name, ext = os.path.splitext(os.path.basename(file))
-            table_cls = table_classes.get(name) if ext == '.tsv' else None
-            if table_cls is None:
-                continue
-            df = pd.read_csv(file, sep='\t').replace(np.nan, '')
-            tables[name] = table_cls().from_dataframe(df=df, name=name, extra_ok=False)
-            os.remove(file)
+        with zipfile.ZipFile(zip_file, 'r') as archive:
+            members = [member for member in archive.infolist() if not member.is_dir()]
+            for name, table_cls in table_classes.items():
+                filename = f'{name}.tsv'
+                matches = [member for member in members if member.filename == filename]
+                if not matches:
+                    # Older writers included the output directory in the member names.
+                    matches = [member for member in members if PurePosixPath(member.filename).name == filename]
+                if not matches:
+                    continue
+                if len(matches) > 1:
+                    raise ValueError(f'Multiple archive members match the HERD table {filename!r}.')
+                with archive.open(matches[0]) as file:
+                    df = pd.read_csv(file, sep='\t').replace(np.nan, '')
+                tables[name] = table_cls().from_dataframe(df=df, name=name, extra_ok=False)
 
         # check that the idx columns reference rows that exist in the target tables
         cls._assert_idx_in_range(tables['entity_keys']['entities_idx'], len(tables['entities']),
