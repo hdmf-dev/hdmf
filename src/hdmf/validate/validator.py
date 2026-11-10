@@ -11,7 +11,7 @@ from .errors import ExpectedArrayError, IncorrectQuantityError, ValidationWarnin
 from ..build import GroupBuilder, DatasetBuilder, LinkBuilder, ReferenceBuilder
 from ..build.builders import BaseBuilder
 from ..spec import Spec, AttributeSpec, GroupSpec, DatasetSpec, RefSpec, LinkSpec
-from ..spec import SpecNamespace, NamespaceCatalog
+from ..spec import SpecNamespace
 from ..spec.spec import BaseStorageSpec, DtypeHelper
 from ..utils import _is_collection, _get_length
 from ..utils import docval, getargs, pystr, get_data_shape
@@ -297,13 +297,11 @@ class ValidationResult:
 class ValidatorMap:
     """A class for keeping track of Validator objects for all data types in a namespace"""
 
-    @docval({'name': 'namespace', 'type': SpecNamespace, 'doc': 'the namespace to builder map for'},
-            {'name': 'catalog', 'type': NamespaceCatalog, 'default': None,
-             'doc': 'all the namespaces loaded with the file, used to resolve types defined in other namespaces'})
+    @docval({'name': 'namespace', 'type': SpecNamespace, 'doc': 'the namespace to builder map for'})
     def __init__(self, **kwargs):
-        ns, catalog = getargs('namespace', 'catalog', kwargs)
+        ns = getargs('namespace', kwargs)
         self.__ns = ns
-        self.__catalog = catalog
+        self.__catalog = getattr(ns, '_namespace_catalog', None)
         tree = defaultdict(list)
         types = ns.get_registered_types()
         self.__type_key = ns.get_spec(types[0]).type_key()

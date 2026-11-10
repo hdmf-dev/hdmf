@@ -991,7 +991,7 @@ class TestSubtypeFromAnotherNamespace(TestCase):
         imaging_plane = GroupBuilder('imaging_plane', attributes={'data_type': 'ImagingPlane'},
                                      links=[LinkBuilder(name='device', builder=custom_device)])
 
-        result = ValidatorMap(other_extension, catalog=ns_catalog).validate(imaging_plane)
+        result = ValidatorMap(other_extension).validate(imaging_plane)
         self.assertEqual(result, [])
 
 
