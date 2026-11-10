@@ -18,7 +18,7 @@ jobs:
         # The token is used to add issues to the org-level project boards, which the default GITHUB_TOKEN
         # cannot reach; its scope is bounded by the GitHub App's own installed permissions.
         # immutable release (see .github/zizmor.yml for the policy exception)
-        uses: actions/create-github-app-token@v3.2.0  # zizmor: ignore[github-app]
+        uses: actions/create-github-app-token@v3.3.0  # zizmor: ignore[github-app]
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PEM }}
