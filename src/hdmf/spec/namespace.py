@@ -314,6 +314,7 @@ class NamespaceCatalog:
         if name in self.__namespaces:
             raise KeyError("namespace '%s' already exists" % name)
         self.__namespaces[name] = namespace
+        namespace._namespace_catalog = self
 
         # Determine which source files are owned by this namespace
         # (not imported from other namespaces via 'namespace' schema entries).
@@ -624,6 +625,7 @@ class NamespaceCatalog:
         # construct namespace
         ns = self.__spec_namespace_cls.build_namespace(catalog=catalog, **namespace)
         self.__namespaces[ns_name] = ns
+        ns._namespace_catalog = self
 
         # check for conflicts between core and extension namespaces
         if ns_name not in self.__core_namespaces:

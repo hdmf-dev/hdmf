@@ -301,6 +301,7 @@ class ValidatorMap:
     def __init__(self, **kwargs):
         ns = getargs('namespace', kwargs)
         self.__ns = ns
+        self.__catalog = getattr(ns, '_namespace_catalog', None)
         tree = defaultdict(list)
         types = ns.get_registered_types()
         self.__type_key = ns.get_spec(types[0]).type_key()
@@ -339,6 +340,23 @@ class ValidatorMap:
     @property
     def namespace(self):
         return self.__ns
+
+    def _get_data_type_known_to_namespace(self, builder):
+        """Return the data type of a typed builder, or its nearest parent type that this namespace defines.
+
+        A builder whose type comes from another loaded namespace, e.g., a second extension, is looked up
+        in the namespace stored on the builder.
+        """
+        data_type = builder.attributes.get(self.__type_key)
+        if data_type is None or data_type in self.__validators or self.__catalog is None:
+            return data_type
+        builder_namespace = builder.attributes.get('namespace')
+        if builder_namespace not in self.__catalog.namespaces:
+            return data_type
+        for parent_type in self.__catalog.get_namespace(builder_namespace).get_hierarchy(data_type):
+            if parent_type in self.__validators:
+                return parent_type
+        return data_type
 
     @docval({'name': 'spec', 'type': (Spec, str), 'doc': 'the specification to use to validate'},
             returns='all valid sub data types for the given spec', rtype=tuple)
@@ -707,7 +725,7 @@ class GroupValidator(BaseStorageValidator):
                 yield self.__construct_illegal_link_error(child_spec, parent_builder)
                 return  # do not validate illegally linked objects
             child_builder = child_builder.builder
-        child_builder_data_type = child_builder.attributes.get(self.spec.type_key())
+        child_builder_data_type = self.vmap._get_data_type_known_to_namespace(child_builder)
         for child_validator in self.__get_child_validators(child_spec, child_builder_data_type):
             yield from child_validator.validate(child_builder)
 
@@ -879,10 +897,8 @@ class SpecMatcher:
                 return True
             valid_validators = self.vmap.valid_types(spec.data_type)
             valid_types = [v.spec.data_type for v in valid_validators]
-            if isinstance(builder, LinkBuilder):
-                dt = builder.builder.attributes.get(spec.type_key())
-            else:
-                dt = builder.attributes.get(spec.type_key())
+            target = builder.builder if isinstance(builder, LinkBuilder) else builder
+            dt = self.vmap._get_data_type_known_to_namespace(target)
             return dt in valid_types
 
         return list(filter(compatible_type, candidates))

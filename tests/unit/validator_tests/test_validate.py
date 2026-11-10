@@ -962,6 +962,39 @@ class TestLinkAndChildMatchingDataType(TestCase):
         self.validate_matching_link_data_type_case(datasets, groups, links)
 
 
+class TestSubtypeFromAnotherNamespace(TestCase):
+
+    def test_device_subtype_from_another_extension(self):
+        """Test that a Device subtype from one extension is accepted as the device of an ImagingPlane when
+        validating against another extension that does not include the first one"""
+        other_extension_catalog = SpecCatalog()
+        other_extension_catalog.register_spec(GroupSpec('A device', data_type_def='Device'), 'core.yaml')
+        imaging_plane_spec = GroupSpec('An imaging plane', data_type_def='ImagingPlane',
+                                       links=[LinkSpec('The device used', name='device', target_type='Device')])
+        other_extension_catalog.register_spec(imaging_plane_spec, 'core.yaml')
+        other_extension = SpecNamespace('another extension', 'ndx-other-extension', [{'namespace': CORE_NAMESPACE}],
+                                        version='0.1.0', catalog=other_extension_catalog)
+
+        device_extension_catalog = SpecCatalog()
+        custom_device_spec = GroupSpec('A custom device', data_type_def='CustomDevice', data_type_inc='Device')
+        device_extension_catalog.register_spec(custom_device_spec, 'ndx-custom-device.yaml')
+        schema = [{'namespace': CORE_NAMESPACE}, {'source': 'ndx-custom-device.yaml'}]
+        device_extension = SpecNamespace('an extension with a custom device', 'ndx-custom-device', schema,
+                                         version='0.1.0', catalog=device_extension_catalog)
+
+        ns_catalog = NamespaceCatalog()
+        ns_catalog.add_namespace(other_extension.name, other_extension)
+        ns_catalog.add_namespace(device_extension.name, device_extension)
+
+        custom_device = GroupBuilder('custom_device',
+                                     attributes={'data_type': 'CustomDevice', 'namespace': 'ndx-custom-device'})
+        imaging_plane = GroupBuilder('imaging_plane', attributes={'data_type': 'ImagingPlane'},
+                                     links=[LinkBuilder(name='device', builder=custom_device)])
+
+        result = ValidatorMap(other_extension).validate(imaging_plane)
+        self.assertEqual(result, [])
+
+
 class TestMultipleChildrenAtDifferentLevelsOfInheritance(TestCase):
     """When multiple children can satisfy multiple specs due to data_type
     inheritance, the validation needs to carefully match builders against specs
