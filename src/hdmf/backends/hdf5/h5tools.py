@@ -7,7 +7,8 @@ from pathlib import Path, PurePosixPath as pp
 
 import numpy as np
 import h5py
-from h5py import File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference, check_dtype
+from h5py import (File, Group, Dataset, special_dtype, SoftLink, ExternalLink, Reference,
+                  RegionReference, check_dtype)
 
 from .h5_utils import (BuilderH5ReferenceDataset, BuilderH5TableDataset, H5DataIO,
                        H5SpecReader, H5SpecWriter, HDF5IODataChunkIteratorQueue)
@@ -620,14 +621,16 @@ class HDF5IO(HDMFIO):
             if isinstance(scalar, bytes):
                 scalar = scalar.decode('UTF-8')
 
-            if isinstance(scalar, Reference):
-                # TODO (AJTRITT):  This should call __read_ref to support Group references
+            if isinstance(scalar, RegionReference):
+                raise UnsupportedOperation(
+                    "Reading HDF5 region references as scalar object references is not supported"
+                )
+            elif isinstance(scalar, Reference):
                 target = h5obj.file[scalar]
-                target_builder = self.__read_dataset(target)
-                self.__set_built(target.file.filename, target.id, target_builder)
+                target_builder = self.__read_ref(target)
                 d = ReferenceBuilder(target_builder)
                 kwargs['data'] = d
-                kwargs['dtype'] = d.dtype
+                kwargs['dtype'] = 'object'
             elif h5obj.dtype.kind == 'V':  # scalar compound data type
                 kwargs['data'] = np.array(scalar, dtype=h5obj.dtype)
                 cpd_dt = h5obj.dtype
