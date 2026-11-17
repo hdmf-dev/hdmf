@@ -27,14 +27,12 @@ jobs:
           # NOTE config below with "upload-wheels: true" specifies that wheels should be uploaded as an artifact
           - { name: linux-python3.10-minimum             , test-tox-env: pytest-py310-minimum           , python-ver: "3.10", os: ubuntu-latest }
           - { name: linux-python3.14-upgraded            , test-tox-env: pytest-py314-upgraded          , python-ver: "3.14", os: ubuntu-latest }
-          - { name: linux-python3.14-upgraded-optional   , test-tox-env: pytest-py314-upgraded-optional , python-ver: "3.14", os: ubuntu-24.04  , upload-wheels: true }
+          - { name: linux-python3.14-upgraded-optional   , test-tox-env: pytest-py314-upgraded-optional , python-ver: "3.14", os: ubuntu-latest , upload-wheels: true }
           - { name: windows-python3.10-minimum           , test-tox-env: pytest-py310-minimum           , python-ver: "3.10", os: windows-latest }
           - { name: windows-python3.14-upgraded-optional , test-tox-env: pytest-py314-upgraded-optional , python-ver: "3.14", os: windows-latest }
           - { name: macos-python3.10-minimum             , test-tox-env: pytest-py310-minimum           , python-ver: "3.10", os: macos-15-intel }
           - { name: macos-python3.14-upgraded            , test-tox-env: pytest-py314-upgraded          , python-ver: "3.14", os: macos-latest }
-          # No prebuilt wheels for numcodecs==0.15.1 for Python 3.14 on PyPI and cannot build numcodecs == 0.15.1 on macos-latest
-          # So optional requirements testing on macos-latest (arm64) is disabled. See https://github.com/hdmf-dev/hdmf/pull/1367
-          - { name: macos-python3.13-upgraded-optional   , test-tox-env: pytest-py313-upgraded-optional , python-ver: "3.13", os: macos-latest }
+          - { name: macos-python3.14-upgraded-optional   , test-tox-env: pytest-py314-upgraded-optional , python-ver: "3.14", os: macos-latest }
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -86,7 +84,7 @@ jobs:
       matrix:
         include:
           - { name: linux-gallery-python3.10-minimum             , test-tox-env: gallery-py310-minimum           , python-ver: "3.10", os: ubuntu-latest }
-          - { name: linux-gallery-python3.14-upgraded-optional   , test-tox-env: gallery-py314-upgraded-optional , python-ver: "3.14", os: ubuntu-24.04 }
+          - { name: linux-gallery-python3.14-upgraded-optional   , test-tox-env: gallery-py314-upgraded-optional , python-ver: "3.14", os: ubuntu-latest }
           - { name: windows-gallery-python3.10-minimum           , test-tox-env: gallery-py310-minimum           , python-ver: "3.10", os: windows-latest }
           - { name: windows-gallery-python3.14-upgraded-optional , test-tox-env: gallery-py314-upgraded-optional , python-ver: "3.14", os: windows-latest }
     steps:

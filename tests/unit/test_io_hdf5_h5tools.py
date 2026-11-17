@@ -47,7 +47,7 @@ from tests.unit.helpers.io import DoNothingIO
 
 try:
     import zarr
-    import numcodecs
+    from zarr.dtype import VariableLengthBytes, VariableLengthUTF8
     SKIP_ZARR_TESTS = False
 except ImportError:
     SKIP_ZARR_TESTS = True
@@ -3750,7 +3750,7 @@ class TestWriteHDF5withZarrInput(TestCase):
     def test_roundtrip_basic(self):
         # Setup all the data we need
         zarr.save(self.zarr_path, np.arange(50))
-        zarr_data = zarr.open(self.zarr_path, 'r')
+        zarr_data = zarr.open(self.zarr_path, mode='r')
         foo1 = Foo(name='foo1',
                    my_data=zarr_data,
                    attr1="I am foo1",
@@ -3769,7 +3769,7 @@ class TestWriteHDF5withZarrInput(TestCase):
 
     def test_roundtrip_empty_dataset(self):
         zarr.save(self.zarr_path, np.asarray([]).astype('int64'))
-        zarr_data = zarr.open(self.zarr_path, 'r')
+        zarr_data = zarr.open(self.zarr_path, mode='r')
         foo1 = Foo('foo1', zarr_data, "I am foo1", 17, 3.14)
         foobucket = FooBucket('bucket1', [foo1])
         foofile = FooFile(buckets=[foobucket])
@@ -3784,7 +3784,7 @@ class TestWriteHDF5withZarrInput(TestCase):
     def test_write_zarr_int32_dataset(self):
         base_data = np.arange(50).astype('int32')
         zarr.save(self.zarr_path, base_data)
-        zarr_data = zarr.open(self.zarr_path, 'r')
+        zarr_data = zarr.open(self.zarr_path, mode='r')
         io = HDF5IO(self.path, mode='a')
         self.io = io
         f = io._file
@@ -3799,7 +3799,7 @@ class TestWriteHDF5withZarrInput(TestCase):
     def test_write_zarr_float32_dataset(self):
         base_data = np.arange(50).astype('float32')
         zarr.save(self.zarr_path, base_data)
-        zarr_data = zarr.open(self.zarr_path, 'r')
+        zarr_data = zarr.open(self.zarr_path, mode='r')
         io = HDF5IO(self.path, mode='a')
         self.io = io
         f = io._file
@@ -3815,7 +3815,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         # fixed length unicode zarr array
         base_data = np.array(['string1', 'string2'], dtype=str)
         zarr.save(self.zarr_path, base_data)
-        zarr_data = zarr.open(self.zarr_path, 'r')
+        zarr_data = zarr.open(self.zarr_path, mode='r')
         io = HDF5IO(self.path, mode='a')
         self.io = io
         f = io._file
@@ -3845,7 +3845,7 @@ class TestWriteHDF5withZarrInput(TestCase):
         # fixed length ascii zarr array
         base_data = np.array(['string1', 'string2'], dtype=bytes)
         zarr.save(self.zarr_path, base_data)
-        zarr_data = zarr.open(self.zarr_path, 'r')
+        zarr_data = zarr.open(self.zarr_path, mode='r')
         io = HDF5IO(self.path, mode='a')
         self.io = io
         f = io._file
@@ -3874,7 +3874,7 @@ class TestWriteHDF5withZarrInput(TestCase):
     def test_write_zarr_vlen_utf8_dataset(self):
         # variable length unicode zarr array
         base_data = np.array(['string1', 'string2'], dtype=str)
-        zarr_data = zarr.open(self.zarr_path, shape=(2,), dtype=object, object_codec=numcodecs.VLenUTF8())
+        zarr_data = zarr.create_array(self.zarr_path, shape=(2,), dtype=VariableLengthUTF8())
         zarr_data[:] = base_data
         io = HDF5IO(self.path, mode='a')
         self.io = io
@@ -3904,7 +3904,7 @@ class TestWriteHDF5withZarrInput(TestCase):
     def test_write_zarr_vlen_ascii_dataset(self):
         # variable length ascii zarr array
         base_data = np.array(['string1', 'string2'], dtype=bytes)
-        zarr_data = zarr.open(self.zarr_path, shape=(2,), dtype=object, object_codec=numcodecs.VLenBytes())
+        zarr_data = zarr.create_array(self.zarr_path, shape=(2,), dtype=VariableLengthBytes())
         zarr_data[:] = base_data
         io = HDF5IO(self.path, mode='a')
         self.io = io
@@ -3934,7 +3934,7 @@ class TestWriteHDF5withZarrInput(TestCase):
     def test_write_zarr_dataset_compress_gzip(self):
         base_data = np.arange(50).astype('float32')
         zarr.save(self.zarr_path, base_data)
-        zarr_data = zarr.open(self.zarr_path, 'r')
+        zarr_data = zarr.open(self.zarr_path, mode='r')
         a = H5DataIO(zarr_data,
                      compression='gzip',
                      compression_opts=5,
