@@ -331,12 +331,16 @@ class ObjectMapper(metaclass=ExtenderMeta):
                 else:
                     ret_dtype = spec_dtype_type
                 return value, ret_dtype
-            ret = list()
-            for elem in value:
-                tmp, tmp_dtype = cls.convert_dtype(spec, elem)
-                ret.append(tmp)
-            ret = type(value)(ret)
-            ret_dtype = tmp_dtype
+            converted = cls.__convert_scalar_list(spec_dtype_type, value)
+            if converted is not None:
+                ret, ret_dtype, warning_msg = converted
+            else:
+                ret = list()
+                for elem in value:
+                    tmp, tmp_dtype = cls.convert_dtype(spec, elem)
+                    ret.append(tmp)
+                ret = type(value)(ret)
+                ret_dtype = tmp_dtype
         # Any DataChunkIterator
         elif isinstance(value, AbstractDataChunkIterator):
             ret = value
@@ -362,6 +366,48 @@ class ObjectMapper(metaclass=ExtenderMeta):
         return ret, ret_dtype
 
     @classmethod
+    def __convert_scalar_list(cls, spec_dtype_type, value):
+        """
+        Convert a non-empty list/tuple of scalars at once instead of one element at a time.
+
+        The result is the same as converting each element on its own: the same values, element types, and dtype.
+        The dtype conversion warning, if any, is returned so that it is emitted once for the list instead of once
+        for each element.
+
+        Returns None if the elements need to be converted one at a time, e.g., if the list contains elements of
+        different types, None values, or nested lists, or if the conversion could change the values.
+        """
+        elem_types = set(map(type, value))
+        if not elem_types.isdisjoint(cls.__no_convert):
+            return None
+        if spec_dtype_type in (_unicode, _ascii, _isoformat):
+            allowed = {str, bytes}
+            if spec_dtype_type is _isoformat:
+                allowed |= {datetime.datetime, datetime.date}
+            if not elem_types <= allowed:
+                return None
+            ret_dtype = 'utf8' if spec_dtype_type is _unicode else 'ascii'
+            return type(value)(list(map(spec_dtype_type, value))), ret_dtype, None
+        if len(elem_types) != 1:
+            return None
+        elem_type = elem_types.pop()
+        if elem_type not in (bool, int, float) and not (issubclass(elem_type, np.generic) and
+                                                        np.dtype(elem_type).kind in 'biuf'):
+            return None
+        arr = np.asarray(value)
+        if arr.dtype != np.dtype(elem_type):
+            # e.g., Python ints that do not fit in the default integer type
+            return None
+        dtype_func, warning_msg = cls.__resolve_numeric_dtype(elem_type, spec_dtype_type)
+        if not (np.can_cast(arr.dtype, dtype_func) or
+                (arr.dtype.kind == 'i' and np.dtype(dtype_func).kind == 'u' and arr.min() >= 0)):
+            # casts that can change the values (e.g., float to int, negative int to uint) are done one element
+            # at a time, which raises an error for values that cannot be converted
+            return None
+        arr = arr.astype(dtype_func, copy=False)
+        return type(value)(list(arr)), arr.dtype.type, warning_msg
+
+    @classmethod
     def __check_convert_numeric(cls, value_type):
         # dtype 'numeric' allows only ints, floats, and uints
         value_dtype = np.dtype(value_type)
@@ -382,10 +428,11 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if isinstance(value, np.ndarray) and np.issubdtype(value.dtype, np.complexfloating):
             raise ValueError("Complex numbers are not supported")
 
-        # Check list/tuple elements
+        # Check list/tuple elements. Only elements that are complex numbers, arrays, or lists/tuples need checking.
         if isinstance(value, (list, tuple)):
-            for item in value:
-                cls.__check_for_complex_numbers(item)
+            if any(issubclass(t, (complex, np.ndarray, list, tuple)) for t in set(map(type, value))):
+                for item in value:
+                    cls.__check_for_complex_numbers(item)
 
     @classmethod
     def __check_edgecases(cls, spec, value):  # noqa: C901
@@ -1098,6 +1145,15 @@ class ObjectMapper(metaclass=ExtenderMeta):
         if (isinstance(data, AbstractDataChunkIterator) or
                 (isinstance(data, DataIO) and isinstance(data.data, AbstractDataChunkIterator))):
             return False
+
+        # An array with a non-object dtype (e.g., numeric or fixed-length string) cannot hold containers, and
+        # neither can an h5py dataset of variable-length strings or references, whose dtype carries 'vlen' or 'ref'
+        # metadata. Use the dtype instead of iterating, which reads a dataset from a file one element at a time.
+        dtype = getattr(data.data if isinstance(data, DataIO) else data, 'dtype', None)
+        if isinstance(dtype, np.dtype) and not isinstance(data, AbstractContainer):
+            if dtype.kind != 'O' or (dtype.metadata is not None and
+                                     ('vlen' in dtype.metadata or 'ref' in dtype.metadata)):
+                return False
 
         tmp = data
         while _is_collection(tmp) and not isinstance(tmp, AbstractContainer):
