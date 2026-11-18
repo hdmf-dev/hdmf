@@ -1689,7 +1689,7 @@ class TestVlenStringData(ValidatorTestBase):
     def test_object_dtype_array_utf(self):
         """Test that validator can determine dtype for non-empty zarr.Array with object dtype"""
         import zarr
-        from zarr.dtype import VariableLengthBytes, VariableLengthUTF8
+        from zarr.dtype import VariableLengthUTF8
 
         # Create a zarr array with object dtype containing strings
         zarr_array = zarr.array(['string1', 'string2', 'string3'], dtype=VariableLengthUTF8())
@@ -1705,7 +1705,7 @@ class TestVlenStringData(ValidatorTestBase):
     def test_object_dtype_array_ascii_bytes(self):
         """Test that validator can determine dtype for zarr.Array with object dtype containing ASCII bytes"""
         import zarr
-        from zarr.dtype import VariableLengthBytes, VariableLengthUTF8
+        from zarr.dtype import VariableLengthBytes
 
         # Create a zarr array with object dtype containing bytes (ASCII strings)
         zarr_array = zarr.array(np.array(['string1', 'string2'], dtype=bytes).astype(object),
@@ -1721,7 +1721,7 @@ class TestVlenStringData(ValidatorTestBase):
     def test_empty_object_dtype_array(self):
         """Test that validator can determine dtype for empty zarr.Array with object dtype"""
         import zarr
-        from zarr.dtype import VariableLengthBytes, VariableLengthUTF8
+        from zarr.dtype import VariableLengthUTF8
 
         # Create an empty zarr array with object dtype
         empty_zarr_array = zarr.array([], dtype=VariableLengthUTF8())
@@ -1736,7 +1736,7 @@ class TestVlenStringData(ValidatorTestBase):
     def test_utf8_for_ascii_zarr(self):
         """Test that validator does not allow UTF-8 data where ASCII is specified for zarr object dtype arrays"""
         import zarr
-        from zarr.dtype import VariableLengthBytes, VariableLengthUTF8
+        from zarr.dtype import VariableLengthUTF8
 
         # Create a zarr array with UTF-8 strings
         zarr_array = zarr.array(['string1', 'string2', 'string3'], dtype=VariableLengthUTF8())

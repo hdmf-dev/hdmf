@@ -12,6 +12,7 @@
 - Fixed `HDF5IO` failing to write a zarr v3 array of strings or bytes, and `H5DataIO` rejecting a zarr v3 array. @h-mayorquin [#1618](https://github.com/hdmf-dev/hdmf/pull/1618)
 
 ### Changed
+- The `zarr` optional extra now installs hdmf-zarr 0.14 and zarr v3 on Python 3.12 and newer, instead of zarr v2. The Linux CI jobs pinned to Ubuntu 24.04 in #1614 run on `ubuntu-latest` again. @h-mayorquin [#1619](https://github.com/hdmf-dev/hdmf/pull/1619)
 - `HERD.add_ref_termset` now works on a container/attribute wrapped in a `TermSetWrapper`. `key` now also accepts a list, tuple, or array of terms. @rly [#1570](https://github.com/hdmf-dev/hdmf/pull/1570)
 - `ValidatorMap.validate` and `hdmf.common.validate` now return a `ValidationResult` instead of a list. `ValidationResult` carries an `errors` list and a `warnings` list, and it iterates, indexes, reports its `len`, tests for truth, and compares equal to a list as its `errors` list. Added `ValidationWarning`, a validation issue that leaves the data valid, and `ValidationIssue`, the common base class of `Error` and `ValidationWarning`. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
 - Two validation issues are now equal only when they have the same class. Previously any two issues with the same name, reason, and location were equal, and an issue also compared equal to that string. @sejalpunwatkar @rly [#1480](https://github.com/hdmf-dev/hdmf/pull/1480)
