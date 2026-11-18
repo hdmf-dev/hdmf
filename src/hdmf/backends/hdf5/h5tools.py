@@ -820,6 +820,13 @@ class HDF5IO(HDMFIO):
             return H5_REF
         elif not _is_collection(data):
             if isinstance(data, np.ndarray) and data.ndim == 0:
+                # Zarr v3 returns 0-d arrays from data[0]. Their numpy string, bytes and object
+                # types have no size, so infer the type from the Python value they hold.
+                # numpy dtype kinds of strings and bytes: fixed-length unicode (U), fixed-length bytes (S),
+                # Python objects (O), and variable-length strings (T, numpy 2's StringDType)
+                string_and_object_kinds = "USOT"
+                if data.dtype.kind in string_and_object_kinds:
+                    return cls.get_type(data.item())
                 return data.dtype.type
             return type(data)
         else:

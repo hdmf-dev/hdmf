@@ -19,7 +19,7 @@ import numpy as np
 import numpy.testing as npt
 
 from hdmf.backends.hdf5 import H5DataIO
-from hdmf.backends.hdf5.h5tools import HDF5IO, SPEC_LOC_ATTR, H5PY_3
+from hdmf.backends.hdf5.h5tools import HDF5IO, SPEC_LOC_ATTR, H5PY_3, H5_TEXT, H5_BINARY
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
 from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
@@ -4040,6 +4040,20 @@ class HDF5IOClassmethodTests(TestCase):
         result = HDF5IO.get_type(zero_d)
         self.assertIs(result, np.float64)
 
+    def test_get_type_0d_ndarray_strings(self):
+        """Zarr v3 returns 0-d arrays from data[0]. A 0-d array of strings, bytes or objects
+        has an unsized numpy type that h5py cannot create a dataset from, so get_type uses
+        the Python value it holds."""
+        array_with_unicode_string = np.asarray("a")  # kind U
+        array_with_bytes = np.asarray(b"a")  # kind S
+        object_array_with_bytes = np.asarray(b"a", dtype=object)  # kind O
+        object_array_with_unicode_string = np.asarray("a", dtype=object)  # kind O
+
+        self.assertIs(HDF5IO.get_type([array_with_unicode_string]), H5_TEXT)
+        self.assertIs(HDF5IO.get_type([array_with_bytes]), H5_BINARY)
+        self.assertIs(HDF5IO.get_type([object_array_with_bytes]), H5_BINARY)
+        self.assertIs(HDF5IO.get_type([object_array_with_unicode_string]), H5_TEXT)
+
 
 class H5DataIOTests(TestCase):
 
@@ -4056,6 +4070,13 @@ class H5DataIOTests(TestCase):
             H5DataIO(data=np.zeros((10, 10)), dtype=int)
         with self.assertWarnsRegex(UserWarning, "Argument 'shape' is ignored when 'data' is specified"):
             H5DataIO(data=np.zeros((10, 10)), shape=(10, 10))
+
+    @unittest.skipIf(SKIP_ZARR_TESTS, "Zarr is not installed")
+    def test_dataio_zarr_array(self):
+        """Zarr v3 arrays are not iterable, so they are accepted as array data."""
+        data = zarr.array(np.arange(10))
+        dataio = H5DataIO(data=data, compression="gzip")
+        self.assertIs(dataio.data, data)
 
     def test_dataio_len(self):
         dataio = H5DataIO(shape=(10, 10), dtype=int)
