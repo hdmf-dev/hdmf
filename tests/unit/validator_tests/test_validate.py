@@ -1689,12 +1689,10 @@ class TestVlenStringData(ValidatorTestBase):
     def test_object_dtype_array_utf(self):
         """Test that validator can determine dtype for non-empty zarr.Array with object dtype"""
         import zarr
-        import numcodecs
+        from zarr.dtype import VariableLengthUTF8
 
         # Create a zarr array with object dtype containing strings
-        zarr_array = zarr.array(['string1', 'string2', 'string3'],
-                                dtype=object,
-                                object_codec=numcodecs.VLenUTF8())
+        zarr_array = zarr.array(['string1', 'string2', 'string3'], dtype=VariableLengthUTF8())
         bar_builder = GroupBuilder('my_bar',
                                    attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                    datasets=[DatasetBuilder('data', zarr_array)])
@@ -1707,12 +1705,11 @@ class TestVlenStringData(ValidatorTestBase):
     def test_object_dtype_array_ascii_bytes(self):
         """Test that validator can determine dtype for zarr.Array with object dtype containing ASCII bytes"""
         import zarr
-        import numcodecs
+        from zarr.dtype import VariableLengthBytes
 
         # Create a zarr array with object dtype containing bytes (ASCII strings)
-        zarr_array = zarr.array(np.array(['string1', 'string2'], dtype=bytes),
-                                dtype=object,
-                                object_codec=numcodecs.VLenBytes())
+        zarr_array = zarr.array(np.array(['string1', 'string2'], dtype=bytes).astype(object),
+                                dtype=VariableLengthBytes())
         bar_builder = GroupBuilder('my_bar',
                                    attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                    datasets=[DatasetBuilder('data', zarr_array)])
@@ -1724,10 +1721,10 @@ class TestVlenStringData(ValidatorTestBase):
     def test_empty_object_dtype_array(self):
         """Test that validator can determine dtype for empty zarr.Array with object dtype"""
         import zarr
-        import numcodecs
+        from zarr.dtype import VariableLengthUTF8
 
         # Create an empty zarr array with object dtype
-        empty_zarr_array = zarr.array([], dtype=object, object_codec=numcodecs.VLenUTF8())
+        empty_zarr_array = zarr.array([], dtype=VariableLengthUTF8())
         bar_builder = GroupBuilder('my_bar',
                                    attributes={'data_type': 'Bar', 'attr1': 'a string attribute'},
                                    datasets=[DatasetBuilder('data', empty_zarr_array)])
@@ -1739,10 +1736,10 @@ class TestVlenStringData(ValidatorTestBase):
     def test_utf8_for_ascii_zarr(self):
         """Test that validator does not allow UTF-8 data where ASCII is specified for zarr object dtype arrays"""
         import zarr
-        import numcodecs
+        from zarr.dtype import VariableLengthUTF8
 
         # Create a zarr array with UTF-8 strings
-        zarr_array = zarr.array(['string1', 'string2', 'string3'], dtype=object, object_codec=numcodecs.VLenUTF8())
+        zarr_array = zarr.array(['string1', 'string2', 'string3'], dtype=VariableLengthUTF8())
         bar_builder = GroupBuilder('my_foo',
                                    attributes={'data_type': 'Foo', 'attr1': 'a string attribute'},
                                    datasets=[DatasetBuilder('data', zarr_array)])
