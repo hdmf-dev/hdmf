@@ -3025,6 +3025,65 @@ class TestDynamicTableAddEnumRoundTrip(H5RoundTripMixin, TestCase):
         return table
 
 
+class TestDynamicTableReadUnsortedSelection(TestCase):
+    """Select rows of a DynamicTable read from HDF5 with indices that are not increasing.
+
+    h5py rejects a list of indices that is not increasing or that repeats an index, but a table
+    in memory accepts any order, so the same selection must work on both.
+    """
+
+    def setUp(self):
+        self.path = get_temp_filepath()
+        self.io = None
+
+    def tearDown(self):
+        if self.io is not None:
+            self.io.close()
+        remove_test_file(self.path)
+
+    def _write_and_read(self):
+        table = DynamicTable(name='table0', description='an example table')
+        table.add_column(name='foo', description='a float column')
+        table.add_column(name='bar', description='a string column')
+        for i in range(4):
+            table.add_row(foo=i * 1.5, bar='b%d' % i)
+        region = DynamicTableRegion(name='region', data=[3, 0, 2], description='a region', table=table)
+        table1 = DynamicTable(name='table1', description='a table with a region', columns=[region])
+        container = SimpleMultiContainer(name='root', containers=[table, table1])
+        with HDF5IO(self.path, 'w', manager=get_manager()) as io:
+            io.write(container)
+        self.io = HDF5IO(self.path, 'r', manager=get_manager())
+        read_container = self.io.read()
+        return read_container['table0'], read_container['table1']
+
+    def test_column_unsorted(self):
+        table, _ = self._write_and_read()
+        np.testing.assert_array_equal(table['foo'][[3, 1]], [4.5, 1.5])
+        np.testing.assert_array_equal(table['bar'][np.array([2, 0])], ['b2', 'b0'])
+
+    def test_column_duplicates(self):
+        table, _ = self._write_and_read()
+        np.testing.assert_array_equal(table['foo'][[1, 1, 0]], [1.5, 1.5, 0.0])
+
+    def test_column_negative(self):
+        table, _ = self._write_and_read()
+        np.testing.assert_array_equal(table['foo'][[-1, 0]], [4.5, 0.0])
+
+    def test_rows_unsorted(self):
+        table, _ = self._write_and_read()
+        df = table.get([3, 1])
+        np.testing.assert_array_equal(df.index, [3, 1])
+        np.testing.assert_array_equal(df['foo'], [4.5, 1.5])
+        np.testing.assert_array_equal(df['bar'], ['b3', 'b1'])
+
+    def test_region_rows_unsorted(self):
+        _, table1 = self._write_and_read()
+        np.testing.assert_array_equal(table1['region'].get([2, 0], index=True), [2, 3])
+        df = table1.get([2, 0])
+        np.testing.assert_array_equal(df.index, [2, 0])
+        np.testing.assert_array_equal(df['region'], [2, 3])
+
+
 class TestEnumDataReadResolve(TestCase):
     """Resolve EnumData values after reading from disk (h5py-backed elements).
 

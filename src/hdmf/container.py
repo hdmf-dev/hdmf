@@ -1070,9 +1070,18 @@ class Data(AbstractContainer):
     def get(self, args):
         if isinstance(self.data, (tuple, list)) and isinstance(args, (tuple, list, np.ndarray)):
             return [self.data[i] for i in args]
-        if isinstance(self.data, h5py.Dataset) and isinstance(args, np.ndarray):
-            # This is needed for h5py 2.9 compatibility
-            args = args.tolist()
+        if isinstance(self.data, h5py.Dataset) and isinstance(args, (list, np.ndarray)):
+            idx = np.asarray(args)
+            if idx.ndim == 1 and idx.size > 1 and np.issubdtype(idx.dtype, np.integer):
+                # h5py requires a list of indices to be increasing and free of duplicates. Read the
+                # unique sorted indices and then put the rows back in the order the caller asked for.
+                idx = np.where(idx < 0, idx + len(self.data), idx)
+                if np.any(np.diff(idx) <= 0):
+                    uniq, inverse = np.unique(idx, return_inverse=True)
+                    return self.data[uniq.tolist()][inverse]
+            if isinstance(args, np.ndarray):
+                # This is needed for h5py 2.9 compatibility
+                args = args.tolist()
         return self.data[args]
 
     def append(self, arg):
