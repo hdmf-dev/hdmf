@@ -173,9 +173,39 @@ class HDMFIO(metaclass=ABCMeta):
                 # clear only cached containers and builders where the container was modified
                 src_io.manager.purge_outdated()
             bldr = src_io.manager.build(container, source=self.__source, root=True, export=True)
+            self._check_export_link_targets(bldr)
         else:
             bldr = src_io.read_builder()
         self.write_builder(builder=bldr, **write_args)
+
+    @staticmethod
+    def _check_export_link_targets(root_builder):
+        """Raise an error if a link in the exported hierarchy points to a builder that the export does not write.
+
+        An export build gives each rebuilt builder the export destination as its source, so a link to such a builder
+        is written as a link within the new file. If the target is not in the hierarchy under ``root_builder``, the
+        new file does not contain it and the link is broken. This happens when a container that belongs to another
+        file's hierarchy is added to the exported container without first calling ``reset_parent()`` on it.
+
+        :param root_builder: The root GroupBuilder of the export build
+        :raises ValueError: If a link target was built for the export destination but is outside the hierarchy
+        """
+        groups = [root_builder]
+        while groups:
+            group = groups.pop()
+            groups.extend(group.groups.values())
+            for link in group.links.values():
+                target = link.builder
+                target_root = target
+                while target_root.parent is not None:
+                    target_root = target_root.parent
+                if target_root is not root_builder and target.source == root_builder.source:
+                    raise ValueError(
+                        "Cannot export the link '%s' in '%s': its target '%s' is not part of the hierarchy being "
+                        "exported. This happens when a container that belongs to another file is added to the "
+                        "exported container while it still has its original parent. Call reset_parent() on that "
+                        "container before adding it." % (link.name, group.path, target.name)
+                    )
 
     @abstractmethod
     @docval(returns='a GroupBuilder representing the read data', rtype='GroupBuilder')

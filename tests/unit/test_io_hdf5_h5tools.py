@@ -2966,6 +2966,35 @@ class TestExport(TestCase):
             # make sure the linked group is read from the first file
             self.assertEqual(read_foofile2.foo_link.container_source, os.path.abspath(self.paths[0]))
 
+    def test_container_from_other_file_with_parent(self):
+        """Test that exporting a container holding a group that still has its parent in another file raises."""
+        foofile1 = FooFile(buckets=[FooBucket('bucket1', [Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)])])
+        foofile2 = FooFile(buckets=[FooBucket('bucket2', [Foo('foo2', [6, 7, 8], "I am foo2", 18, 2.72)])])
+        with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile1)
+        with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='w') as write_io:
+            write_io.write(foofile2)
+
+        for link_data in (True, False):
+            with self.subTest(link_data=link_data):
+                with HDF5IO(self.paths[0], manager=get_foo_buildmanager(), mode='r') as read_io1:
+                    with HDF5IO(self.paths[1], manager=get_foo_buildmanager(), mode='r') as read_io2:
+                        read_foofile1 = read_io1.read()
+                        bucket2 = read_io2.read().buckets['bucket2']
+                        # add bucket2 without changing its parent, the way MultiContainerInterface.add does for a
+                        # container that already has a parent
+                        read_foofile1.buckets['bucket2'] = bucket2
+                        read_foofile1.set_modified()
+
+                        msg = ("Cannot export the link 'bucket2' in 'root/buckets': its target 'bucket2' is not part "
+                               "of the hierarchy being exported. This happens when a container that belongs to "
+                               "another file is added to the exported container while it still has its original "
+                               "parent. Call reset_parent() on that container before adding it.")
+                        with HDF5IO(self.paths[2], mode='w') as export_io:
+                            with self.assertRaisesWith(ValueError, msg):
+                                export_io.export(src_io=read_io1, container=read_foofile1,
+                                                 write_args=dict(link_data=link_data))
+
     def test_external_link_dataset(self):
         """Test that exporting a written file with external linked datasets maintains the links."""
         foo1 = Foo('foo1', [1, 2, 3, 4, 5], "I am foo1", 17, 3.14)
