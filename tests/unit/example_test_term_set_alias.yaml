@@ -1,0 +1,26 @@
+id: termset/species_example
+name: NWBSubjectSpeciesStarter
+version: 0.1.0
+prefixes:
+  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_
+imports:
+  - linkml:types
+default_range: string
+
+enums:
+  SubjectSpecies:
+    permissible_values:
+      Homo sapiens:
+        description: Human.
+        meaning: NCBITaxon:9606
+        aliases:
+          - human
+      Mus musculus:
+        description: House mouse.
+        meaning: NCBITaxon:10090
+        aliases:
+          - mouse
+          - house mouse
+      Drosophila persimilis:
+        description: Drosophila persimilis.
+        meaning: NCBITaxon:7234

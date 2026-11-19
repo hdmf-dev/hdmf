@@ -1,4 +1,5 @@
 import logging
+import os
 from collections import OrderedDict, deque
 from copy import copy
 from collections.abc import Callable
@@ -9,7 +10,7 @@ import warnings
 from .builders import DatasetBuilder, GroupBuilder, LinkBuilder, Builder, BaseBuilder
 from .classgenerator import ClassGeneratorManager, CustomClassGenerator, MCIClassGenerator
 from ..container import AbstractContainer, Container, Data
-from ..term_set import TypeConfigurator
+from ..term_set import TypeConfigurator, TermSet
 from ..spec import DatasetSpec, GroupSpec, NamespaceCatalog, RefSpec
 from ..spec.spec import BaseStorageSpec
 from ..utils import docval, getargs, ExtenderMeta, get_docval
@@ -845,6 +846,82 @@ class TypeMap:
             if not isinstance(container_cls, TypeSource):
                 setattr(container_cls, spec.type_key(), data_type)
                 setattr(container_cls, 'namespace', namespace)
+
+    @docval({"name": "container_cls", "type": (type, AbstractContainer),
+             "doc": "the AbstractContainer class (or an instance of one) to look up TermSet configuration for"},
+            {"name": "attribute", "type": str,
+             "doc": ("the name of a specific attribute (i.e., the spec attribute name used as a key in the "
+                      "TermSet configuration file) to get the TermSet for. If None, returns a dict mapping all "
+                      "configured attribute names to their TermSet."),
+             "default": None},
+            returns="the configured TermSet for the given attribute, or a dict mapping attribute name to TermSet",
+            rtype="TermSet or dict")
+    def get_configured_termsets(self, **kwargs):
+        """
+        Get the configured TermSet(s) for a given container class (or instance of one).
+
+        This inspects the :py:class:`~hdmf.term_set.TypeConfigurator` currently loaded on this
+        TypeMap (``self.type_config``) and returns the TermSet(s) that have been configured for
+        the given class (and, optionally, a specific attribute of that class).
+
+        Note that the TermSet configuration file keys attributes by their *spec* attribute name
+        (i.e., the same name used as a key in the configuration file, see
+        :py:meth:`~hdmf.term_set.TypeConfigurator.get_config`), which is what should be passed
+        as ``attribute`` here.
+        """
+        container_cls, attribute = getargs('container_cls', 'attribute', kwargs)
+
+        if isinstance(container_cls, AbstractContainer):
+            container_cls = container_cls.__class__
+
+        configurator = self.type_config
+        empty_return_val = None if attribute is not None else dict()
+
+        if not configurator.paths:
+            # No TermSet configuration has been loaded onto this TypeMap.
+            return empty_return_val
+
+        namespace, data_type = self.get_container_cls_dt(container_cls)
+        if namespace is None:
+            msg = "Class %s is not mapped to a data_type; cannot look up TermSet configuration." % container_cls
+            raise ValueError(msg)
+
+        termset_config = configurator.config
+        if namespace not in termset_config['namespaces']:
+            # No TermSet configuration found for this namespace.
+            return empty_return_val
+
+        config_namespace = termset_config['namespaces'][namespace]
+        if data_type not in config_namespace['data_types']:
+            # No TermSet configuration found for this data_type in the namespace.
+            return empty_return_val
+
+        config_data_type = config_namespace['data_types'][data_type]
+        # NOTE: the config always has exactly one loaded path at a time (see TypeConfigurator);
+        # relative termset paths in the config are resolved relative to that file's directory.
+        cur_dir = os.path.dirname(os.path.realpath(configurator.paths[0]))
+
+        def _resolve_termset(config_entry):
+            termset_path = os.path.join(cur_dir, config_entry['termset'])
+            return TermSet(term_schema_path=termset_path)
+
+        if attribute is not None:
+            config_entry = config_data_type.get(attribute)
+            if config_entry is None or 'termset' not in config_entry:
+                # No TermSet configuration found for this specific attribute on the data_type.
+                return empty_return_val
+            return _resolve_termset(config_entry)
+
+        termsets = dict()
+        for attr_name, config_entry in config_data_type.items():
+            if isinstance(config_entry, dict) and 'termset' in config_entry:
+                termsets[attr_name] = _resolve_termset(config_entry)
+
+        if not termsets:
+            # No TermSet configurations found for any attributes on this data_type.
+            return empty_return_val
+
+        return termsets
 
     @docval({"name": "container_cls", "type": type,
              "doc": "the AbstractContainer class for which the given ObjectMapper class gets used for"},
