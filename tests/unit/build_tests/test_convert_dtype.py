@@ -753,7 +753,7 @@ class TestConvertDtype(TestCase):
         """Test that converting a zarr array with utf8 dtype for a variable length utf8 dtype spec
         returns the same object with a utf8 ret_dtype."""
         import zarr
-        import numcodecs
+        from zarr.dtype import VariableLengthUTF8
 
         spec = DatasetSpec('an example dataset', 'text', name='data')
 
@@ -764,11 +764,11 @@ class TestConvertDtype(TestCase):
         self.assertIs(ret.dtype.type, np.str_)
         self.assertEqual(ret_dtype, 'utf8')
 
-        value = zarr.array(['a', 'b'], dtype=object, object_codec=numcodecs.VLenUTF8())  # variable length unicode
+        value = zarr.array(['a', 'b'], dtype=VariableLengthUTF8())  # variable length unicode
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         self.assertEqual(ret, value)
         self.assertIs(type(ret), zarr.Array)
-        self.assertIs(ret.dtype.type, np.object_)
+        self.assertEqual(ret.dtype.kind, 'T')  # zarr v3 reads variable length strings as numpy's StringDType
         self.assertEqual(ret_dtype, 'utf8')
 
     @unittest.skipIf(not ZARR_INSTALLED, "Zarr is not installed")
@@ -776,7 +776,7 @@ class TestConvertDtype(TestCase):
         """Test that converting a zarr array with fixed length utf8 dtype for a variable length ascii dtype spec
         returns the same object with a ascii ret_dtype."""
         import zarr
-        import numcodecs
+        from zarr.dtype import VariableLengthUTF8
 
         spec = DatasetSpec('an example dataset', 'ascii', name='data')
 
@@ -787,11 +787,11 @@ class TestConvertDtype(TestCase):
         self.assertIs(ret.dtype.type, np.str_)  # the zarr array is not converted
         self.assertEqual(ret_dtype, 'ascii')  # the dtype of the builder will be ascii
 
-        value = zarr.array(['a', 'b'], dtype=object, object_codec=numcodecs.VLenUTF8())  # variable length unicode
+        value = zarr.array(['a', 'b'], dtype=VariableLengthUTF8())  # variable length unicode
         ret, ret_dtype = ObjectMapper.convert_dtype(spec, value)
         self.assertEqual(ret, value)
         self.assertIs(type(ret), zarr.Array)
-        self.assertIs(ret.dtype.type, np.object_)  # the zarr array is not converted
+        self.assertEqual(ret.dtype.kind, 'T')  # the zarr array is not converted
         self.assertEqual(ret_dtype, 'ascii')  # the dtype of the builder will be ascii
 
     def test_complex_number_rejection(self):

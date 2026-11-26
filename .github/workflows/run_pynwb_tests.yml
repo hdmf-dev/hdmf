@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   run-pynwb-tests:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
