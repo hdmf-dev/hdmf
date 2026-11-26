@@ -71,7 +71,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         # immutable release (see .github/zizmor.yml for the policy exception)
-        uses: codecov/codecov-action@v7.0.0
+        uses: codecov/codecov-action@v7.1.1
         with:
           fail_ci_if_error: true
           files: ./coverage.xml
@@ -127,7 +127,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         # immutable release (see .github/zizmor.yml for the policy exception)
-        uses: codecov/codecov-action@v7.0.0
+        uses: codecov/codecov-action@v7.1.1
         with:
           fail_ci_if_error: true
           files: ./coverage.xml
