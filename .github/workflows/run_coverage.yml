@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - { os: ubuntu-latest , opt_req: true }
+          - { os: ubuntu-24.04  , opt_req: true }
           - { os: ubuntu-latest , opt_req: false }
           - { os: windows-latest, opt_req: false }
           - { os: macos-latest  , opt_req: false }
