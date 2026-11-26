@@ -13,6 +13,8 @@ from tests.unit.build_tests.test_io_map import Bar
 from tests.unit.helpers.utils import create_test_type_map, CORE_NAMESPACE
 from hdmf.spec import GroupSpec, AttributeSpec, DatasetSpec
 from glob import glob
+from pathlib import Path
+from tempfile import TemporaryDirectory
 import zipfile
 
 try:
@@ -1057,6 +1059,69 @@ class TestHERD(TestCase):
         HERD.assert_external_resources_equal(er_read, er, check_dtype=False)
 
         self.remove_er_files()
+
+    def test_to_and_from_zip_in_directory(self):
+        herd = self.setUpContainer()
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / 'HERD.zip'
+            herd.to_zip(path=str(path))
+
+            read = HERD.from_zip(path=str(path))
+            HERD.assert_external_resources_equal(read, herd, check_dtype=False)
+            with zipfile.ZipFile(path) as archive:
+                self.assertEqual(archive.namelist(), [f'{child.name}.tsv' for child in herd.children])
+            self.assertCountEqual(path.parent.iterdir(), [path])
+
+    def test_zip_operations_preserve_sibling_tables(self):
+        herd = self.setUpContainer()
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / 'HERD.zip'
+            sibling = path.with_name('keys.tsv')
+            sibling.write_text('existing data', encoding='utf-8')
+
+            herd.to_zip(path=str(path))
+            self.assertEqual(sibling.read_text(encoding='utf-8'), 'existing data')
+            with zipfile.ZipFile(path, 'a') as archive:
+                archive.writestr('backup/keys.tsv', 'unrelated nested table')
+            read = HERD.from_zip(path=str(path))
+            HERD.assert_external_resources_equal(read, herd, check_dtype=False)
+            self.assertEqual(sibling.read_text(encoding='utf-8'), 'existing data')
+            self.assertCountEqual(path.parent.iterdir(), [path, sibling])
+
+    def test_from_zip_with_legacy_member_paths(self):
+        herd = self.setUpContainer()
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / 'HERD.zip'
+            with zipfile.ZipFile(path, 'w') as archive:
+                for child in herd.children:
+                    data = child.to_dataframe().to_csv(sep='\t', index=False)
+                    archive.writestr(f'old/path/{child.name}.tsv', data)
+                archive.writestr('unrelated.txt', 'ignored')
+
+            read = HERD.from_zip(path=str(path))
+            HERD.assert_external_resources_equal(read, herd, check_dtype=False)
+            self.assertCountEqual(path.parent.iterdir(), [path])
+
+    def test_from_zip_rejects_ambiguous_legacy_table(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / 'HERD.zip'
+            with zipfile.ZipFile(path, 'w') as archive:
+                archive.writestr('first/keys.tsv', 'key\nfirst\n')
+                archive.writestr('second/keys.tsv', 'key\nsecond\n')
+
+            with self.assertRaisesRegex(ValueError, 'Multiple archive members match the HERD table'):
+                HERD.from_zip(path=str(path))
+
+    def test_from_zip_rejects_duplicate_root_table(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / 'HERD.zip'
+            with zipfile.ZipFile(path, 'w') as archive:
+                archive.writestr('keys.tsv', 'key\nfirst\n')
+                with self.assertWarnsRegex(UserWarning, 'Duplicate name'):
+                    archive.writestr('keys.tsv', 'key\nsecond\n')
+
+            with self.assertRaisesRegex(ValueError, 'Multiple archive members match the HERD table'):
+                HERD.from_zip(path=str(path))
 
     def test_from_zip_with_type_map(self):
         er = HERD()
