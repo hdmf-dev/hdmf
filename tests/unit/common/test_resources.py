@@ -1399,6 +1399,26 @@ class TestHERD(TestCase):
 
         self.assertEqual(er.entity_keys.data, [(0, 0)])
 
+    def test_add_ref_same_call_twice(self):
+        # Repeating the same add_ref call is a no-op: the ObjectKeyTable
+        # should not gain a duplicate row
+        er = HERD()
+        data_1 = Data(name='data_name',
+                      data=np.array([('Mus musculus', 9, 81.0), ('Homo sapien', 3, 27.0)],
+                      dtype=[('species', 'U14'), ('age', 'i4'), ('weight', 'f4')]))
+        file = HERDManagerContainer(name='file')
+        data_1.parent = file
+
+        call = dict(container=data_1,
+                    key='Mus musculus',
+                    entity_id='NCBI:txid10090',
+                    entity_uri='https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=10090')
+        er.add_ref(**call)
+        er.add_ref(**call)
+
+        self.assertEqual(er.object_keys.data, [(0, 0)])
+        self.assertEqual(len(er.to_dataframe()), 1)
+
     def test_resuse_entity_different_key(self):
         # The EntityKeyTable should have two rows: same entity_idx, but different key_idx
         er = HERD()

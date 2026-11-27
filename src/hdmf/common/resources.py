@@ -685,6 +685,9 @@ class HERD(Container):
                         # Automatically resolve the key for keys associated with
                         # the same object.
                         key = self.keys.row[key_idx]
+                        # The matched object_keys row is the object-key
+                        # relationship, so do not add it again.
+                        add_object_key = False
 
             if not key_exists:
                 key = self._add_key(key)
