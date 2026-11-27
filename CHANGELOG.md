@@ -3,6 +3,7 @@
 ## HDMF 6.3.0 (Upcoming)
 
 ### Fixed
+- Fixed `HDF5IO.read_builder` failing to read scalar object references to datasets or groups. Scalar references now use the common reference resolver and preserve the object-reference dtype. @CAOShurong [#1599](https://github.com/hdmf-dev/hdmf/pull/1599)
 - Updated `pypa/gh-action-pypi-publish` to 1.14.3 to fix a certificate trust bundle vulnerability. @h-mayorquin [#1615](https://github.com/hdmf-dev/hdmf/pull/1615)
 - Fixed Linux CI jobs failing to build `numcodecs` on Python 3.14 by pinning affected runners to Ubuntu 24.04. @h-mayorquin [#1614](https://github.com/hdmf-dev/hdmf/pull/1614)
 - Fixed `HERD.to_dataframe` raising `ValueError` on a `HERD` that holds no references. It returns an empty `DataFrame` with the usual columns. @rly [#1567](https://github.com/hdmf-dev/hdmf/pull/1567)

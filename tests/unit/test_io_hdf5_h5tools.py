@@ -22,7 +22,8 @@ from hdmf.backends.hdf5 import H5DataIO
 from hdmf.backends.hdf5.h5tools import HDF5IO, SPEC_LOC_ATTR, H5PY_3
 from hdmf.backends.warnings import BrokenLinkWarning
 from hdmf.backends.errors import UnsupportedOperation
-from hdmf.build import GroupBuilder, DatasetBuilder, BuildManager, TypeMap, OrphanContainerBuildError, LinkBuilder
+from hdmf.build import (GroupBuilder, DatasetBuilder, BuildManager, TypeMap,
+                        OrphanContainerBuildError, LinkBuilder, ReferenceBuilder)
 from hdmf.container import Container, HERDManager
 from hdmf import Data, docval
 from hdmf.common import (DynamicTable, VectorData, SimpleMultiContainer, get_hdf5io, get_manager,
@@ -856,6 +857,82 @@ class H5IOTest(TestCase):
         with HDF5IO(self.path, 'r') as io:
             bldr = io.read_builder()
             np.testing.assert_array_equal(bldr['test_dataset'].data[()], a)
+
+    def test_read_scalar_dataset_reference(self):
+        target = DatasetBuilder('target', np.arange(3, dtype=np.int64))
+        root = GroupBuilder(
+            'root',
+            datasets={
+                'target': target,
+                'ref': DatasetBuilder('ref', ReferenceBuilder(target), dtype='object'),
+            },
+        )
+        self.io.close()
+        with HDF5IO(self.path, mode='w') as io:
+            io.write_builder(root)
+
+        with HDF5IO(self.path, mode='r') as io:
+            bldr = io.read_builder()
+
+        ref = bldr['ref']
+        self.assertIsInstance(ref.data, ReferenceBuilder)
+        self.assertIs(ref.data.builder, bldr['target'])
+        self.assertEqual(ref.dtype, 'object')
+
+    def test_read_scalar_group_reference(self):
+        target = GroupBuilder('target_group')
+        root = GroupBuilder(
+            'root',
+            groups={'target_group': target},
+            datasets={
+                'ref': DatasetBuilder('ref', ReferenceBuilder(target), dtype='object'),
+            },
+        )
+        self.io.close()
+        with HDF5IO(self.path, mode='w') as io:
+            io.write_builder(root)
+
+        with HDF5IO(self.path, mode='r') as io:
+            bldr = io.read_builder()
+
+        ref = bldr['ref']
+        self.assertIsInstance(ref.data, ReferenceBuilder)
+        self.assertIs(ref.data.builder, bldr['target_group'])
+        self.assertEqual(ref.dtype, 'object')
+
+    def test_read_scalar_references_reuse_target_builder(self):
+        target = DatasetBuilder('target', np.arange(3, dtype=np.int64))
+        root = GroupBuilder(
+            'root',
+            datasets={
+                'target': target,
+                'ref1': DatasetBuilder('ref1', ReferenceBuilder(target), dtype='object'),
+                'ref2': DatasetBuilder('ref2', ReferenceBuilder(target), dtype='object'),
+            },
+        )
+        self.io.close()
+        with HDF5IO(self.path, mode='w') as io:
+            io.write_builder(root)
+
+        with HDF5IO(self.path, mode='r') as io:
+            bldr = io.read_builder()
+
+        self.assertIs(bldr['ref1'].data.builder, bldr['target'])
+        self.assertIs(bldr['ref2'].data.builder, bldr['target'])
+
+    def test_read_scalar_region_reference_is_unsupported(self):
+        self.io.close()
+        with h5py.File(self.path, mode='w') as file:
+            root = file.create_group('root')
+            target = root.create_dataset('target', data=np.arange(4, dtype=np.int64))
+            region_ref = root.create_dataset(
+                'region_ref', shape=(), dtype=h5py.special_dtype(ref=h5py.RegionReference)
+            )
+            region_ref[()] = target.regionref[1:3]
+
+        with HDF5IO(self.path, mode='r') as io:
+            with self.assertRaisesRegex(UnsupportedOperation, 'region references'):
+                io.read_builder()
 
 
 class TestRoundTrip(TestCase):
